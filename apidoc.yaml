@@ -1,0 +1,2795 @@
+openapi: 3.0.3
+info:
+  title: Alphaaafrica Travel Platform API
+  version: 1.0.0
+  description: Backend API for the Alphaaafrica travel booking platform — flights,
+    hotels, tours, and car rentals.
+paths:
+  /api/auth/change-password/:
+    post:
+      operationId: auth_change_password_create
+      description: Changes the authenticated user's password after verifying the old
+        password.
+      summary: Change password
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: Password changed successfully.
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: Authenticates a user by email and password. Returns an access token,
+        a refresh token, and basic user info.
+      summary: Obtain JWT token pair (login)
+      tags:
+      - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      description: Returns the profile of the currently authenticated user.
+      summary: Get current user's profile
+      tags:
+      - Users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: auth_me_update
+      description: Fully updates the authenticated user's editable profile fields.
+      summary: Update current user's profile
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: auth_me_partial_update
+      description: Partially updates the authenticated user's editable profile fields.
+      summary: Partially update current user's profile
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/auth/password-reset/confirm/:
+    post:
+      operationId: auth_password_reset_confirm_create
+      description: Resets the password using the 6-digit code and a new password.
+      summary: Confirm password reset (OTP)
+      tags:
+      - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Password reset successfully.
+  /api/auth/password-reset/request/:
+    post:
+      operationId: auth_password_reset_request_create
+      description: Sends a 6-digit reset code to the email if an account exists. Always
+        returns success to protect account privacy.
+      summary: Request password reset code
+      tags:
+      - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: If the account exists, a reset code has been sent.
+  /api/auth/register/:
+    post:
+      operationId: auth_register_create
+      description: Creates a new user account using email and password. Returns the
+        created user profile on success.
+      summary: Register a new user
+      tags:
+      - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/auth/token/verify/:
+    post:
+      operationId: auth_token_verify_create
+      description: |-
+        Takes a token and indicates if it is valid.  This view provides no
+        information about a token's fitness for a particular use.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: No response body
+  /api/auth/verify/confirm/:
+    post:
+      operationId: auth_verify_confirm_create
+      description: Verifies the account using the 6-digit code sent to the user's
+        email.
+      summary: Confirm email verification (OTP)
+      tags:
+      - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerifyConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VerifyConfirmRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Email verified successfully.
+  /api/auth/verify/link/{token}/:
+    get:
+      operationId: auth_verify_link_retrieve
+      description: Backend-handled magic link. Renders a confirmation page when clicked
+        from email.
+      summary: Verify email via magic link
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - Authentication
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Renders an HTML verification result page.
+  /api/auth/verify/request/:
+    post:
+      operationId: auth_verify_request_create
+      description: Sends a fresh 6-digit verification code and magic link to the user's
+        email.
+      summary: Request email verification code
+      tags:
+      - Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerifyRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VerifyRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Verification email sent.
+  /api/cars/:
+    get:
+      operationId: cars_list
+      description: Lists active vehicles with per-hour pricing. Filter by ?vehicle_type=,
+        ?max_rate=, ?ordering=.
+      summary: Search & list vehicles
+      parameters:
+      - in: query
+        name: max_rate
+        schema:
+          type: number
+        description: Max hourly rate
+      - in: query
+        name: ordering
+        schema:
+          type: string
+        description: rate, -rate, name
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: vehicle_type
+        schema:
+          type: string
+        description: sedan_executive, suv_executive, sedan_normal, suv_normal, coaster,
+          others
+      tags:
+      - Car Rentals
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedVehicleListList'
+          description: ''
+  /api/cars/{slug}/:
+    get:
+      operationId: cars_retrieve
+      summary: Vehicle detail
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - Car Rentals
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleDetail'
+          description: ''
+  /api/cars/bookings/create/:
+    post:
+      operationId: cars_bookings_create_create
+      description: Creates a pending per-hour car booking, initializes Paystack, returns
+        authorization_url. Total = hourly_rate × num_hours. Works for guests and logged-in
+        users.
+      summary: Create a car booking & start payment
+      tags:
+      - Car Rentals
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CarBookingCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CarBookingCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CarBookingCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          description: Booking created; returns authorization_url and reference.
+  /api/cars/bookings/verify/{reference}/:
+    get:
+      operationId: cars_bookings_verify_retrieve
+      summary: Verify a car booking payment
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+        required: true
+      tags:
+      - Car Rentals
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarBooking'
+          description: ''
+  /api/flights/airports/:
+    get:
+      operationId: flights_airports_list
+      description: Search airports by IATA code, city, or airport name for the search
+        typeahead. Type a code (LOS), a city (Lagos), or a full name (Murtala Muhammed).
+      summary: Airport autocomplete
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Search text (min 2 chars)
+        required: true
+      tags:
+      - Flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Airport'
+          description: ''
+  /api/flights/bookings/create/:
+    post:
+      operationId: flights_bookings_create_create
+      description: Re-prices the offer, creates a pending booking, and initializes
+        Paystack. The Amadeus order (PNR) is created only AFTER payment succeeds (via
+        verify/webhook).
+      summary: Create flight booking & start payment
+      tags:
+      - Flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightBookingCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightBookingCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightBookingCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          description: Booking created; returns authorization_url and reference.
+  /api/flights/bookings/verify/{reference}/:
+    get:
+      operationId: flights_bookings_verify_retrieve
+      description: Verifies the Paystack payment. On success, creates the actual Amadeus
+        order (PNR). Returns the booking with its PNR once ticketed.
+      summary: Verify payment & create the flight order
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+        required: true
+      tags:
+      - Flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightBooking'
+          description: ''
+  /api/flights/local-search/:
+    get:
+      operationId: flights_local_search_retrieve
+      description: 'Non-streaming domestic search: waits for all QuickAir airlines
+        to respond and returns the full result list in one JSON response. Testable
+        in Swagger. Note it can take ~30-60s to return because QuickAir searches many
+        airlines live. For the best UX use the SSE streaming endpoint instead.'
+      summary: Search domestic (QuickAir) flights — JSON (blocking)
+      parameters:
+      - in: query
+        name: adults
+        schema:
+          type: integer
+      - in: query
+        name: children
+        schema:
+          type: integer
+      - in: query
+        name: date
+        schema:
+          type: string
+        description: YYYY-MM-DD
+        required: true
+      - in: query
+        name: destination
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: infants
+        schema:
+          type: integer
+      - in: query
+        name: origin
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: return_date
+        schema:
+          type: string
+        description: YYYY-MM-DD (round trip)
+      tags:
+      - Flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: All domestic flight cards with markup applied.
+  /api/flights/local-search-stream/:
+    get:
+      operationId: flights_local_search_stream_retrieve
+      description: 'Server-Sent Events endpoint for domestic Nigerian flights. Because
+        QuickAir searches many airlines live (can take ~30-60s), results are streamed
+        as they arrive. Each SSE message is one normalized flight card; a final "done"
+        event carries the search_id. Query params: origin, destination, date, adults,
+        children, infants, return_date (for round trips).'
+      summary: Stream domestic (QuickAir) flight results via SSE
+      parameters:
+      - in: query
+        name: adults
+        schema:
+          type: integer
+      - in: query
+        name: children
+        schema:
+          type: integer
+      - in: query
+        name: date
+        schema:
+          type: string
+        description: YYYY-MM-DD
+        required: true
+      - in: query
+        name: destination
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: infants
+        schema:
+          type: integer
+      - in: query
+        name: origin
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: return_date
+        schema:
+          type: string
+        description: YYYY-MM-DD (round trip)
+      tags:
+      - Flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/flights/price/:
+    post:
+      operationId: flights_price_create
+      description: Re-validates a selected flight offer with Amadeus (prices can change
+        since search). Returns the confirmed offer + final price with markup. Call
+        this before booking.
+      summary: Confirm flight price
+      tags:
+      - Flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightPriceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightPriceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightPriceRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Confirmed price with markup applied.
+  /api/flights/search/:
+    post:
+      operationId: flights_search_create
+      description: Searches Amadeus for flight offers and returns clean flight cards
+        with the final price (Amadeus fare + Alphaaafrica markup) already applied.
+        Local Nigerian flights get a flat per-passenger markup; international flights
+        get a percentage markup.
+      summary: Search flights
+      tags:
+      - Flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightSearchRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlightSearchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlightSearchRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: List of flight offers with final prices.
+  /api/hotels/:
+    get:
+      operationId: hotels_list
+      description: Search hotels by destination (city or hotel name), with optional
+        filters for guests, rooms, star rating, and price. Returns compact hotel cards
+        with a starting (lowest room) price. Dates are accepted for forward compatibility
+        with availability — currently they validate input but all active hotels are
+        returned.
+      summary: Search & list hotels
+      parameters:
+      - in: query
+        name: check_in
+        schema:
+          type: string
+          format: date
+        description: Check-in date (YYYY-MM-DD)
+      - in: query
+        name: check_out
+        schema:
+          type: string
+          format: date
+        description: Check-out date (YYYY-MM-DD)
+      - in: query
+        name: destination
+        schema:
+          type: string
+        description: City or hotel name (partial match)
+      - in: query
+        name: guests
+        schema:
+          type: integer
+        description: Total number of guests
+      - in: query
+        name: max_price
+        schema:
+          type: number
+        description: Maximum price per night
+      - in: query
+        name: min_stars
+        schema:
+          type: integer
+        description: Minimum star rating (1-5)
+      - in: query
+        name: ordering
+        schema:
+          type: string
+        description: 'Order by: price, -price, star_rating, -star_rating, name'
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: rooms
+        schema:
+          type: integer
+        description: Number of rooms required
+      tags:
+      - Hotels
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedHotelListList'
+          description: ''
+  /api/hotels/{slug}/:
+    get:
+      operationId: hotels_retrieve
+      description: Returns full details for a single hotel — including all room types
+        and gallery images.
+      summary: Get hotel details
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - Hotels
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelDetail'
+          description: ''
+  /api/hotels/bookings/create/:
+    post:
+      operationId: hotels_bookings_create_create
+      description: Creates a pending hotel booking, initializes a Paystack transaction,
+        and returns a Paystack authorization_url. Redirect the customer there to pay.
+        Works for both logged-in users and guests (guest details required either way).
+      summary: Create a hotel booking & start payment
+      tags:
+      - Hotel Bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HotelBookingCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HotelBookingCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/HotelBookingCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          description: Booking created; returns authorization_url and reference.
+  /api/hotels/bookings/verify/{reference}/:
+    get:
+      operationId: hotels_bookings_verify_retrieve
+      description: Verifies a payment with Paystack by reference (used as a backup
+        to the webhook, e.g. after the callback redirect). Returns the booking status.
+      summary: Verify a booking payment
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+        required: true
+      tags:
+      - Hotel Bookings
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelBooking'
+          description: ''
+  /api/packages/:
+    get:
+      operationId: packages_list
+      description: Lists all active packages. Filter by ?destination=<slug>, ?featured=true,
+        ?max_price=, ?ordering=.
+      summary: List / search packages
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - Packages
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPackageListList'
+          description: ''
+  /api/packages/{slug}/:
+    get:
+      operationId: packages_retrieve
+      description: Full details for a single package, including inclusions, highlights,
+        and gallery.
+      summary: Package detail
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - Packages
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageDetail'
+          description: ''
+  /api/packages/{slug}/enquire/:
+    post:
+      operationId: packages_enquire_create
+      description: Submit interest in a package. No payment — the travel team follows
+        up. Sends an admin notification and a confirmation email to the customer.
+      summary: Submit a package enquiry
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - Packages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PackageEnquiryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PackageEnquiryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PackageEnquiryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackageEnquiryResult'
+          description: ''
+  /api/packages/destinations/:
+    get:
+      operationId: packages_destinations_list
+      description: Lists active travel destinations, each with package count and starting
+        price.
+      summary: List destinations
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - Packages
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDestinationListList'
+          description: ''
+  /api/packages/destinations/{slug}/:
+    get:
+      operationId: packages_destinations_retrieve
+      description: Returns a destination and all its active packages.
+      summary: Destination detail (with packages)
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - Packages
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DestinationDetail'
+          description: ''
+  /api/payments/order/{reference}/:
+    get:
+      operationId: payments_order_retrieve
+      description: Given a payment reference, verifies the payment (idempotently),
+        determines the booking type, and returns the order details. The frontend calls
+        this on its payment-callback page to render a dynamic confirmation for any
+        booking type (hotel, car, visa, flight).
+      summary: Get order details by reference (post-payment confirmation)
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+        required: true
+      tags:
+      - Payments
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Order details with booking_type flag.
+  /api/payments/orders/history/:
+    get:
+      operationId: payments_orders_history_retrieve
+      description: Returns all orders for an email. Guests must supply the secure
+        token from their confirmation email (email + token query params). Logged-in
+        users get their own orders automatically from their auth token.
+      summary: Order history (guest via token, or logged-in user)
+      parameters:
+      - in: query
+        name: email
+        schema:
+          type: string
+        description: Guest email (required for guests)
+      - in: query
+        name: token
+        schema:
+          type: string
+        description: Secure token from the email (required for guests)
+      tags:
+      - Payments
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: List of order summaries.
+  /api/visa/apply/:
+    post:
+      operationId: visa_apply_create
+      description: Creates a visa consultation application and initializes Paystack
+        payment for the consultation fee. Returns authorization_url. Works for guests
+        and logged-in users.
+      summary: Apply for visa consultation & pay
+      tags:
+      - Visa Assistance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisaApplicationCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VisaApplicationCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VisaApplicationCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          description: Application created; returns authorization_url and reference.
+  /api/visa/countries/:
+    get:
+      operationId: visa_countries_list
+      description: Lists countries Alphaaafrica offers visa consultation for, with
+        consultation fees.
+      summary: List visa countries
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - Visa Assistance
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedVisaCountryListList'
+          description: ''
+  /api/visa/countries/{slug}/:
+    get:
+      operationId: visa_countries_retrieve
+      summary: Visa country detail
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - Visa Assistance
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisaCountryDetail'
+          description: ''
+  /api/visa/verify/{reference}/:
+    get:
+      operationId: visa_verify_retrieve
+      summary: Verify a visa consultation payment
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+        required: true
+      tags:
+      - Visa Assistance
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisaApplication'
+          description: ''
+components:
+  schemas:
+    Airport:
+      type: object
+      properties:
+        iata_code:
+          type: string
+          maxLength: 3
+        name:
+          type: string
+          maxLength: 200
+        city:
+          type: string
+          maxLength: 120
+        country_name:
+          type: string
+          maxLength: 120
+        country_code:
+          type: string
+          maxLength: 2
+      required:
+      - iata_code
+      - name
+    CabinEnum:
+      enum:
+      - ECONOMY
+      - PREMIUM_ECONOMY
+      - BUSINESS
+      - FIRST
+      type: string
+      description: |-
+        * `ECONOMY` - ECONOMY
+        * `PREMIUM_ECONOMY` - PREMIUM_ECONOMY
+        * `BUSINESS` - BUSINESS
+        * `FIRST` - FIRST
+    CarBooking:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        reference:
+          type: string
+          maxLength: 64
+        vehicle_name:
+          type: string
+          readOnly: true
+        vehicle_type:
+          type: string
+          readOnly: true
+        guest_name:
+          type: string
+          maxLength: 150
+        guest_email:
+          type: string
+          format: email
+          maxLength: 254
+        guest_phone:
+          type: string
+          maxLength: 20
+        pickup_location:
+          type: string
+          maxLength: 255
+        dropoff_location:
+          type: string
+          maxLength: 255
+        pickup_datetime:
+          type: string
+          format: date-time
+        num_hours:
+          type: integer
+          maximum: 65535
+          minimum: 0
+          description: Hours hired
+        hourly_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/Status8eeEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - dropoff_location
+      - guest_email
+      - guest_name
+      - hourly_rate
+      - id
+      - num_hours
+      - pickup_datetime
+      - pickup_location
+      - reference
+      - total_amount
+      - vehicle_name
+      - vehicle_type
+    CarBookingCreateRequest:
+      type: object
+      properties:
+        vehicle_id:
+          type: integer
+        pickup_location:
+          type: string
+          minLength: 1
+          maxLength: 255
+        dropoff_location:
+          type: string
+          minLength: 1
+          maxLength: 255
+        pickup_datetime:
+          type: string
+          format: date-time
+        num_hours:
+          type: integer
+          minimum: 1
+        guest_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        guest_email:
+          type: string
+          format: email
+          minLength: 1
+        guest_phone:
+          type: string
+          maxLength: 20
+      required:
+      - dropoff_location
+      - guest_email
+      - guest_name
+      - num_hours
+      - pickup_datetime
+      - pickup_location
+      - vehicle_id
+    ChangePasswordRequest:
+      type: object
+      description: Handles password change for an authenticated user.
+      properties:
+        old_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - new_password
+      - old_password
+    CustomTokenObtainPairRequest:
+      type: object
+      description: 'Login serializer: authenticates by email and returns tokens +
+        user info.'
+      properties:
+        email:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+    DestinationDetail:
+      type: object
+      description: Destination page with its packages.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        slug:
+          type: string
+          maxLength: 170
+          pattern: ^[-a-zA-Z0-9_]+$
+        country:
+          type: string
+          maxLength: 120
+        description:
+          type: string
+        main_image:
+          type: string
+          readOnly: true
+        packages:
+          type: string
+          readOnly: true
+      required:
+      - country
+      - id
+      - main_image
+      - name
+      - packages
+    DestinationList:
+      type: object
+      description: |-
+        Provides a helper to turn a model's display_image (which may be a relative
+        /media/ path or an absolute http URL) into an absolute URL using the request.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        slug:
+          type: string
+          maxLength: 170
+          pattern: ^[-a-zA-Z0-9_]+$
+        country:
+          type: string
+          maxLength: 120
+        main_image:
+          type: string
+          readOnly: true
+        package_count:
+          type: integer
+          readOnly: true
+        starting_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        is_featured:
+          type: boolean
+      required:
+      - country
+      - id
+      - main_image
+      - name
+      - package_count
+      - starting_price
+    FlightBooking:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        reference:
+          type: string
+          maxLength: 64
+        contact_name:
+          type: string
+          maxLength: 150
+        contact_email:
+          type: string
+          format: email
+          maxLength: 254
+        contact_phone:
+          type: string
+          maxLength: 20
+        origin:
+          type: string
+          maxLength: 10
+        destination:
+          type: string
+          maxLength: 10
+        departure_date:
+          type: string
+          format: date
+        return_date:
+          type: string
+          format: date
+          nullable: true
+        num_adults:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        num_children:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        num_infants:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        base_fare:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Amadeus fare before markup
+        markup_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Alphaaafrica markup added
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          maxLength: 3
+        status:
+          $ref: '#/components/schemas/FlightBookingStatusEnum'
+        pnr:
+          type: string
+          description: Booking reference (PNR)
+          maxLength: 20
+        amadeus_order_id:
+          type: string
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        flight_details:
+          type: string
+          readOnly: true
+        travelers:
+          type: string
+          readOnly: true
+      required:
+      - contact_email
+      - contact_name
+      - created_at
+      - departure_date
+      - destination
+      - flight_details
+      - id
+      - origin
+      - reference
+      - total_amount
+      - travelers
+    FlightBookingCreateRequest:
+      type: object
+      description: 'Create a flight booking: the priced offer + travelers + contact.'
+      properties:
+        flight_offer: {}
+        travelers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TravelerRequest'
+        contact_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        contact_email:
+          type: string
+          format: email
+          minLength: 1
+        contact_phone:
+          type: string
+          maxLength: 20
+      required:
+      - contact_email
+      - contact_name
+      - flight_offer
+      - travelers
+    FlightBookingStatusEnum:
+      enum:
+      - pending
+      - paid
+      - confirmed
+      - cancelled
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending Payment
+        * `paid` - Paid — Booking
+        * `confirmed` - Confirmed (Order Created)
+        * `cancelled` - Cancelled
+        * `failed` - Failed
+    FlightLegRequest:
+      type: object
+      description: One journey leg with its own cabin.
+      properties:
+        origin:
+          type: string
+          minLength: 3
+          maxLength: 3
+        destination:
+          type: string
+          minLength: 3
+          maxLength: 3
+        date:
+          type: string
+          format: date
+        cabin:
+          allOf:
+          - $ref: '#/components/schemas/CabinEnum'
+          default: ECONOMY
+      required:
+      - date
+      - destination
+      - origin
+    FlightPriceRequest:
+      type: object
+      description: Body for price confirmation — the raw flight offer to re-validate.
+      properties:
+        flight_offer: {}
+      required:
+      - flight_offer
+    FlightSearchRequest:
+      type: object
+      description: |-
+        All trip types are expressed as legs, each with its own cabin:
+          - one_way:    1 leg
+          - round_trip: 2 legs (outbound + return), each with its own cabin
+          - multi_city: 2 to 6 legs, each with its own cabin
+      properties:
+        trip_type:
+          allOf:
+          - $ref: '#/components/schemas/TripTypeEnum'
+          default: one_way
+        legs:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlightLegRequest'
+        adults:
+          type: integer
+          maximum: 9
+          minimum: 1
+          default: 1
+        children:
+          type: integer
+          maximum: 9
+          minimum: 0
+          default: 0
+        infants:
+          type: integer
+          maximum: 9
+          minimum: 0
+          default: 0
+        non_stop:
+          type: boolean
+          default: false
+        max_stops:
+          type: integer
+          maximum: 3
+          minimum: 0
+          nullable: true
+        currency:
+          type: string
+          minLength: 1
+          default: NGN
+          maxLength: 3
+        max_offers:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 20
+      required:
+      - legs
+    GenderEnum:
+      enum:
+      - MALE
+      - FEMALE
+      type: string
+      description: |-
+        * `MALE` - MALE
+        * `FEMALE` - FEMALE
+    HotelBooking:
+      type: object
+      description: Read serializer for returning booking details.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        reference:
+          type: string
+          maxLength: 64
+        hotel_name:
+          type: string
+          readOnly: true
+        room_type_name:
+          type: string
+          readOnly: true
+        guest_name:
+          type: string
+          maxLength: 150
+        guest_email:
+          type: string
+          format: email
+          maxLength: 254
+        guest_phone:
+          type: string
+          maxLength: 20
+        check_in:
+          type: string
+          format: date
+        check_out:
+          type: string
+          format: date
+        nights:
+          type: integer
+          readOnly: true
+        num_rooms:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        num_guests:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        price_per_night:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/Status8eeEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - check_in
+      - check_out
+      - created_at
+      - guest_email
+      - guest_name
+      - hotel_name
+      - id
+      - nights
+      - price_per_night
+      - reference
+      - room_type_name
+      - total_amount
+    HotelBookingCreateRequest:
+      type: object
+      description: Validates a booking request and computes the total.
+      properties:
+        hotel_id:
+          type: integer
+        room_type_id:
+          type: integer
+        check_in:
+          type: string
+          format: date
+        check_out:
+          type: string
+          format: date
+        num_rooms:
+          type: integer
+          minimum: 1
+          default: 1
+        num_guests:
+          type: integer
+          minimum: 1
+          default: 1
+        guest_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        guest_email:
+          type: string
+          format: email
+          minLength: 1
+        guest_phone:
+          type: string
+          maxLength: 20
+      required:
+      - check_in
+      - check_out
+      - guest_email
+      - guest_name
+      - hotel_id
+      - room_type_id
+    HotelDetail:
+      type: object
+      description: |-
+        Provides a helper to turn a model's display_image (which may be a relative
+        /media/ path or an absolute http URL) into an absolute URL using the request.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        slug:
+          type: string
+          maxLength: 220
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+        city:
+          type: string
+          maxLength: 120
+        address:
+          type: string
+          maxLength: 255
+        country:
+          type: string
+          maxLength: 120
+        star_rating:
+          allOf:
+          - $ref: '#/components/schemas/StarRatingEnum'
+          minimum: 0
+          maximum: 65535
+        main_image:
+          type: string
+          readOnly: true
+        amenities_list:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        starting_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        room_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomType'
+          readOnly: true
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/HotelImage'
+          readOnly: true
+      required:
+      - amenities_list
+      - city
+      - id
+      - images
+      - main_image
+      - name
+      - room_types
+      - starting_price
+    HotelImage:
+      type: object
+      description: |-
+        Provides a helper to turn a model's display_image (which may be a relative
+        /media/ path or an absolute http URL) into an absolute URL using the request.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          readOnly: true
+        caption:
+          type: string
+          maxLength: 150
+      required:
+      - id
+      - image
+    HotelList:
+      type: object
+      description: |-
+        Provides a helper to turn a model's display_image (which may be a relative
+        /media/ path or an absolute http URL) into an absolute URL using the request.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        slug:
+          type: string
+          maxLength: 220
+          pattern: ^[-a-zA-Z0-9_]+$
+        city:
+          type: string
+          maxLength: 120
+        country:
+          type: string
+          maxLength: 120
+        star_rating:
+          allOf:
+          - $ref: '#/components/schemas/StarRatingEnum'
+          minimum: 0
+          maximum: 65535
+        main_image:
+          type: string
+          readOnly: true
+        amenities_list:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        starting_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+      required:
+      - amenities_list
+      - city
+      - id
+      - main_image
+      - name
+      - starting_price
+    PackageDetail:
+      type: object
+      description: Full package page.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        slug:
+          type: string
+          maxLength: 220
+          pattern: ^[-a-zA-Z0-9_]+$
+        summary:
+          type: string
+          description: Short one-line teaser
+          maxLength: 300
+        description:
+          type: string
+        destination_name:
+          type: string
+          readOnly: true
+        destination_slug:
+          type: string
+          readOnly: true
+        duration_days:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        duration_nights:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Display "from" price per person
+        inclusions_list:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        highlights_list:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        main_image:
+          type: string
+          readOnly: true
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/PackageImage'
+          readOnly: true
+        is_featured:
+          type: boolean
+      required:
+      - destination_name
+      - destination_slug
+      - highlights_list
+      - id
+      - images
+      - inclusions_list
+      - main_image
+      - price
+      - title
+    PackageEnquiryRequest:
+      type: object
+      description: Customer enquiry for a package — no payment, admin follows up.
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 20
+        preferred_date:
+          type: string
+          format: date
+          nullable: true
+        num_adults:
+          type: integer
+          minimum: 1
+          default: 1
+        num_children:
+          type: integer
+          minimum: 0
+          default: 0
+        message:
+          type: string
+      required:
+      - email
+      - full_name
+      - phone
+    PackageEnquiryResult:
+      type: object
+      description: Returned after a successful enquiry.
+      properties:
+        reference:
+          type: string
+          maxLength: 40
+        package_title:
+          type: string
+          readOnly: true
+        full_name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 20
+        preferred_date:
+          type: string
+          format: date
+          nullable: true
+        num_adults:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        num_children:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        total_travelers:
+          type: integer
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/PackageEnquiryResultStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - email
+      - full_name
+      - package_title
+      - phone
+      - reference
+      - total_travelers
+    PackageEnquiryResultStatusEnum:
+      enum:
+      - new
+      - contacted
+      - converted
+      - closed
+      type: string
+      description: |-
+        * `new` - New
+        * `contacted` - Contacted
+        * `converted` - Converted
+        * `closed` - Closed
+    PackageImage:
+      type: object
+      description: |-
+        Provides a helper to turn a model's display_image (which may be a relative
+        /media/ path or an absolute http URL) into an absolute URL using the request.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          readOnly: true
+        caption:
+          type: string
+          maxLength: 150
+      required:
+      - id
+      - image
+    PackageList:
+      type: object
+      description: Compact package card.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        slug:
+          type: string
+          maxLength: 220
+          pattern: ^[-a-zA-Z0-9_]+$
+        summary:
+          type: string
+          description: Short one-line teaser
+          maxLength: 300
+        destination_name:
+          type: string
+          readOnly: true
+        duration_days:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        duration_nights:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Display "from" price per person
+        main_image:
+          type: string
+          readOnly: true
+        inclusions_list:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        is_featured:
+          type: boolean
+      required:
+      - destination_name
+      - id
+      - inclusions_list
+      - main_image
+      - price
+      - title
+    PaginatedDestinationListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DestinationList'
+    PaginatedHotelListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/HotelList'
+    PaginatedPackageListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PackageList'
+    PaginatedVehicleListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/VehicleList'
+    PaginatedVisaCountryListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/VisaCountryList'
+    PasswordResetConfirmRequest:
+      type: object
+      description: Confirm password reset using OTP + new password.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        code:
+          type: string
+          minLength: 6
+          maxLength: 6
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - code
+      - email
+      - new_password
+    PasswordResetRequestRequest:
+      type: object
+      description: Request a password-reset OTP.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - email
+    PatchedUserRequest:
+      type: object
+      description: Read/update serializer for the authenticated user's own profile.
+      properties:
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        phone_number:
+          type: string
+          maxLength: 20
+    RegisterRequest:
+      type: object
+      description: |-
+        Handles new user registration with password confirmation.
+
+        If the email already exists but is UNVERIFIED, registration is treated as
+        a re-registration: the existing record is updated and a fresh OTP is sent.
+        If the email exists and is VERIFIED, registration is rejected.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        phone_number:
+          type: string
+          maxLength: 20
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password2:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Confirm password
+      required:
+      - email
+      - password
+      - password2
+    RoomType:
+      type: object
+      description: |-
+        Provides a helper to turn a model's display_image (which may be a relative
+        /media/ path or an absolute http URL) into an absolute URL using the request.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        description:
+          type: string
+        price_per_night:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        max_guests:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        total_rooms:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+          description: How many of this room type exist
+        image:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - image
+      - name
+      - price_per_night
+    StarRatingEnum:
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      type: integer
+      description: |-
+        * `1` - 1 Star
+        * `2` - 2 Star
+        * `3` - 3 Star
+        * `4` - 4 Star
+        * `5` - 5 Star
+    Status8eeEnum:
+      enum:
+      - pending
+      - confirmed
+      - cancelled
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending Payment
+        * `confirmed` - Confirmed
+        * `cancelled` - Cancelled
+        * `failed` - Payment Failed
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    TokenVerifyRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - token
+    TravelPurposeEnum:
+      enum:
+      - tourism
+      - business
+      - study
+      - work
+      - medical
+      - family
+      - other
+      type: string
+      description: |-
+        * `tourism` - Tourism
+        * `business` - Business
+        * `study` - Study
+        * `work` - Work
+        * `medical` - Medical
+        * `family` - Family Visit
+        * `other` - Other
+    TravelerRequest:
+      type: object
+      description: One traveler's details for booking (Amadeus order creation needs
+        these).
+      properties:
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        last_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        date_of_birth:
+          type: string
+          format: date
+        gender:
+          $ref: '#/components/schemas/GenderEnum'
+        email:
+          type: string
+          format: email
+          minLength: 1
+        phone_country_code:
+          type: string
+          minLength: 1
+          default: '234'
+          maxLength: 4
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 20
+        passport_number:
+          type: string
+          maxLength: 30
+        passport_expiry:
+          type: string
+          format: date
+          nullable: true
+        nationality:
+          type: string
+          maxLength: 2
+        traveler_type:
+          allOf:
+          - $ref: '#/components/schemas/TravelerTypeEnum'
+          default: ADULT
+      required:
+      - date_of_birth
+      - email
+      - first_name
+      - gender
+      - last_name
+      - phone
+    TravelerTypeEnum:
+      enum:
+      - ADULT
+      - CHILD
+      - HELD_INFANT
+      type: string
+      description: |-
+        * `ADULT` - ADULT
+        * `CHILD` - CHILD
+        * `HELD_INFANT` - HELD_INFANT
+    TripTypeEnum:
+      enum:
+      - one_way
+      - round_trip
+      - multi_city
+      type: string
+      description: |-
+        * `one_way` - one_way
+        * `round_trip` - round_trip
+        * `multi_city` - multi_city
+    User:
+      type: object
+      description: Read/update serializer for the authenticated user's own profile.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        phone_number:
+          type: string
+          maxLength: 20
+        is_verified:
+          type: boolean
+          readOnly: true
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - email
+      - id
+      - is_verified
+    UserRequest:
+      type: object
+      description: Read/update serializer for the authenticated user's own profile.
+      properties:
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        phone_number:
+          type: string
+          maxLength: 20
+    VehicleDetail:
+      type: object
+      description: |-
+        Provides a helper to turn a model's display_image (which may be a relative
+        /media/ path or an absolute http URL) into an absolute URL using the request.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: e.g. Toyota Camry 2022
+          maxLength: 150
+        slug:
+          type: string
+          maxLength: 170
+          pattern: ^[-a-zA-Z0-9_]+$
+        vehicle_type:
+          $ref: '#/components/schemas/VehicleTypeEnum'
+        vehicle_type_display:
+          type: string
+          readOnly: true
+        description:
+          type: string
+        hourly_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Price per hour (₦)
+        capacity:
+          type: integer
+          maximum: 65535
+          minimum: 0
+          description: Passenger seats
+        city:
+          type: string
+          description: Base city (optional)
+          maxLength: 120
+        main_image:
+          type: string
+          readOnly: true
+      required:
+      - hourly_rate
+      - id
+      - main_image
+      - name
+      - vehicle_type
+      - vehicle_type_display
+    VehicleList:
+      type: object
+      description: Vehicle card — shows price per hour (per spec).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: e.g. Toyota Camry 2022
+          maxLength: 150
+        slug:
+          type: string
+          maxLength: 170
+          pattern: ^[-a-zA-Z0-9_]+$
+        vehicle_type:
+          $ref: '#/components/schemas/VehicleTypeEnum'
+        vehicle_type_display:
+          type: string
+          readOnly: true
+        hourly_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Price per hour (₦)
+        capacity:
+          type: integer
+          maximum: 65535
+          minimum: 0
+          description: Passenger seats
+        city:
+          type: string
+          description: Base city (optional)
+          maxLength: 120
+        main_image:
+          type: string
+          readOnly: true
+      required:
+      - hourly_rate
+      - id
+      - main_image
+      - name
+      - vehicle_type
+      - vehicle_type_display
+    VehicleTypeEnum:
+      enum:
+      - sedan_executive
+      - suv_executive
+      - sedan_normal
+      - suv_normal
+      - coaster
+      - others
+      type: string
+      description: |-
+        * `sedan_executive` - Sedan Executive
+        * `suv_executive` - SUV Executive
+        * `sedan_normal` - Sedan Normal
+        * `suv_normal` - SUV Normal
+        * `coaster` - Coaster
+        * `others` - Others
+    VerifyConfirmRequest:
+      type: object
+      description: Confirm email verification using the 6-digit OTP.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        code:
+          type: string
+          minLength: 6
+          maxLength: 6
+      required:
+      - code
+      - email
+    VerifyRequestRequest:
+      type: object
+      description: Request a fresh verification OTP + link (for the authenticated
+        or named user).
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - email
+    VisaApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        reference:
+          type: string
+          maxLength: 64
+        country_name:
+          type: string
+          readOnly: true
+        full_name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 20
+        travel_purpose:
+          $ref: '#/components/schemas/TravelPurposeEnum'
+        travel_purpose_display:
+          type: string
+          readOnly: true
+        preferred_date:
+          type: string
+          format: date
+          nullable: true
+          description: Preferred consultation/travel date
+        num_applicants:
+          type: integer
+          maximum: 65535
+          minimum: 0
+        message:
+          type: string
+        consultation_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/VisaApplicationStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - consultation_fee
+      - country_name
+      - created_at
+      - email
+      - full_name
+      - id
+      - phone
+      - reference
+      - travel_purpose_display
+    VisaApplicationCreateRequest:
+      type: object
+      properties:
+        country_id:
+          type: integer
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 20
+        travel_purpose:
+          allOf:
+          - $ref: '#/components/schemas/TravelPurposeEnum'
+          default: tourism
+        preferred_date:
+          type: string
+          format: date
+          nullable: true
+        num_applicants:
+          type: integer
+          minimum: 1
+          default: 1
+        message:
+          type: string
+      required:
+      - country_id
+      - email
+      - full_name
+      - phone
+    VisaApplicationStatusEnum:
+      enum:
+      - pending
+      - paid
+      - contacted
+      - completed
+      - cancelled
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending Payment
+        * `paid` - Paid — Awaiting Contact
+        * `contacted` - Contacted
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+        * `failed` - Payment Failed
+    VisaCountryDetail:
+      type: object
+      description: |-
+        Provides a helper to turn a model's display_image (which may be a relative
+        /media/ path or an absolute http URL) into an absolute URL using the request.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        slug:
+          type: string
+          maxLength: 140
+          pattern: ^[-a-zA-Z0-9_]+$
+        consultation_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Consultation fee charged to the customer (₦)
+        processing_time:
+          type: string
+          description: e.g. "3 to 4 weeks"
+          maxLength: 100
+        description:
+          type: string
+          description: Short note about visa assistance for this country
+        flag_image:
+          type: string
+          readOnly: true
+      required:
+      - flag_image
+      - id
+      - name
+    VisaCountryList:
+      type: object
+      description: |-
+        Provides a helper to turn a model's display_image (which may be a relative
+        /media/ path or an absolute http URL) into an absolute URL using the request.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        slug:
+          type: string
+          maxLength: 140
+          pattern: ^[-a-zA-Z0-9_]+$
+        consultation_fee:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Consultation fee charged to the customer (₦)
+        processing_time:
+          type: string
+          description: e.g. "3 to 4 weeks"
+          maxLength: 100
+        flag_image:
+          type: string
+          readOnly: true
+        is_featured:
+          type: boolean
+      required:
+      - flag_image
+      - id
+      - name
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+tags:
+- name: Authentication
+  description: Registration, login, token refresh, and logout
+- name: Users
+  description: User profile management
+- name: Hotels
+  description: Hotel search, listings, and details
+- name: Hotel Bookings
+  description: Create and verify hotel bookings
+- name: Payments
+  description: Payment processing and webhooks
+- name: Packages
+  description: Holiday destinations, packages, and enquiries
+- name: Car Rentals
+  description: Per-hour vehicle hire, booking, and payment
+- name: Visa Assistance
+  description: Visa consultation countries, applications, and payment
+- name: Flights
+  description: Flight search, booking, and airport autocomplete
