@@ -4,14 +4,14 @@ import { FlightSearchPageClient } from "@/components/flights/flight-search-page-
 import { canonicalUrl, getSiteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Search Flights — One-way | Alphaa Africa",
+  title: "Search Flights — One-way, Round-trip & Multi-city | Alphaa Africa",
   description:
-    "Search one-way flights by origin, destination, date, party and cabin. Airport autocomplete from IATA, city or name. Live fares in NGN, no account needed. Confirm the live fare before paying.",
+    "Search one-way, round-trip, and multi-city flights by airport, date, party and cabin. Airport autocomplete from IATA, city or name. Live fares in NGN, no account needed. Confirm the live fare before paying.",
   alternates: { canonical: canonicalUrl("/flights") },
   openGraph: {
-    title: "Search Flights — One-way | Alphaa Africa",
+    title: "Search Flights — One-way, Round-trip & Multi-city | Alphaa Africa",
     description:
-      "Find one-way flights with autocomplete search, live airline offers, and prices in Naira. No account required.",
+      "Find flights with autocomplete search, live airline offers, and prices in Naira. No account required.",
     url: canonicalUrl("/flights"),
     type: "website",
     images: [
@@ -36,9 +36,9 @@ export default function FlightsPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "Search Flights — One-way",
+    name: "Search Flights — One-way, Round-trip & Multi-city",
     description:
-      "Search one-way flights by origin, destination, date, party and cabin with airport autocomplete. Live fares in NGN.",
+      "Search one-way, round-trip, and multi-city flights by airport, date, party and cabin with airport autocomplete. Live fares in NGN.",
     url: canonicalUrl("/flights"),
     isPartOf: {
       "@type": "WebSite",

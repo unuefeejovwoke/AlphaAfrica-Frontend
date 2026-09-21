@@ -1,23 +1,24 @@
 import { z } from "zod";
 
-export const travellerCompositionSchema = z
-  .object({
-    adults: z
-      .number()
-      .int()
-      .min(1, "At least 1 adult traveller is required")
-      .max(9, "Maximum 9 adults"),
-    children: z
-      .number()
-      .int()
-      .min(0, "Children count cannot be negative")
-      .max(8, "Maximum 8 children"),
-    infants: z
-      .number()
-      .int()
-      .min(0, "Infants count cannot be negative")
-      .max(4, "Maximum 4 infants"),
-  })
+// Plain field shape (no cross-field rules) for composition into plain
+// ZodObjects — e.g. discriminated-union members, which must stay
+// ZodObject at the type level. Cross-field rules live on
+// travellerCompositionSchema below and are reused via safeParse delegation.
+export const travellerPartyBaseSchema = z.object({
+  adults: z
+    .number()
+    .int()
+    .min(1, "At least 1 adult traveller is required")
+    .max(9, "Maximum 9 adults"),
+  children: z
+    .number()
+    .int()
+    .min(0, "Children count cannot be negative")
+    .max(9, "Maximum 9 children"),
+  infants: z.number().int().min(0, "Infants count cannot be negative").max(9, "Maximum 9 infants"),
+});
+
+export const travellerCompositionSchema = travellerPartyBaseSchema
   .refine((data) => data.adults + data.children + data.infants <= 9, {
     message: "Total travellers cannot exceed 9",
     path: ["adults"],
@@ -41,3 +42,14 @@ export const contactEnquirySchema = z.object({
 });
 
 export type ContactEnquiry = z.infer<typeof contactEnquirySchema>;
+
+export const callbackRequestSchema = z.object({
+  customerName: z.string().min(2, "Enter your name so we know who to call"),
+  customerPhone: z
+    .string()
+    .min(7, "Enter a valid phone number so we can reach you")
+    .regex(/^[+0-9\s-()]+$/, "Enter a valid phone number so we can reach you"),
+  customerNotes: z.string().max(280, "Keep details under 280 characters").optional(),
+});
+
+export type CallbackRequest = z.infer<typeof callbackRequestSchema>;

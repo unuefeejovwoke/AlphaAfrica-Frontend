@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { apiGet, apiPost } from "./client.ts";
+import { ApiError, apiGet, apiPost } from "./client.ts";
 import { futureDateStringSchema } from "./validation.ts";
-import { travellerCompositionSchema } from "../schemas/travel.ts";
+import { travellerCompositionSchema, travellerPartyBaseSchema } from "../schemas/travel.ts";
 
 /**
  * Flight domain — one-way international search (Phase 3, ticket 01).
@@ -166,15 +166,9 @@ const iataSchema = z
   .toUpperCase()
   .regex(/^[A-Z]{3}$/, "Select a valid airport from the list");
 
-// Base shape before refinements — reuses shared traveller composition
-// so party rules (adults ≥1, total ≤9, infants ≤ adults) stay single-sourced.
-// Ticket 01 scope: one-way only, cabin ECONOMY default, currency NGN-only (ADR-0004),
+// Shared trip flags — cabin ECONOMY default, currency NGN-only (ADR-0004),
 // non_stop + max_stops map to the backend legs contract (also used by story-9 filters).
-const oneWayJourneyBase = z.object({
-  origin: iataSchema,
-  destination: iataSchema,
-  departureDate: futureDateStringSchema("Departure date"),
-  trip_type: z.literal("one_way").default("one_way"),
+const tripFlags = {
   cabin: cabinSchema.default("ECONOMY"),
   currency: z.literal("NGN").default("NGN"),
   non_stop: z.boolean().optional().default(false),
@@ -186,45 +180,303 @@ const oneWayJourneyBase = z.object({
     .optional()
     .nullable()
     .transform((v) => (v === undefined ? null : v)),
-});
+};
 
-const oneWayBase = oneWayJourneyBase.and(travellerCompositionSchema);
+interface CheckIssue {
+  code: "custom";
+  message: string;
+  path: PropertyKey[];
+  input: unknown;
+}
 
-export const oneWayFlightSearchSchema = oneWayBase.refine(
-  (data) => data.origin !== data.destination,
-  {
-    message: "Origin and destination must be different",
-    path: ["destination"],
-  },
-);
+/**
+ * Single source for party cross-field rules (total ≤9, infants ≤ adults).
+ * Branch `.check()` callbacks delegate here so the messages in travel.ts stay
+ * authoritative while branches remain plain ZodObjects — required for
+ * discriminated-union membership at the type level (Zod v4 only accepts
+ * statically discriminable object members, so `.and()`/`.refine()` wrappers
+ * cannot be union members).
+ */
+function checkTravellerComposition(
+  push: (issue: CheckIssue) => void,
+  data: { adults: unknown; children: unknown; infants: unknown },
+  input: unknown,
+): void {
+  const parsed = travellerCompositionSchema.safeParse(data);
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      push({ code: "custom", message: issue.message, path: [...issue.path], input });
+    }
+  }
+}
+
+function checkDistinctAirports(
+  push: (issue: CheckIssue) => void,
+  origin: string,
+  destination: string,
+  input: unknown,
+): void {
+  if (origin === destination) {
+    push({
+      code: "custom",
+      message: "Origin and destination must be different",
+      path: ["destination"],
+      input,
+    });
+  }
+}
+
+// One-way search validation — plain ZodObject (discriminable) with checks.
+// Behavior identical to the ticket-01 schema: autocomplete IATA, distinct
+// airports, real future date, shared party rules.
+export const oneWayFlightSearchSchema = z
+  .object({
+    ...travellerPartyBaseSchema.shape,
+    origin: iataSchema,
+    destination: iataSchema,
+    departureDate: futureDateStringSchema("Departure date"),
+    trip_type: z.literal("one_way").default("one_way"),
+    ...tripFlags,
+  })
+  .check((ctx) => {
+    const v = ctx.value;
+    const push = (issue: CheckIssue) => ctx.issues.push({ ...issue });
+    checkTravellerComposition(push, v, v);
+    checkDistinctAirports(push, v.origin, v.destination, v);
+  });
 
 export type OneWayFlightSearchInput = z.input<typeof oneWayFlightSearchSchema>;
 export type OneWayFlightSearchPayload = z.output<typeof oneWayFlightSearchSchema>;
 
 /**
- * Convert a validated one-way search into the backend legs contract.
- * Backend expects `POST /api/flights/search/` with `{ trip_type, legs, adults, children, infants, ... }`
+ * Round-trip and multi-city validation (Phase 3, ticket 02).
+ *
+ * - Trip types map to legs per spec §51: one-way is 1 leg, round-trip is
+ *   outbound plus return, multi-city is 2–6 legs through one leg editor.
+ * - Cabin is a single global selection applied to every leg in v1 while the
+ *   contract stays per-leg capable (each leg carries its own cabin value).
+ * - Party rules reuse travellerCompositionSchema in every branch.
  */
-export function toFlightSearchRequest(payload: OneWayFlightSearchPayload) {
-  return {
-    trip_type: "one_way" as const,
-    legs: [
-      {
-        origin: payload.origin,
-        destination: payload.destination,
-        date: payload.departureDate,
-        cabin: payload.cabin,
-      },
-    ],
+
+// Leg-editor bounds shared by validation and the LegFields UI.
+export const MIN_MULTI_CITY_LEGS = 2;
+export const MAX_LEGS = 6;
+
+export function createEmptyLeg(): { origin: string; destination: string; date: string } {
+  return { origin: "", destination: "", date: "" };
+}
+
+/** Add Leg is allowed below the 6-leg cap. */
+export function canAddLeg(count: number): boolean {
+  return count < MAX_LEGS;
+}
+
+/** Remove Leg is allowed above the 2-leg floor. */
+export function canRemoveLeg(count: number): boolean {
+  return count > MIN_MULTI_CITY_LEGS;
+}
+
+// Strict single-leg shape: airports via autocomplete IATA, real future date,
+// distinct airports per leg. Cabin stays per-leg capable; v1 fills the global
+// cabin at request mapping (toFlightSearchRequest).
+const flightLegBase = z.object({
+  origin: iataSchema,
+  destination: iataSchema,
+  date: futureDateStringSchema("Leg date"),
+  cabin: cabinSchema.optional().default("ECONOMY"),
+});
+
+export const flightLegSchema = flightLegBase.refine((data) => data.origin !== data.destination, {
+  message: "Origin and destination must be different",
+  path: ["destination"],
+});
+
+export type FlightLegInput = z.input<typeof flightLegSchema>;
+export type FlightLeg = z.output<typeof flightLegSchema>;
+
+// Round-trip: shared origin/destination with departure + return dates.
+// Return must be on or after departure (same-day returns allowed).
+export const roundTripFlightSearchSchema = z
+  .object({
+    ...travellerPartyBaseSchema.shape,
+    origin: iataSchema,
+    destination: iataSchema,
+    departureDate: futureDateStringSchema("Departure date"),
+    returnDate: futureDateStringSchema("Return date"),
+    trip_type: z.literal("round_trip").default("round_trip"),
+    ...tripFlags,
+  })
+  .check((ctx) => {
+    const v = ctx.value;
+    const push = (issue: CheckIssue) => ctx.issues.push({ ...issue });
+    checkTravellerComposition(push, v, v);
+    checkDistinctAirports(push, v.origin, v.destination, v);
+    if (v.returnDate < v.departureDate) {
+      push({
+        code: "custom",
+        message: "Return date must be on or after the departure date",
+        path: ["returnDate"],
+        input: v,
+      });
+    }
+  });
+
+export type RoundTripFlightSearchInput = z.input<typeof roundTripFlightSearchSchema>;
+export type RoundTripFlightSearchPayload = z.output<typeof roundTripFlightSearchSchema>;
+
+// Multi-city: 2–6 legs with a chronological date chain. Consecutive-leg
+// airport continuity (open-jaw) is intentionally NOT enforced — only distinct
+// airports within each leg plus non-decreasing dates (spec §52).
+export const multiCityFlightSearchSchema = z
+  .object({
+    ...travellerPartyBaseSchema.shape,
+    trip_type: z.literal("multi_city").default("multi_city"),
+    legs: z
+      .array(flightLegSchema)
+      .min(MIN_MULTI_CITY_LEGS, "Add at least 2 legs for a multi-city search")
+      .max(MAX_LEGS, "Multi-city search supports up to 6 legs"),
+    ...tripFlags,
+  })
+  .check((ctx) => {
+    const v = ctx.value;
+    const push = (issue: CheckIssue) => ctx.issues.push({ ...issue });
+    checkTravellerComposition(push, v, v);
+    for (let i = 1; i < v.legs.length; i++) {
+      if (v.legs[i].date < v.legs[i - 1].date) {
+        push({
+          code: "custom",
+          message: "Leg dates must run in chronological order",
+          path: ["legs"],
+          input: v,
+        });
+        break;
+      }
+    }
+  });
+
+export type MultiCityFlightSearchInput = z.input<typeof multiCityFlightSearchSchema>;
+export type MultiCityFlightSearchPayload = z.output<typeof multiCityFlightSearchSchema>;
+
+// Discriminated union over trip_type — the domain source of truth for
+// trip-type validation (TDD seam), submit-time parsing, and request mapping.
+// Zod strips unknown keys per branch, so a flat form superset parses cleanly.
+export const tripTypeSchema = z.discriminatedUnion("trip_type", [
+  oneWayFlightSearchSchema,
+  roundTripFlightSearchSchema,
+  multiCityFlightSearchSchema,
+]);
+
+export type FlightSearchInput = z.input<typeof tripTypeSchema>;
+export type FlightSearchPayload = z.output<typeof tripTypeSchema>;
+
+/**
+ * Convert a validated search of any trip type into the backend legs contract.
+ * Backend expects `POST /api/flights/search/` with `{ trip_type, legs, adults, children, infants, ... }`
+ * where every leg carries its own cabin (apidoc FlightSearchRequest).
+ */
+export function toFlightSearchRequest(payload: FlightSearchPayload) {
+  const cabin = payload.cabin ?? "ECONOMY";
+  const common = {
     adults: payload.adults,
     children: payload.children,
     infants: payload.infants,
     currency: payload.currency ?? "NGN",
     non_stop: payload.non_stop ?? false,
-    ...(payload.max_stops !== null && payload.max_stops !== undefined ? { max_stops: payload.max_stops } : {}),
-    cabin: payload.cabin,
+    ...(payload.max_stops !== null && payload.max_stops !== undefined
+      ? { max_stops: payload.max_stops }
+      : {}),
+    cabin,
   };
+  switch (payload.trip_type) {
+    case "round_trip":
+      return {
+        trip_type: "round_trip" as const,
+        legs: [
+          {
+            origin: payload.origin,
+            destination: payload.destination,
+            date: payload.departureDate,
+            cabin,
+          },
+          {
+            origin: payload.destination,
+            destination: payload.origin,
+            date: payload.returnDate,
+            cabin,
+          },
+        ],
+        ...common,
+      };
+    case "multi_city":
+      return {
+        trip_type: "multi_city" as const,
+        legs: payload.legs.map((leg) => ({
+          origin: leg.origin,
+          destination: leg.destination,
+          date: leg.date,
+          cabin,
+        })),
+        ...common,
+      };
+    case "one_way":
+    default:
+      return {
+        trip_type: "one_way" as const,
+        legs: [
+          {
+            origin: payload.origin,
+            destination: payload.destination,
+            date: payload.departureDate,
+            cabin,
+          },
+        ],
+        ...common,
+      };
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Flat RHF form schema — structural adapter over the discriminated union.
+// The form needs a flat superset (top-level fields + legs array) so
+// useFieldArray has a stable `legs` path for every trip type. All semantic
+// rules stay in the union branches: superRefine delegates to tripTypeSchema
+// and forwards branch issues with their paths, so there is exactly one rule
+// source and no cast on zodResolver (same technique as ticket 01).
+// ---------------------------------------------------------------------------
+
+const looseLegSchema = z.object({
+  origin: z.string(),
+  destination: z.string(),
+  date: z.string(),
+});
+
+export const flightSearchFormSchema = z
+  .object({
+    trip_type: z.enum(["one_way", "round_trip", "multi_city"]).default("one_way"),
+    origin: z.string().default(""),
+    destination: z.string().default(""),
+    departureDate: z.string().default(""),
+    returnDate: z.string().default(""),
+    legs: z.array(looseLegSchema),
+    adults: z.number(),
+    children: z.number(),
+    infants: z.number(),
+    cabin: cabinSchema.default("ECONOMY"),
+    currency: z.literal("NGN").default("NGN"),
+    non_stop: z.boolean().default(false),
+    max_stops: z.number().nullable().default(null),
+  })
+  .superRefine((val, ctx) => {
+    const result = tripTypeSchema.safeParse(val);
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        ctx.addIssue({ code: "custom", message: issue.message, path: issue.path });
+      }
+    }
+  });
+
+export type FlightSearchFormValues = z.input<typeof flightSearchFormSchema>;
+export type FlightSearchLegForm = z.output<typeof looseLegSchema>;
 
 // ---------------------------------------------------------------------------
 // Flight Offer — normalized display shape
@@ -474,7 +726,7 @@ export function normalizeFlightOffer(offer: FlightOffer, index: number): FlightO
 // in ticket 03 — this slice intentionally serves the Amadeus legs path only.
 // ---------------------------------------------------------------------------
 
-export async function searchFlights(payload: OneWayFlightSearchPayload): Promise<FlightOffer[]> {
+export async function searchFlights(payload: FlightSearchPayload): Promise<FlightOffer[]> {
   const body = toFlightSearchRequest(payload);
   const raw = await apiPost<unknown, typeof body>("/api/flights/search/", body);
   // Backend may return array or { results: [] } or { data: [] } / { offers: [] }.
@@ -498,4 +750,187 @@ export async function searchFlights(payload: OneWayFlightSearchPayload): Promise
     if (Array.isArray(rec.offers)) return rec.offers as FlightOffer[];
   }
   return [];
+}
+
+// ---------------------------------------------------------------------------
+// Price confirmation — dedicated checkout step (Phase 3, ticket 05).
+//
+// Selecting a Flight Offer revalidates the live fare via
+// `POST /api/flights/price/` with the opaque `flight_offer` blob through the
+// centralized `apiPost` (no-store, never cached). The pure
+// `resolvePriceConfirmation` machine maps { selected_offer, revalidated_offer }
+// to same | changed | expired. A missing offer on either side resolves to
+// expired so a stale fare can never silently become a booking.
+//
+// The opaque blob lives in memory with a sessionStorage backup for refresh
+// and back navigation, and never appears in URLs (PRD §9).
+// ---------------------------------------------------------------------------
+
+export const SELECTED_OFFER_SESSION_KEY = "alphaa:selected-flight-offer:v1";
+export const CONFIRMED_OFFER_SESSION_KEY = "alphaa:confirmed-flight-offer:v1";
+
+export type PriceConfirmOutcome =
+  | { status: "same"; total: string; currency: string }
+  | {
+      status: "changed";
+      previousTotal: string;
+      newTotal: string;
+      difference: string;
+      increased: boolean;
+      currency: string;
+    }
+  | { status: "expired" };
+
+export interface PriceConfirmInput {
+  selected_offer: FlightOffer | null | undefined;
+  revalidated_offer: FlightOffer | null | undefined;
+}
+
+/** Extract an offer total as integer kobo to avoid float dust in comparisons. */
+function extractOfferKobo(offer: FlightOffer | null | undefined): number | null {
+  if (typeof offer !== "object" || offer === null) return null;
+  const { amount } = extractPrice(offer);
+  if (amount === "—") return null;
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Math.round(value * 100);
+}
+
+function koboToMoneyString(kobo: number): string {
+  return (kobo / 100).toFixed(2);
+}
+
+/**
+ * Pure price-confirm state machine (TDD seam, ticket 05).
+ * input = { selected_offer, revalidated_offer } → same | changed | expired.
+ */
+export function resolvePriceConfirmation(input: PriceConfirmInput): PriceConfirmOutcome {
+  const CURRENCY = "NGN";
+  const selectedKobo = extractOfferKobo(input.selected_offer);
+  const revalidatedKobo = extractOfferKobo(input.revalidated_offer);
+  if (selectedKobo === null || revalidatedKobo === null) {
+    return { status: "expired" };
+  }
+  if (selectedKobo === revalidatedKobo) {
+    return { status: "same", total: koboToMoneyString(revalidatedKobo), currency: CURRENCY };
+  }
+  const diffKobo = revalidatedKobo - selectedKobo;
+  return {
+    status: "changed",
+    previousTotal: koboToMoneyString(selectedKobo),
+    newTotal: koboToMoneyString(revalidatedKobo),
+    difference: koboToMoneyString(Math.abs(diffKobo)),
+    increased: diffKobo > 0,
+    currency: CURRENCY,
+  };
+}
+
+const EXPIRED_OFFER_PATTERN =
+  /expir|no longer (available|valid)|unavailable|not found|invalid offer|stale|offer .*gone/i;
+
+/**
+ * Map a price-confirmation failure to the expired branch. A 404/410 means the
+ * offer is gone; a 400/422 carrying expired copy means the airline withdrew
+ * the fare. Everything else is a retryable error, never an expiry.
+ */
+export function isOfferExpiredError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  if (error.status === 404 || error.status === 410) return true;
+  if (error.status === 400 || error.status === 422) {
+    return EXPIRED_OFFER_PATTERN.test(error.message);
+  }
+  return false;
+}
+
+function asOfferOrFirst(value: unknown): FlightOffer | null {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return typeof candidate === "object" && candidate !== null
+    ? (candidate as FlightOffer)
+    : null;
+}
+
+function unwrapConfirmedOffer(raw: unknown): FlightOffer | null {
+  if (Array.isArray(raw)) return asOfferOrFirst(raw);
+  if (typeof raw === "object" && raw !== null) {
+    const rec = raw as Record<string, unknown>;
+    for (const key of ["flight_offer", "confirmed_offer", "offer", "data"]) {
+      const found = asOfferOrFirst(rec[key]);
+      if (found) return found;
+    }
+    if (Array.isArray(rec.results)) return asOfferOrFirst(rec.results);
+    return raw as FlightOffer;
+  }
+  return null;
+}
+
+/**
+ * Revalidate a selected Flight Offer against the live airline fare.
+ * Sends the opaque blob via centralized `apiPost` (no-store). Throws a typed
+ * `ApiError` on failure — callers map expiry via `isOfferExpiredError`.
+ */
+export async function confirmFlightPrice(flightOfferBlob: unknown): Promise<FlightOffer> {
+  const raw = await apiPost<unknown, { flight_offer: unknown }>("/api/flights/price/", {
+    flight_offer: flightOfferBlob,
+  });
+  if (typeof raw === "object" && raw !== null) {
+    const rec = raw as Record<string, unknown>;
+    const backendError =
+      (typeof rec.detail === "string" && rec.detail) ||
+      (typeof rec.message === "string" && rec.message) ||
+      (typeof rec.error === "string" && rec.error) ||
+      null;
+    if (backendError) {
+      throw new ApiError(backendError, { status: 200, code: "server" });
+    }
+  }
+  const offer = unwrapConfirmedOffer(raw);
+  if (!offer) {
+    throw new ApiError("The airline did not return a confirmed fare.", {
+      status: 200,
+      code: "server",
+    });
+  }
+  return offer;
+}
+
+function writeOfferToSession(key: string, offer: FlightOffer): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(offer));
+  } catch {
+    // sessionStorage may throw in private mode — memory copy still works
+  }
+}
+
+function readOfferFromSession(key: string): FlightOffer | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== "object" || parsed === null) return null;
+    return parsed as FlightOffer;
+  } catch {
+    return null;
+  }
+}
+
+/** Persist the selected Flight Offer blob (memory caller + sessionStorage backup). */
+export function saveSelectedOffer(offer: FlightOffer): void {
+  writeOfferToSession(SELECTED_OFFER_SESSION_KEY, offer);
+}
+
+/** Read back the selected Flight Offer blob, or null when absent/corrupt. */
+export function readSelectedOffer(): FlightOffer | null {
+  return readOfferFromSession(SELECTED_OFFER_SESSION_KEY);
+}
+
+/** Copy the Confirmed Offer into session for ticket 06 (traveller entry). */
+export function saveConfirmedOffer(offer: FlightOffer): void {
+  writeOfferToSession(CONFIRMED_OFFER_SESSION_KEY, offer);
+}
+
+/** Read back the Confirmed Offer, or null when absent/corrupt. */
+export function readConfirmedOffer(): FlightOffer | null {
+  return readOfferFromSession(CONFIRMED_OFFER_SESSION_KEY);
 }
