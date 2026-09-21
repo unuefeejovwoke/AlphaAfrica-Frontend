@@ -12,8 +12,34 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Travel booking and assisted-service platform (flights, hotels, tours, visa assistance, car rentals).
 
+## Production-Ready Code Mandate
+
+**This is a production system, NOT an experiment or side project.**
+
+Every line of code must be:
+- **Production-ready**: battle-tested patterns, proper error handling, comprehensive validation
+- **Debt-free**: no shortcuts, no TODOs, no workarounds that compromise quality
+- **Well-documented**: clear, maintainable code that future developers can understand and extend
+- **Thoroughly tested**: comprehensive test coverage for all critical paths
+- **Accessible**: WCAG compliance, semantic HTML, keyboard navigation
+- **Performant**: optimized for real-world usage patterns and scale
+
+No exceptions. No excuses.
+
+## Performance & Discovery Mandate
+
+**Speed, SEO, AI SEO, and GEO are core requirements, not afterthoughts.**
+
+Every feature must be built with:
+- **Speed**: Core Web Vitals (LCP, FID, CLS) must meet or exceed Google's "good" thresholds
+- **SEO**: Semantic HTML, structured data (JSON-LD), meta tags, OpenGraph, canonical URLs, XML sitemaps
+- **AI SEO**: Content structured for AI crawlers and LLMs; schema markup for rich snippets and knowledge panels
+- **GEO (Generative Engine Optimization)**: Optimized for AI-powered search (Google SGE, Perplexity, ChatGPT); clear entity relationships, factual content, authoritative sources
+- **Performance**: Lazy loading, code splitting, image optimization, efficient caching, minimal JavaScript bundles
+
 ## Documentation & Dependencies (Context7)
 - **Always query Context7 MCP** when working with external packages, APIs, or modern framework features (Next.js 16, React 19, Tailwind v4, Base UI, etc.) before writing code or assuming APIs. Do not guess versions or syntax.
+- Use Context7 to fetch current documentation for any library or framework before implementing features.
 
 ## References & Specs
 - `prd.md`: Product requirements, user flows, personas, and feature specifications.
@@ -40,6 +66,20 @@ Travel booking and assisted-service platform (flights, hotels, tours, visa assis
   - Icons use `@hugeicons/react`, **not** Lucide.
   - Styling utility is `@/lib/utils` which exports `cn` directly from the `cn` package.
 - **Path Aliases**: `@/*` maps to `./*`.
+
+## Agent Skills Usage
+
+**Always load and follow the relevant skill for each task.** Skills contain specialized workflows, best practices, and quality standards that ensure production-ready outcomes.
+
+### Key Skills for This Project
+- **Context7 MCP**: Use for all external library/framework documentation
+- **Design Skills**: `design-taste-frontend`, `high-end-visual-design`, `redesign-existing-projects` for UI work
+- **Implementation Skills**: `implement`, `tdd` for feature development
+- **Quality Skills**: `code-review`, `web-design-guidelines` for validation
+- **Architecture Skills**: `vercel-react-best-practices`, `supabase` for technical decisions
+- **Planning Skills**: `wayfinder`, `to-spec`, `to-tickets` for complex features
+
+**Never skip skill loading.** Each skill provides production-grade standards and workflows.
 
 ## Agent skills
 
