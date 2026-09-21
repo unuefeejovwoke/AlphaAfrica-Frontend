@@ -175,15 +175,24 @@ export function hasFlightSearchParams(
   return false;
 }
 
-/** Robots for `/flights`: index only the clean landing, never result URLs. */
-export function flightRobotsForSearchParams(hasSearch: boolean): {
+/**
+ * Robots for a searchable service landing: index only the clean entry, never
+ * result URLs. Shared by `/flights` and `/hotels` so the rule can never drift
+ * between services.
+ */
+export function robotsForSearchParams(hasSearch: boolean): {
   index: boolean;
   follow: boolean;
 } {
   return hasSearch ? { index: false, follow: false } : { index: true, follow: true };
 }
 
-interface FlightTravelActionJsonLd {
+/**
+ * TravelAction graph shared by searchable service landings. The searched
+ * object differs per service (`Flight` vs `LodgingBusiness`); everything else
+ * is identical.
+ */
+interface TravelActionJsonLd {
   "@context": "https://schema.org";
   "@type": "TravelAction";
   name: string;
@@ -197,7 +206,7 @@ interface FlightTravelActionJsonLd {
     email: string;
   };
   object: {
-    "@type": "Flight";
+    "@type": string;
     name: string;
     url: string;
   };
@@ -208,12 +217,61 @@ interface FlightTravelActionJsonLd {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Hotels discoverability (Phase 4, ticket 01; PRD §18 + ADR-0005)
+// - Only the stable `/hotels` entry is indexable. Any URL carrying search
+//   state (destination/dates/party/page) is a dynamic result view and must be
+//   noindex/nofollow with a canonical back to `/hotels` — never a thin
+//   indexable page per query combination.
+// ---------------------------------------------------------------------------
+
+/** Stable, indexable hotel search landing metadata (single source for the route). */
+export const HOTELS_LANDING_TITLE =
+  "Search Hotels — City, Hotel Name, Dates & Party | Alphaa Africa";
+
+export const HOTELS_LANDING_DESCRIPTION =
+  "Search Hotels by city or Hotel name, add optional stay dates and party, and browse from-prices per night in Naira. No account needed, with human help one tap away.";
+
+/**
+ * TravelAction graph for the stable `/hotels` entry (GEO/AI-SEO).
+ * Describes the bookable action without inventing properties, prices, or
+ * availability — dynamic result combinations are never embedded in
+ * structured data. Detail-level Hotel markup lands in ticket 03.
+ */
+export function hotelTravelActionJsonLd(): TravelActionJsonLd {
+  const url = canonicalUrl("/hotels");
+  return {
+    "@context": "https://schema.org",
+    "@type": "TravelAction",
+    name: "Search and book Hotels by city or Hotel name",
+    description: HOTELS_LANDING_DESCRIPTION,
+    url,
+    agent: {
+      "@type": "TravelAgency",
+      name: company.brandName,
+      url: getSiteUrl(),
+      telephone: company.phone.e164,
+      email: company.email,
+    },
+    object: {
+      "@type": "LodgingBusiness",
+      name: "Hotels and stays listed on Alphaa Africa",
+      url,
+    },
+    result: {
+      "@type": "WebPage",
+      name: HOTELS_LANDING_TITLE,
+      url,
+    },
+  };
+}
+
 /**
  * TravelAction graph for the stable `/flights` entry (GEO/AI-SEO).
  * Describes the bookable action without inventing routes, prices, or
  * schedules — dynamic results are never embedded in structured data.
  */
-export function flightTravelActionJsonLd(): FlightTravelActionJsonLd {
+export function flightTravelActionJsonLd(): TravelActionJsonLd {
   const url = canonicalUrl("/flights");
   return {
     "@context": "https://schema.org",

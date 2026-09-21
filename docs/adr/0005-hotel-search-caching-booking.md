@@ -1,0 +1,6 @@
+# Hotel Search Routing, Caching, and Booking Confirmation
+
+Hotel search (`/hotels`) is dynamic (`force-dynamic`, `no-store`) with state in URL searchParams because destination is free-text partial-match and dates validate without filtering; hotel detail (`/hotels/[slug]`) is ISR `revalidate 3600` with `generateStaticParams` + `dynamicParams true` for SEO like packages. Hotel booking has no flight-style price revalidation: `POST /api/hotels/bookings/create/` is the quote, followed by Paystack redirect and reference-only verification at `/hotels/confirmation?reference=` (no-store, never cached).
+
+Considered Options: all-dynamic (always fresh but slow LCP, weak SEO cache); all-ISR including search (fast but stale filters); multi-room-type per booking and split first/last names (rejected — API takes one room_type_id and single guest_name).
+Consequences: requires lib/api/hotels.ts with Zod-validated search/booking payloads, capacity rule num_guests ≤ max_guests × num_rooms (max_guests=0 = unknown), server filters max_price/min_stars/ordering/page plus client amenities filter, location display-only, backend total_amount authoritative, single-flight submit guard, and Hotel JSON-LD on detail.

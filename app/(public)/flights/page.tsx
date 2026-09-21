@@ -6,10 +6,10 @@ import {
   FLIGHTS_LANDING_DESCRIPTION,
   FLIGHTS_LANDING_TITLE,
   canonicalUrl,
-  flightRobotsForSearchParams,
   flightTravelActionJsonLd,
   getSiteUrl,
   hasFlightSearchParams,
+  robotsForSearchParams,
 } from "@/lib/seo";
 
 /**
@@ -53,7 +53,7 @@ export async function generateMetadata({
         },
       ],
     },
-    robots: flightRobotsForSearchParams(hasSearch),
+    robots: robotsForSearchParams(hasSearch),
   };
 }
 

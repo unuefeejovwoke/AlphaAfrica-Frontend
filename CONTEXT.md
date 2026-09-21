@@ -63,3 +63,19 @@ _Avoid_: Order ID, transaction ID
 **Domestic Flight Card**:
 A normalized QuickAir result streamed progressively, without an opaque offer blob.
 _Avoid_: Local offer, domestic deal
+
+**Hotel**:
+A sellable lodging property with city/country, star rating, amenities, and a from-price per night.
+_Avoid_: Accommodation, lodge, property page
+
+**Room Type**:
+A bookable room kind within a Hotel carrying a per-night price, per-room guest capacity, and room count.
+_Avoid_: Room, suite, lodging option
+
+**Hotel Guest**:
+The single booking contact and stay representative for a hotel reservation, captured as one full name, email, and phone.
+_Avoid_: Occupant, passenger, traveller (for hotels)
+
+**Hotel Booking**:
+A Hotel plus one Room Type plus dates, room/guest counts, and its Hotel Guest, paid via Paystack reference and verified to pending/confirmed/cancelled/failed.
+_Avoid_: Hotel order, reservation attempt, room ticket
