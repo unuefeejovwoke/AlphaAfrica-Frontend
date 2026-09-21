@@ -1,7 +1,9 @@
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Call02Icon, SecurityCheckIcon } from "@hugeicons/core-free-icons";
+import { company } from "@/lib/content/company";
 
 const CHECKOUT_STEPS = [
   { label: "Traveller Details", current: true },
@@ -28,9 +30,16 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
           >
             <span
               aria-hidden="true"
-              className="flex size-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-sm"
+              className="flex size-9 items-center justify-center rounded-xl border border-border/80 bg-card p-1"
             >
-              <span className="text-xl font-bold tracking-tight text-white">α</span>
+              <Image
+                src="/android-chrome-192x192.png"
+                alt="Alphaa Africa Logo"
+                width={30}
+                height={30}
+                className="size-7 object-contain"
+                priority
+              />
             </span>
             <span className="flex flex-col leading-tight">
               <span translate="no" className="text-base font-bold tracking-tight text-foreground">
@@ -73,12 +82,12 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
               </span>
             </span>
             <a
-              href="tel:+2348000000000"
+              href={`tel:${company.phone.e164}`}
               className="flex touch-manipulation items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-foreground hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <HugeiconsIcon icon={Call02Icon} size={16} aria-hidden="true" />
               <span className="hidden lg:inline">Emergency Help:</span>
-              <span className="font-variant-numeric tabular-nums">+234 800 000 0000</span>
+              <span className="font-variant-numeric tabular-nums">{company.phone.display}</span>
             </a>
           </div>
         </div>

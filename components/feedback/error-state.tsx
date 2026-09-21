@@ -7,15 +7,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getErrorPreset, type ErrorPreset } from "@/lib/feedback-presets";
-
-export { getErrorPreset, type ErrorPreset };
+import { ApiError, getHumanErrorMessage } from "@/lib/api/client";
+import { getSupportWhatsAppUrl } from "@/lib/content/company";
 
 export interface ErrorStateProps {
   preset?: ErrorPreset;
   title?: string;
   description?: string;
+  /**
+   * Optional typed API failure. When an {@link ApiError} is passed, its
+   * customer-safe copy (never the raw backend payload) overrides
+   * `description`, so API-backed pages get diagnosis + recovery for free.
+   */
+  error?: unknown;
   onRetry?: () => void;
   retryLabel?: string;
+  alternateLabel?: string;
+  alternateHref?: string;
   className?: string;
 }
 
@@ -23,17 +31,22 @@ export function ErrorState({
   preset = "general",
   title,
   description,
+  error,
   onRetry,
   retryLabel = "Try Again",
+  alternateLabel,
+  alternateHref,
   className,
 }: ErrorStateProps) {
   const presetData = getErrorPreset(preset);
   const displayTitle = title || presetData.title;
-  const displayDescription = description || presetData.description;
+  const displayDescription =
+    description || (error instanceof ApiError ? getHumanErrorMessage(error) : presetData.description);
+  const displayAlternateLabel = alternateLabel || presetData.alternateRoute.label;
+  const displayAlternateHref = alternateHref || presetData.alternateRoute.href;
 
-  const whatsappUrl = `https://wa.me/2348000000000?text=${encodeURIComponent(
-    presetData.whatsappText
-  )}`;
+  // Single source of truth: WhatsApp number comes from lib/content/company.ts.
+  const whatsappUrl = getSupportWhatsAppUrl(presetData.whatsappText);
 
   return (
     <div
@@ -58,6 +71,15 @@ export function ErrorState({
             {retryLabel}
           </Button>
         )}
+        <Button
+          render={
+            <a href={displayAlternateHref} className="flex items-center gap-2" />
+          }
+          variant="ghost"
+          size="sm"
+        >
+          <span>{displayAlternateLabel}</span>
+        </Button>
         <Button
           render={
             <a

@@ -2,9 +2,21 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup } from "@/components/ui/radio-group";
+import { Select } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Dialog } from "@/components/ui/dialog";
+import { Sheet } from "@/components/ui/sheet";
+import { Popover } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Alert } from "@/components/ui/alert";
 import { TravellerStepper } from "@/components/ui/traveller-stepper";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -15,7 +27,12 @@ import {
   notifyEnquirySent,
   notifySearchStarted,
 } from "@/lib/toast";
-import type { TravellerComposition } from "@/lib/schemas/travel";
+import {
+  contactEnquirySchema,
+  type ContactEnquiry,
+  type TravellerComposition,
+} from "@/lib/schemas/travel";
+import { company } from "@/lib/content/company";
 
 const fareExample = new Intl.NumberFormat("en-NG", {
   style: "currency",
@@ -28,6 +45,26 @@ export default function FoundationShowcasePage() {
     adults: 2,
     children: 1,
     infants: 0,
+  });
+  const [service, setService] = React.useState("flights");
+  const [travelClass, setTravelClass] = React.useState("economy");
+  const [flexibleDates, setFlexibleDates] = React.useState(true);
+  const [agreeTerms, setAgreeTerms] = React.useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<ContactEnquiry>({
+    resolver: zodResolver(contactEnquirySchema),
+    defaultValues: { name: "", email: "", phone: "", service: "flights", message: "" },
+    mode: "onTouched",
+    shouldFocusError: true,
+  });
+
+  const onEnquirySubmit = handleSubmit((data) => {
+    notifyEnquirySent(data.service === "general" ? undefined : data.service);
   });
 
   return (
@@ -103,6 +140,9 @@ export default function FoundationShowcasePage() {
           <Button type="button" variant="link">Read Travel Policies</Button>
           <Button type="button" size="sm">Small Action</Button>
           <Button type="button" size="lg">Large Action</Button>
+          <Button type="button" isLoading>
+            Saving…
+          </Button>
           <Button render={<Link href="/checkout" />} variant="outline" size="sm">
             Go to Secure Checkout
           </Button>
@@ -114,42 +154,177 @@ export default function FoundationShowcasePage() {
           Form Controls & Traveller Composition
         </h2>
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-6">
+          <form
+            noValidate
+            onSubmit={onEnquirySubmit}
+            className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-6"
+          >
             <h3 className="text-lg font-bold text-foreground">Customer Enquiry Fields</h3>
             <Input
+              label="Full Name"
+              type="text"
+              autoComplete="name"
+              placeholder="Adaeze Obi…"
+              error={errors.name?.message}
+              {...register("name")}
+            />
+            <Input
               label="Email Address"
-              name="email"
               type="email"
               autoComplete="email"
               spellCheck={false}
               placeholder="you@example.com…"
               helperText="We reply within one business day."
-              defaultValue=""
+              error={errors.email?.message}
+              {...register("email")}
             />
             <Input
               label="Phone Number"
-              name="phone"
               type="tel"
               autoComplete="tel"
-              placeholder="+234 800 000 0000…"
-              error="Enter a valid phone number so we can reach you."
-              defaultValue="abc"
+              inputMode="tel"
+              spellCheck={false}
+              placeholder={`${company.phone.display}…`}
+              error={errors.phone?.message}
+              {...register("phone")}
+            />
+            <Controller
+              name="service"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Service Needed"
+                  placeholder="Choose a service…"
+                  options={[
+                    { value: "flights", label: "Flights" },
+                    { value: "hotels", label: "Hotels" },
+                    { value: "packages", label: "Packages" },
+                    { value: "visa", label: "Visa Assistance" },
+                    { value: "cars", label: "Car Rentals" },
+                    { value: "general", label: "General Guidance" },
+                  ]}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  error={errors.service?.message}
+                />
+              )}
             />
             <Textarea
               label="Travel Plans"
-              name="message"
               autoComplete="off"
               placeholder="2 travellers to London in July, budget…"
               helperText="Share dates, destination, and party size."
-              defaultValue=""
+              error={errors.message?.message}
+              {...register("message")}
             />
-          </div>
+            <Button type="submit" isLoading={isSubmitting} className="w-full justify-center">
+              Send Enquiry
+            </Button>
+          </form>
           <div className="min-w-0">
             <TravellerStepper value={travellers} onChange={setTravellers} />
             <p className="mt-2 text-xs break-words text-muted-foreground">
               Traveller (not passenger) counts stay within industry bounds — max 9 per Booking, max 1 infant per adult.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="showcase-advanced-forms" className="mt-12">
+        <h2 id="showcase-advanced-forms" className="text-2xl font-bold tracking-tight text-pretty text-foreground">
+          Select, Checkbox, Radio, Switch & Date Picker
+        </h2>
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-6">
+            <Select
+              label="Travel Service"
+              name="service"
+              value={service}
+              onValueChange={setService}
+              placeholder="Choose a service…"
+              helperText="Used to route your Enquiry to the right desk."
+              options={[
+                { value: "flights", label: "Flights" },
+                { value: "hotels", label: "Hotels" },
+                { value: "packages", label: "Holiday Packages" },
+                { value: "visa", label: "Visa Assistance" },
+                { value: "cars", label: "Car Rentals" },
+              ]}
+            />
+            <DatePicker
+              label="Preferred Departure Date"
+              name="departureDate"
+              helperText="Flexible dates get more fare options."
+            />
+            <RadioGroup
+              label="Travel Class"
+              name="travelClass"
+              value={travelClass}
+              onValueChange={setTravelClass}
+              options={[
+                { value: "economy", label: "Economy", description: "Best value fares" },
+                { value: "business", label: "Business", description: "Extra comfort & flexibility" },
+              ]}
+            />
+          </div>
+          <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-6">
+            <Checkbox
+              label="Email me fare alerts for this route"
+              name="fareAlerts"
+              helperText="One email per day at most."
+            />
+            <Switch
+              label="Flexible dates (±3 days)"
+              name="flexibleDates"
+              checked={flexibleDates}
+              onCheckedChange={setFlexibleDates}
+              helperText="We compare nearby dates for lower fares."
+            />
+            <Checkbox
+              label="I agree to the Terms & Conditions"
+              name="agreeTerms"
+              checked={agreeTerms}
+              onCheckedChange={setAgreeTerms}
+            />
+            <Alert
+              tone="info"
+              title="Assisted Service Available"
+              description="Prefer human help? Open the Need Help widget for WhatsApp or callback support."
+            />
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="showcase-overlays" className="mt-12">
+        <h2 id="showcase-overlays" className="text-2xl font-bold tracking-tight text-pretty text-foreground">
+          Dialog, Sheet, Popover & Tooltip
+        </h2>
+        <div className="mt-4 flex min-w-0 flex-wrap gap-3 rounded-2xl border border-border bg-card p-6">
+          <Dialog
+            title="Visa Document Checklist"
+            description="Bring these to your Abuja appointment for faster review."
+            triggerLabel="Open Dialog"
+          >
+            <p className="text-sm break-words text-muted-foreground">
+              Passport, photos, bank statements, and invitation letter where applicable.
+            </p>
+          </Dialog>
+          <Sheet
+            title="Fare Conditions"
+            description="Side-sheet summary before you commit to payment."
+            triggerLabel="Open Sheet"
+          >
+            <p className="text-sm break-words text-muted-foreground">
+              Changes allowed with fee. Refunds per airline policy. Confirm in NGN on checkout.
+            </p>
+          </Sheet>
+          <Popover triggerLabel="Fare Help">
+            Fares include taxes and carrier fees. Final total shows before payment — no hidden
+            markups.
+          </Popover>
+          <Tooltip label="Verified fares" content="Checked against live airline inventory in the last hour.">
+            <span>Verified fares</span>
+          </Tooltip>
         </div>
       </section>
 
@@ -236,7 +411,7 @@ export default function FoundationShowcasePage() {
             <Button
               render={
                 <a
-                  href="https://wa.me/2348000000000?text=Hello%20Alphaa%2C%20I%20need%20assistance%20with%20travel%20planning."
+                  href={`https://wa.me/${company.whatsapp.number}?text=Hello%20Alphaa%2C%20I%20need%20assistance%20with%20travel%20planning.`}
                   target="_blank"
                   rel="noopener noreferrer"
                 />
@@ -246,7 +421,7 @@ export default function FoundationShowcasePage() {
             >
               Chat on WhatsApp
             </Button>
-            <Button render={<a href="tel:+2348000000000" />} variant="outline" size="sm">
+            <Button render={<a href={`tel:${company.phone.e164}`} />} variant="outline" size="sm">
               Call Abuja Desk
             </Button>
           </div>

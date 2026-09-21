@@ -1,5 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Call02Icon,
@@ -8,6 +9,7 @@ import {
   SecurityCheckIcon,
   Airplane01Icon,
 } from "@hugeicons/core-free-icons";
+import { company } from "@/lib/content/company";
 
 export function PublicFooter() {
   return (
@@ -61,8 +63,14 @@ export function PublicFooter() {
           {/* Brand & Mission Column */}
           <div className="lg:col-span-2 flex flex-col gap-4">
             <Link href="/" className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-sm">
-                <span className="font-serif text-2xl font-bold tracking-tight text-white">α</span>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-muted/60 border border-border/80 p-1">
+                <Image
+                  src="/android-chrome-192x192.png"
+                  alt="Alphaa Africa Logo"
+                  width={36}
+                  height={36}
+                  className="size-8.5 object-contain"
+                />
               </div>
               <span className="text-xl font-bold tracking-tight text-foreground">
                 Alphaa <span className="text-primary font-medium">Africa</span>
@@ -70,27 +78,70 @@ export function PublicFooter() {
             </Link>
 
             <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-              Alphaa Africa is an Abuja-based travel concierge and assisted-service platform. We combine modern self-service travel booking with dedicated human specialists to make every journey easier, clearer, and less stressful.
+              Alphaa Africa is an Abuja-based assisted-service travel platform. We combine modern self-service travel booking with dedicated human specialists to make every journey easier, clearer, and less stressful.
             </p>
+
+            <div className="mt-2 flex items-center gap-3" aria-label="Follow Alphaa Africa">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Follow Alphaa
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={company.socials.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Alphaa Africa on Instagram"
+                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  Instagram
+                </a>
+                <a
+                  href={company.socials.x}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Alphaa Africa on X"
+                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  X
+                </a>
+                <a
+                  href={company.socials.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Alphaa Africa on Facebook"
+                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  Facebook
+                </a>
+                <a
+                  href={company.socials.tiktok}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Alphaa Africa on TikTok"
+                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  TikTok
+                </a>
+              </div>
+            </div>
 
             {/* Office Details */}
             <div className="mt-2 flex flex-col gap-2.5 text-xs text-foreground/80">
               <div className="flex items-start gap-2.5">
                 <HugeiconsIcon icon={Location01Icon} size={16} className="text-primary shrink-0 mt-0.5" />
-                <span>
-                  Suite B4, Statement Hotel Building, Plot 1002 1st Avenue, Off Shehu Shagari Way, Central Business District, Abuja, Nigeria.
-                </span>
+                <span>{company.office.address}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <HugeiconsIcon icon={Call02Icon} size={16} className="text-primary shrink-0" />
-                <a href="tel:+2348000000000" className="hover:text-primary transition-colors">
-                  +234 800 000 0000 / +234 9 292 0000
+                <a href={`tel:${company.phone.e164}`} className="hover:text-primary transition-colors">
+                  {company.phone.display}
+                  {company.phone.secondaryDisplay ? ` / ${company.phone.secondaryDisplay}` : ""}
                 </a>
               </div>
               <div className="flex items-center gap-2.5">
                 <HugeiconsIcon icon={Mail01Icon} size={16} className="text-primary shrink-0" />
-                <a href="mailto:support@alphaaafrica.com" className="hover:text-primary transition-colors">
-                  support@alphaaafrica.com
+                <a href={`mailto:${company.email}`} className="hover:text-primary transition-colors">
+                  {company.email}
                 </a>
               </div>
             </div>
@@ -182,7 +233,7 @@ export function PublicFooter() {
               </li>
               <li>
                 <a
-                  href="https://wa.me/2348000000000"
+                  href={`https://wa.me/${company.whatsapp.number}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-foreground/80 hover:text-primary transition-colors flex items-center gap-1.5"

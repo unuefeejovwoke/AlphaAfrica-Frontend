@@ -55,7 +55,16 @@ test("ErrorState component provides retry recovery and WhatsApp escalation", () 
 
   assert.match(content, /role="alert"/, "ErrorState must expose role=alert");
   assert.match(content, /onRetry/, "ErrorState must accept a retry callback");
-  assert.match(content, /wa\.me/, "ErrorState must link to WhatsApp escalation");
+  assert.match(
+    content,
+    /getSupportWhatsAppUrl|company\.whatsapp|wa\.me/,
+    "ErrorState must link to WhatsApp escalation via lib/content/company.ts"
+  );
+  assert.match(
+    content,
+    /getHumanErrorMessage|ApiError/,
+    "ErrorState must render customer-safe copy for typed ApiError failures"
+  );
   assert.match(content, /Speak with Alphaa/, "ErrorState must offer human escalation CTA");
   assert.match(content, /aria-hidden/, "Decorative icons must be hidden from assistive tech");
 });

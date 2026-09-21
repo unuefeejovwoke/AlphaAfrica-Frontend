@@ -1,0 +1,296 @@
+/**
+ * Centralized API client for the Alphaa Africa platform (Phase 2).
+ *
+ * - Base URL comes from the environment (`NEXT_PUBLIC_API_BASE_URL`).
+ * - Server GET helpers use ISR (`next: { revalidate: 3600 }`) per ADR-0003.
+ * - Client POST helpers opt out of caching (`cache: "no-store"`).
+ * - All failures throw a typed {@link ApiError}; use
+ *   {@link getHumanErrorMessage} to render customer-safe copy (PRD §10, §20).
+ *   Never render raw backend errors to customers.
+ */
+
+export const API_REVALIDATE_SECONDS = 3600;
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export type ApiErrorCode =
+  | "network"
+  | "timeout"
+  | "not-found"
+  | "validation"
+  | "unauthorized"
+  | "forbidden"
+  | "rate-limited"
+  | "server"
+  | "unknown";
+
+export class ApiError extends Error {
+  readonly status: number | null;
+  readonly code: ApiErrorCode;
+  readonly fieldErrors: Record<string, string[]> | null;
+  readonly reference: string | null;
+
+  constructor(
+    message: string,
+    options: {
+      status?: number | null;
+      code?: ApiErrorCode;
+      fieldErrors?: Record<string, string[]> | null;
+      reference?: string | null;
+      cause?: unknown;
+    } = {},
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.status = options.status ?? null;
+    this.code = options.code ?? "unknown";
+    this.fieldErrors = options.fieldErrors ?? null;
+    this.reference = options.reference ?? null;
+    if (options.cause !== undefined) {
+      (this as { cause?: unknown }).cause = options.cause;
+    }
+  }
+}
+
+/**
+ * Resolve the backend base URL from the environment.
+ * Trailing slashes are stripped so path joins stay predictable.
+ */
+export function getApiBaseUrl(): string {
+  const fromEnv =
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
+    process.env.API_BASE_URL?.trim() ||
+    "";
+  if (fromEnv.length > 0) {
+    return fromEnv.replace(/\/+$/, "");
+  }
+  return "https://api.alphaaafrica.com";
+}
+
+export function buildApiUrl(
+  path: string,
+  query?: Record<string, string | number | boolean | null | undefined>,
+): string {
+  const base = getApiBaseUrl();
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (!query) return `${base}${normalizedPath}`;
+
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === null || value === undefined || value === "") continue;
+    params.append(key, String(value));
+  }
+  const suffix = params.toString();
+  return suffix.length > 0 ? `${base}${normalizedPath}?${suffix}` : `${base}${normalizedPath}`;
+}
+
+function statusToCode(status: number | null): ApiErrorCode {
+  if (status === null) return "network";
+  if (status === 404) return "not-found";
+  if (status === 400) return "validation";
+  if (status === 401) return "unauthorized";
+  if (status === 403) return "forbidden";
+  if (status === 429) return "rate-limited";
+  if (status >= 500) return "server";
+  return "unknown";
+}
+
+function extractFieldErrors(payload: unknown): Record<string, string[]> | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const record = payload as Record<string, unknown>;
+  const out: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (key === "detail" || key === "message") continue;
+    if (typeof value === "string") {
+      out[key] = [value];
+    } else if (Array.isArray(value) && value.every((v) => typeof v === "string")) {
+      out[key] = value as string[];
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+function extractDetail(payload: unknown): string | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const record = payload as Record<string, unknown>;
+  const detail = record.detail ?? record.message;
+  return typeof detail === "string" && detail.length > 0 ? detail : null;
+}
+
+async function throwForResponse(response: Response, path: string): Promise<never> {
+  let payload: unknown = null;
+  try {
+    const text = await response.text();
+    payload = text.length > 0 ? (JSON.parse(text) as unknown) : null;
+  } catch {
+    payload = null;
+  }
+
+  const fieldErrors = extractFieldErrors(payload);
+  const detail = extractDetail(payload);
+  throw new ApiError(detail ?? `Request to ${path} failed.`, {
+    status: response.status,
+    code: statusToCode(response.status),
+    fieldErrors,
+  });
+}
+
+export interface ApiGetOptions {
+  query?: Record<string, string | number | boolean | null | undefined>;
+  revalidate?: number;
+  tags?: string[];
+  /**
+   * Opt out of the Data Cache entirely (`cache: "no-store"`).
+   * Required for verification endpoints (e.g. visa/payment verify):
+   * a cached "pending" response must never mask a completed payment.
+   */
+  noStore?: boolean;
+}
+
+/**
+ * Server-side GET with ISR caching. Use from React Server Components.
+ *
+ * Per Context7 Next.js docs, `next: { revalidate }` sets the cache lifetime
+ * of the resource in seconds on the server Data Cache.
+ */
+export async function apiGet<T>(path: string, options: ApiGetOptions = {}): Promise<T> {
+  const url = buildApiUrl(path, options.query);
+  let response: Response;
+  try {
+    response = await fetch(
+      url,
+      options.noStore
+        ? {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          }
+        : {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            next: {
+              revalidate: options.revalidate ?? API_REVALIDATE_SECONDS,
+              ...(options.tags ? { tags: options.tags } : {}),
+            },
+          },
+    );
+  } catch (error) {
+    throw new ApiError("Network request failed.", {
+      status: null,
+      code: "network",
+      cause: error,
+    });
+  }
+
+  if (!response.ok) {
+    await throwForResponse(response, path);
+  }
+
+  try {
+    return (await response.json()) as T;
+  } catch (error) {
+    throw new ApiError("Invalid response from the travel service.", {
+      status: response.status,
+      code: "server",
+      cause: error,
+    });
+  }
+}
+
+export interface ApiPostOptions {
+  query?: Record<string, string | number | boolean | null | undefined>;
+}
+
+/**
+ * Client-side POST for mutations (Enquiry, Visa Consultation).
+ * Never cached: always `cache: "no-store"`.
+ */
+export async function apiPost<TResponse, TBody extends Record<string, unknown> | unknown>(
+  path: string,
+  body: TBody,
+  options: ApiPostOptions = {},
+): Promise<TResponse> {
+  const url = buildApiUrl(path, options.query);
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      body: JSON.stringify(body ?? {}),
+    });
+  } catch (error) {
+    throw new ApiError("Network request failed.", {
+      status: null,
+      code: "network",
+      cause: error,
+    });
+  }
+
+  if (!response.ok) {
+    await throwForResponse(response, path);
+  }
+
+  // Some mutation endpoints return 201 with an empty body.
+  const text = await response.text();
+  if (text.length === 0) {
+    return {} as TResponse;
+  }
+  try {
+    return JSON.parse(text) as TResponse;
+  } catch (error) {
+    throw new ApiError("Invalid response from the travel service.", {
+      status: response.status,
+      code: "server",
+      cause: error,
+    });
+  }
+}
+
+/**
+ * Map any thrown value to customer-safe copy (PRD §20).
+ * Never surfaces raw backend payloads, field dumps, or stack traces.
+ */
+export function getHumanErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    switch (error.code) {
+      case "network":
+        return "We could not reach the travel service. Check your connection and try again, or speak with Alphaa for help.";
+      case "timeout":
+        return "The travel service took too long to respond. No booking was made and no payment was taken. Please try again.";
+      case "not-found":
+        return "We could not find what you were looking for. It may have been removed. Try another option or speak with Alphaa.";
+      case "validation":
+        return "Some details need attention before we can continue. Review the highlighted fields and try again.";
+      case "unauthorized":
+      case "forbidden":
+        return "This action needs a signed-in session. Please log in and try again.";
+      case "rate-limited":
+        return "Too many recent attempts. Wait a moment and try again.";
+      case "server":
+        return "The travel service is temporarily unavailable. Please try again shortly or speak with Alphaa.";
+      default:
+        return "Something did not complete on our side. Please try again or speak with Alphaa for help.";
+    }
+  }
+  if (error instanceof Error && /abort|timeout/i.test(error.message)) {
+    return "The travel service took too long to respond. No booking was made and no payment was taken. Please try again.";
+  }
+  return "Something did not complete on our side. Please try again or speak with Alphaa for help.";
+}
+
+/**
+ * Customer-safe payment/booking failure reassurance (PRD §20).
+ * Callers should render this alongside {@link getHumanErrorMessage}.
+ */
+export function getPaymentSafetyCopy(): string {
+  return "If a payment was deducted, our team can locate and reconcile it. Keep your reference and contact Alphaa support.";
+}

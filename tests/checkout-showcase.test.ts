@@ -13,7 +13,17 @@ test("Checkout shell stays distraction-free with brand, progress, security, and 
   assert.match(content, /Traveller Details/i, "Progress must name checkout steps");
   assert.match(content, /aria-current/, "Current step must use aria-current");
   assert.match(content, /Paystack/i, "Checkout must reassure with payment security badge");
-  assert.match(content, /tel:\+2348000000000/, "Checkout must offer an emergency phone link");
+  assert.match(content, /tel:/, "Checkout must offer an emergency phone link");
+  assert.match(
+    content,
+    /lib\/content\/company|company\.phone/,
+    "Checkout emergency phone must read from lib/content/company.ts (no hardcoded numbers)"
+  );
+  assert.doesNotMatch(
+    content,
+    /tel:\+2348000000000/,
+    "Checkout must not hardcode the emergency phone number"
+  );
   assert.match(content, /Skip to checkout/, "Checkout must provide a skip link");
 
   assert.doesNotMatch(content, /PublicNav/, "Checkout must strip public navigation");
