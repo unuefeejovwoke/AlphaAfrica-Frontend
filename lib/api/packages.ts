@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { apiGet, apiPost, type PaginatedResponse } from "./client.ts";
+import { apiGet, apiPost, pickFeatured, type PaginatedResponse } from "./client.ts";
 import {
   emailSchema,
   fullNameSchema,
@@ -119,6 +119,20 @@ export async function getPackageDetail(slug: string): Promise<PackageDetail> {
     tags: ["packages", `package:${slug}`],
   });
   return packageDetailSchema.parse(raw);
+}
+
+/**
+ * Featured packages for Home. Requests the server-side featured filter, then
+ * shares selection logic with destinations; falls back to the first results
+ * so the section never renders an empty container while packages exist (§12).
+ */
+export async function getFeaturedPackages(limit = 6): Promise<PackageList[]> {
+  const page = await getPackages({ featured: true });
+  if (page.results.length > 0) {
+    return pickFeatured(page.results, limit);
+  }
+  const fallback = await getPackages();
+  return pickFeatured(fallback.results, limit);
 }
 
 /**

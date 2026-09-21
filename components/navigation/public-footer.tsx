@@ -232,6 +232,11 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/faq" className="text-foreground/80 hover:text-primary transition-colors">
+                  FAQs
+                </Link>
+              </li>
+              <li>
                 <a
                   href={`https://wa.me/${company.whatsapp.number}`}
                   target="_blank"

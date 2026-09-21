@@ -18,6 +18,20 @@ export interface PaginatedResponse<T> {
   results: T[];
 }
 
+/**
+ * Prefer backend-flagged entries, falling back to the first results so Home
+ * sections never render an empty container while items exist (PRD §12).
+ * Shared by destinations and packages to keep featured selection consistent.
+ */
+export function pickFeatured<T extends { is_featured?: boolean }>(
+  results: T[],
+  limit = 6,
+): T[] {
+  const flagged = results.filter((item) => item.is_featured);
+  const source = flagged.length > 0 ? flagged : results;
+  return source.slice(0, Math.max(1, limit));
+}
+
 export type ApiErrorCode =
   | "network"
   | "timeout"

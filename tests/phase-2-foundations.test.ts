@@ -75,6 +75,14 @@ test("Travel dates reject impossible and past dates", () => {
   assert.equal(schema.parse(future), future, "Must accept future dates");
 });
 
+test("Optional preferred-date distinguishes invalid from past dates", () => {
+  const schema = optionalFutureDateStringSchema();
+  assert.equal(schema.parse(null), null, "Empty stays empty");
+  assert.equal(schema.parse(""), null, "Blank stays empty");
+  assert.throws(() => schema.parse("not-a-date"), /valid/i, "Malformed input reports validity");
+  assert.throws(() => schema.parse("2000-01-01"), /past/i, "Past dates report recency");
+});
+
 test("Package Enquiry accepts RHF payload with counter parity", () => {
   const future = new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 10);
   const parsed = packageEnquirySchema.parse({

@@ -1,7 +1,6 @@
-"use client";
-
 import * as React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Airplane01Icon,
@@ -14,20 +13,34 @@ import {
   Message01Icon,
   Tick01Icon,
   ArrowRight01Icon,
-  Calendar01Icon,
   Location01Icon,
-  UserIcon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { CardSkeleton } from "@/components/ui/skeleton";
+import { HomeSearchSwitcher } from "@/components/home/home-search-switcher";
+import { FeaturedDestinations } from "@/components/home/featured-destinations";
+import { FeaturedPackages } from "@/components/home/featured-packages";
 import { company } from "@/lib/content/company";
+import { canonicalUrl, getSiteUrl, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
-const SEARCH_TABS = [
-  { id: "flights", label: "Flights", icon: Airplane01Icon, href: "/flights" },
-  { id: "hotels", label: "Hotels", icon: Building01Icon, href: "/hotels" },
-  { id: "packages", label: "Packages", icon: Luggage01Icon, href: "/packages" },
-  { id: "visa", label: "Visa Help", icon: Passport01Icon, href: "/visa" },
-  { id: "cars", label: "Car Rentals", icon: Car01Icon, href: "/car-rentals" },
-] as const;
+export const revalidate = 3600;
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    metadataBase: new URL(getSiteUrl()),
+    title: company.seo.title,
+    description: company.seo.description,
+    alternates: { canonical: canonicalUrl("/") },
+    openGraph: {
+      title: company.seo.title,
+      description: company.seo.description,
+      url: canonicalUrl("/"),
+      siteName: company.brandName,
+      locale: "en_NG",
+      type: "website",
+    },
+  };
+}
 
 const SERVICES = [
   {
@@ -90,13 +103,29 @@ const TRUST_PILLARS = [
   },
 ];
 
+/** Skeleton grid matching the featured card shape (image + title + meta lines). */
+function FeaturedSkeletonGrid({ label }: { label: string }) {
+  return (
+    <div role="status" aria-label={label} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <CardSkeleton />
+      <CardSkeleton className="hidden sm:flex" />
+      <CardSkeleton className="hidden lg:flex" />
+    </div>
+  );
+}
+
 export default function HomePage() {
-  const [activeTab, setActiveTab] = React.useState<(typeof SEARCH_TABS)[number]["id"]>("flights");
-
-  const currentTab = SEARCH_TABS.find((t) => t.id === activeTab) ?? SEARCH_TABS[0];
-
   return (
     <div className="flex flex-col gap-16 md:gap-24 pb-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd()) }}
+      />
+
       {/* Hero Section */}
       <section className="relative pt-12 md:pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         <div className="flex flex-col items-start gap-8 max-w-4xl">
@@ -114,7 +143,7 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3.5 pt-2">
-            <Button render={<Link href="/flights" />} size="lg">
+            <Button render={<a href="#trip-search" />} size="lg">
               <HugeiconsIcon icon={Airplane01Icon} size={18} />
               <span>Search Flights</span>
             </Button>
@@ -133,84 +162,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Quick Search Switcher Card */}
-        <div className="mt-12 rounded-2xl border border-border bg-card p-4 sm:p-6 w-full">
-          {/* Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-4 border-b border-border/80">
-            {SEARCH_TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors shrink-0 ${
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  <HugeiconsIcon icon={tab.icon} size={18} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Tab Content Preview */}
-          <div className="pt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-background p-3.5">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <HugeiconsIcon icon={Location01Icon} size={14} className="text-primary" />
-                  Departure
-                </span>
-                <span className="text-sm font-bold text-foreground">Abuja (ABV)</span>
-                <span className="text-xs text-muted-foreground">Nnamdi Azikiwe Airport</span>
-              </div>
-
-              <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-background p-3.5">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <HugeiconsIcon icon={Location01Icon} size={14} className="text-primary" />
-                  Destination
-                </span>
-                <span className="text-sm font-bold text-foreground">
-                  {activeTab === "visa" ? "United Kingdom / UAE" : "London Heathrow (LHR)"}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {activeTab === "visa" ? "Work, Study, or Tourism" : "Direct & Connecting Flights"}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-background p-3.5">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <HugeiconsIcon icon={Calendar01Icon} size={14} className="text-primary" />
-                  Travel Dates
-                </span>
-                <span className="text-sm font-bold text-foreground">Flexible Departure</span>
-                <span className="text-xs text-muted-foreground">Round-trip or One-way</span>
-              </div>
-
-              <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-background p-3.5">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <HugeiconsIcon icon={UserIcon} size={14} className="text-primary" />
-                  Travellers
-                </span>
-                <span className="text-sm font-bold text-foreground">1 Adult, Economy</span>
-                <span className="text-xs text-muted-foreground">Customizable composition</span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-border/60">
-              <span className="text-xs text-muted-foreground">
-                Verified live inventory • Instant e-ticket delivery • NGN local payment with Paystack
-              </span>
-              <Button render={<Link href={currentTab.href} />} size="lg" className="shrink-0">
-                <span>Continue to {currentTab.label}</span>
-                <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-              </Button>
-            </div>
-          </div>
+        <div id="trip-search" className="scroll-mt-24">
+          <HomeSearchSwitcher />
         </div>
 
         {/* Reassurance Banner */}
@@ -311,6 +264,54 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Featured Destinations (live) */}
+      <section aria-labelledby="home-featured-destinations" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+          <div className="flex flex-col gap-3 max-w-2xl">
+            <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+              Featured Destinations
+            </span>
+            <h2 id="home-featured-destinations" className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+              Where travellers are going now
+            </h2>
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              Live availability with package counts and starting prices — refreshed hourly.
+            </p>
+          </div>
+          <Button render={<Link href="/destinations" />} variant="outline" className="shrink-0">
+            <span>All destinations</span>
+            <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+          </Button>
+        </div>
+        <React.Suspense fallback={<FeaturedSkeletonGrid label="Loading featured destinations" />}>
+          <FeaturedDestinations />
+        </React.Suspense>
+      </section>
+
+      {/* Featured Packages (live) */}
+      <section aria-labelledby="home-featured-packages" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+          <div className="flex flex-col gap-3 max-w-2xl">
+            <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+              Featured Holiday Packages
+            </span>
+            <h2 id="home-featured-packages" className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+              Curated trips, planned with you
+            </h2>
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              Enquiry-first: no payment to start — a specialist designs the details with you.
+            </p>
+          </div>
+          <Button render={<Link href="/packages" />} variant="outline" className="shrink-0">
+            <span>All packages</span>
+            <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+          </Button>
+        </div>
+        <React.Suspense fallback={<FeaturedSkeletonGrid label="Loading featured packages" />}>
+          <FeaturedPackages />
+        </React.Suspense>
       </section>
 
       {/* Why Alphaa Africa Section */}

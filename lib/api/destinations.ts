@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { apiGet, type PaginatedResponse } from "./client.ts";
+import { apiGet, pickFeatured, type PaginatedResponse } from "./client.ts";
 
 /**
  * Destination types mirror `apidoc.yaml`:
@@ -87,4 +87,15 @@ export async function getDestinationDetail(slug: string): Promise<DestinationDet
   );
   const parsed = destinationDetailSchema.parse(raw);
   return normalizeDestinationDetail(parsed);
+}
+
+/**
+ * Featured destinations for Home. Prefers backend-flagged entries and falls
+ * back to the first results so the section never renders an empty container
+ * while destinations exist (§12). The destinations endpoint exposes no
+ * server-side featured filter, so selection happens client-side.
+ */
+export async function getFeaturedDestinations(limit = 6): Promise<DestinationList[]> {
+  const page = await getDestinations();
+  return pickFeatured(page.results, limit);
 }
