@@ -166,14 +166,17 @@ const iataSchema = z
   .toUpperCase()
   .regex(/^[A-Z]{3}$/, "Select a valid airport from the list");
 
-// Base shape before refinements — includes traveller composition fields
-const oneWayBase = z.object({
+// Base shape before refinements — reuses shared traveller composition
+// so party rules (adults ≥1, total ≤9, infants ≤ adults) stay single-sourced.
+// Ticket 01 scope: one-way only, cabin ECONOMY default, currency NGN-only (ADR-0004),
+// non_stop + max_stops map to the backend legs contract (also used by story-9 filters).
+const oneWayJourneyBase = z.object({
   origin: iataSchema,
   destination: iataSchema,
   departureDate: futureDateStringSchema("Departure date"),
   trip_type: z.literal("one_way").default("one_way"),
   cabin: cabinSchema.default("ECONOMY"),
-  currency: z.string().trim().length(3).default("NGN").transform((v) => v.toUpperCase()),
+  currency: z.literal("NGN").default("NGN"),
   non_stop: z.boolean().optional().default(false),
   max_stops: z
     .number()
@@ -183,24 +186,17 @@ const oneWayBase = z.object({
     .optional()
     .nullable()
     .transform((v) => (v === undefined ? null : v)),
-  adults: z.number().int().min(1, "At least 1 adult traveller is required").max(9, "Maximum 9 adults"),
-  children: z.number().int().min(0).max(9),
-  infants: z.number().int().min(0).max(9),
 });
 
-export const oneWayFlightSearchSchema = oneWayBase
-  .refine((data) => data.origin !== data.destination, {
+const oneWayBase = oneWayJourneyBase.and(travellerCompositionSchema);
+
+export const oneWayFlightSearchSchema = oneWayBase.refine(
+  (data) => data.origin !== data.destination,
+  {
     message: "Origin and destination must be different",
     path: ["destination"],
-  })
-  .refine((data) => data.adults + data.children + data.infants <= 9, {
-    message: "Total travellers cannot exceed 9",
-    path: ["adults"],
-  })
-  .refine((data) => data.infants <= data.adults, {
-    message: "Infant count cannot exceed adult count",
-    path: ["infants"],
-  });
+  },
+);
 
 export type OneWayFlightSearchInput = z.input<typeof oneWayFlightSearchSchema>;
 export type OneWayFlightSearchPayload = z.output<typeof oneWayFlightSearchSchema>;
@@ -339,26 +335,30 @@ export interface FlightOfferDisplay {
 }
 
 function extractPrice(offer: FlightOffer): { amount: string; currency: string } {
-  // Prefer explicit total_amount fields first
-  if (typeof offer.total_amount === "string" && offer.total_amount.trim()) {
-    return { amount: offer.total_amount, currency: offer.currency ?? "NGN" };
-  }
-  if (typeof offer.totalAmount === "string" && offer.totalAmount.trim()) {
-    return { amount: offer.totalAmount, currency: offer.currency ?? "NGN" };
-  }
-  if (typeof offer.grandTotal === "string" && offer.grandTotal.trim()) {
-    return { amount: offer.grandTotal, currency: offer.currency ?? "NGN" };
-  }
+  // Currency is NGN-only in v1 (ADR-0004): display always forces NGN even if
+  // the backend echoes another code — conversion lives server-side.
+  const CURRENCY = "NGN";
+  const candidates: unknown[] = [
+    offer.total_amount,
+    offer.totalAmount,
+    offer.grandTotal,
+    offer.price,
+  ];
+  // Flatten nested price objects { total, grandTotal, amount } into candidates
   const p = offer.price;
-  if (typeof p === "string" && p.trim()) return { amount: p, currency: offer.currency ?? "NGN" };
-  if (typeof p === "number") return { amount: String(p), currency: offer.currency ?? "NGN" };
   if (typeof p === "object" && p !== null) {
     const obj = p as Record<string, unknown>;
-    if (typeof obj.total === "string") return { amount: obj.total, currency: (obj.currency as string) ?? offer.currency ?? "NGN" };
-    if (typeof obj.grandTotal === "string") return { amount: obj.grandTotal, currency: (obj.currency as string) ?? offer.currency ?? "NGN" };
-    if (typeof obj.amount === "string") return { amount: obj.amount, currency: (obj.currency as string) ?? offer.currency ?? "NGN" };
+    candidates.push(obj.total, obj.grandTotal, obj.amount);
   }
-  return { amount: "—", currency: offer.currency ?? "NGN" };
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return { amount: candidate, currency: CURRENCY };
+    }
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return { amount: String(candidate), currency: CURRENCY };
+    }
+  }
+  return { amount: "—", currency: CURRENCY };
 }
 
 function formatDuration(raw?: string): string {
@@ -377,13 +377,38 @@ function formatDuration(raw?: string): string {
 
 function formatTime(iso?: string): string {
   if (!iso) return "—";
+  // Prefer the wall-clock time embedded in the ISO string (airport-local)
+  // over Date parsing, which shifts naive "2026-10-10T08:30:00" into the
+  // browser zone. Falls back to Date only for non-ISO shapes.
+  const timeMatch = iso.match(/T(\d{2}:\d{2})/);
+  if (timeMatch) return timeMatch[1];
   try {
     const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso.slice(11, 16) || iso;
+    if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit", hour12: false });
   } catch {
     return iso;
   }
+}
+
+/** Hide Amadeus-vs-normalized segment shape walk behind one helper. */
+function getSegmentEndpoints(segment: unknown): {
+  departureAt: string;
+  arrivalAt: string;
+  departureAirport: string;
+  arrivalAirport: string;
+  cabin: string;
+} {
+  const seg = segment as Record<string, unknown>;
+  const dep = seg.departure as Record<string, string> | undefined;
+  const arr = seg.arrival as Record<string, string> | undefined;
+  return {
+    departureAt: (seg.departureAt as string) ?? dep?.at ?? "",
+    arrivalAt: (seg.arrivalAt as string) ?? arr?.at ?? "",
+    departureAirport: (seg.departureAirport as string) ?? dep?.iataCode ?? "",
+    arrivalAirport: (seg.arrivalAirport as string) ?? arr?.iataCode ?? "",
+    cabin: (seg.cabin as string) ?? "",
+  };
 }
 
 export function normalizeFlightOffer(offer: FlightOffer, index: number): FlightOfferDisplay {
@@ -407,27 +432,15 @@ export function normalizeFlightOffer(offer: FlightOffer, index: number): FlightO
     const itin = offer.itineraries[0];
     const segs = itin.segments ?? [];
     if (segs.length > 0) {
-      // Handle both normalized and raw Amadeus segment shapes
-      const first = segs[0] as unknown as Record<string, unknown>;
-      const last = segs[segs.length - 1] as unknown as Record<string, unknown>;
-
-      const depAt = (first.departureAt as string) ?? (first.departure as unknown as Record<string, string>)?.at ?? departureAt;
-      const arrAt = (last.arrivalAt as string) ?? (last.arrival as unknown as Record<string, string>)?.at ?? arrivalAt;
-      if (depAt) departureAt = depAt;
-      if (arrAt) arrivalAt = arrAt;
-
-      const depAirport =
-        (first.departureAirport as string) ?? (first.departure as unknown as Record<string, string>)?.iataCode ?? origin;
-      const arrAirport =
-        (last.arrivalAirport as string) ?? (last.arrival as unknown as Record<string, string>)?.iataCode ?? destination;
-      if (depAirport) origin = depAirport;
-      if (arrAirport) destination = arrAirport;
-
+      const firstEndpoints = getSegmentEndpoints(segs[0]);
+      const lastEndpoints = getSegmentEndpoints(segs[segs.length - 1]);
+      if (firstEndpoints.departureAt) departureAt = firstEndpoints.departureAt;
+      if (lastEndpoints.arrivalAt) arrivalAt = lastEndpoints.arrivalAt;
+      if (firstEndpoints.departureAirport) origin = firstEndpoints.departureAirport;
+      if (lastEndpoints.arrivalAirport) destination = lastEndpoints.arrivalAirport;
       if (itin.duration) duration = itin.duration;
       stops = segs.length > 0 ? segs.length - 1 : 0;
-      // Cabin from first segment if available
-      const segCabin = (first.cabin as string) ?? (first as unknown as Record<string, unknown>).cabin as string | undefined;
-      if (segCabin) cabin = segCabin;
+      if (firstEndpoints.cabin) cabin = firstEndpoints.cabin;
     }
   }
 
@@ -456,18 +469,30 @@ export function normalizeFlightOffer(offer: FlightOffer, index: number): FlightO
 }
 
 // ---------------------------------------------------------------------------
-// International search via centralized apiPost
+// International search via centralized apiPost (ticket 01).
+// Domestic auto-routing (both-Nigerian → QuickAir SSE proxy, ADR-0004) lands
+// in ticket 03 — this slice intentionally serves the Amadeus legs path only.
 // ---------------------------------------------------------------------------
 
 export async function searchFlights(payload: OneWayFlightSearchPayload): Promise<FlightOffer[]> {
   const body = toFlightSearchRequest(payload);
   const raw = await apiPost<unknown, typeof body>("/api/flights/search/", body);
-  // Backend may return array or { results: [] } or { data: [] }
+  // Backend may return array or { results: [] } or { data: [] } / { offers: [] }.
+  // A 200 with an error envelope must surface as an error (never silent empty).
   if (Array.isArray(raw)) {
     return raw as FlightOffer[];
   }
   if (typeof raw === "object" && raw !== null) {
     const rec = raw as Record<string, unknown>;
+    const backendError =
+      (typeof rec.detail === "string" && rec.detail) ||
+      (typeof rec.message === "string" && rec.message) ||
+      (typeof rec.error === "string" && rec.error) ||
+      null;
+    if (backendError) {
+      const { ApiError } = await import("./client.ts");
+      throw new ApiError(backendError, { status: 200, code: "server" });
+    }
     if (Array.isArray(rec.results)) return rec.results as FlightOffer[];
     if (Array.isArray(rec.data)) return rec.data as FlightOffer[];
     if (Array.isArray(rec.offers)) return rec.offers as FlightOffer[];

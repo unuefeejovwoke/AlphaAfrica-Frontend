@@ -7,8 +7,6 @@ import { cn } from "@/lib/utils";
 import {
   type Airport,
   AIRPORT_MIN_CHARS,
-  airportResultCache,
-  airportPendingRequests,
   getRecentAirports,
   addRecentAirport,
   searchAirports,
@@ -75,7 +73,6 @@ export function AirportAutocomplete({
   // Debounce: 300ms, 2-char minimum
   const deferredQuery = React.useDeferredValue(query);
   const debounceRef = React.useRef<number | null>(null);
-  const abortRef = React.useRef<AbortController | null>(null);
 
   const filteredResults = React.useMemo(() => {
     if (!excludeIata) return results;
@@ -89,6 +86,8 @@ export function AirportAutocomplete({
   const showRecent = query.trim().length < AIRPORT_MIN_CHARS && recent.length > 0;
   const listItems: Airport[] = showRecent ? recent : deferredResults;
 
+  // Single-flight: searchAirports owns cache + dedup (module-level Maps).
+  // The component only debounces and filters — no duplicated Map lookups.
   const fetchResults = React.useCallback(async (q: string) => {
     const trimmed = q.trim();
     if (trimmed.length < AIRPORT_MIN_CHARS) {
@@ -96,44 +95,19 @@ export function AirportAutocomplete({
       setIsSearching(false);
       return;
     }
-
-    const cacheKey = trimmed.toLowerCase();
-    const cached = airportResultCache.get(cacheKey);
-    if (cached) {
-      const filtered = excludeIata ? cached.filter((a) => a.iata_code.toUpperCase() !== excludeIata.toUpperCase()) : cached;
-      setResults(filtered);
-      setIsSearching(false);
-      return;
-    }
-
-    const pending = airportPendingRequests.get(cacheKey);
-    if (pending) {
-      setIsSearching(true);
-      try {
-        const data = await pending;
-        const filtered = excludeIata ? data.filter((a) => a.iata_code.toUpperCase() !== excludeIata.toUpperCase()) : data;
-        setResults(filtered);
-      } finally {
-        setIsSearching(false);
-      }
-      return;
-    }
-
     setIsSearching(true);
     try {
       const data = await searchAirports(trimmed);
-      // searchAirports already handles cache + dedup + no-store
-      const filtered = excludeIata ? data.filter((a) => a.iata_code.toUpperCase() !== excludeIata.toUpperCase()) : data;
-      setResults(filtered);
+      const needle = excludeIata?.toUpperCase();
+      setResults(needle ? data.filter((a) => a.iata_code.toUpperCase() !== needle) : data);
     } finally {
       setIsSearching(false);
     }
   }, [excludeIata]);
 
-  // Debounced effect
+  // Debounced effect (300ms per spec §53)
   React.useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    if (abortRef.current) abortRef.current.abort();
 
     const q = deferredQuery;
     if (q.trim().length < AIRPORT_MIN_CHARS) {
