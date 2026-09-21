@@ -96,12 +96,18 @@ export const LegFields = React.memo(function LegFields({
     typeof legErrors?.destination?.message === "string" ? legErrors.destination.message : undefined;
   const dateError = typeof legErrors?.date?.message === "string" ? legErrors.date.message : undefined;
 
+  const groupLabelId = React.useId();
+
   return (
-    <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-muted/20 p-4">
+    <div
+      role="group"
+      aria-labelledby={groupLabelId}
+      className="flex flex-col gap-4 rounded-2xl border border-border bg-muted/20 p-4"
+    >
       <div className="flex items-center justify-between gap-3">
-        <legend className="px-1 text-xs font-bold tracking-wider text-foreground/80 uppercase">
+        <span id={groupLabelId} className="px-1 text-xs font-bold tracking-wider text-foreground/80 uppercase">
           Leg {index + 1} of {legCount}
-        </legend>
+        </span>
         {showRemove ? (
           <Button
             type="button"
@@ -149,6 +155,6 @@ export const LegFields = React.memo(function LegFields({
         error={dateError}
         {...register(`legs.${index}.date`)}
       />
-    </fieldset>
+    </div>
   );
 });

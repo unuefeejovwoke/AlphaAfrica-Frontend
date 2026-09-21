@@ -343,10 +343,12 @@ export const multiCityFlightSearchSchema = z
     checkTravellerComposition(push, v, v);
     for (let i = 1; i < v.legs.length; i++) {
       if (v.legs[i].date < v.legs[i - 1].date) {
+        // Point at the offending leg's date so the form shows it inline
+        // (code-review: chain errors must not be root-only).
         push({
           code: "custom",
-          message: "Leg dates must run in chronological order",
-          path: ["legs"],
+          message: `Leg ${i + 1} date must be on or after leg ${i} date`,
+          path: ["legs", i, "date"],
           input: v,
         });
         break;
