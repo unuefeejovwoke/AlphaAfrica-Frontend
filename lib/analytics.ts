@@ -23,6 +23,9 @@ export const ANALYTICS_EVENTS = [
   "visa_payment_completed",
   "support_click",
   "booking_confirmation_viewed",
+  "flight_search_started",
+  "flight_search_completed",
+  "flight_selected",
 ] as const;
 
 export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[number];
@@ -31,7 +34,7 @@ export type AnalyticsProps = Record<string, string | number | boolean | null | u
 
 /** Keys matching this pattern are PII/payment material and never leave the device. */
 const SENSITIVE_KEY_PATTERN =
-  /passport|payment|card|token|secret|password|email|phone|auth|reference|order/i;
+  /passport|payment|card|token|secret|password|email|phone|auth|reference|order|flight_offer|opaque|blob/i;
 
 function isKnownEvent(event: string): event is AnalyticsEvent {
   return (ANALYTICS_EVENTS as readonly string[]).includes(event);
