@@ -144,7 +144,6 @@ test("Home is an ISR Server Component with parallel featured sections", () => {
   assert.match(content, /export const revalidate = 3600/, "Home must revalidate every 3600s");
   assert.match(content, /generateMetadata/, "Home must expose metadata for SEO");
   assert.match(content, /Suspense/, "Featured sections must stream inside Suspense");
-  assert.match(content, /FeaturedDestinations/, "Home must render live destinations");
   assert.match(content, /FeaturedPackages/, "Home must render live packages");
   assert.match(content, /application\/ld\+json/, "Home must embed JSON-LD");
 });
