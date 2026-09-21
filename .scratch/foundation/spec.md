@@ -31,8 +31,8 @@ Establish a robust, accessible, and premium foundation and design system adherin
 9. As a customer preparing to enter payment details, I want to see recognized security badges and payment partner reassurance in the layout, so that I feel safe completing transactions.
 10. As a visitor in bright daylight or low light, I want harmonious color contrast between text, surfaces, and action buttons, so that all content is effortlessly readable.
 11. As a traveller searching for flights or hotels, I want form fields with clear visual labels, helper text, and accessible focus outlines, so that I can enter dates and locations without confusion.
-12. As a family organizer booking a trip with children and infants, I want an intuitive passenger stepper control for adults, children, and infants, so that I can configure the exact composition of travellers accurately.
-13. As a traveller entering passenger details, I want immediate, human-readable inline validation errors when a required field or date format is invalid, so that I can correct errors before submitting.
+12. As a family organizer booking a trip with children and infants, I want an intuitive traveller stepper control for adults, children, and infants, so that I can configure the exact composition of travellers accurately.
+13. As a traveller entering traveller details, I want immediate, human-readable inline validation errors when a required field or date format is invalid, so that I can correct errors before submitting.
 14. As a customer completing a form with invalid data, I want focus to move to the first invalid control and display a descriptive message, so that I know exactly what needs fixing.
 15. As a customer submitting an enquiry or booking request, I want action buttons to display a clean loading indicator and disable double-clicking, so that I do not duplicate submissions or payments.
 16. As a guest customer awaiting flight or hotel search results, I want a loading state with progress feedback and explanatory copy describing what the system is checking, so that I know the system is actively working.
@@ -92,7 +92,7 @@ Establish a robust, accessible, and premium foundation and design system adherin
   - Composed Container Seam: Test the primary composed shells and interactive widgets:
     - `PublicLayout`: Verifies desktop navigation links render, mobile navigation drawer triggers open/close, book-a-trip action functions, and footer contact credentials appear.
     - `SupportDrawer`: Verifies opening the floating CTA displays WhatsApp, phone, and enquiry options, and emits appropriate events/links.
-    - `FormControls & Validation`: Verifies input error states when bound to Zod schemas, passenger counter increments/decrements within bounds (min/max limits), and date picker selections.
+    - `FormControls & Validation`: Verifies input error states when bound to Zod schemas, traveller counter increments/decrements within bounds (min/max limits), and date picker selections.
     - `LoadingState & ErrorState`: Verifies that travel-aware copy and recovery buttons render as expected and action callbacks fire.
   - Automated typechecking and production build verification (`tsc --noEmit` and `next build`) must pass with zero warnings or errors.
 

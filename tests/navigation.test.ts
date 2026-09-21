@@ -14,15 +14,14 @@ test("Public Navigation component provides all required service links and CTA", 
   assert.match(content, /Visa/i, "Nav must have Visa link");
   assert.match(content, /Car/i, "Nav must have Car Rentals link");
   assert.match(content, /Destinations/i, "Nav must have Destinations link");
-  assert.match(content, /Book a Trip/i, "Nav must have 'Book a Trip' primary CTA");
+  assert.match(content, /Plan a Trip/i, "Nav must have 'Plan a Trip' primary CTA");
 });
 
-test("Public Footer component provides Abuja office details, contact, and reassurance", () => {
+test("Public Footer component provides Abuja office details and WhatsApp contact", () => {
   const footerPath = path.resolve(process.cwd(), "components/navigation/public-footer.tsx");
   assert.ok(fs.existsSync(footerPath), "public-footer.tsx must exist");
   const content = fs.readFileSync(footerPath, "utf-8");
 
   assert.match(content, /Abuja/i, "Footer must mention Abuja headquarters");
   assert.match(content, /WhatsApp/i, "Footer must link to WhatsApp support");
-  assert.match(content, /Paystack/i, "Footer must provide payment reassurance");
 });

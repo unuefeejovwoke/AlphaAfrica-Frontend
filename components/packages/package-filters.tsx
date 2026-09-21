@@ -9,7 +9,7 @@ import { buildPackageSearchParams } from "@/lib/listings";
 import type { PackageFilters } from "@/lib/api/packages";
 
 const PRICE_BANDS = [
-  { value: "", label: "Any price" },
+  { value: "", label: "Any budget" },
   { value: "500000", label: "Up to ₦500,000" },
   { value: "1000000", label: "Up to ₦1,000,000" },
   { value: "2000000", label: "Up to ₦2,000,000" },
@@ -22,7 +22,7 @@ export interface DestinationOption {
 }
 
 const selectClassName =
-  "flex h-11 w-full rounded-xl border border-input bg-card px-3.5 text-sm text-foreground shadow-xs transition-colors focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50";
+  "flex h-11 w-full rounded-xl border border-input/80 bg-background/80 px-3.5 text-sm font-medium text-foreground shadow-xs transition-colors hover:border-foreground/20 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * Package listing controls (client): destination, max price, and featured
@@ -71,127 +71,133 @@ export function PackageFilters({
   const hasActiveFilters = destination !== "" || maxPrice !== "" || featured;
 
   return (
-    <form
-      method="get"
-      action="/packages"
-      aria-label="Filter packages"
-      aria-busy={isPending || undefined}
-      onSubmit={(event) => {
-        // SPA path: replace the URL without a full navigation.
-        // Without JS the native GET submit still filters server-side.
-        event.preventDefault();
-        apply({ destination, maxPrice, featured });
-      }}
-      className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5"
-    >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="package-filter-destination"
-            className="text-xs font-semibold tracking-wider text-foreground/80 uppercase"
-          >
-            Destination
-          </label>
-          <select
-            id="package-filter-destination"
-            name="destination"
-            value={destination}
-            disabled={isPending}
-            onChange={(event) => {
-              const next = event.target.value;
-              setDestination(next);
-              apply({ destination: next, maxPrice, featured });
-            }}
-            className={selectClassName}
-          >
-            <option value="">All destinations</option>
-            {destinations.map((option) => (
-              <option key={option.slug} value={option.slug}>
-                {option.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="package-filter-max-price"
-            className="text-xs font-semibold tracking-wider text-foreground/80 uppercase"
-          >
-            Max price
-          </label>
-          <select
-            id="package-filter-max-price"
-            name="max_price"
-            value={maxPrice}
-            disabled={isPending}
-            onChange={(event) => {
-              const next = event.target.value;
-              setMaxPrice(next);
-              apply({ destination, maxPrice: next, featured });
-            }}
-            className={selectClassName}
-          >
-            {PRICE_BANDS.map((band) => (
-              <option key={band.label} value={band.value}>
-                {band.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <span id="package-filter-featured-label" className="text-xs font-semibold tracking-wider text-foreground/80 uppercase">
-            Curation
-          </span>
-          <label
-            htmlFor="package-filter-featured"
-            className={cn(
-              "flex h-11 cursor-pointer touch-manipulation items-center gap-3 rounded-xl border border-input bg-card px-3.5 text-sm font-medium text-foreground",
-              "focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30",
-            )}
-          >
-            <input
-              id="package-filter-featured"
-              name="featured"
-              type="checkbox"
-              value="true"
-              checked={featured}
-              disabled={isPending}
-              aria-labelledby="package-filter-featured-label"
-              onChange={(event) => {
-                const next = event.target.checked;
-                setFeatured(next);
-                apply({ destination, maxPrice, featured: next });
-              }}
-              className="size-4 shrink-0 accent-[#FF6738]"
-            />
-            Featured only
-          </label>
-        </div>
-
-        <div className="flex items-end gap-2">
-          <Button type="submit" disabled={isPending} className="h-11 flex-1 touch-manipulation">
-            <span>{isPending ? "Updating…" : "Apply filters"}</span>
-          </Button>
-          {hasActiveFilters && (
-            <Button
-              render={<Link href="/packages" scroll={false} />}
-              variant="outline"
-              className="h-11 touch-manipulation"
+    <div className="relative rounded-3xl p-1.5 sm:p-2 bg-muted/40 border border-border/80 shadow-xs dark:bg-zinc-900/40 dark:border-white/10">
+      <form
+        method="get"
+        action="/packages"
+        aria-label="Filter packages"
+        aria-busy={isPending || undefined}
+        onSubmit={(event) => {
+          // SPA path: replace the URL without a full navigation.
+          // Without JS the native GET submit still filters server-side.
+          event.preventDefault();
+          apply({ destination, maxPrice, featured });
+        }}
+        className="flex flex-col gap-5 rounded-[calc(1.5rem-2px)] bg-card p-5 sm:p-6 border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="package-filter-destination"
+              className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
             >
-              <span>Clear</span>
+              Destination
+            </label>
+            <select
+              id="package-filter-destination"
+              name="destination"
+              value={destination}
+              disabled={isPending}
+              onChange={(event) => {
+                const next = event.target.value;
+                setDestination(next);
+                apply({ destination: next, maxPrice, featured });
+              }}
+              className={selectClassName}
+            >
+              <option value="">All destinations</option>
+              {destinations.map((option) => (
+                <option key={option.slug} value={option.slug}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="package-filter-max-price"
+              className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+            >
+              Budget
+            </label>
+            <select
+              id="package-filter-max-price"
+              name="max_price"
+              value={maxPrice}
+              disabled={isPending}
+              onChange={(event) => {
+                const next = event.target.value;
+                setMaxPrice(next);
+                apply({ destination, maxPrice: next, featured });
+              }}
+              className={selectClassName}
+            >
+              {PRICE_BANDS.map((band) => (
+                <option key={band.label} value={band.value}>
+                  {band.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span id="package-filter-featured-label" className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Curation
+            </span>
+            <label
+              htmlFor="package-filter-featured"
+              className={cn(
+                "flex h-11 cursor-pointer touch-manipulation items-center gap-3 rounded-xl border border-input/80 bg-background/80 px-3.5 text-sm font-medium text-foreground transition-colors hover:border-foreground/20",
+                "focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20",
+              )}
+            >
+              <input
+                id="package-filter-featured"
+                name="featured"
+                type="checkbox"
+                value="true"
+                checked={featured}
+                disabled={isPending}
+                aria-labelledby="package-filter-featured-label"
+                onChange={(event) => {
+                  const next = event.target.checked;
+                  setFeatured(next);
+                  apply({ destination, maxPrice, featured: next });
+                }}
+                className="size-4 shrink-0 rounded border-input accent-primary"
+              />
+              <span className="select-none">Featured only</span>
+            </label>
+          </div>
+
+          <div className="flex items-end gap-2">
+            <Button type="submit" disabled={isPending} className="h-11 flex-1 font-semibold touch-manipulation">
+              <span>{isPending ? "Updating…" : "Apply filters"}</span>
             </Button>
-          )}
+            {hasActiveFilters && (
+              <Button
+                render={<Link href="/packages" scroll={false} />}
+                variant="outline"
+                className="h-11 font-medium touch-manipulation"
+              >
+                <span>Clear</span>
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
-      <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
-        {isPending
-          ? "Updating packages…"
-          : hasActiveFilters
-            ? "Filters applied. Share this URL — it always shows the same results."
-            : "Tip: filters update the page address so you can share or bookmark a search."}
-      </p>
-    </form>
+
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/50" role="status" aria-live="polite">
+          <span className="flex items-center gap-2">
+            <span className={cn("size-1.5 rounded-full transition-colors", isPending ? "bg-amber-500 animate-ping" : hasActiveFilters ? "bg-primary" : "bg-muted-foreground/40")} />
+            {isPending
+              ? "Updating packages…"
+              : hasActiveFilters
+                ? "Active filters applied. URL updated for sharing."
+                : "Filters update the address bar for shareable and bookmarkable searches."}
+          </span>
+        </div>
+      </form>
+    </div>
   );
 }

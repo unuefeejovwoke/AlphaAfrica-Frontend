@@ -469,7 +469,7 @@ export function FlightSearchForm({
           <span>{isSearching ? "Searching flights…" : "Search flights"}</span>
         </Button>
 
-        <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+        <p className="text-center text-xs leading-relaxed text-muted-foreground">
           No account needed. Prices in NGN. You&apos;ll confirm the live fare before paying.
         </p>
       </form>

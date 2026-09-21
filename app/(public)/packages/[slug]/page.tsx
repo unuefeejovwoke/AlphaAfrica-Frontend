@@ -16,6 +16,7 @@ import { RetryButton } from "@/components/home/retry-button";
 import { PackageEnquiryForm } from "@/components/packages/package-enquiry-form";
 import { ViewTracker } from "@/components/analytics/view-tracker";
 import { TrackLink } from "@/components/analytics/track-link";
+import { TerminalCta } from "@/components/shared/terminal-cta";
 import { getPackages, getPackageDetail } from "@/lib/api/packages";
 import { ApiError } from "@/lib/api/client";
 import { formatNaira } from "@/lib/format";
@@ -304,50 +305,13 @@ export default async function PackageDetailPage({
       </div>
 
       {/* 11. "Need something different?" CTA */}
-      <section
-        aria-labelledby="different-heading"
-        className="rounded-3xl bg-secondary p-8 text-secondary-foreground sm:p-12"
-      >
-        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-          <div className="flex max-w-xl flex-col gap-2">
-            <h2 id="different-heading" className="text-2xl font-bold tracking-tight text-balance text-white">
-              Need something different?
-            </h2>
-            <p className="text-sm leading-relaxed text-white/80">
-              Different dates, more travellers, or another destination entirely?
-              A specialist will reshape this plan around you — or build a custom
-              trip from scratch.
-            </p>
-          </div>
-          <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{ context: `a custom version of ${pkg.title}` }}
-                  href={getSupportWhatsAppUrl(`a custom version of ${pkg.title}`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              size="lg"
-              className="justify-center bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
-              <span>Customize this trip</span>
-            </Button>
-            <Button
-              render={<Link href="/packages" />}
-              variant="outline"
-              size="lg"
-              className="justify-center border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            >
-              <span>Compare packages</span>
-              <HugeiconsIcon icon={ArrowRight01Icon} size={16} aria-hidden="true" />
-            </Button>
-          </div>
-        </div>
-      </section>
+      <TerminalCta
+        title="Need something different?"
+        description="Different dates, more travellers, or another destination entirely? A specialist will reshape this plan around you — or build a custom trip from scratch."
+        eyebrow="Bespoke Variations"
+        primaryHref="/contact"
+        primaryLabel="Contact Us"
+      />
     </div>
   );
 }

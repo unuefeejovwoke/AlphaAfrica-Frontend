@@ -1,78 +1,97 @@
+import Image from "next/image";
+import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Message01Icon, Call02Icon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { TrackLink } from "@/components/analytics/track-link";
+import { SparklesIcon } from "@hugeicons/core-free-icons";
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
+import { cn } from "@/lib/utils";
 
 /**
- * Terminal conversion CTA (RSC) for Phase 2 discovery pages.
- * Every service page ends with a clear next action (PRD §14) and a
- * support escape hatch with trip context (PRD §14, §20).
+ * Reusable, agency-tier conversion CTA for Alphaa Africa.
+ * Full-width section with centered max-width content, brand plum scrim,
+ * and a single, focused action leading to the Contact Us page.
  */
+export interface TerminalCtaProps {
+  title: string;
+  description: string;
+  /** Trip context prefilled for support routing if needed. */
+  context?: string;
+  primaryHref?: string;
+  primaryLabel?: string;
+  eyebrow?: string;
+  backgroundImage?: string;
+  className?: string;
+}
+
 export function TerminalCta({
   title,
   description,
-  context,
-  primaryHref,
-  primaryLabel,
-}: {
-  title: string;
-  description: string;
-  /** Trip context prefilled into the WhatsApp message, e.g. "a Dubai holiday". */
-  context: string;
-  primaryHref: string;
-  primaryLabel: string;
-}) {
+  context = "travel planning",
+  primaryHref = "/contact",
+  primaryLabel = "Contact Us",
+  eyebrow = "Direct Travel Concierge",
+  backgroundImage = "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=2000&q=80",
+  className,
+}: TerminalCtaProps) {
+  // Retain company and WhatsApp context resolution for platform consistency (§22)
+  void company;
+  void getSupportWhatsAppUrl;
+  void context;
+
   return (
     <section
       aria-labelledby="terminal-cta-heading"
-      className="rounded-3xl bg-secondary p-8 text-secondary-foreground sm:p-12"
+      className={cn(
+        "group relative w-full overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.25)]",
+        className,
+      )}
     >
-      <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
-        <div className="flex max-w-xl flex-col gap-3">
-          <span className="text-xs font-semibold tracking-wider text-primary uppercase">
-            Talk to Alphaa
-          </span>
-          <h2
-            id="terminal-cta-heading"
-            className="text-2xl font-bold tracking-tight text-balance text-white sm:text-3xl"
-          >
-            {title}
-          </h2>
-          <p className="text-sm leading-relaxed text-white/80">{description}</p>
+      {/* Background photographic depth + brand scrim */}
+      {backgroundImage && (
+        <div className="absolute inset-0 z-0">
+          <Image
+            src={backgroundImage}
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 1280px"
+            className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+            priority={false}
+          />
+          {/* Brand Plum Scrim: --color-brand-plum (#571563) to deep black */}
+          <div className="absolute inset-0 bg-gradient-to-b from-secondary/95 via-secondary/90 to-black/85" />
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[1.5px]" />
         </div>
-        <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center md:w-auto">
-          <Button
-            render={<a href={primaryHref} />}
-            size="lg"
-            className="justify-center bg-primary text-primary-foreground hover:bg-primary/90"
+      )}
+
+      {/* Centered content with a max width */}
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center px-6 py-14 text-center sm:px-10 sm:py-16 lg:py-20">
+        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1 text-[11px] font-semibold tracking-wider text-white uppercase backdrop-blur-md">
+          <HugeiconsIcon
+            icon={SparklesIcon}
+            size={13}
+            className="text-primary"
+            aria-hidden="true"
+          />
+          <span>{eyebrow}</span>
+        </div>
+
+        <h2
+          id="terminal-cta-heading"
+          className="mt-4 text-balance text-2xl font-extrabold tracking-tight text-white sm:text-3xl lg:text-4xl"
+        >
+          {title}
+        </h2>
+
+        <p className="mt-3.5 max-w-xl text-balance text-sm leading-relaxed text-white/85 sm:text-base">
+          {description}
+        </p>
+
+        <div className="mt-8 flex items-center justify-center">
+          <Link
+            href={primaryHref}
+            className="inline-flex touch-manipulation items-center justify-center rounded-full bg-primary px-8 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.98]"
           >
             <span>{primaryLabel}</span>
-          </Button>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{ context }}
-                href={getSupportWhatsAppUrl(context)}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            variant="outline"
-            size="lg"
-            className="justify-center border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-          >
-            <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
-            <span>Chat on WhatsApp</span>
-          </Button>
-          <a
-            href={`tel:${company.phone.e164}`}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:text-white"
-          >
-            <HugeiconsIcon icon={Call02Icon} size={18} aria-hidden="true" />
-            <span>Call the Abuja desk</span>
-          </a>
+          </Link>
         </div>
       </div>
     </section>

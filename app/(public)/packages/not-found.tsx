@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 export default function PackageNotFound() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 px-4 py-16 text-center sm:px-6">
-      <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+      <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary uppercase tracking-wider">
         Package not found
       </span>
-      <h1 className="text-3xl font-extrabold tracking-tight text-balance text-foreground sm:text-4xl">
+      <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-balance text-foreground">
         We couldn&apos;t find that package.
       </h1>
-      <p className="text-sm leading-relaxed break-words text-muted-foreground">
+      <p className="text-sm sm:text-base leading-relaxed break-words text-muted-foreground">
         It may have been renamed or removed. Compare every package, or tell a
         specialist what you had in mind and they will rebuild it with you.
       </p>

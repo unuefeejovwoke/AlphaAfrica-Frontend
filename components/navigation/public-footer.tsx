@@ -5,255 +5,193 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Call02Icon,
   Mail01Icon,
-  Location01Icon,
-  SecurityCheckIcon,
-  Airplane01Icon,
+  Message01Icon,
+  InstagramIcon,
+  NewTwitterIcon,
+  Facebook02Icon,
+  TiktokIcon,
 } from "@hugeicons/core-free-icons";
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
 
 export function PublicFooter() {
+  const currentYear = new Date().getFullYear();
+
   return (
-    <footer className="w-full border-t border-border bg-card text-foreground">
-      {/* Top Value Banner */}
-      <div className="border-b border-border/60 bg-muted/40 py-10">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="flex items-start gap-4">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <HugeiconsIcon icon={SecurityCheckIcon} size={22} />
-              </div>
-              <div>
-                <h4 className="font-semibold text-foreground text-sm">Verified & Secure</h4>
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  Direct airline booking systems and 256-bit encrypted checkout via Paystack.
-                </p>
-              </div>
+    <footer className="w-full border-t border-border/50 bg-background text-foreground">
+      {/* Editorial Pre-Footer / Concierge Bar */}
+      <div className="border-b border-border/50 bg-muted/30">
+        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 py-6 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
             </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-                <HugeiconsIcon icon={Airplane01Icon} size={22} />
-              </div>
-              <div>
-                <h4 className="font-semibold text-foreground text-sm">Real Human Assistance</h4>
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  Dedicated travel specialists in Abuja standing by on phone, email, and WhatsApp.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <HugeiconsIcon icon={Call02Icon} size={22} />
-              </div>
-              <div>
-                <h4 className="font-semibold text-foreground text-sm">Stress-Free Booking</h4>
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  Guest checkout supported across flights, hotels, and rentals. No forced signups.
-                </p>
-              </div>
-            </div>
+            <p className="text-sm font-medium text-foreground">
+              Need custom itinerary planning or emergency assistance?{" "}
+              <span className="text-muted-foreground">Our Abuja specialists are standing by.</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <a
+              href={getSupportWhatsAppUrl("travel planning")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/50 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <span>Chat on WhatsApp</span>
+            </a>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <span>Contact Office</span>
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* Main Footer Links */}
-      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
-          {/* Brand & Mission Column */}
-          <div className="lg:col-span-2 flex flex-col gap-4">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-muted/60 border border-border/80 p-1">
-                <Image
-                  src="/android-chrome-192x192.png"
-                  alt="Alphaa Africa Logo"
-                  width={36}
-                  height={36}
-                  className="size-8.5 object-contain"
-                />
+      {/* Main Navigation Grid */}
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
+          {/* Brand Column */}
+          <div className="flex flex-col gap-4 lg:col-span-2">
+            <Link href="/" className="group flex items-center gap-2.5">
+              <Image
+                src="/android-chrome-192x192.png"
+                alt="Alphaa Africa"
+                width={32}
+                height={32}
+                className="size-8 object-contain transition-transform duration-300 ease-out group-hover:scale-105"
+              />
+              <div className="flex flex-col">
+                <span className="text-lg font-bold tracking-tight leading-none">
+                  <span className="text-secondary">Alphaa</span>{" "}
+                  <span className="font-medium text-primary">Africa</span>
+                </span>
+                <span className="text-[7.5px] font-semibold tracking-[0.18em] text-muted-foreground uppercase leading-none mt-0.5">
+                  Travel & Assisted Service
+                </span>
               </div>
-              <span className="text-xl font-bold tracking-tight text-foreground">
-                Alphaa <span className="text-primary font-medium">Africa</span>
-              </span>
             </Link>
 
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-              Alphaa Africa is an Abuja-based assisted-service travel platform. We combine modern self-service travel booking with dedicated human specialists to make every journey easier, clearer, and less stressful.
+            <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
+              Assisted-service travel planning and verified bookings across Africa and beyond.
             </p>
 
-            <div className="mt-2 flex items-center gap-3" aria-label="Follow Alphaa Africa">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Follow Alphaa
-              </span>
+            {/* Direct Contact Links */}
+            <div className="mt-1 flex flex-col gap-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
-                <a
-                  href={company.socials.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Alphaa Africa on Instagram"
-                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  Instagram
-                </a>
-                <a
-                  href={company.socials.x}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Alphaa Africa on X"
-                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  X
-                </a>
-                <a
-                  href={company.socials.facebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Alphaa Africa on Facebook"
-                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  Facebook
-                </a>
-                <a
-                  href={company.socials.tiktok}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Alphaa Africa on TikTok"
-                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                >
-                  TikTok
-                </a>
-              </div>
-            </div>
-
-            {/* Office Details */}
-            <div className="mt-2 flex flex-col gap-2.5 text-xs text-foreground/80">
-              <div className="flex items-start gap-2.5">
-                <HugeiconsIcon icon={Location01Icon} size={16} className="text-primary shrink-0 mt-0.5" />
-                <span>{company.office.address}</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <HugeiconsIcon icon={Call02Icon} size={16} className="text-primary shrink-0" />
-                <a href={`tel:${company.phone.e164}`} className="hover:text-primary transition-colors">
+                <HugeiconsIcon icon={Call02Icon} size={14} className="shrink-0 text-primary" aria-hidden="true" />
+                <a href={`tel:${company.phone.e164}`} className="transition-colors hover:text-foreground">
                   {company.phone.display}
-                  {company.phone.secondaryDisplay ? ` / ${company.phone.secondaryDisplay}` : ""}
                 </a>
               </div>
-              <div className="flex items-center gap-2.5">
-                <HugeiconsIcon icon={Mail01Icon} size={16} className="text-primary shrink-0" />
-                <a href={`mailto:${company.email}`} className="hover:text-primary transition-colors">
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon icon={Mail01Icon} size={14} className="shrink-0 text-primary" aria-hidden="true" />
+                <a href={`mailto:${company.email}`} className="transition-colors hover:text-foreground">
                   {company.email}
                 </a>
               </div>
             </div>
+
+            {/* Social Icons */}
+            <div className="mt-2 flex items-center gap-2" aria-label="Social media links">
+              <a
+                href={company.socials.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
+              >
+                <HugeiconsIcon icon={InstagramIcon} size={15} aria-hidden="true" />
+              </a>
+              <a
+                href={company.socials.x}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="X (formerly Twitter)"
+                className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
+              >
+                <HugeiconsIcon icon={NewTwitterIcon} size={15} aria-hidden="true" />
+              </a>
+              <a
+                href={company.socials.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
+              >
+                <HugeiconsIcon icon={Facebook02Icon} size={15} aria-hidden="true" />
+              </a>
+              <a
+                href={company.socials.tiktok}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="TikTok"
+                className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
+              >
+                <HugeiconsIcon icon={TiktokIcon} size={15} aria-hidden="true" />
+              </a>
+            </div>
           </div>
 
-          {/* Services Column */}
+          {/* Column 2: Explore */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-              Travel Services
+            <h3 className="mb-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Explore
             </h3>
-            <ul className="space-y-2.5 text-sm">
+            <ul className="space-y-2 text-xs">
               <li>
-                <Link href="/flights" className="text-foreground/80 hover:text-primary transition-colors">
-                  Flight Bookings
+                <Link href="/flights" className="text-foreground/80 transition-colors hover:text-primary">
+                  Flights
                 </Link>
               </li>
               <li>
-                <Link href="/hotels" className="text-foreground/80 hover:text-primary transition-colors">
-                  Hotel Reservations
+                <Link href="/hotels" className="text-foreground/80 transition-colors hover:text-primary">
+                  Hotels & Resorts
                 </Link>
               </li>
               <li>
-                <Link href="/packages" className="text-foreground/80 hover:text-primary transition-colors">
-                  Holiday Packages
+                <Link href="/destinations" className="text-foreground/80 transition-colors hover:text-primary">
+                  Destinations
                 </Link>
               </li>
               <li>
-                <Link href="/visa" className="text-foreground/80 hover:text-primary transition-colors">
+                <Link href="/packages" className="text-foreground/80 transition-colors hover:text-primary">
+                  Packages
+                </Link>
+              </li>
+              <li>
+                <Link href="/visa" className="text-foreground/80 transition-colors hover:text-primary">
                   Visa Assistance
                 </Link>
               </li>
               <li>
-                <Link href="/car-rentals" className="text-foreground/80 hover:text-primary transition-colors">
-                  Car Rentals & Transfers
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Destinations Column */}
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-              Top Destinations
-            </h3>
-            <ul className="space-y-2.5 text-sm">
-              <li>
-                <Link href="/destinations/abuja" className="text-foreground/80 hover:text-primary transition-colors">
-                  Abuja & Lagos
+                <Link href="/car-rentals" className="text-foreground/80 transition-colors hover:text-primary">
+                  Car Rentals
                 </Link>
               </li>
               <li>
-                <Link href="/destinations/dubai" className="text-foreground/80 hover:text-primary transition-colors">
-                  Dubai & UAE
-                </Link>
-              </li>
-              <li>
-                <Link href="/destinations/zanzibar" className="text-foreground/80 hover:text-primary transition-colors">
-                  Zanzibar & Tanzania
-                </Link>
-              </li>
-              <li>
-                <Link href="/destinations/london" className="text-foreground/80 hover:text-primary transition-colors">
-                  United Kingdom
-                </Link>
-              </li>
-              <li>
-                <Link href="/destinations/rwanda" className="text-foreground/80 hover:text-primary transition-colors">
-                  Kigali, Rwanda
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Company & Reassurance Column */}
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-              Help & Policies
-            </h3>
-            <ul className="space-y-2.5 text-sm">
-              <li>
-                <Link href="/about" className="text-foreground/80 hover:text-primary transition-colors">
-                  About Alphaa
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-foreground/80 hover:text-primary transition-colors">
-                  Contact Abuja Office
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="text-foreground/80 hover:text-primary transition-colors">
+                <Link href="/faq" className="text-foreground/80 transition-colors hover:text-primary">
                   FAQs
                 </Link>
               </li>
+            </ul>
+          </div>
+
+          {/* Column 3: Legal */}
+          <div>
+            <h3 className="mb-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Legal
+            </h3>
+            <ul className="space-y-2 text-xs">
               <li>
-                <a
-                  href={getSupportWhatsAppUrl("travel planning")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-foreground/80 hover:text-primary transition-colors flex items-center gap-1.5"
-                >
-                  <span>Chat on WhatsApp</span>
-                </a>
-              </li>
-              <li>
-                <Link href="/terms" className="text-foreground/80 hover:text-primary transition-colors">
-                  Terms & Conditions
+                <Link href="/privacy" className="text-foreground/80 transition-colors hover:text-primary">
+                  Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="text-foreground/80 hover:text-primary transition-colors">
-                  Privacy Policy
+                <Link href="/terms" className="text-foreground/80 transition-colors hover:text-primary">
+                  Terms & Conditions
                 </Link>
               </li>
             </ul>
@@ -261,15 +199,8 @@ export function PublicFooter() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} Alphaa Africa Limited. All rights reserved.</p>
-          <div className="flex items-center gap-6">
-            <span>Secured by Paystack</span>
-            <span>•</span>
-            <span>IATA Industry Standards</span>
-            <span>•</span>
-            <span>Abuja, Nigeria</span>
-          </div>
+        <div className="mt-10 border-t border-border/50 pt-6 text-xs text-muted-foreground">
+          <p>© {currentYear} Alphaa Africa Limited. All rights reserved.</p>
         </div>
       </div>
     </footer>

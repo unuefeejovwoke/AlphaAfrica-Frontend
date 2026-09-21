@@ -25,5 +25,41 @@ A confirmed, paid or reserved flight, hotel, or car rental with a verified refer
 _Avoid_: Order, transaction, ticket
 
 **Enquiry**:
-A request submitted by a customer for assisted travel planning, package consultation, or visa guidance.
-_Avoid_: Lead, ticket, contact form submission
+A no-payment request submitted by a customer for package travel planning and follow-up by travel specialists.
+_Avoid_: Lead, ticket, contact form submission, visa enquiry
+
+**Visa Consultation**:
+A paid request for country-specific visa guidance, including consultation-fee payment.
+_Avoid_: Visa Application, visa booking, visa enquiry
+
+**Destination**:
+A travel place or country grouping that lists its active packages with package count and starting price.
+_Avoid_: Country page, tour location
+
+**Package**:
+A curated sellable itinerary for one destination with duration, from-price per person, and inclusions/highlights.
+_Avoid_: Tour, deal, offer
+
+**Flight Offer**:
+A raw selectable flight result from search, carrying an opaque fare blob for revalidation.
+_Avoid_: Flight card, deal, ticket
+
+**Confirmed Offer**:
+A Flight Offer with live fare revalidated via price confirmation, ready for traveller entry.
+_Avoid_: Priced offer, final price
+
+**Pending Booking**:
+A Confirmed Offer plus travellers and contact submitted for payment, awaiting verification.
+_Avoid_: Order, reservation attempt
+
+**PNR**:
+The airline order reference created only after successful payment verification.
+_Avoid_: Booking ID, ticket number
+
+**Payment Reference**:
+The Paystack transaction identifier linking a Pending Booking to verification.
+_Avoid_: Order ID, transaction ID
+
+**Domestic Flight Card**:
+A normalized QuickAir result streamed progressively, without an opaque offer blob.
+_Avoid_: Local offer, domestic deal

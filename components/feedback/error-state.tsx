@@ -6,6 +6,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TrackLink } from "@/components/analytics/track-link";
 import { getErrorPreset, type ErrorPreset } from "@/lib/feedback-presets";
 import { ApiError, getHumanErrorMessage } from "@/lib/api/client";
 import { getSupportWhatsAppUrl } from "@/lib/content/company";
@@ -24,6 +25,12 @@ export interface ErrorStateProps {
   retryLabel?: string;
   alternateLabel?: string;
   alternateHref?: string;
+  /**
+   * Trip-aware WhatsApp prefill, e.g. "finding a flight for my route
+   * (LOS → DXB on 2026-05-01)". Overrides the preset text so error branches
+   * can carry route, dates, party, or reference context.
+   */
+  supportContext?: string;
   className?: string;
 }
 
@@ -36,6 +43,7 @@ export function ErrorState({
   retryLabel = "Try Again",
   alternateLabel,
   alternateHref,
+  supportContext,
   className,
 }: ErrorStateProps) {
   const presetData = getErrorPreset(preset);
@@ -46,7 +54,7 @@ export function ErrorState({
   const displayAlternateHref = alternateHref || presetData.alternateRoute.href;
 
   // Single source of truth: WhatsApp number comes from lib/content/company.ts.
-  const whatsappUrl = getSupportWhatsAppUrl(presetData.whatsappText);
+  const whatsappUrl = getSupportWhatsAppUrl(supportContext ?? presetData.whatsappText);
 
   return (
     <div
@@ -66,11 +74,11 @@ export function ErrorState({
       </p>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        {onRetry && (
+        {onRetry ? (
           <Button type="button" onClick={onRetry} variant="outline" size="sm">
             {retryLabel}
           </Button>
-        )}
+        ) : null}
         <Button
           render={
             <a href={displayAlternateHref} className="flex items-center gap-2" />
@@ -82,7 +90,9 @@ export function ErrorState({
         </Button>
         <Button
           render={
-            <a
+            <TrackLink
+              event="support_click"
+              eventProps={{ context: supportContext ?? presetData.whatsappText, channel: "whatsapp" }}
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"

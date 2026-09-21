@@ -10,8 +10,6 @@ import {
 import { cn } from "@/lib/utils";
 import { getLoadingPreset, type LoadingPreset } from "@/lib/feedback-presets";
 
-export { getLoadingPreset, type LoadingPreset };
-
 export interface LoadingStateProps {
   preset?: LoadingPreset;
   title?: string;

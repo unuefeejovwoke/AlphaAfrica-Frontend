@@ -1,5 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -14,6 +15,9 @@ import {
   Tick01Icon,
   ArrowRight01Icon,
   Location01Icon,
+  UserIcon,
+  HeadphonesIcon,
+  SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { CardSkeleton } from "@/components/ui/skeleton";
@@ -128,41 +132,53 @@ export default function HomePage() {
       />
 
       {/* Hero Section */}
-      <section className="relative pt-12 md:pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-start gap-8 max-w-4xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary">
-            <span>Alphaa Africa Platform • Abuja Assisted Service</span>
-          </div>
+      <section className="relative w-full overflow-hidden bg-zinc-950 text-white">
+        <Image
+          src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=2400&q=85"
+          alt="Scenic travel destination"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/35" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/20" />
 
-          <div className="flex flex-col gap-4">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground leading-[1.1]">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-14 sm:py-20 lg:py-24 flex flex-col items-start text-left gap-5 sm:gap-6">
+          <div className="flex flex-col gap-3 max-w-3xl">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.15]">
               Wherever you&apos;re going, we&apos;ve got the journey covered.
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-3xl">
-              Abuja&apos;s premium assisted-service travel platform. Book flights, hotels, and vehicle rentals with verified ease, or speak with our human travel specialists for tailor-made holiday packages and visa guidance.
+            <p className="text-sm sm:text-base text-white/80 leading-relaxed max-w-2xl">
+              Abuja&apos;s premier assisted-service travel platform. Verified flights, curated hotels, tailor-made holiday packages, and dedicated visa assistance.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3.5 pt-2">
-            <Button render={<a href="#trip-search" />} size="lg">
-              <HugeiconsIcon icon={Airplane01Icon} size={18} />
-              <span>Search Flights</span>
-            </Button>
-            <Button render={<Link href="/packages" />} variant="outline" size="lg">
-              <span>Explore Holiday Packages</span>
-            </Button>
-            <a
-              href={getSupportWhatsAppUrl("travel planning")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-foreground/80 hover:text-primary transition-colors"
-            >
-              <HugeiconsIcon icon={Message01Icon} size={18} className="text-emerald-600" />
-              <span>Talk to an Abuja Specialist</span>
-            </a>
+          {/* 3 Key Stats (Inline compact design) */}
+          <div className="inline-flex flex-wrap items-center gap-x-3.5 sm:gap-x-4 gap-y-1.5 text-xs sm:text-sm text-white/80">
+            <div className="inline-flex items-center gap-1.5">
+              <HugeiconsIcon icon={UserIcon} size={16} className="text-white/70 shrink-0" />
+              <span className="font-bold text-white">10k+</span>
+              <span className="text-white/75">travellers</span>
+            </div>
+            <span className="text-white/30 select-none text-xs" aria-hidden="true">·</span>
+            <div className="inline-flex items-center gap-1.5">
+              <HugeiconsIcon icon={HeadphonesIcon} size={16} className="text-white/70 shrink-0" />
+              <span className="font-bold text-white">24/7</span>
+              <span className="text-white/75">support</span>
+            </div>
+            <span className="text-white/30 select-none text-xs" aria-hidden="true">·</span>
+            <div className="inline-flex items-center gap-1.5">
+              <HugeiconsIcon icon={SparklesIcon} size={16} className="text-white/70 shrink-0" />
+              <span className="font-bold text-white">100%</span>
+              <span className="text-white/75">beautiful experiences</span>
+            </div>
           </div>
         </div>
+      </section>
 
+      {/* Search & Reassurance Section */}
+      <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full -mt-6 sm:-mt-10 relative z-10">
         <div id="trip-search" className="scroll-mt-24">
           <HomeSearchSwitcher />
         </div>

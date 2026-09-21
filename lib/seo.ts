@@ -2,7 +2,7 @@ import { company } from "./content/company.ts";
 import type { FaqGroup } from "./content/faqs.ts";
 
 /**
- * Shared SEO helpers (Phase 2, PRD §18).
+ * Shared SEO helpers (Phase 2, PRD §18; Phase 3 ticket 10 flights).
  * Single source for the site URL, canonical links, and JSON-LD graphs so
  * every public route emits consistent crawlable metadata.
  */
@@ -124,5 +124,119 @@ export function faqPageJsonLd(groups: FaqGroup[]): FaqPageJsonLd {
         acceptedAnswer: { "@type": "Answer" as const, text: faq.answer },
       })),
     ),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Flights discoverability (Phase 3, ticket 10; PRD §18 + spec §61)
+// - Only the stable `/flights` entry is indexable. Any URL carrying search
+//   state (origin/destination/legs/dates/party) is a dynamic result view and
+//   must be noindex/nofollow with a canonical back to `/flights` — never a
+//   thin indexable page per route/date combination.
+// ---------------------------------------------------------------------------
+
+/** Stable, indexable flights landing metadata (single source for the route). */
+export const FLIGHTS_LANDING_TITLE =
+  "Search Flights — One-way, Round-trip & Multi-city | Alphaa Africa";
+
+export const FLIGHTS_LANDING_DESCRIPTION =
+  "Search one-way, round-trip, and multi-city flights by airport, date, party and cabin. Airport autocomplete from IATA, city or name. Live fares in NGN, no account needed. Confirm the live fare before paying.";
+
+/** Query keys that turn `/flights` into a dynamic, non-indexable result view. */
+const FLIGHT_SEARCH_PARAM_KEYS = [
+  "origin",
+  "destination",
+  "departureDate",
+  "returnDate",
+  "legs",
+  "adults",
+  "children",
+  "infants",
+] as const;
+
+/**
+ * True when the query carries search state. Pure seam: the flights page uses
+ * it in `generateMetadata` so `?origin=LOS&…` result URLs are noindex while
+ * the clean `/flights` entry stays indexable.
+ */
+export function hasFlightSearchParams(
+  searchParams: Record<string, string | string[] | undefined>,
+): boolean {
+  for (const key of FLIGHT_SEARCH_PARAM_KEYS) {
+    const value = searchParams[key];
+    if (Array.isArray(value) ? value.length > 0 && value[0] !== "" : value) {
+      // Party-only defaults (?adults=1) from a fresh form mount carry no
+      // route/date intent — require a route or date signal to count as a
+      // dynamic result view.
+      if (key === "adults" || key === "children" || key === "infants") continue;
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Robots for `/flights`: index only the clean landing, never result URLs. */
+export function flightRobotsForSearchParams(hasSearch: boolean): {
+  index: boolean;
+  follow: boolean;
+} {
+  return hasSearch ? { index: false, follow: false } : { index: true, follow: true };
+}
+
+interface FlightTravelActionJsonLd {
+  "@context": "https://schema.org";
+  "@type": "TravelAction";
+  name: string;
+  description: string;
+  url: string;
+  agent: {
+    "@type": "TravelAgency";
+    name: string;
+    url: string;
+    telephone: string;
+    email: string;
+  };
+  object: {
+    "@type": "Flight";
+    name: string;
+    url: string;
+  };
+  result: {
+    "@type": "WebPage";
+    name: string;
+    url: string;
+  };
+}
+
+/**
+ * TravelAction graph for the stable `/flights` entry (GEO/AI-SEO).
+ * Describes the bookable action without inventing routes, prices, or
+ * schedules — dynamic results are never embedded in structured data.
+ */
+export function flightTravelActionJsonLd(): FlightTravelActionJsonLd {
+  const url = canonicalUrl("/flights");
+  return {
+    "@context": "https://schema.org",
+    "@type": "TravelAction",
+    name: "Search and book flights with live fares",
+    description: FLIGHTS_LANDING_DESCRIPTION,
+    url,
+    agent: {
+      "@type": "TravelAgency",
+      name: company.brandName,
+      url: getSiteUrl(),
+      telephone: company.phone.e164,
+      email: company.email,
+    },
+    object: {
+      "@type": "Flight",
+      name: "One-way, round-trip, and multi-city flight search in NGN",
+      url,
+    },
+    result: {
+      "@type": "WebPage",
+      name: FLIGHTS_LANDING_TITLE,
+      url,
+    },
   };
 }

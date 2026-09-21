@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Message01Icon } from "@hugeicons/core-free-icons";
+import { WhatsappIcon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/feedback/error-state";
 import { RetryButton } from "@/components/home/retry-button";
@@ -54,7 +54,7 @@ export default async function VisaPage() {
     countries = sortFeaturedFirst(page.results);
   } catch (error) {
     return (
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-16 sm:px-6 lg:px-8">
         <ErrorState
           error={error}
           preset="general"
@@ -76,81 +76,78 @@ export default async function VisaPage() {
   );
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-12 px-4 py-12 sm:px-6 md:gap-16 lg:px-8">
+    <div className="flex flex-col gap-14 sm:gap-18 pb-20 sm:pb-28">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
       />
 
-      <div className="flex max-w-3xl flex-col gap-4">
-        <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          Visa Assistance
-        </span>
-        <h1 className="text-4xl font-extrabold tracking-tight text-balance text-foreground sm:text-5xl">
-          Planning to travel? Get help with the visa process.
-        </h1>
-        <p className="text-base leading-relaxed break-words text-muted-foreground">
-          Pick your destination below to see the consultation fee and typical
-          processing time. Starting a consultation is paid — a specialist then
-          guides your documents, process, and interview prep. No account needed.
-        </p>
-        <p className="text-xs font-medium text-muted-foreground" aria-live="polite">
-          {countries.length} {countries.length === 1 ? "country" : "countries"} supported
-        </p>
-      </div>
-
-      {countries.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center">
-          <p className="text-sm font-semibold text-foreground">No visa countries published yet.</p>
-          <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-            New countries land regularly. Tell us where you want to go and a
-            specialist will advise on the visa path.
-          </p>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{ context: "visa assistance" }}
-                href={getSupportWhatsAppUrl("visa assistance")}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            size="sm"
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
-          >
-            <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
-            <span>Ask about a visa</span>
-          </Button>
+      {/* 1. Hero: Clean Header */}
+      <section className="pt-10 sm:pt-14 md:pt-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        <div className="flex flex-col items-start gap-4 max-w-3xl">
+          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary uppercase tracking-wider">
+            Visa Assistance
+          </span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
+            Planning to travel? Get help with the visa process.
+          </h1>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {countries.map((country) => (
-            <VisaCountryCard key={country.slug} country={country} />
-          ))}
-        </div>
-      )}
+      </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-6">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-base font-bold text-foreground">Not sure what visa support you need?</h2>
-          <p className="text-xs text-muted-foreground">
-            Start with a conversation — a specialist will point you at the right country page.
-          </p>
+      {/* 2. Supported Countries Grid */}
+      <section aria-label="Supported visa destinations" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full flex flex-col gap-5">
+        <div className="flex items-center justify-between text-xs font-medium text-muted-foreground px-1" aria-live="polite">
+          <span className="flex items-center gap-2">
+            <span className="inline-block size-2 rounded-full bg-primary" />
+            {countries.length} {countries.length === 1 ? "destination" : "destinations"} available
+          </span>
         </div>
-        <Button render={<Link href="/faq#faq-visa" />} variant="outline">
-          <span>Read visa FAQs</span>
-        </Button>
-      </div>
 
-      <TerminalCta
-        title="Visa questions? Start with a consultation."
-        description="Pick a country above to see the fee and begin, or describe your trip on WhatsApp and a specialist will guide you to the right application."
-        context="visa assistance"
-        primaryHref="/faq#faq-visa"
-        primaryLabel="Read visa FAQs"
-      />
+        {countries.length === 0 ? (
+          <div className="relative rounded-3xl p-1.5 sm:p-2 bg-muted/40 border border-border/80 shadow-xs dark:bg-zinc-900/40 dark:border-white/10">
+            <div className="flex flex-col items-center gap-4 rounded-[calc(1.5rem-2px)] bg-card p-10 sm:p-14 text-center border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+              <h2 className="text-xl font-semibold text-foreground">No visa countries published yet</h2>
+              <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+                New countries land regularly. Tell us where you want to go and our specialists will advise on the visa path.
+              </p>
+              <Button
+                render={
+                  <TrackLink
+                    event="support_click"
+                    eventProps={{ context: "visa assistance" }}
+                    href={getSupportWhatsAppUrl("visa assistance")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+                size="sm"
+                className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs"
+              >
+                <HugeiconsIcon icon={WhatsappIcon} size={16} aria-hidden="true" />
+                <span>Talk to Alphaa on WhatsApp</span>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {countries.map((country) => (
+              <VisaCountryCard key={country.slug} country={country} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 3. Terminal Support Hatch */}
+      <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        <TerminalCta
+          title="Visa questions? Start with a consultation."
+          description="Pick a country above to see the fee and begin, or talk with our team for guidance on the right application."
+          eyebrow="Visa Concierge"
+          primaryHref="/contact"
+          primaryLabel="Contact Us"
+        />
+      </section>
     </div>
   );
 }

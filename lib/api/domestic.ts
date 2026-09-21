@@ -1,0 +1,279 @@
+import { z } from "zod";
+import { apiGet } from "./client.ts";
+import type { Airport } from "./flights.ts";
+import type { FlightOfferDisplay } from "./flights.ts";
+
+/**
+ * Domestic streaming domain — Phase 3, ticket 03.
+ *
+ * - Auto-routing: both-Nigerian origin+destination → QuickAir SSE proxy,
+ *   otherwise the international Amadeus legs path (ADR-0004). No manual
+ *   toggle in v1; backend remains the authority for classification.
+ * - SSE proxy pipes the backend event stream verbatim (force-dynamic,
+ *   no-store); the client reads progressively with AbortController and
+ *   falls back to blocking `local-search` on stream error/timeout.
+ * - Domestic Flight Cards carry no opaque offer blob (CONTEXT.md).
+ */
+
+// ---------------------------------------------------------------------------
+// Canonical Nigerian-airport list for auto-detection
+// Backend remains the authority; source + refresh cadence still needs an
+// owner (spec §77). Country-code from autocomplete is trusted first so a
+// missing IATA here never misroutes a known NG airport.
+// ---------------------------------------------------------------------------
+
+export const NIGERIAN_AIRPORT_IATAS: ReadonlySet<string> = new Set([
+  "LOS", // Lagos — Murtala Muhammed
+  "ABV", // Abuja — Nnamdi Azikiwe
+  "PHC", // Port Harcourt
+  "KAN", // Kano — Mallam Aminu Kano
+  "ENU", // Enugu — Akanu Ibiam
+  "QUO", // Uyo — Victor Attah
+  "ABB", // Asaba
+  "BNI", // Benin City
+  "CBQ", // Calabar — Margaret Ekpo
+  "IBA", // Ibadan
+  "ILR", // Ilorin
+  "JOS", // Jos — Yakubu Gowon
+  "KAD", // Kaduna
+  "SKO", // Sokoto — Sultan Abubakar III
+  "MIU", // Maiduguri
+  "YOL", // Yola
+  "QOW", // Owerri — Sam Mbakwe
+  "AKR", // Akure
+  "ZAR", // Zaria
+  "KAA", // Kaduna alternative code seen in the wild
+]);
+
+function normalizeIata(code: string): string {
+  return code.trim().toUpperCase();
+}
+
+export function isNigerianAirport(input: Airport | string): boolean {
+  if (typeof input === "string") {
+    const code = normalizeIata(input);
+    if (code.length !== 3) return false;
+    return NIGERIAN_AIRPORT_IATAS.has(code);
+  }
+  const countryCode = (input.country_code ?? "").trim().toUpperCase();
+  if (countryCode === "NG") return true;
+  const countryName = (input.country_name ?? "").trim().toLowerCase();
+  if (countryName === "nigeria") return true;
+  return NIGERIAN_AIRPORT_IATAS.has(normalizeIata(input.iata_code ?? ""));
+}
+
+/** Both-Nigerian origin+destination → domestic streaming path. */
+export function isDomesticSearch(
+  origin: Airport | string,
+  destination: Airport | string,
+): boolean {
+  return isNigerianAirport(origin) && isNigerianAirport(destination);
+}
+
+// ---------------------------------------------------------------------------
+// SSE fallback trigger — pure seam under test
+// ---------------------------------------------------------------------------
+
+export type SseTerminalReason = "error" | "timeout" | "aborted" | "completed";
+
+/**
+ * Stream error/timeout automatically falls back to the blocking domestic
+ * search; clean completion or user abort (new search / unmount) never does.
+ */
+export function shouldFallbackToBlocking(reason: SseTerminalReason): boolean {
+  return reason === "error" || reason === "timeout";
+}
+
+// ---------------------------------------------------------------------------
+// Domestic search params + card shape
+// ---------------------------------------------------------------------------
+
+export const DOMESTIC_STREAM_TIMEOUT_MS = 75_000;
+export const DOMESTIC_SSE_DONE_EVENT = "done";
+export const DOMESTIC_STREAM_PROXY_PATH = "/api/flights/domestic-stream";
+
+export interface DomesticSearchParams {
+  origin: string;
+  destination: string;
+  date: string;
+  adults?: number;
+  children?: number;
+  infants?: number;
+  return_date?: string | null;
+}
+
+const domesticParamsSchema = z.object({
+  origin: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
+  destination: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
+  date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+  adults: z.number().int().min(1).max(9).optional().default(1),
+  children: z.number().int().min(0).max(9).optional().default(0),
+  infants: z.number().int().min(0).max(9).optional().default(0),
+  return_date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+});
+
+/** Server-side validation — API responses/params are untrusted (spec §59). */
+export function parseDomesticParams(input: unknown): DomesticSearchParams | null {
+  const parsed = domesticParamsSchema.safeParse(input);
+  return parsed.success ? parsed.data : null;
+}
+
+/** Only safe primitives ever reach the URL — never opaque blobs. */
+export function toDomesticQuery(params: DomesticSearchParams): Record<string, string> {
+  const q: Record<string, string> = {
+    origin: normalizeIata(params.origin),
+    destination: normalizeIata(params.destination),
+    date: params.date,
+    adults: String(params.adults ?? 1),
+    children: String(params.children ?? 0),
+    infants: String(params.infants ?? 0),
+  };
+  if (params.return_date) q.return_date = params.return_date;
+  return q;
+}
+
+// Permissive QuickAir card — fields may be missing (spec §55 defensive).
+export const domesticCardSchema = z
+  .object({
+    id: z.string().optional(),
+    airline: z.string().optional(),
+    carrier: z.string().optional(),
+    origin: z.string().optional(),
+    destination: z.string().optional(),
+    departure: z.string().optional(),
+    arrival: z.string().optional(),
+    departureTime: z.string().optional(),
+    arrivalTime: z.string().optional(),
+    departureAt: z.string().optional(),
+    arrivalAt: z.string().optional(),
+    duration: z.string().optional(),
+    stops: z.number().int().min(0).optional(),
+    price: z.unknown().optional(),
+    amount: z.unknown().optional(),
+    total_amount: z.string().optional(),
+    currency: z.string().optional(),
+    cabin: z.string().optional(),
+  })
+  .passthrough();
+
+export type DomesticFlightCard = z.infer<typeof domesticCardSchema>;
+
+function cardPriceToString(raw: unknown): string {
+  if (typeof raw === "string" && raw.trim()) return raw.trim();
+  if (typeof raw === "number" && Number.isFinite(raw)) return String(raw);
+  return "—";
+}
+
+function pickCardPrice(card: DomesticFlightCard): string {
+  const candidates: unknown[] = [card.total_amount, card.amount, card.price];
+  for (const c of candidates) {
+    const s = cardPriceToString(c);
+    if (s !== "—") return s;
+  }
+  return "—";
+}
+
+/**
+ * Normalize a QuickAir card to the shared card-display shape so the
+ * existing FlightOfferCard renders it with no duplicate UI.
+ * No opaque blob is attached — domestic cards carry none (CONTEXT.md).
+ */
+export function normalizeDomesticCard(raw: unknown, index: number): FlightOfferDisplay {
+  const parsed = domesticCardSchema.safeParse(raw);
+  const card: DomesticFlightCard = parsed.success ? parsed.data : {};
+  const id =
+    (typeof card.id === "string" && card.id.trim()) || `domestic-${index}`;
+  const airline = card.airline || card.carrier || "Airline";
+  const origin = (card.origin ?? "").toUpperCase() || "—";
+  const destination = (card.destination ?? "").toUpperCase() || "—";
+  const departureAt = card.departureAt || card.departure || card.departureTime || "—";
+  const arrivalAt = card.arrivalAt || card.arrival || card.arrivalTime || "—";
+  const stops = card.stops ?? 0;
+  return {
+    id,
+    airline,
+    departureAt,
+    arrivalAt,
+    duration: card.duration || "—",
+    stops,
+    stopsLabel: stops === 0 ? "Non-stop" : `${stops} ${stops === 1 ? "stop" : "stops"}`,
+    origin,
+    destination,
+    airportsLabel: origin !== "—" && destination !== "—" ? `${origin} → ${destination}` : "—",
+    cabin: card.cabin || "ECONOMY",
+    baggage: null,
+    price: pickCardPrice(card),
+    currency: "NGN",
+    raw: { ...(typeof raw === "object" && raw !== null ? raw : {}), id },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// SSE event parsing (no E2E test in v1 — seam test covers fallback trigger)
+// ---------------------------------------------------------------------------
+
+export interface ParsedSseEvent {
+  event: string;
+  data: unknown;
+  searchId: string | null;
+}
+
+export function extractSearchId(data: unknown): string | null {
+  if (typeof data !== "object" || data === null) return null;
+  const rec = data as Record<string, unknown>;
+  for (const key of ["search_id", "searchId", "searchID", "id"]) {
+    const v = rec[key];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+/** Parse one SSE block (`event: …` + `data: …` lines) into card/done. */
+export function parseSseEventBlock(block: string): ParsedSseEvent | null {
+  const trimmed = block.trim();
+  if (!trimmed) return null;
+  let event = "message";
+  const dataLines: string[] = [];
+  for (const line of trimmed.split("\n")) {
+    if (line.startsWith("event:")) {
+      event = line.slice("event:".length).trim() || "message";
+    } else if (line.startsWith("data:")) {
+      dataLines.push(line.slice("data:".length).trim());
+    }
+  }
+  if (dataLines.length === 0) return null;
+  const payload = dataLines.join("\n");
+  let data: unknown = payload;
+  try {
+    data = JSON.parse(payload) as unknown;
+  } catch {
+    // Keep raw string — caller treats unparseable data as ignorable.
+  }
+  // A done envelope may nest the id or carry it as a bare string.
+  const searchId =
+    event === DOMESTIC_SSE_DONE_EVENT
+      ? (extractSearchId(data) ?? (typeof data === "string" && data.trim() ? data.trim() : null))
+      : null;
+  return { event, data, searchId };
+}
+
+// ---------------------------------------------------------------------------
+// Blocking fallback — GET /api/flights/local-search/ (30-60s, no-store)
+// ---------------------------------------------------------------------------
+
+export async function fetchDomesticBlocking(
+  params: DomesticSearchParams,
+): Promise<DomesticFlightCard[]> {
+  const raw = await apiGet<unknown>("/api/flights/local-search/", {
+    query: toDomesticQuery(params),
+    noStore: true,
+  });
+  if (Array.isArray(raw)) return raw as DomesticFlightCard[];
+  if (typeof raw === "object" && raw !== null) {
+    const rec = raw as Record<string, unknown>;
+    for (const key of ["results", "data", "cards", "offers", "flights"]) {
+      if (Array.isArray(rec[key])) return rec[key] as DomesticFlightCard[];
+    }
+  }
+  return [];
+}

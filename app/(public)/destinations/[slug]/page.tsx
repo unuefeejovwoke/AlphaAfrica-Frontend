@@ -353,9 +353,8 @@ export default async function DestinationDetailPage({
       <TerminalCta
         title={`Ready when you are — let's plan ${destination.name}.`}
         description={`Send an enquiry on any ${destination.name} package, or tell a specialist your dates and budget for a custom plan. No payment needed to start.`}
-        context={`a ${destination.name} holiday`}
-        primaryHref="/packages"
-        primaryLabel="Browse all packages"
+        primaryHref="/contact"
+        primaryLabel="Contact Us"
       />
     </div>
   );

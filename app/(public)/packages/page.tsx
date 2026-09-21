@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Message01Icon } from "@hugeicons/core-free-icons";
+import { WhatsappIcon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/feedback/error-state";
 import { RetryButton } from "@/components/home/retry-button";
 import { PackageCard } from "@/components/packages/package-card";
 import { PackageFilters } from "@/components/packages/package-filters";
+import { TerminalCta } from "@/components/shared/terminal-cta";
 import { getPackages } from "@/lib/api/packages";
 import { getDestinations } from "@/lib/api/destinations";
 import { canonicalUrl, getSiteUrl } from "@/lib/seo";
@@ -74,7 +75,7 @@ export default async function PackagesPage({
     }));
   } catch (error) {
     return (
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-16 sm:px-6 lg:px-8">
         <ErrorState
           error={error}
           preset="general"
@@ -90,106 +91,92 @@ export default async function PackagesPage({
   const shareableQuery = buildPackageSearchParams(filters);
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-12 sm:px-6 md:gap-10 lg:px-8">
-      <div className="flex max-w-3xl flex-col gap-4">
-        <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          Holiday Packages
-        </span>
-        <h1 className="text-4xl font-extrabold tracking-tight text-balance text-foreground sm:text-5xl">
-          Trips worth taking, planned with you.
-        </h1>
-        <p className="text-base leading-relaxed break-words text-muted-foreground">
-          Curated itineraries with clear durations, inclusions, and from-prices
-          in Naira. Open a package to see the full plan, then send an enquiry —
-          no payment needed to start.
-        </p>
-      </div>
+    <div className="flex flex-col gap-14 sm:gap-18 pb-20 sm:pb-28">
+      {/* 1. Hero: Clean Header */}
+      <section className="pt-10 sm:pt-14 md:pt-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        <div className="flex flex-col items-start gap-4 max-w-3xl">
+          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary uppercase tracking-wider">
+            Holiday Packages
+          </span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
+            Curated journeys, planned with precision.
+          </h1>
+        </div>
+      </section>
 
-      <PackageFilters initial={filters} destinations={destinationOptions} />
+      {/* 2. Filters & Status (Commented out per user request)
+      <section aria-label="Package filters" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full flex flex-col gap-4">
+        <PackageFilters initial={filters} destinations={destinationOptions} />
 
-      <p className="text-xs font-medium text-muted-foreground" aria-live="polite">
-        {packages.length === 0
-          ? "No packages match these filters yet."
-          : `${packages.length} ${packages.length === 1 ? "package" : "packages"} found`}
-        {activeFilterCount > 0 && shareableQuery ? (
-          <>
-            {" "}·{" "}
-            <span className="font-variant-numeric tabular-nums">?{shareableQuery}</span>
-          </>
-        ) : null}
-      </p>
-
-      {packages.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center">
-          <p className="text-sm font-semibold text-foreground">No packages match these filters.</p>
-          <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-            Try widening the budget or clearing the destination. Or describe your
-            ideal trip — a specialist will design it with you.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button render={<Link href="/packages" scroll={false} />} variant="outline" size="sm">
-              <span>Clear filters</span>
-            </Button>
-            <Button
-              render={
-                <a
-                  href={getSupportWhatsAppUrl("a custom holiday package")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              size="sm"
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
+        <div className="flex items-center justify-between text-xs font-medium text-muted-foreground px-1" aria-live="polite">
+          <span className="flex items-center gap-2">
+            <span className="inline-block size-2 rounded-full bg-primary" />
+            {packages.length === 0
+              ? "No packages match these filters yet."
+              : `${packages.length} ${packages.length === 1 ? "package" : "packages"} available`}
+          </span>
+          {activeFilterCount > 0 && shareableQuery && (
+            <Link
+              href="/packages"
+              scroll={false}
+              className="text-primary hover:underline underline-offset-4 transition-colors font-semibold"
             >
-              <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
-              <span>Plan a custom trip</span>
-            </Button>
-          </div>
+              Reset all filters
+            </Link>
+          )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {packages.map((pkg) => (
-            <PackageCard key={pkg.slug} pkg={pkg} />
-          ))}
-        </div>
-      )}
+      </section>
+      */}
 
-      {/* Custom-trip CTA: the terminal conversion moment for this page. */}
-      <section
-        aria-labelledby="custom-trip-heading"
-        className="rounded-3xl border border-border bg-card p-8 sm:p-10"
-      >
-        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-          <div className="flex max-w-xl flex-col gap-2">
-            <h2 id="custom-trip-heading" className="text-2xl font-bold tracking-tight text-foreground">
-              Need something different?
-            </h2>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Honeymoon, family reunion, or multi-city plan not listed here? Tell
-              us your dates, party size, and budget — a specialist will design a
-              custom itinerary with you.
-            </p>
+      {/* 3. Package Grid / Empty State */}
+      <section aria-label="Available packages" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        {packages.length === 0 ? (
+          <div className="relative rounded-3xl p-1.5 sm:p-2 bg-muted/40 border border-border/80 shadow-xs dark:bg-zinc-900/40 dark:border-white/10">
+            <div className="flex flex-col items-center gap-4 rounded-[calc(1.5rem-2px)] bg-card p-10 sm:p-14 text-center border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+              <h2 className="text-xl font-semibold text-foreground">No packages match these filters</h2>
+              <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+                Try widening your budget or clearing the destination filter. Or describe your ideal trip — our specialists will design a custom itinerary with you.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <Button render={<Link href="/packages" scroll={false} />} variant="outline" size="sm">
+                  <span>Clear filters</span>
+                </Button>
+                <Button
+                  render={
+                    <a
+                      href={getSupportWhatsAppUrl("a custom holiday package")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  }
+                  size="sm"
+                  className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs"
+                >
+                  <HugeiconsIcon icon={WhatsappIcon} size={16} aria-hidden="true" />
+                  <span>Plan custom trip</span>
+                </Button>
+              </div>
+            </div>
           </div>
-          <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
-            <Button
-              render={
-                <a
-                  href={getSupportWhatsAppUrl("a custom holiday package")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              size="lg"
-              className="justify-center bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
-              <span>Plan a custom trip</span>
-            </Button>
-            <Button render={<Link href="/destinations" />} variant="outline" size="lg" className="justify-center">
-              <span>Browse destinations</span>
-            </Button>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {packages.map((pkg) => (
+              <PackageCard key={pkg.slug} pkg={pkg} />
+            ))}
           </div>
-        </div>
+        )}
+      </section>
+
+      {/* 4. Custom Trip CTA */}
+      <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        <TerminalCta
+          title="Need a bespoke itinerary?"
+          description="Honeymoon, family vacation, or multi-city tour not listed here? Tell us your dates, group size, and preferred budget — our destination specialists will craft a custom trip for you."
+          eyebrow="Tailored Itineraries"
+          backgroundImage="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=80"
+          primaryHref="/contact"
+          primaryLabel="Contact Us"
+        />
       </section>
     </div>
   );

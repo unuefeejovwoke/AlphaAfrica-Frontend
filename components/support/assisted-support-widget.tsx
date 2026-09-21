@@ -2,23 +2,22 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Drawer } from "@base-ui/react/drawer";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Message01Icon,
+  WhatsappIcon,
   Call02Icon,
+  Mail01Icon,
   Cancel01Icon,
   Clock01Icon,
-  Tick01Icon,
+  ArrowUpRight01Icon,
 } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { TrackLink } from "@/components/analytics/track-link";
-import { callbackRequestSchema, type CallbackRequest } from "@/lib/schemas/travel";
-import { notifyCallbackRequested } from "@/lib/toast";
-import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
+import {
+  company,
+  getSupportWhatsAppUrl,
+  getEmailHref,
+} from "@/lib/content/company";
 
 function getServiceContext(pathname: string): string {
   if (pathname.startsWith("/flights")) return "flight bookings";
@@ -34,35 +33,12 @@ function getServiceContext(pathname: string): string {
 export function AssistedSupportWidget() {
   const pathname = usePathname() || "/";
   const [isOpen, setIsOpen] = React.useState(false);
-  const [callbackSubmitted, setCallbackSubmitted] = React.useState(false);
 
   const serviceContext = getServiceContext(pathname);
-  // Single source of truth: numbers come from lib/content/company.ts.
+  // Canonical details sourced from lib/content/company.ts
   const whatsappUrl = getSupportWhatsAppUrl(serviceContext);
   const supportPhoneHref = `tel:${company.phone.e164}`;
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<CallbackRequest>({
-    resolver: zodResolver(callbackRequestSchema),
-    defaultValues: { customerName: "", customerPhone: "", customerNotes: "" },
-    mode: "onTouched",
-    shouldFocusError: true,
-  });
-
-  const onCallbackSubmit = handleSubmit((data) => {
-    void data;
-    setCallbackSubmitted(true);
-    notifyCallbackRequested();
-    window.setTimeout(() => {
-      setCallbackSubmitted(false);
-      setIsOpen(false);
-      reset();
-    }, 2500);
-  });
+  const supportEmailHref = getEmailHref(`Assistance with ${serviceContext}`);
 
   return (
     <div className="fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6">
@@ -70,152 +46,153 @@ export function AssistedSupportWidget() {
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="group flex touch-manipulation items-center gap-2.5 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition-colors duration-200 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-95"
+          className="group flex touch-manipulation items-center gap-2.5 rounded-full border border-foreground/20 bg-background/90 py-2 pr-2 pl-3.5 text-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/35 hover:bg-background hover:shadow-[0_12px_36px_rgba(0,0,0,0.18)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97] dark:border-border/80 dark:hover:border-foreground/20 dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
           aria-expanded={isOpen}
-          aria-label="Open assisted service support drawer"
+          aria-controls="travel-concierge"
+          aria-label="Need Help? Chat with us on WhatsApp"
         >
-          <span className="relative flex size-3">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75 motion-reduce:animate-none"></span>
-            <span className="relative inline-flex size-3 rounded-full bg-white"></span>
+          <span className="relative flex size-2 items-center justify-center">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75 motion-reduce:animate-none" />
+            <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
           </span>
-          <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
-          <span className="font-medium">Need Help? / WhatsApp</span>
+          <div className="flex items-center gap-1.5 text-left">
+            <span className="text-xs font-semibold tracking-tight text-foreground">
+              Need Help?
+            </span>
+            <span className="hidden text-[11px] font-medium text-muted-foreground sm:inline">
+              Chat on WhatsApp
+            </span>
+          </div>
+          <div className="flex size-7 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition-transform duration-300 group-hover:scale-110">
+            <HugeiconsIcon icon={WhatsappIcon} size={15} aria-hidden="true" />
+          </div>
         </button>
       )}
 
       <Drawer.Root open={isOpen} onOpenChange={setIsOpen}>
         <Drawer.Portal>
+          <Drawer.Backdrop className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 sm:bg-black/10" />
           <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-end p-4 sm:p-6">
-            <Drawer.Popup className="w-[340px] rounded-2xl border border-border bg-card p-5 text-foreground overscroll-contain shadow-2xl sm:w-[380px]">
-              <Drawer.Content className="flex min-w-0 flex-col gap-0">
-                <div className="flex items-start justify-between border-b border-border/80 pb-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="size-2 rounded-full bg-green-500" aria-hidden="true"></span>
-                      <span className="text-xs font-semibold tracking-wider text-green-600 uppercase">
-                        Support Desk Online
-                      </span>
+            <Drawer.Popup id="travel-concierge" className="w-[340px] max-w-[calc(100vw-2rem)] rounded-3xl border border-foreground/20 bg-background/95 p-2 text-foreground shadow-[0_24px_60px_-15px_rgba(0,0,0,0.25)] backdrop-blur-2xl transition-all sm:w-[380px] dark:border-border/70 dark:shadow-[0_24px_60px_-15px_rgba(0,0,0,0.7)]">
+              <Drawer.Content className="flex flex-col gap-4 rounded-2xl border border-border/40 bg-card/60 p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                      <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                      <span>WhatsApp Concierge</span>
                     </div>
-                    <Drawer.Title className="mt-1 text-base font-bold text-foreground">
-                      Speak with a Specialist
+                    <Drawer.Title className="text-base font-semibold tracking-tight text-foreground">
+                      How can we help your journey?
                     </Drawer.Title>
-                    <Drawer.Description className="text-xs text-muted-foreground">
-                      Assisted service for {serviceContext}
+                    <Drawer.Description className="text-xs leading-relaxed text-muted-foreground">
+                      Connect with our travel team on WhatsApp for fast help with flights,
+                      hotels, holiday packages, or {serviceContext}. We can also prepare custom
+                      quotes or arrange a callback.
                     </Drawer.Description>
                   </div>
                   <Drawer.Close
-                    aria-label="Close support dialog"
-                    className="rounded-lg p-1.5 touch-manipulation text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    aria-label="Close travel concierge widget"
+                    className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={18} aria-hidden="true" />
+                    <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
                   </Drawer.Close>
                 </div>
 
-                <div className="mt-4 flex min-w-0 flex-col gap-3">
+                <div className="flex flex-col gap-2.5">
                   <TrackLink
                     event="support_click"
                     eventProps={{ context: serviceContext, channel: "whatsapp" }}
                     href={whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex touch-manipulation items-center justify-between rounded-xl bg-emerald-600 px-4 py-3 text-white transition-colors hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.98]"
+                    className="group flex touch-manipulation items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3.5 transition-all duration-200 hover:border-emerald-500/50 hover:bg-emerald-500/[0.1] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.98]"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-white/20">
-                        <HugeiconsIcon icon={Message01Icon} size={20} aria-hidden="true" />
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-[0_2px_10px_rgba(16,185,129,0.35)]">
+                        <HugeiconsIcon icon={WhatsappIcon} size={20} aria-hidden="true" />
                       </div>
                       <div className="flex min-w-0 flex-col text-left">
-                        <span className="truncate text-sm leading-tight font-semibold">
-                          Chat on WhatsApp
-                        </span>
-                        <span className="text-[11px] text-emerald-100">
-                          Typical reply in under 5 minutes
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-semibold tracking-tight text-foreground transition-colors group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                            Chat on WhatsApp
+                          </span>
+                          <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9.5px] font-semibold text-emerald-700 dark:text-emerald-300">
+                            Fastest
+                          </span>
+                        </div>
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          Instant advice • Request a Callback
                         </span>
                       </div>
                     </div>
-                    <span className="rounded bg-white/20 px-2 py-0.5 text-xs font-bold">Fast</span>
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 dark:text-emerald-400">
+                      <HugeiconsIcon icon={ArrowUpRight01Icon} size={15} aria-hidden="true" />
+                    </div>
                   </TrackLink>
 
                   <TrackLink
                     event="support_click"
                     eventProps={{ context: serviceContext, channel: "phone" }}
                     href={supportPhoneHref}
-                    className="flex touch-manipulation items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="group flex touch-manipulation items-center justify-between rounded-xl border border-border/70 bg-muted/25 p-3.5 transition-all duration-200 hover:border-border hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.98]"
                   >
-                    <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <HugeiconsIcon icon={Call02Icon} size={20} aria-hidden="true" />
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                        <HugeiconsIcon icon={Call02Icon} size={19} aria-hidden="true" />
+                      </div>
+                      <div className="flex min-w-0 flex-col text-left">
+                        <span className="truncate text-sm font-semibold tracking-tight text-foreground">
+                          Call Our Team
+                        </span>
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          {company.phone.display} • Direct phone line
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex min-w-0 flex-col text-left">
-                      <span className="text-sm font-semibold">Call Abuja Office</span>
-                      <span className="text-[11px] break-words text-muted-foreground">
-                        {company.phone.display}
-                      </span>
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:text-foreground">
+                      <HugeiconsIcon icon={ArrowUpRight01Icon} size={15} aria-hidden="true" />
                     </div>
                   </TrackLink>
 
-                  <div className="flex items-center gap-2 px-1 text-[11px] text-muted-foreground">
-                    <HugeiconsIcon icon={Clock01Icon} size={14} className="shrink-0" aria-hidden="true" />
-                    <span>Abuja Desk: Mon – Sat, 8:00 AM – 6:00 PM (WAT)</span>
-                  </div>
-
-                  <div className="mt-2 border-t border-border/80 pt-3">
-                    {callbackSubmitted ? (
-                      <div
-                        role="status"
-                        aria-live="polite"
-                        className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800"
-                      >
-                        <HugeiconsIcon
-                          icon={Tick01Icon}
-                          size={18}
-                          className="shrink-0 text-emerald-600"
-                          aria-hidden="true"
-                        />
-                        <span>Request received! A specialist will contact you shortly.</span>
+                  <TrackLink
+                    event="support_click"
+                    eventProps={{ context: serviceContext, channel: "email" }}
+                    href={supportEmailHref}
+                    className="group flex touch-manipulation items-center justify-between rounded-xl border border-border/70 bg-muted/25 p-3.5 transition-all duration-200 hover:border-border hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.98]"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <HugeiconsIcon icon={Mail01Icon} size={19} aria-hidden="true" />
                       </div>
-                    ) : (
-                      <form onSubmit={onCallbackSubmit} noValidate className="flex flex-col gap-2.5">
-                        <span className="text-xs font-semibold text-foreground">
-                          Or Request a Callback
+                      <div className="flex min-w-0 flex-col text-left">
+                        <span className="truncate text-sm font-semibold tracking-tight text-foreground">
+                          Email Concierge
                         </span>
-                        <Input
-                          label="Your Name"
-                          type="text"
-                          autoComplete="name"
-                          placeholder="Adaeze Obi…"
-                          error={errors.customerName?.message}
-                          {...register("customerName")}
-                        />
-                        <Input
-                          label="WhatsApp / Phone Number"
-                          type="tel"
-                          autoComplete="tel"
-                          inputMode="tel"
-                          spellCheck={false}
-                          placeholder={`${company.phone.display}…`}
-                          error={errors.customerPhone?.message}
-                          {...register("customerPhone")}
-                        />
-                        <Input
-                          label="Brief Details (Optional)"
-                          type="text"
-                          autoComplete="off"
-                          placeholder="2 travellers to London in July…"
-                          error={errors.customerNotes?.message}
-                          {...register("customerNotes")}
-                        />
-                        <Button
-                          type="submit"
-                          size="sm"
-                          variant="secondary"
-                          isLoading={isSubmitting}
-                          className="w-full touch-manipulation text-xs"
-                        >
-                          Request a Callback
-                        </Button>
-                      </form>
-                    )}
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          {company.email} • Complex or corporate inquiries
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:text-foreground">
+                      <HugeiconsIcon icon={ArrowUpRight01Icon} size={15} aria-hidden="true" />
+                    </div>
+                  </TrackLink>
+                </div>
+
+                <div className="flex flex-col gap-2 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon
+                      icon={Clock01Icon}
+                      size={13}
+                      className="shrink-0 text-muted-foreground/80"
+                      aria-hidden="true"
+                    />
+                    <span>Available Mon – Sat, 8:00 AM – 6:00 PM (WAT)</span>
                   </div>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Chat directly with real travel advisors. We assist with booking
+                    confirmations, itinerary design, and travel questions.
+                  </p>
                 </div>
               </Drawer.Content>
             </Drawer.Popup>

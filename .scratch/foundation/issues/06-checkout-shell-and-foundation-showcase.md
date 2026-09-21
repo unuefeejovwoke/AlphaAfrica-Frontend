@@ -2,7 +2,7 @@
 
 **What to build:** The streamlined `(checkout)` layout boundary and a complete Foundation Showcase route. When transitioning to checkout, a guest encounters a distraction-free shell with an Alphaa brand emblem, step progress indicator, payment security reassurance badges, and an emergency phone support link. A Foundation Showcase route allows visual and functional verification of all Phase 1 components.
 
-**Blocked by:** 02 — Public Navigation Header and Editorial Brand Footer, 03 — Assisted Service Support Widget and Contact Drawer, 04 — Accessible Form Controls and Passenger Stepper, 05 — Travel Feedback States and Toast System
+**Blocked by:** 02 — Public Navigation Header and Editorial Brand Footer, 03 — Assisted Service Support Widget and Contact Drawer, 04 — Accessible Form Controls and Traveller Stepper, 05 — Travel Feedback States and Toast System
 
 **Status:** resolved
 

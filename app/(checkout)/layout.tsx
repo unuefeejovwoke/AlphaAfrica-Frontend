@@ -45,7 +45,7 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
               <span translate="no" className="text-base font-bold tracking-tight text-foreground">
                 Alphaa <span className="font-medium text-primary">Africa</span>
               </span>
-              <span className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+              <span className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
                 Secure Checkout
               </span>
             </span>
@@ -83,7 +83,7 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
             </span>
             <a
               href={`tel:${company.phone.e164}`}
-              className="flex touch-manipulation items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-foreground hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-11 touch-manipulation items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-foreground hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <HugeiconsIcon icon={Call02Icon} size={16} aria-hidden="true" />
               <span className="hidden lg:inline">Emergency Help:</span>
@@ -100,8 +100,8 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
                   aria-current={step.current ? "step" : undefined}
                   className={
                     step.current
-                      ? "w-full truncate rounded-full bg-primary/10 px-2.5 py-1 text-center text-[11px] font-semibold text-primary"
-                      : "w-full truncate rounded-full px-2.5 py-1 text-center text-[11px] font-medium text-muted-foreground"
+                      ? "w-full truncate rounded-full bg-primary/10 px-2.5 py-1 text-center text-xs font-semibold text-primary"
+                      : "w-full truncate rounded-full px-2.5 py-1 text-center text-xs font-medium text-muted-foreground"
                   }
                 >
                   <span className="font-variant-numeric tabular-nums">{index + 1}. </span>

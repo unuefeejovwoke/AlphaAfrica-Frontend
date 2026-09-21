@@ -2,136 +2,393 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { Drawer } from "@base-ui/react/drawer";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Menu01Icon,
   Cancel01Icon,
-  Airplane01Icon,
-  Building01Icon,
-  Luggage01Icon,
-  Passport01Icon,
-  Car01Icon,
-  Location01Icon,
   UserIcon,
+  ChevronDownIcon,
+  HelpCircleIcon,
+  PhoneIcon,
+  CustomerService01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-const NAV_SERVICES = [
-  { title: "Flights", href: "/flights", icon: Airplane01Icon },
-  { title: "Hotels", href: "/hotels", icon: Building01Icon },
-  { title: "Packages", href: "/packages", icon: Luggage01Icon },
-  { title: "Visa Assistance", href: "/visa", icon: Passport01Icon },
-  { title: "Car Rentals", href: "/car-rentals", icon: Car01Icon },
-  { title: "Destinations", href: "/destinations", icon: Location01Icon },
+const SERVICES = [
+  {
+    title: "Flights",
+    href: "/flights",
+    description: "Domestic and international flights with transparent pricing.",
+    image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=800&q=80",
+    span: "col-span-2",
+    sizes: "(max-width: 1280px) 50vw, 600px",
+  },
+  {
+    title: "Hotels",
+    href: "/hotels",
+    description: "Handpicked hotels, lodges, and luxury stays.",
+    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    span: "col-span-1",
+    sizes: "(max-width: 1280px) 25vw, 300px",
+  },
+  {
+    title: "Destinations",
+    href: "/destinations",
+    description: "Travel guides and insider recommendations across Africa and beyond.",
+    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+    span: "col-span-1",
+    sizes: "(max-width: 1280px) 25vw, 300px",
+  },
+  {
+    title: "Visa Assistance",
+    href: "/visa",
+    description: "Step-by-step guidance and document review from consultants.",
+    image: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
+    span: "col-span-1",
+    sizes: "(max-width: 1280px) 25vw, 300px",
+  },
+  {
+    title: "Car Rentals",
+    href: "/car-rentals",
+    description: "Airport pickups, chauffeured rides, and self-drive rentals.",
+    image: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+    span: "col-span-1",
+    sizes: "(max-width: 1280px) 25vw, 300px",
+  },
+  {
+    title: "Packages",
+    href: "/packages",
+    description: "Curated holiday packages with flights, stays, and guided tours.",
+    image: "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=800&q=80",
+    span: "col-span-2",
+    sizes: "(max-width: 1280px) 50vw, 600px",
+  },
 ];
 
 export function PublicNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [megaMenuOpen, setMegaMenuOpen] = React.useState(false);
+  const [mobileServicesOpen, setMobileServicesOpen] = React.useState(true);
+  const megaMenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exploreTriggerRef = React.useRef<HTMLDivElement>(null);
+  const megaMenuRef = React.useRef<HTMLDivElement>(null);
+
+  const handleMegaMenuEnter = React.useCallback(() => {
+    if (megaMenuTimeoutRef.current) {
+      clearTimeout(megaMenuTimeoutRef.current);
+      megaMenuTimeoutRef.current = null;
+    }
+    setMegaMenuOpen(true);
+  }, []);
+
+  const handleMegaMenuLeave = React.useCallback(() => {
+    megaMenuTimeoutRef.current = setTimeout(() => {
+      setMegaMenuOpen(false);
+    }, 200);
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      if (megaMenuTimeoutRef.current) {
+        clearTimeout(megaMenuTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!megaMenuOpen) return;
+
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      const target = event.target as Node;
+      if (
+        exploreTriggerRef.current &&
+        !exploreTriggerRef.current.contains(target) &&
+        megaMenuRef.current &&
+        !megaMenuRef.current.contains(target)
+      ) {
+        setMegaMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMegaMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [megaMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand Emblem */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-sm transition-transform group-hover:scale-105">
-            <span className="font-serif text-2xl font-bold tracking-tight text-white">α</span>
+    <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background">
+      <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
+          <div
+            ref={exploreTriggerRef}
+            onMouseEnter={handleMegaMenuEnter}
+            onMouseLeave={handleMegaMenuLeave}
+            className="relative"
+          >
+            <button
+              type="button"
+              onClick={() => setMegaMenuOpen((prev) => !prev)}
+              onMouseEnter={handleMegaMenuEnter}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              aria-expanded={megaMenuOpen}
+              aria-haspopup="true"
+            >
+              <span>Explore</span>
+              <HugeiconsIcon
+                icon={ChevronDownIcon}
+                size={14}
+                className={`transition-transform duration-200 ease-out ${megaMenuOpen ? "rotate-180 text-primary" : "text-muted-foreground"}`}
+                aria-hidden="true"
+              />
+            </button>
           </div>
+
+          <Link
+            href="/faq"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <span>FAQ</span>
+          </Link>
+
+          <Link
+            href="/contact"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <span>Contact</span>
+          </Link>
+        </nav>
+
+        <Link
+          href="/"
+          className="group flex items-center gap-2.5 lg:absolute lg:left-1/2 lg:-translate-x-1/2"
+        >
+          <Image
+            src="/android-chrome-192x192.png"
+            alt="Alphaa Africa"
+            width={32}
+            height={32}
+            className="size-8 object-contain transition-transform duration-300 ease-out group-hover:scale-105"
+            priority
+          />
           <div className="flex flex-col">
-            <span className="text-xl font-bold tracking-tight text-foreground">
-              Alphaa <span className="text-primary font-medium">Africa</span>
+            <span className="text-lg font-bold tracking-tight leading-none">
+              <span className="text-secondary">Alphaa</span> <span className="font-medium text-primary">Africa</span>
             </span>
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-              Travel & Concierge
+            <span className="text-[7.5px] font-semibold tracking-[0.18em] text-muted-foreground uppercase leading-none mt-0.5">
+              Travel & Assisted Service
             </span>
           </div>
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
-          {NAV_SERVICES.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <HugeiconsIcon icon={item.icon} size={16} className="text-muted-foreground" />
-              <span>{item.title}</span>
-            </Link>
-          ))}
-        </nav>
-
-        {/* Desktop Actions */}
-        <div className="hidden lg:flex items-center gap-3">
+        <div className="hidden items-center gap-2 lg:flex">
           <Link
             href="/login"
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-foreground/80 hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
-            <HugeiconsIcon icon={UserIcon} size={16} />
-            <span>Log in</span>
+            <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
+            <span>Sign In</span>
           </Link>
-          <Button render={<Link href="/book" />} size="default" className="shadow-sm">
-            Book a Trip
+          <Button render={<Link href="/packages" />} size="default">
+            Plan a Trip
           </Button>
         </div>
 
-        {/* Mobile Menu Button */}
-        <div className="flex lg:hidden items-center gap-2">
-          <Button render={<Link href="/book" />} size="sm" className="text-xs">
-            Book
+        <div className="flex items-center gap-2 lg:hidden">
+          <Button render={<Link href="/packages" />} size="sm" className="text-xs">
+            Plan
           </Button>
           <button
             type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="inline-flex size-10 items-center justify-center rounded-lg border border-border bg-card text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => setMobileMenuOpen(true)}
+            className="inline-flex size-9 touch-manipulation items-center justify-center rounded-lg border border-border/60 bg-card text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             aria-expanded={mobileMenuOpen}
             aria-label="Toggle navigation menu"
           >
-            <HugeiconsIcon icon={mobileMenuOpen ? Cancel01Icon : Menu01Icon} size={20} />
+            <HugeiconsIcon icon={Menu01Icon} size={18} aria-hidden="true" />
           </button>
         </div>
-      </div>
 
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden border-b border-border bg-background px-4 py-6 shadow-xl animate-in slide-in-from-top-2">
-          <div className="flex flex-col gap-2">
-            <div className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Services
-            </div>
-            {NAV_SERVICES.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-base font-medium text-foreground hover:bg-muted transition-colors"
-              >
-                <div className="flex size-8 items-center justify-center rounded-lg bg-muted text-primary">
-                  <HugeiconsIcon icon={item.icon} size={18} />
+        {megaMenuOpen && (
+          <div
+            ref={megaMenuRef}
+            onMouseEnter={handleMegaMenuEnter}
+            onMouseLeave={handleMegaMenuLeave}
+            className="absolute left-4 right-4 sm:left-6 sm:right-6 lg:left-8 lg:right-8 top-full pt-2 hidden lg:block"
+          >
+            <div className="w-full rounded-2xl border border-border/80 bg-card p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)]">
+              <div className="grid grid-cols-4 gap-3.5">
+                {SERVICES.map((service) => (
+                  <Link
+                    key={service.href}
+                    href={service.href}
+                    onClick={() => setMegaMenuOpen(false)}
+                    className={cn(
+                      "group/card relative flex h-[190px] flex-col justify-end overflow-hidden rounded-xl border border-border/40 p-4 transition-all duration-300 hover:border-primary/50 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                      service.span,
+                    )}
+                  >
+                    <Image
+                      src={service.image}
+                      alt={service.title}
+                      fill
+                      sizes={service.sizes}
+                      className="object-cover transition-transform duration-500 ease-out group-hover/card:scale-105"
+                    />
+
+                    <div className="absolute inset-0 bg-black/40 transition-colors duration-300 group-hover/card:bg-black/30" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+                    <div className="relative z-10">
+                      <h3 className="text-base font-bold text-white tracking-tight">
+                        {service.title}
+                      </h3>
+                      <p className="mt-1 text-xs text-white/80 line-clamp-2 leading-relaxed">
+                        {service.description}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <HugeiconsIcon icon={CustomerService01Icon} size={15} className="text-primary" aria-hidden="true" />
+                  <span>
+                    Have questions or need trip assistance?{" "}
+                    <Link
+                      href="/contact"
+                      onClick={() => setMegaMenuOpen(false)}
+                      className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+                    >
+                      Contact our Abuja team
+                    </Link>
+                  </span>
                 </div>
-                <span>{item.title}</span>
-              </Link>
-            ))}
-
-            <div className="mt-4 border-t border-border pt-4 flex flex-col gap-3">
-              <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-sm font-medium text-foreground hover:bg-muted"
-              >
-                <HugeiconsIcon icon={UserIcon} size={18} />
-                <span>Log in to your account</span>
-              </Link>
-              <Button
-                render={<Link href="/book" onClick={() => setMobileMenuOpen(false)} />}
-                size="lg"
-                className="w-full justify-center"
-              >
-                Book a Trip
-              </Button>
+                <span className="text-[11px] text-muted-foreground">
+                  Verified assistance & Paystack secured
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      <Drawer.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <Drawer.Portal>
+          <Drawer.Viewport className="fixed inset-0 z-50 flex items-start justify-center p-4">
+            <Drawer.Popup className="max-h-[88vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-border/60 bg-background overscroll-contain px-4 py-5 shadow-2xl lg:hidden">
+              <Drawer.Content className="flex min-w-0 flex-col gap-1">
+                <div className="flex items-center justify-between px-2 pb-3">
+                  <Drawer.Title className="text-sm font-semibold text-foreground">
+                    Menu
+                  </Drawer.Title>
+                  <Drawer.Close
+                    aria-label="Close navigation menu"
+                    className="inline-flex size-8 touch-manipulation items-center justify-center rounded-lg border border-border/60 bg-card text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+                  </Drawer.Close>
+                </div>
+                <Drawer.Description className="sr-only">
+                  Alphaa Africa navigation
+                </Drawer.Description>
+
+                <button
+                  type="button"
+                  onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
+                  className="flex w-full touch-manipulation items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  aria-expanded={mobileServicesOpen}
+                >
+                  <span>Explore</span>
+                  <HugeiconsIcon
+                    icon={ChevronDownIcon}
+                    size={16}
+                    className={`text-muted-foreground transition-transform duration-200 ease-out ${mobileServicesOpen ? "rotate-180" : ""}`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                {mobileServicesOpen && (
+                  <div className="grid grid-cols-2 gap-2 py-1">
+                    {SERVICES.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="group relative flex h-24 flex-col justify-end overflow-hidden rounded-xl border border-border/50 p-2.5 transition-transform active:scale-[0.98]"
+                      >
+                        <Image
+                          src={item.image}
+                          alt={item.title}
+                          fill
+                          sizes="180px"
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/45" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
+                        <div className="relative z-10">
+                          <span className="text-xs font-bold text-white leading-tight">{item.title}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
+                <Link
+                  href="/faq"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex touch-manipulation items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <HugeiconsIcon icon={HelpCircleIcon} size={15} className="text-muted-foreground" aria-hidden="true" />
+                  <span>FAQ</span>
+                </Link>
+
+                <Link
+                  href="/contact"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex touch-manipulation items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <HugeiconsIcon icon={PhoneIcon} size={15} className="text-muted-foreground" aria-hidden="true" />
+                  <span>Contact</span>
+                </Link>
+
+                <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex touch-manipulation items-center justify-center gap-2 rounded-xl border border-border/60 bg-card py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  >
+                    <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
+                    <span>Sign In</span>
+                  </Link>
+                  <Button
+                    render={<Link href="/packages" onClick={() => setMobileMenuOpen(false)} />}
+                    size="lg"
+                    className="w-full justify-center"
+                  >
+                    Plan a Trip
+                  </Button>
+                </div>
+              </Drawer.Content>
+            </Drawer.Popup>
+          </Drawer.Viewport>
+        </Drawer.Portal>
+      </Drawer.Root>
     </header>
   );
 }

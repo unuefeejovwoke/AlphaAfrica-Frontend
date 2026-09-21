@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { ApiError, apiGet, apiPost } from "./client.ts";
+import { getSupportWhatsAppUrl } from "../content/company.ts";
 import { futureDateStringSchema } from "./validation.ts";
 import { travellerCompositionSchema, travellerPartyBaseSchema } from "../schemas/travel.ts";
+import type { BookingTravellersPayload } from "../schemas/travel.ts";
 
 /**
  * Flight domain — one-way international search (Phase 3, ticket 01).
@@ -935,4 +937,90 @@ export function saveConfirmedOffer(offer: FlightOffer): void {
 /** Read back the Confirmed Offer, or null when absent/corrupt. */
 export function readConfirmedOffer(): FlightOffer | null {
   return readOfferFromSession(CONFIRMED_OFFER_SESSION_KEY);
+}
+
+export const TRAVELLERS_DRAFT_SESSION_KEY = "alphaa:travellers-draft:v1";
+
+/** Persist the validated Traveller + Customer draft for ticket 07 (payment). */
+export function saveTravellersDraft(payload: BookingTravellersPayload): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(TRAVELLERS_DRAFT_SESSION_KEY, JSON.stringify(payload));
+  } catch {
+    // sessionStorage may throw in private mode — the in-memory submit still ran
+  }
+}
+
+/** Read back the Travellers draft, or null when absent/corrupt. */
+export function readTravellersDraft(): BookingTravellersPayload | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(TRAVELLERS_DRAFT_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== "object" || parsed === null) return null;
+    return parsed as BookingTravellersPayload;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Support context — trip-aware WhatsApp prefills (Phase 3, ticket 09)
+// ---------------------------------------------------------------------------
+
+/**
+ * Non-sensitive trip state for support hatches. Route, dates, party,
+ * references, and amounts are already URL/session-visible booking state —
+ * never names, emails, phones, passports, or payment data.
+ */
+export interface FlightTripContext {
+  origin?: string | null;
+  destination?: string | null;
+  departureDate?: string | null;
+  returnDate?: string | null;
+  adults?: number | null;
+  children?: number | null;
+  infants?: number | null;
+  reference?: string | null;
+  amount?: string | null;
+}
+
+/**
+ * Compact trip line for WhatsApp prefills, e.g.
+ * "LOS → DXB on 2026-05-01 for 2 adults (ref ABC123)". Skips whatever is
+ * unknown so partial context still reads naturally.
+ */
+export function describeFlightTrip(trip: FlightTripContext): string {
+  const parts: string[] = [];
+  const route = [trip.origin, trip.destination].filter(Boolean).join(" → ");
+  if (route) parts.push(route);
+  const dates = [trip.departureDate, trip.returnDate].filter(Boolean).join(" → ");
+  if (dates) parts.push(`on ${dates}`);
+  const party: string[] = [];
+  if (trip.adults) party.push(`${trip.adults} ${trip.adults === 1 ? "adult" : "adults"}`);
+  if (trip.children) {
+    party.push(trip.children === 1 ? "1 child" : `${trip.children} children`);
+  }
+  if (trip.infants) {
+    party.push(`${trip.infants} ${trip.infants === 1 ? "infant" : "infants"}`);
+  }
+  if (party.length > 0) parts.push(`for ${party.join(", ")}`);
+  if (trip.reference) parts.push(`(ref ${trip.reference})`);
+  if (trip.amount) parts.push(`· ${trip.amount}`);
+  return parts.join(" ");
+}
+
+/**
+ * WhatsApp support URL for a flight topic with optional trip context, e.g.
+ * "choosing a flight (LOS → DXB on 2026-05-01 for 2 adults)". Numbers stay
+ * owned by lib/content/company.ts — this only builds the message.
+ */
+export function getFlightSupportWhatsAppUrl(
+  topic: string,
+  trip?: FlightTripContext,
+): string {
+  const detail = trip ? describeFlightTrip(trip) : "";
+  const context = detail ? `${topic} (${detail})` : topic;
+  return getSupportWhatsAppUrl(context);
 }

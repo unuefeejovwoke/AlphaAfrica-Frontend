@@ -132,9 +132,8 @@ export default async function DestinationsPage() {
       <TerminalCta
         title="Not sure which destination fits?"
         description="Tell us your dates, party size, and budget. A specialist will match you with the right itinerary — no payment needed to start."
-        context="destination planning"
-        primaryHref="/packages"
-        primaryLabel="Explore packages"
+        primaryHref="/contact"
+        primaryLabel="Contact Us"
       />
     </div>
   );

@@ -8,6 +8,7 @@ import { Message01Icon } from "@hugeicons/core-free-icons";
 import { FlightSearchForm } from "@/components/flights/flight-search-form";
 import { FlightOfferSkeleton } from "@/components/flights/flight-offer-card";
 import { Button } from "@/components/ui/button";
+import { TrackLink } from "@/components/analytics/track-link";
 import {
   type Airport,
   type Cabin,
@@ -15,7 +16,9 @@ import {
   type FlightOfferDisplay,
   type FlightSearchFormValues,
   type FlightSearchPayload,
+  type FlightTripContext,
   tripTypeSchema,
+  getFlightSupportWhatsAppUrl,
   saveSelectedOffer,
   searchFlights,
 } from "@/lib/api/flights";
@@ -23,6 +26,7 @@ import { ApiError, getHumanErrorMessage } from "@/lib/api/client";
 import { track } from "@/lib/analytics";
 import { getSupportWhatsAppUrl } from "@/lib/content/company";
 import { isDomesticSearch, type DomesticSearchParams } from "@/lib/api/domestic";
+import { FILTER_PARAM_KEYS } from "@/lib/api/flight-filters";
 import { useDomesticStream } from "@/components/flights/use-domestic-stream";
 
 // Heavy result component — dynamic import for bundle size (vercel: bundle-dynamic-imports)
@@ -51,7 +55,7 @@ const DomesticStreamResults = dynamic(
     ssr: false,
     loading: () => (
       <div role="status" aria-live="polite" aria-busy="true" className="flex flex-col gap-4">
-        <p className="text-xs font-medium text-muted-foreground">
+        <p className="text-sm font-medium text-muted-foreground">
           Finding available flights… airlines being checked…
         </p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -278,14 +282,44 @@ export function FlightSearchPageClient() {
     isValid: hasValidUrlSearch,
   } = React.useMemo(() => parseUrlState(new URLSearchParams(paramsString)), [paramsString]);
 
+  // Auto-search needle strips filter/sort keys: refining results updates the
+  // URL (back/refresh/share) but must never retrigger a backend search.
+  // A fresh submit carries search-only params, so local filter state resets
+  // through URL adoption in useFilteredOffers.
+  const searchNeedle = React.useMemo(() => {
+    const stripped = new URLSearchParams(paramsString);
+    for (const key of FILTER_PARAM_KEYS) stripped.delete(key);
+    return stripped.toString();
+  }, [paramsString]);
+
   // Deferred URL values for non-urgent hydration (vercel: rerender-use-deferred-value)
   const deferredUrlValues = React.useDeferredValue(urlValues);
+
+  // Trip context for support hatches — route, dates, party from the URL
+  // search state, so specialists see what the customer searched.
+  const tripContext = React.useMemo<FlightTripContext>(() => {
+    const values = urlValues as Record<string, unknown>;
+    const legs = Array.isArray(values.legs) ? (values.legs as Record<string, unknown>[]) : [];
+    const firstLeg = legs.length > 0 ? legs[0] : null;
+    const text = (value: unknown) => (typeof value === "string" && value ? value : null);
+    const count = (value: unknown) => (typeof value === "number" && value > 0 ? value : null);
+    return {
+      origin: text(values.origin) ?? (firstLeg ? text(firstLeg.origin) : null),
+      destination: text(values.destination) ?? (firstLeg ? text(firstLeg.destination) : null),
+      departureDate: text(values.departureDate) ?? (firstLeg ? text(firstLeg.date) : null),
+      returnDate: text(values.returnDate),
+      adults: count(values.adults),
+      children: count(values.children),
+      infants: count(values.infants),
+    };
+  }, [urlValues]);
 
   const [offers, setOffers] = React.useState<FlightOffer[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [error, setError] = React.useState<unknown | null>(null);
   const [hasSearched, setHasSearched] = React.useState(hasValidUrlSearch);
   const lastTripTypeRef = React.useRef<TripType>("one_way");
+  const lastLegCountRef = React.useRef<number>(1);
   // Auto-detected journey: both-Nigerian one-way/round-trip → domestic SSE,
   // otherwise the international Amadeus legs path. No manual toggle in v1
   // (ADR-0004); multi-city always uses the international path since the SSE
@@ -313,6 +347,12 @@ export function FlightSearchPageClient() {
   const doSearch = React.useCallback(
     async (payload: FlightSearchPayload) => {
       lastTripTypeRef.current = payload.trip_type;
+      lastLegCountRef.current =
+        payload.trip_type === "multi_city"
+          ? payload.legs.length
+          : payload.trip_type === "round_trip"
+            ? 2
+            : 1;
       setHasSearched(true);
 
       // Domestic streaming path: one-way / round-trip between two Nigerian
@@ -351,6 +391,7 @@ export function FlightSearchPageClient() {
           trip_type: payload.trip_type,
           cabin: payload.cabin,
           route: "domestic",
+          leg_count: String(lastLegCountRef.current),
         });
         await domesticStart(domesticParams);
         return;
@@ -372,6 +413,7 @@ export function FlightSearchPageClient() {
           trip_type: payload.trip_type,
           cabin: payload.cabin,
           route: "international",
+          leg_count: String(lastLegCountRef.current),
         });
         const data = await searchFlights(payload);
         setOffers(data);
@@ -379,6 +421,7 @@ export function FlightSearchPageClient() {
           trip_type: payload.trip_type,
           results: String(data.length),
           route: "international",
+          leg_count: String(lastLegCountRef.current),
         });
       } catch (e) {
         const human = getHumanErrorMessage(e);
@@ -403,13 +446,14 @@ export function FlightSearchPageClient() {
       trip_type: lastTripTypeRef.current,
       results: String(domestic.cards.length),
       route: "domestic",
+      leg_count: String(lastLegCountRef.current),
     });
   }, [domestic.isComplete, domestic.isStreaming, domestic.isFallingBack, domestic.cards.length, domestic.didFallback, searchMode]);
 
   // On mount / URL change, auto-search if URL holds a valid search and we haven't yet
   React.useEffect(() => {
     if (!hasValidUrlSearch) return;
-    const needle = paramsString;
+    const needle = searchNeedle;
     if (lastAutoSearchKey.current === needle) return;
     lastAutoSearchKey.current = needle;
 
@@ -430,7 +474,7 @@ export function FlightSearchPageClient() {
     if (parsed.success) {
       void doSearch(parsed.data);
     }
-  }, [hasValidUrlSearch, paramsString, urlValues, doSearch]);
+  }, [hasValidUrlSearch, searchNeedle, urlValues, doSearch]);
 
   const handleSubmit = React.useCallback(
     (payload: FlightSearchPayload) => {
@@ -475,10 +519,15 @@ export function FlightSearchPageClient() {
       // URL/analytics, then enter the dedicated fare-confirmation step
       // (ticket 05) inside the distraction-free checkout shell.
       saveSelectedOffer(display.raw);
-      track("flight_selected", { trip_type: lastTripTypeRef.current, cabin: display.cabin });
+      track("flight_selected", {
+        trip_type: lastTripTypeRef.current,
+        cabin: display.cabin,
+        route: searchMode ?? "international",
+        leg_count: String(lastLegCountRef.current),
+      });
       router.push("/flights/confirm");
     },
-    [router],
+    [router, searchMode],
   );
 
   const formBusy = isSearching || domestic.isStreaming || domestic.isFallingBack;
@@ -518,7 +567,15 @@ export function FlightSearchPageClient() {
             {searchMode === "domestic" ? "Domestic flights" : "Flight offers"}
           </h2>
           <Button
-            render={<a href={getSupportWhatsAppUrl("choosing a flight")} target="_blank" rel="noopener noreferrer" />}
+            render={
+              <TrackLink
+                event="support_click"
+                eventProps={{ context: "choosing a flight", channel: "whatsapp" }}
+                href={getFlightSupportWhatsAppUrl("choosing a flight", tripContext)}
+                target="_blank"
+                rel="noopener noreferrer"
+              />
+            }
             variant="ghost"
             size="sm"
           >
@@ -558,19 +615,21 @@ export function FlightSearchPageClient() {
                 error={domestic.error}
                 onRetry={handleRetry}
                 onSelect={handleSelect}
+                trip={tripContext}
               />
             </React.Suspense>
           ) : (
             <React.Suspense
               fallback={
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div role="status" aria-live="polite" aria-busy="true" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <p className="sr-only">Finding available flights — checking airlines…</p>
                   {Array.from({ length: 4 }).map((_, i) => (
                     <FlightOfferSkeleton key={i} />
                   ))}
                 </div>
               }
             >
-              <FlightSearchResults offers={offers} isLoading={isSearching} error={error} onRetry={handleRetry} onSelect={handleSelect} />
+              <FlightSearchResults offers={offers} isLoading={isSearching} error={error} onRetry={handleRetry} onSelect={handleSelect} trip={tripContext} />
             </React.Suspense>
           )
         ) : (
@@ -579,6 +638,23 @@ export function FlightSearchPageClient() {
             <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
               Pick a trip type, fill in airports and dates above, then search to see live offers. Results stay shareable via URL.
             </p>
+            <Button
+              render={
+                <TrackLink
+                  event="support_click"
+                  eventProps={{ context: "planning a flight search", channel: "whatsapp" }}
+                  href={getSupportWhatsAppUrl("planning a flight search")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              }
+              variant="ghost"
+              size="sm"
+              className="mt-3"
+            >
+              <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
+              <span>Not sure where to start? Talk to Alphaa</span>
+            </Button>
           </div>
         )}
       </section>
