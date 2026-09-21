@@ -20,7 +20,8 @@ import { CardSkeleton } from "@/components/ui/skeleton";
 import { HomeSearchSwitcher } from "@/components/home/home-search-switcher";
 import { FeaturedDestinations } from "@/components/home/featured-destinations";
 import { FeaturedPackages } from "@/components/home/featured-packages";
-import { company } from "@/lib/content/company";
+import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
+import { TrackLink } from "@/components/analytics/track-link";
 import { canonicalUrl, getSiteUrl, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -151,7 +152,7 @@ export default function HomePage() {
               <span>Explore Holiday Packages</span>
             </Button>
             <a
-              href={`https://wa.me/${company.whatsapp.number}`}
+              href={getSupportWhatsAppUrl("travel planning")}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-foreground/80 hover:text-primary transition-colors"
@@ -252,15 +253,17 @@ export default function HomePage() {
             </div>
 
             <div className="mt-6 flex flex-col gap-2.5 pt-4 border-t border-secondary/20">
-              <a
-                href={`https://wa.me/${company.whatsapp.number}`}
+              <TrackLink
+                event="support_click"
+                eventProps={{ context: "bespoke assisted travel" }}
+                href={getSupportWhatsAppUrl("bespoke assisted travel")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
               >
                 <HugeiconsIcon icon={Message01Icon} size={16} />
                 <span>WhatsApp Specialist</span>
-              </a>
+              </TrackLink>
             </div>
           </div>
         </div>
@@ -363,8 +366,10 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
             <Button
               render={
-                <a
-                  href={`https://wa.me/${company.whatsapp.number}`}
+                <TrackLink
+                  event="support_click"
+                  eventProps={{ context: "speaking with a consultant" }}
+                  href={getSupportWhatsAppUrl("speaking with a consultant")}
                   target="_blank"
                   rel="noopener noreferrer"
                 />

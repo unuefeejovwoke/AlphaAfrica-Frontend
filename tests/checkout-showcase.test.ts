@@ -60,6 +60,6 @@ test("Foundation Showcase demonstrates all Phase 1 primitives in one view", () =
   assert.match(content, /CardSkeleton/, "Must demonstrate card skeletons");
   assert.match(content, /TableSkeleton/, "Must demonstrate table skeletons");
   assert.match(content, /notifyEnquirySent|notifyCallbackRequested/, "Must trigger toast notifications");
-  assert.match(content, /wa\.me/, "Must demonstrate WhatsApp escalation");
+  assert.match(content, /wa\.me|getSupportWhatsAppUrl|getWhatsAppUrl/, "Must demonstrate WhatsApp escalation");
   assert.match(content, /tel:/, "Must demonstrate emergency calling");
 });

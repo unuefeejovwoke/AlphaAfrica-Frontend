@@ -170,6 +170,83 @@ export function destinationDetailJsonLd(input: DestinationDetailJsonLdInput) {
   };
 }
 
+export interface VisaCountryListJsonLdInput {
+  name: string;
+  slug: string;
+  consultation_fee: string;
+  processing_time?: string;
+  flag_image: string;
+}
+
+/** ItemList graph for `/visa` — one Service node per country, no thin pages. */
+export function visaCountryListJsonLd(items: VisaCountryListJsonLdInput[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: canonicalUrl(`/visa/${item.slug}`),
+      item: {
+        "@type": "Service",
+        name: `${item.name} Visa Consultation`,
+        description:
+          item.processing_time && item.processing_time.length > 0
+            ? `Visa consultation for ${item.name}. Typical processing: ${item.processing_time}.`
+            : `Visa consultation for ${item.name} with human guidance.`,
+        image: resolveListingImageUrl(item.flag_image),
+        url: canonicalUrl(`/visa/${item.slug}`),
+        provider: {
+          "@type": "TravelAgency",
+          name: "Alphaa Africa",
+          url: getSiteUrl(),
+        },
+      },
+    })),
+  };
+}
+
+export interface VisaCountryDetailJsonLdInput {
+  name: string;
+  slug: string;
+  consultation_fee: string;
+  processing_time?: string;
+  flag_image: string;
+  description?: string;
+}
+
+/** Service graph for `/visa/[slug]` with an NGN consultation-fee offer. */
+export function visaCountryDetailJsonLd(input: VisaCountryDetailJsonLdInput) {
+  const url = canonicalUrl(`/visa/${input.slug}`);
+  const price = parsePriceAmount(input.consultation_fee);
+  return {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: `${input.name} Visa Consultation`,
+    description:
+      input.description && input.description.length > 0
+        ? input.description
+        : `Paid visa consultation for ${input.name} with human guidance from Alphaa Africa.`,
+    image: resolveListingImageUrl(input.flag_image),
+    url,
+    provider: {
+      "@type": "TravelAgency",
+      name: "Alphaa Africa",
+      url: getSiteUrl(),
+    },
+    areaServed: {
+      "@type": "Country",
+      name: input.name,
+    },
+    offers: {
+      "@type": "Offer",
+      price: price !== null ? String(price) : input.consultation_fee,
+      priceCurrency: "NGN",
+      availability: "https://schema.org/InStock",
+      url,
+    },
+  };
+}
 export interface PackageDetailJsonLdInput {
   title: string;
   slug: string;

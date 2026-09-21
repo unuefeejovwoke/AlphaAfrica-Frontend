@@ -15,6 +15,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TrackLink } from "@/components/analytics/track-link";
 import { callbackRequestSchema, type CallbackRequest } from "@/lib/schemas/travel";
 import { notifyCallbackRequested } from "@/lib/toast";
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
@@ -64,7 +65,7 @@ export function AssistedSupportWidget() {
   });
 
   return (
-    <div className="fixed right-6 bottom-6 z-50">
+    <div className="fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6">
       {!isOpen && (
         <button
           type="button"
@@ -111,7 +112,9 @@ export function AssistedSupportWidget() {
                 </div>
 
                 <div className="mt-4 flex min-w-0 flex-col gap-3">
-                  <a
+                  <TrackLink
+                    event="support_click"
+                    eventProps={{ context: serviceContext, channel: "whatsapp" }}
                     href={whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -131,9 +134,11 @@ export function AssistedSupportWidget() {
                       </div>
                     </div>
                     <span className="rounded bg-white/20 px-2 py-0.5 text-xs font-bold">Fast</span>
-                  </a>
+                  </TrackLink>
 
-                  <a
+                  <TrackLink
+                    event="support_click"
+                    eventProps={{ context: serviceContext, channel: "phone" }}
                     href={supportPhoneHref}
                     className="flex touch-manipulation items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
@@ -146,7 +151,7 @@ export function AssistedSupportWidget() {
                         {company.phone.display}
                       </span>
                     </div>
-                  </a>
+                  </TrackLink>
 
                   <div className="flex items-center gap-2 px-1 text-[11px] text-muted-foreground">
                     <HugeiconsIcon icon={Clock01Icon} size={14} className="shrink-0" aria-hidden="true" />

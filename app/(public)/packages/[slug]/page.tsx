@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/feedback/error-state";
 import { RetryButton } from "@/components/home/retry-button";
 import { PackageEnquiryForm } from "@/components/packages/package-enquiry-form";
+import { ViewTracker } from "@/components/analytics/view-tracker";
+import { TrackLink } from "@/components/analytics/track-link";
 import { getPackages, getPackageDetail } from "@/lib/api/packages";
 import { ApiError } from "@/lib/api/client";
 import { formatNaira } from "@/lib/format";
@@ -124,6 +126,7 @@ export default async function PackageDetailPage({
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-12 px-4 py-12 sm:px-6 md:gap-16 lg:px-8">
+      <ViewTracker event="package_viewed" props={{ slug: pkg.slug }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -319,7 +322,9 @@ export default async function PackageDetailPage({
           <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
             <Button
               render={
-                <a
+                <TrackLink
+                  event="support_click"
+                  eventProps={{ context: `a custom version of ${pkg.title}` }}
                   href={getSupportWhatsAppUrl(`a custom version of ${pkg.title}`)}
                   target="_blank"
                   rel="noopener noreferrer"

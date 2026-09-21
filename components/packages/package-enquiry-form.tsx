@@ -17,6 +17,8 @@ import {
 import { ApiError, getHumanErrorMessage } from "@/lib/api/client";
 import { getWhatsAppUrl } from "@/lib/content/company";
 import { notifyEnquirySent } from "@/lib/toast";
+import { track } from "@/lib/analytics";
+import { TrackLink } from "@/components/analytics/track-link";
 
 const ENQUIRY_FIELD_NAMES = [
   "full_name",
@@ -90,6 +92,12 @@ export function PackageEnquiryForm({
       const enquiry = await submitPackageEnquiry(packageSlug, data);
       submittedReference.current = enquiry.reference;
       setResult(enquiry);
+      track("package_enquiry_submitted", {
+        slug: packageSlug,
+        travellers: String(
+          enquiry.total_travelers ?? (enquiry.num_adults ?? 0) + (enquiry.num_children ?? 0),
+        ),
+      });
       notifyEnquirySent(destinationName);
     } catch (error) {
       // Map backend field errors onto the matching inputs (human copy only).
@@ -159,7 +167,9 @@ export function PackageEnquiryForm({
         <div className="flex flex-col gap-2">
           <Button
             render={
-              <a
+              <TrackLink
+                event="support_click"
+                eventProps={{ context: "package enquiry follow-up", channel: "whatsapp" }}
                 href={getWhatsAppUrl(
                   `Hello Alphaa Africa! I just sent package enquiry ${result.reference} for ${result.package_title} (${totalTravellers} travellers). Please help me plan it.`,
                 )}

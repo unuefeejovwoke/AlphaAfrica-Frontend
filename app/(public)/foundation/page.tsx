@@ -32,7 +32,7 @@ import {
   type ContactEnquiry,
   type TravellerComposition,
 } from "@/lib/schemas/travel";
-import { company } from "@/lib/content/company";
+import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
 
 const fareExample = new Intl.NumberFormat("en-NG", {
   style: "currency",
@@ -411,7 +411,7 @@ export default function FoundationShowcasePage() {
             <Button
               render={
                 <a
-                  href={`https://wa.me/${company.whatsapp.number}?text=Hello%20Alphaa%2C%20I%20need%20assistance%20with%20travel%20planning.`}
+                  href={getSupportWhatsAppUrl("travel planning")}
                   target="_blank"
                   rel="noopener noreferrer"
                 />

@@ -9,7 +9,7 @@ import {
   SecurityCheckIcon,
   Airplane01Icon,
 } from "@hugeicons/core-free-icons";
-import { company } from "@/lib/content/company";
+import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
 
 export function PublicFooter() {
   return (
@@ -238,7 +238,7 @@ export function PublicFooter() {
               </li>
               <li>
                 <a
-                  href={`https://wa.me/${company.whatsapp.number}`}
+                  href={getSupportWhatsAppUrl("travel planning")}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-foreground/80 hover:text-primary transition-colors flex items-center gap-1.5"

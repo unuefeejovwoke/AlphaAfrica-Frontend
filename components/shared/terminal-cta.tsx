@@ -1,6 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Message01Icon, Call02Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { TrackLink } from "@/components/analytics/track-link";
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
 
 /**
@@ -50,7 +51,9 @@ export function TerminalCta({
           </Button>
           <Button
             render={
-              <a
+              <TrackLink
+                event="support_click"
+                eventProps={{ context }}
                 href={getSupportWhatsAppUrl(context)}
                 target="_blank"
                 rel="noopener noreferrer"

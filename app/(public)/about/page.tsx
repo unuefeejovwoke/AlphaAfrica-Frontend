@@ -14,7 +14,7 @@ import {
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
-import { company } from "@/lib/content/company";
+import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
 import { contact } from "@/lib/content/contact";
 import { canonicalUrl, getSiteUrl, organizationJsonLd } from "@/lib/seo";
 
@@ -221,7 +221,7 @@ export default function AboutPage() {
             <Button
               render={
                 <a
-                  href={`https://wa.me/${company.whatsapp.number}`}
+                  href={getSupportWhatsAppUrl("planning your trip")}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="justify-center"
