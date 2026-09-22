@@ -11,17 +11,20 @@ import { Button } from "@/components/ui/button";
 import { TrackLink } from "@/components/analytics/track-link";
 import {
   type Airport,
-  type Cabin,
   type FlightOffer,
   type FlightOfferDisplay,
-  type FlightSearchFormValues,
   type FlightSearchPayload,
   type FlightTripContext,
-  tripTypeSchema,
   getFlightSupportWhatsAppUrl,
   saveSelectedOffer,
   searchFlights,
 } from "@/lib/api/flights";
+import {
+  buildFlightSearchQuery,
+  type FlightTripType,
+  parseFlightSearchPayload,
+  parseFlightSearchUrl,
+} from "@/lib/api/flight-search-url";
 import { ApiError, getHumanErrorMessage } from "@/lib/api/client";
 import { track } from "@/lib/analytics";
 import { getSupportWhatsAppUrl } from "@/lib/content/company";
@@ -68,207 +71,6 @@ const DomesticStreamResults = dynamic(
   },
 );
 
-const VALID_CABINS = ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"] as const;
-const VALID_TRIP_TYPES = ["one_way", "round_trip", "multi_city"] as const;
-type TripType = (typeof VALID_TRIP_TYPES)[number];
-
-interface ParsedLeg {
-  origin: string;
-  destination: string;
-  date: string;
-}
-
-/**
- * Single shared parser for URL → validated payload.
- * Delegates to the tripTypeSchema discriminated union so URL hydration
- * enforces exactly the same rules as the form (return≥departure,
- * chronological multi-city chain, 2–6 legs).
- */
-function parseSearchPayload(candidate: {
-  trip_type?: unknown;
-  origin?: unknown;
-  destination?: unknown;
-  departureDate?: unknown;
-  returnDate?: unknown;
-  legs?: unknown;
-  adults?: unknown;
-  children?: unknown;
-  infants?: unknown;
-  cabin?: unknown;
-  non_stop?: unknown;
-  max_stops?: unknown;
-}) {
-  const trip_type: TripType =
-    candidate.trip_type === "round_trip" || candidate.trip_type === "multi_city"
-      ? candidate.trip_type
-      : "one_way";
-  return tripTypeSchema.safeParse({
-    trip_type,
-    origin: typeof candidate.origin === "string" ? candidate.origin.toUpperCase() : candidate.origin,
-    destination:
-      typeof candidate.destination === "string" ? candidate.destination.toUpperCase() : candidate.destination,
-    departureDate: candidate.departureDate,
-    returnDate: candidate.returnDate,
-    legs: Array.isArray(candidate.legs)
-      ? candidate.legs.map((leg) => {
-          if (typeof leg !== "object" || leg === null) return leg;
-          const l = leg as Record<string, unknown>;
-          return {
-            ...l,
-            origin: typeof l.origin === "string" ? l.origin.toUpperCase() : l.origin,
-            destination:
-              typeof l.destination === "string" ? l.destination.toUpperCase() : l.destination,
-          };
-        })
-      : candidate.legs,
-    adults: candidate.adults,
-    children: candidate.children,
-    infants: candidate.infants,
-    cabin: candidate.cabin,
-    currency: "NGN",
-    non_stop: candidate.non_stop,
-    max_stops: candidate.max_stops,
-  });
-}
-
-/** Multi-city legs ride in one `legs` query param as JSON (opaque blob never in URL). */
-function parseLegsParam(raw: string | null): ParsedLeg[] | undefined {
-  if (!raw) return undefined;
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return undefined;
-    const legs: ParsedLeg[] = [];
-    for (const item of parsed) {
-      if (typeof item !== "object" || item === null) continue;
-      const l = item as Record<string, unknown>;
-      if (typeof l.origin !== "string" || typeof l.destination !== "string" || typeof l.date !== "string") {
-        continue;
-      }
-      legs.push({ origin: l.origin.toUpperCase(), destination: l.destination.toUpperCase(), date: l.date });
-    }
-    return legs.length >= 2 ? legs : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function lightAirport(iata: string): Airport | null {
-  return /^[A-Z]{3}$/.test(iata)
-    ? ({ iata_code: iata, name: iata, city: "", country_name: "", country_code: "" } as Airport)
-    : null;
-}
-
-function parseUrlState(searchParams: URLSearchParams): {
-  values: Partial<FlightSearchFormValues>;
-  originAirport: Airport | null;
-  destinationAirport: Airport | null;
-  legAirports: { origin: Airport | null; destination: Airport | null }[];
-  isValid: boolean;
-} {
-  const tripRaw = searchParams.get("trip_type") ?? "one_way";
-  const trip_type: TripType = (VALID_TRIP_TYPES as readonly string[]).includes(tripRaw)
-    ? (tripRaw as TripType)
-    : "one_way";
-  const origin = searchParams.get("origin")?.toUpperCase() ?? "";
-  const destination = searchParams.get("destination")?.toUpperCase() ?? "";
-  const departureDate = searchParams.get("departureDate") ?? "";
-  const returnDate = searchParams.get("returnDate") ?? "";
-  const legs = parseLegsParam(searchParams.get("legs"));
-  const adultsRaw = Number(searchParams.get("adults") ?? "1");
-  const childrenRaw = Number(searchParams.get("children") ?? "0");
-  const infantsRaw = Number(searchParams.get("infants") ?? "0");
-  const cabinRaw = searchParams.get("cabin") ?? "ECONOMY";
-  const non_stop = searchParams.get("non_stop") === "1" || searchParams.get("non_stop") === "true";
-  const maxStopsRaw = searchParams.get("max_stops");
-
-  const adults = Number.isFinite(adultsRaw) ? adultsRaw : 1;
-  const children = Number.isFinite(childrenRaw) ? childrenRaw : 0;
-  const infants = Number.isFinite(infantsRaw) ? infantsRaw : 0;
-  const cabin: Cabin = (VALID_CABINS as readonly string[]).includes(cabinRaw) ? (cabinRaw as Cabin) : "ECONOMY";
-  const max_stops = maxStopsRaw === null || maxStopsRaw === "" ? null : Number(maxStopsRaw);
-
-  // URL hydration vs autocomplete guard (spec §52 + story 30):
-  // Manual entry must pick via autocomplete (form enforces selectedAirport match).
-  // Shared/back/refresh URLs carry IATA-only state — Zod + backend remain the
-  // authority for unknown codes. We hydrate a light Airport so the form shows
-  // the IATA and can submit without re-typing; city/name warm on next focus.
-  const originAirport = lightAirport(origin);
-  const destinationAirport = lightAirport(destination);
-  const legAirports = (legs ?? []).map((leg) => ({
-    origin: lightAirport(leg.origin),
-    destination: lightAirport(leg.destination),
-  }));
-
-  const values: Partial<FlightSearchFormValues> = {
-    trip_type,
-    origin: origin || undefined,
-    destination: destination || undefined,
-    departureDate: departureDate || undefined,
-    returnDate: returnDate || undefined,
-    legs,
-    adults,
-    children,
-    infants,
-    cabin,
-    non_stop,
-    max_stops,
-  };
-
-  // Never trust URL — validate before auto-searching
-  const hasRequired =
-    trip_type === "multi_city"
-      ? (legs?.length ?? 0) >= 2
-      : trip_type === "round_trip"
-        ? Boolean(origin && destination && departureDate && returnDate)
-        : Boolean(origin && destination && departureDate);
-  if (!hasRequired) {
-    return { values, originAirport, destinationAirport, legAirports, isValid: false };
-  }
-  const parsed = parseSearchPayload({
-    trip_type,
-    origin,
-    destination,
-    departureDate,
-    returnDate,
-    legs,
-    adults,
-    children,
-    infants,
-    cabin,
-    non_stop,
-    max_stops,
-  });
-  return { values, originAirport, destinationAirport, legAirports, isValid: parsed.success };
-}
-
-function toSearchParams(payload: FlightSearchPayload): string {
-  const p = new URLSearchParams();
-  p.set("trip_type", payload.trip_type);
-  if (payload.trip_type === "multi_city") {
-    p.set(
-      "legs",
-      JSON.stringify(
-        payload.legs.map((leg) => ({ origin: leg.origin, destination: leg.destination, date: leg.date })),
-      ),
-    );
-  } else {
-    p.set("origin", payload.origin);
-    p.set("destination", payload.destination);
-    p.set("departureDate", payload.departureDate);
-    if (payload.trip_type === "round_trip") {
-      p.set("returnDate", payload.returnDate);
-    }
-  }
-  p.set("adults", String(payload.adults));
-  p.set("children", String(payload.children));
-  p.set("infants", String(payload.infants));
-  p.set("cabin", payload.cabin);
-  if (payload.non_stop) p.set("non_stop", "1");
-  if (payload.max_stops !== null && payload.max_stops !== undefined) p.set("max_stops", String(payload.max_stops));
-  // Never put opaque blobs, tokens, or PII in URL — only safe search state
-  return p.toString();
-}
-
 export function FlightSearchPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -280,7 +82,7 @@ export function FlightSearchPageClient() {
     destinationAirport: urlDest,
     legAirports: urlLegAirports,
     isValid: hasValidUrlSearch,
-  } = React.useMemo(() => parseUrlState(new URLSearchParams(paramsString)), [paramsString]);
+  } = React.useMemo(() => parseFlightSearchUrl(new URLSearchParams(paramsString)), [paramsString]);
 
   // Auto-search needle strips filter/sort keys: refining results updates the
   // URL (back/refresh/share) but must never retrigger a backend search.
@@ -318,7 +120,7 @@ export function FlightSearchPageClient() {
   const [isSearching, setIsSearching] = React.useState(false);
   const [error, setError] = React.useState<unknown | null>(null);
   const [hasSearched, setHasSearched] = React.useState(hasValidUrlSearch);
-  const lastTripTypeRef = React.useRef<TripType>("one_way");
+  const lastTripTypeRef = React.useRef<FlightTripType>("one_way");
   const lastLegCountRef = React.useRef<number>(1);
   // Auto-detected journey: both-Nigerian one-way/round-trip → domestic SSE,
   // otherwise the international Amadeus legs path. No manual toggle in v1
@@ -457,7 +259,7 @@ export function FlightSearchPageClient() {
     if (lastAutoSearchKey.current === needle) return;
     lastAutoSearchKey.current = needle;
 
-    const parsed = parseSearchPayload({
+    const parsed = parseFlightSearchPayload({
       trip_type: urlValues.trip_type ?? "one_way",
       origin: urlValues.origin,
       destination: urlValues.destination,
@@ -479,7 +281,7 @@ export function FlightSearchPageClient() {
   const handleSubmit = React.useCallback(
     (payload: FlightSearchPayload) => {
       // Preserve search state in URL for back/refresh/share
-      const nextQuery = toSearchParams(payload);
+      const nextQuery = buildFlightSearchQuery(payload);
       const currentQuery = searchParams.toString();
       if (nextQuery !== currentQuery) {
         router.push(`?${nextQuery}`, { scroll: false });
@@ -491,7 +293,7 @@ export function FlightSearchPageClient() {
   );
 
   const handleRetry = React.useCallback(() => {
-    const parsed = parseSearchPayload({
+    const parsed = parseFlightSearchPayload({
       trip_type: urlValues.trip_type ?? "one_way",
       origin: urlValues.origin,
       destination: urlValues.destination,

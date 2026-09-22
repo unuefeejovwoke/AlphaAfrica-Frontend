@@ -1,0 +1,515 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Search01Icon,
+  Message01Icon,
+  ArrowRight01Icon,
+  Exchange01Icon,
+  ArrowLeftRightIcon,
+  ArrowDown01Icon,
+  UserIcon,
+  Airplane01Icon,
+} from "@hugeicons/core-free-icons";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { TravellerStepper } from "@/components/ui/traveller-stepper";
+import { AirportAutocomplete } from "@/components/flights/airport-autocomplete";
+import { TrackLink } from "@/components/analytics/track-link";
+import {
+  type Airport,
+  type FlightSearchFormValues,
+  createEmptyLeg,
+  flightSearchFormSchema,
+  tripTypeSchema,
+} from "@/lib/api/flights";
+import { buildFlightSearchQuery } from "@/lib/api/flight-search-url";
+import { isDomesticSearch } from "@/lib/api/domestic";
+import { track } from "@/lib/analytics";
+import { getSupportWhatsAppUrl } from "@/lib/content/company";
+import { cn } from "@/lib/utils";
+
+const FROM_INPUT_ID = "home-flight-from";
+const TO_INPUT_ID = "home-flight-to";
+
+/** Explicit trip choices are remembered; first visit stays predictable (one_way). */
+const TRIP_TYPE_STORAGE_KEY = "alphaa:home-trip-type:v1";
+type HomeTripType = "one_way" | "round_trip" | "multi_city";
+
+function readStoredTripType(): HomeTripType {
+  if (typeof window === "undefined") return "one_way";
+  try {
+    const raw = window.localStorage.getItem(TRIP_TYPE_STORAGE_KEY);
+    return raw === "round_trip" || raw === "multi_city" ? raw : "one_way";
+  } catch {
+    return "one_way";
+  }
+}
+
+const TRIP_OPTIONS = [
+  { value: "one_way", label: "One way", icon: ArrowRight01Icon },
+  { value: "round_trip", label: "Round trip", icon: Exchange01Icon },
+  { value: "multi_city", label: "Multi-city", icon: Airplane01Icon },
+] as const;
+
+const CABIN_OPTIONS = [
+  { value: "ECONOMY", label: "Economy" },
+  { value: "PREMIUM_ECONOMY", label: "Premium Economy" },
+  { value: "BUSINESS", label: "Business" },
+  { value: "FIRST", label: "First" },
+] as const;
+
+type FocusableField = "origin" | "destination" | "departureDate" | "returnDate";
+
+/**
+ * Compact home flight search (client leaf, rendered only when the Flights
+ * tab is active so hotels/cars bundles are untouched).
+ *
+ * - Form layer is RHF + Zod over the shared flat adapter; submit parses via
+ *   the tripTypeSchema discriminated union — the single domain source of
+ *   truth — so no Zod rule is duplicated in the widget.
+ * - Airports require an autocomplete pick (free-text IATA bypass rejected);
+ *   currency is fixed NGN with no stop/fare controls on home.
+ * - Validation stays quiet while typing (errors surface on blur and on
+ *   submit); invalid submit stays on home, focuses the first error, and
+ *   announces it — with no navigation.
+ * - Multi-city is a delegate state, not an editor: one explanatory row plus
+ *   a continue action carrying the trip flag into the full editor.
+ * - Valid submit fires search-started analytics (trip type, cabin, and
+ *   domestic/international route class only — never PII or fare data), then
+ *   navigates with shareable URL search state.
+ */
+export function HomeFlightSearch() {
+  const router = useRouter();
+
+  const [originAirport, setOriginAirport] = React.useState<Airport | null>(null);
+  const [destinationAirport, setDestinationAirport] = React.useState<Airport | null>(null);
+  const [originInput, setOriginInput] = React.useState("");
+  const [destinationInput, setDestinationInput] = React.useState("");
+  const [routeTouched, setRouteTouched] = React.useState({ origin: false, destination: false });
+  const [submitAlert, setSubmitAlert] = React.useState<string | null>(null);
+  const [swapAnnouncement, setSwapAnnouncement] = React.useState("");
+
+  const today = React.useMemo(() => {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  }, []);
+
+  const form = useForm<FlightSearchFormValues>({
+    resolver: zodResolver(flightSearchFormSchema),
+    defaultValues: {
+      trip_type: readStoredTripType(),
+      origin: "",
+      destination: "",
+      departureDate: "",
+      returnDate: "",
+      legs: [createEmptyLeg(), createEmptyLeg()],
+      adults: 1,
+      children: 0,
+      infants: 0,
+      cabin: "ECONOMY",
+      currency: "NGN",
+      non_stop: false,
+      max_stops: null,
+    },
+    mode: "onTouched",
+    shouldFocusError: true,
+  });
+
+  const tripType: HomeTripType = form.watch("trip_type") ?? "one_way";
+  const departureDateValue = form.watch("departureDate") ?? "";
+  const isSubmitted = form.formState.isSubmitted;
+  const travellersLabelId = React.useId();
+  const isMultiCity = tripType === "multi_city";
+
+  const adults = form.watch("adults") ?? 1;
+  const children = form.watch("children") ?? 0;
+  const infants = form.watch("infants") ?? 0;
+  const composition = { adults, children, infants };
+  const totalTravellers = adults + children + infants;
+  const isSoloAdult = adults === 1 && children === 0 && infants === 0;
+  const shortLabel = isSoloAdult ? "1 Adult" : `${totalTravellers} traveller${totalTravellers === 1 ? "" : "s"}`;
+  const breakdown = isSoloAdult
+    ? ""
+    : [
+        `${adults} adult${adults === 1 ? "" : "s"}`,
+        ...(children > 0 ? [`${children} child${children === 1 ? "" : "ren"}`] : []),
+        ...(infants > 0 ? [`${infants} infant${infants === 1 ? "" : "s"}`] : []),
+      ].join(", ");
+
+  const handleCompositionChange = (next: typeof composition) => {
+    form.setValue("adults", next.adults, { shouldValidate: true });
+    form.setValue("children", next.children, { shouldValidate: true });
+    form.setValue("infants", next.infants, { shouldValidate: true });
+  };
+  const travellerError =
+    form.formState.errors.adults?.message ?? form.formState.errors.infants?.message ?? undefined;
+
+  // Keep RHF origin/destination in sync with autocomplete selection
+  React.useEffect(() => {
+    form.setValue("origin", originAirport?.iata_code ?? originInput.trim().toUpperCase(), {
+      shouldValidate: true,
+    });
+  }, [originAirport, originInput, form]);
+
+  React.useEffect(() => {
+    form.setValue("destination", destinationAirport?.iata_code ?? destinationInput.trim().toUpperCase(), {
+      shouldValidate: true,
+    });
+  }, [destinationAirport, destinationInput, form]);
+
+  const handleTripChange = (next: HomeTripType) => {
+    form.setValue("trip_type", next, { shouldValidate: true });
+    // Hidden-branch errors must not linger after switching trip type.
+    form.clearErrors();
+    setSubmitAlert(null);
+    try {
+      window.localStorage.setItem(TRIP_TYPE_STORAGE_KEY, next);
+    } catch {
+      // Private mode — the in-memory choice still applies.
+    }
+  };
+
+  const focusField = (name: FocusableField) => {
+    if (name === "origin") {
+      document.getElementById(FROM_INPUT_ID)?.focus();
+    } else if (name === "destination") {
+      document.getElementById(TO_INPUT_ID)?.focus();
+    } else {
+      form.setFocus(name);
+    }
+  };
+
+  /** Invalid submit: surface the first error inline, focus it, announce it. */
+  const failSubmit = (name: FocusableField, message: string) => {
+    form.setError(name, { type: "manual", message });
+    focusField(name);
+    setSubmitAlert(message);
+  };
+
+  const handleSwap = () => {
+    const nextOriginInput = destinationInput;
+    const nextDestinationInput = originInput;
+    const nextOriginAirport = destinationAirport;
+    const nextDestinationAirport = originAirport;
+    setOriginInput(nextOriginInput);
+    setDestinationInput(nextDestinationInput);
+    setOriginAirport(nextOriginAirport);
+    setDestinationAirport(nextDestinationAirport);
+    // Sync effects re-validate distinctness; announce the new route politely.
+    const from = nextOriginAirport?.iata_code ?? nextOriginInput.trim().toUpperCase();
+    const to = nextDestinationAirport?.iata_code ?? nextDestinationInput.trim().toUpperCase();
+    setSwapAnnouncement(from && to ? `Route swapped: ${from} to ${to}.` : "From and To swapped.");
+  };
+
+  const canSwap = originInput.trim() !== "" || destinationInput.trim() !== "";
+
+  // Multi-city delegates to the full flights editor: one explanatory row plus
+  // a continue action carrying the multi-city trip flag. No leg editing on home.
+  const delegateHref = "/flights?trip_type=multi_city";
+
+  const handleFormSubmit = form.handleSubmit(
+    (values) => {
+      setSubmitAlert(null);
+      // Final guard: airports must be selected via autocomplete.
+      // Typed-but-unselected IATA is rejected here (no free-text bypass).
+      const origin = values.origin;
+      const destination = values.destination;
+      if (!originAirport || originAirport.iata_code !== origin) {
+        failSubmit("origin", "Select an origin airport from the list");
+        return;
+      }
+      if (!destinationAirport || destinationAirport.iata_code !== destination) {
+        failSubmit("destination", "Select a destination airport from the list");
+        return;
+      }
+      // Domain validation via the discriminated union (strict, backend-mapped).
+      const parsed = tripTypeSchema.safeParse(values);
+      if (!parsed.success) {
+        const order: FocusableField[] = ["origin", "destination", "departureDate", "returnDate"];
+        let first: { name: FocusableField; message: string } | null = null;
+        for (const issue of parsed.error.issues) {
+          const [seg0] = issue.path;
+          if (seg0 === "origin" || seg0 === "destination" || seg0 === "departureDate" || seg0 === "returnDate") {
+            form.setError(seg0, { type: "zod", message: issue.message });
+            first ??= { name: seg0, message: issue.message };
+          } else {
+            form.setError("root", { type: "zod", message: issue.message });
+            first ??= { name: "origin", message: issue.message };
+          }
+        }
+        if (first) {
+          focusField(first.name);
+          setSubmitAlert(first.message);
+        }
+        return;
+      }
+      if (parsed.data.trip_type === "multi_city") {
+        // Unreachable on home — multi-city delegates to the full editor and
+        // never submits from this widget. Guarded, never navigated blindly.
+        return;
+      }
+      // Analytics carry trip type, cabin, and route class only — never PII
+      // or fare data (sanitized by the analytics allowlist).
+      track("flight_search_started", {
+        trip_type: parsed.data.trip_type,
+        cabin: parsed.data.cabin,
+        route: isDomesticSearch(parsed.data.origin, parsed.data.destination)
+          ? "domestic"
+          : "international",
+      });
+      router.push(`/flights?${buildFlightSearchQuery(parsed.data)}`);
+    },
+    (errors) => {
+      // Full check on submit: focus the first error in desktop field order.
+      const order: FocusableField[] = ["origin", "destination", "departureDate", "returnDate"];
+      const first = order.find((name) => errors[name]?.message);
+      const message =
+        first && typeof errors[first]?.message === "string"
+          ? String(errors[first]?.message)
+          : "Check the highlighted fields and try again.";
+      if (first) focusField(first);
+      setSubmitAlert(message);
+    },
+  );
+
+  // Quiet while typing: route errors surface on blur or after a submit attempt.
+  const originError =
+    routeTouched.origin || isSubmitted ? form.formState.errors.origin?.message : undefined;
+  const destinationError =
+    routeTouched.destination || isSubmitted ? form.formState.errors.destination?.message : undefined;
+  const departureError =
+    form.formState.touchedFields.departureDate || isSubmitted
+      ? form.formState.errors.departureDate?.message
+      : undefined;
+  const returnError =
+    form.formState.touchedFields.returnDate || isSubmitted
+      ? form.formState.errors.returnDate?.message
+      : undefined;
+
+  const formAlert = submitAlert ?? form.formState.errors.root?.message ?? null;
+
+  return (
+    <form
+      noValidate
+      onSubmit={handleFormSubmit}
+      aria-label="Flight search"
+      className="flex flex-col gap-4"
+    >
+      <div
+        role="radiogroup"
+        aria-label="Trip type"
+        className="inline-flex items-center gap-1 self-start rounded-2xl border border-border/50 bg-muted/70 p-1 dark:bg-muted/40"
+      >
+        {TRIP_OPTIONS.map((option) => {
+          const checked = tripType === option.value;
+          return (
+            <label
+              key={option.value}
+              className={cn(
+                "inline-flex touch-manipulation items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:text-sm",
+                checked
+                  ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50",
+              )}
+            >
+              <input
+                type="radio"
+                name="trip_type"
+                value={option.value}
+                checked={checked}
+                onChange={() => handleTripChange(option.value)}
+                className="sr-only"
+              />
+              <HugeiconsIcon
+                icon={option.icon}
+                size={16}
+                aria-hidden="true"
+                className={checked ? "shrink-0 text-primary" : "shrink-0 text-muted-foreground"}
+              />
+              <span>{option.label}</span>
+            </label>
+          );
+        })}
+      </div>
+
+      {isMultiCity ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-muted/30 p-5 dark:bg-muted/15">
+          <p className="text-sm font-bold tracking-tight text-foreground">
+            Visiting more than one city?
+          </p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Multi-city trips need 2–6 legs in date order, so the full flights editor handles
+                each leg properly.
+              </p>
+          <Button render={<Link href={delegateHref} className="justify-center" />} size="lg" className="w-full justify-center">
+            <HugeiconsIcon icon={Airplane01Icon} size={18} aria-hidden="true" />
+            <span>Continue in the flights editor</span>
+          </Button>
+        </div>
+      ) : (
+        <>
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[1fr_auto_1fr]">
+        <div onBlur={() => setRouteTouched((t) => ({ ...t, origin: true }))}>
+          <AirportAutocomplete
+            id={FROM_INPUT_ID}
+            label="From"
+            placeholder="Lagos, LOS, Murtala Muhammed…"
+            value={originInput}
+            selectedAirport={originAirport}
+            onSelect={setOriginAirport}
+            onInputChange={setOriginInput}
+            error={originError}
+            helperText="Type at least 2 characters. Pick from the list."
+            excludeIata={destinationAirport?.iata_code ?? null}
+          />
+        </div>
+        <div className="flex justify-center md:pt-7">
+          <button
+            type="button"
+            onClick={handleSwap}
+            disabled={!canSwap}
+            aria-label="Swap origin and destination"
+            className="flex size-10 touch-manipulation items-center justify-center rounded-full border border-border bg-card text-foreground shadow-xs transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <HugeiconsIcon
+              icon={ArrowLeftRightIcon}
+              size={16}
+              aria-hidden="true"
+              className="rotate-90 md:rotate-0"
+            />
+          </button>
+        </div>
+        <div onBlur={() => setRouteTouched((t) => ({ ...t, destination: true }))}>
+          <AirportAutocomplete
+            id={TO_INPUT_ID}
+            label="To"
+            placeholder="London, LHR, Heathrow…"
+            value={destinationInput}
+            selectedAirport={destinationAirport}
+            onSelect={setDestinationAirport}
+            onInputChange={setDestinationInput}
+            error={destinationError}
+            helperText="International search — try city, name, or code."
+            excludeIata={originAirport?.iata_code ?? null}
+          />
+        </div>
+      </div>
+      <p aria-live="polite" role="status" className="sr-only">
+        {swapAnnouncement}
+      </p>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Input
+          label="Departure"
+          type="date"
+          min={today}
+          helperText="Today or later — real calendar dates only."
+          error={departureError}
+          {...form.register("departureDate")}
+        />
+        {tripType === "round_trip" ? (
+          <Input
+            label="Return"
+            type="date"
+            min={departureDateValue || today}
+            helperText="On or after the departure date."
+            error={returnError}
+            {...form.register("returnDate")}
+          />
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="w-full space-y-1.5">
+          <span
+            id={travellersLabelId}
+            className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
+          >
+            Travellers
+          </span>
+          <PopoverPrimitive.Root>
+            <PopoverPrimitive.Trigger className="flex h-10 w-full touch-manipulation items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-sm text-foreground shadow-xs transition-colors hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none">
+              <span className="flex min-w-0 items-center gap-2">
+                <HugeiconsIcon icon={UserIcon} size={16} aria-hidden="true" className="shrink-0 text-muted-foreground" />
+                <span className="truncate font-medium">{shortLabel}</span>
+                {breakdown ? <span className="sr-only">: {breakdown}</span> : null}
+              </span>
+              <HugeiconsIcon icon={ArrowDown01Icon} size={16} aria-hidden="true" className="shrink-0 text-muted-foreground" />
+            </PopoverPrimitive.Trigger>
+            <PopoverPrimitive.Portal>
+              <PopoverPrimitive.Positioner sideOffset={4} className="z-50 outline-none">
+                <PopoverPrimitive.Popup className="w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 text-foreground shadow-lg">
+                  <TravellerStepper
+                    value={composition}
+                    onChange={handleCompositionChange}
+                    error={travellerError}
+                  />
+                </PopoverPrimitive.Popup>
+              </PopoverPrimitive.Positioner>
+            </PopoverPrimitive.Portal>
+          </PopoverPrimitive.Root>
+        </div>
+        <Controller
+          name="cabin"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <Select
+              label="Cabin"
+              options={[...CABIN_OPTIONS]}
+              value={field.value}
+              onValueChange={field.onChange}
+              error={fieldState.error?.message}
+              helperText="Applied to every leg."
+            />
+          )}
+        />
+      </div>
+
+      {formAlert ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-xs leading-relaxed text-foreground"
+        >
+          {formAlert}
+        </div>
+      ) : null}
+
+      <Button type="submit" size="lg" className="w-full justify-center">
+        <HugeiconsIcon icon={Search01Icon} size={18} aria-hidden="true" />
+        <span>Search flights</span>
+      </Button>
+        </>
+      )}
+
+      <p className="text-center text-xs leading-relaxed text-muted-foreground">
+        No account needed. Prices in NGN. You&apos;ll confirm the live fare before paying.{" "}
+        <Button
+          render={
+            <TrackLink
+              event="support_click"
+              eventProps={{ context: "planning a flight search", channel: "whatsapp" }}
+              href={getSupportWhatsAppUrl("planning a flight search")}
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+          }
+          variant="link"
+          size="sm"
+          className="h-auto gap-1 px-0 text-xs"
+        >
+          <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
+          <span>Not sure? Talk to Alphaa</span>
+        </Button>
+      </p>
+    </form>
+  );
+}

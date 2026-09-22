@@ -12,6 +12,7 @@ import {
   ArrowUpRight01Icon,
 } from "@hugeicons/core-free-icons";
 import { ComingSoonHatch } from "@/components/home/coming-soon-hatch";
+import { HomeFlightSearch } from "@/components/home/home-flight-search";
 
 type InteractiveTabId = "flights" | "hotels" | "cars";
 
@@ -30,13 +31,7 @@ const TABS: TabItem[] = [
   { id: "visa", label: "Visa Assistance", icon: Passport01Icon, href: "/visa" },
 ];
 
-const COMING_SOON: Record<InteractiveTabId, { service: string; context: string; blurb: string }> = {
-  flights: {
-    service: "Flight bookings",
-    context: "flight bookings",
-    blurb:
-      "Self-service flight search lands in Phase 3. Until then, tell us your route and dates and a specialist will price options for you today.",
-  },
+const COMING_SOON: Record<Exclude<InteractiveTabId, "flights">, { service: string; context: string; blurb: string }> = {
   hotels: {
     service: "Hotel reservations",
     context: "hotel reservations",
@@ -53,7 +48,8 @@ const COMING_SOON: Record<InteractiveTabId, { service: string; context: string; 
 
 /**
  * Interactive search switcher with Apple-style segmented tabs.
- * Flights, Hotels, and Car Rentals switch assisted service previews.
+ * Flights renders the compact self-service search; Hotels and Car Rentals
+ * switch assisted service previews until their self-service phases land.
  * Packages and Visa Assistance link directly to their dedicated pages.
  */
 export function HomeSearchSwitcher() {
@@ -75,8 +71,6 @@ export function HomeSearchSwitcher() {
     setActiveTab(next);
     tabRefs.current[next]?.focus();
   };
-
-  const comingSoon = COMING_SOON[activeTab];
 
   return (
     <div className="rounded-3xl border border-border/80 bg-card/95 backdrop-blur-xl shadow-xl shadow-black/[0.04] p-4 sm:p-6 md:p-7 w-full">
@@ -144,11 +138,15 @@ export function HomeSearchSwitcher() {
           id={`search-panel-${activeTab}`}
           aria-labelledby={`search-tab-${activeTab}`}
         >
-          <ComingSoonHatch
-            service={comingSoon.service}
-            whatsappContext={comingSoon.context}
-            blurb={comingSoon.blurb}
-          />
+          {activeTab === "flights" ? (
+            <HomeFlightSearch />
+          ) : (
+            <ComingSoonHatch
+              service={COMING_SOON[activeTab].service}
+              whatsappContext={COMING_SOON[activeTab].context}
+              blurb={COMING_SOON[activeTab].blurb}
+            />
+          )}
         </div>
       </div>
     </div>
