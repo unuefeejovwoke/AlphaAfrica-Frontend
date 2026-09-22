@@ -244,3 +244,29 @@ export function getFaqGroup(id: FaqGroupId): FaqGroup | undefined {
 export function getAllFaqs(): Faq[] {
   return faqs.groups.flatMap((group) => group.faqs);
 }
+
+export interface HomepageFaqItem extends Faq {
+  category: string;
+}
+
+export const HOMEPAGE_FAQ_SELECTION = [
+  { groupId: "flights", faqId: "flights-pnr" },
+  { groupId: "hotels", faqId: "hotels-guest-booking" },
+  { groupId: "packages", faqId: "packages-enquiry-payment" },
+  { groupId: "visa", faqId: "visa-what" },
+  { groupId: "payments", faqId: "payments-how" },
+] as const;
+
+export function getHomepageFaqs(): HomepageFaqItem[] {
+  return HOMEPAGE_FAQ_SELECTION.map(({ groupId, faqId }) => {
+    const group = faqs.groups.find((g) => g.id === groupId);
+    const faq = group?.faqs.find((f) => f.id === faqId);
+    if (!faq || !group) {
+      throw new Error(`FAQ ${faqId} in group ${groupId} not found in lib/content/faqs.ts`);
+    }
+    return {
+      ...faq,
+      category: group.title,
+    };
+  });
+}

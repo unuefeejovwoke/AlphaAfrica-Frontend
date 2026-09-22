@@ -11,6 +11,7 @@ import {
 } from "../lib/seo.ts";
 import { formatNaira } from "../lib/format.ts";
 import type { FaqGroup } from "../lib/content/faqs.ts";
+import { getHomepageFaqs } from "../lib/content/faqs.ts";
 import { getFeaturedDestinations } from "../lib/api/destinations.ts";
 import { getFeaturedPackages } from "../lib/api/packages.ts";
 
@@ -215,4 +216,25 @@ test("FAQ renders crawlable groups with FAQPage JSON-LD and draft marking", () =
   assert.match(content, /faqPageJsonLd/, "FAQ must embed FAQPage JSON-LD");
   assert.match(content, /id=\{`faq-/, "FAQ groups must be anchor-addressable");
   assert.match(content, /raft/, "FAQ answers must be draft-marked until verified");
+});
+
+test("Home FAQ section pulls 5 distinct FAQs from lib/content/faqs and renders after TerminalCta", () => {
+  const homeContent = readRoute("app/(public)/page.tsx");
+  assert.match(homeContent, /<TerminalCta[\s\S]*<HomeFaq/, "FAQ section must appear after the CTA");
+
+  const faqs = getHomepageFaqs();
+  assert.equal(faqs.length, 5, "Homepage FAQ section must have exactly 5 questions");
+  const uniqueIds = new Set(faqs.map((f) => f.id));
+  assert.equal(uniqueIds.size, 5, "Homepage FAQs must be 5 distinct questions");
+
+  for (const faq of faqs) {
+    assert.ok(faq.question.length > 0, "Each FAQ must have a non-empty question");
+    assert.ok(faq.answer.length > 0, "Each FAQ must have a non-empty answer");
+    assert.ok(faq.category.length > 0, "Each FAQ must have an identified category");
+  }
+
+  const faqComponent = readRoute("components/home/home-faq.tsx");
+  assert.match(faqComponent, /"use client"/, "HomeFaq must be an interactive Client Component");
+  assert.match(faqComponent, /@base-ui\/react\/accordion/, "HomeFaq must use Base UI Accordion");
+  assert.doesNotMatch(faqComponent, /<Accordion\.Root[^>]*\bmultiple\b/, "HomeFaq must not enable the multiple prop");
 });

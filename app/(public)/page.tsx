@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { HomeSearchSwitcher } from "@/components/home/home-search-switcher";
 import { FeaturedPackages } from "@/components/home/featured-packages";
+import { HomeFaq } from "@/components/home/home-faq";
 import { TerminalCta } from "@/components/shared/terminal-cta";
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
 import { TrackLink } from "@/components/analytics/track-link";
@@ -413,6 +414,9 @@ export default function HomePage() {
           {getSupportWhatsAppUrl("speaking with a consultant")}
         </span>
       </section>
+
+      {/* Frequently Asked Questions */}
+      <HomeFaq />
     </div>
   );
 }
