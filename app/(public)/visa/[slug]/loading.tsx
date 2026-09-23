@@ -1,4 +1,4 @@
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { CardSkeleton } from "@/components/ui/skeleton"
 
 /** Loading skeleton for `/visa/[slug]` — mirrors the hero + form shape. */
 export default function VisaDetailLoading() {
@@ -19,5 +19,5 @@ export default function VisaDetailLoading() {
         <CardSkeleton />
       </div>
     </div>
-  );
+  )
 }

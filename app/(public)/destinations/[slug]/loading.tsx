@@ -1,4 +1,4 @@
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { CardSkeleton } from "@/components/ui/skeleton"
 
 /** Loading fallback for `/destinations/[slug]`: hero + card skeletons. */
 export default function DestinationDetailLoading() {
@@ -22,5 +22,5 @@ export default function DestinationDetailLoading() {
       </div>
       <span className="sr-only">Loading destination…</span>
     </div>
-  );
+  )
 }

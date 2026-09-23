@@ -1,7 +1,7 @@
-import * as React from "react";
-import type { Metadata } from "next";
-import { PriceConfirmationClient } from "@/components/flights/price-confirmation-client";
-import { canonicalUrl } from "@/lib/seo";
+import * as React from "react"
+import type { Metadata } from "next"
+import { PriceConfirmationClient } from "@/components/flights/price-confirmation-client"
+import { canonicalUrl } from "@/lib/seo"
 
 export const metadata: Metadata = {
   title: "Confirm Live Fare | Alphaa Africa",
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
-};
+}
 
 // Static shell in the distraction-free checkout group (ADR-0001). The opaque
 // Flight Offer blob is client-side (sessionStorage) and never enters the URL,
@@ -33,5 +33,5 @@ export default function ConfirmFlightPage() {
     >
       <PriceConfirmationClient />
     </React.Suspense>
-  );
+  )
 }

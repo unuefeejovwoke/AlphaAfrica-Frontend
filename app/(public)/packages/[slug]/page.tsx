@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { HugeiconsIcon } from "@hugeicons/react";
+import type { Metadata } from "next"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Location01Icon,
   Calendar01Icon,
@@ -16,55 +16,59 @@ import {
   Call02Icon,
   InformationCircleIcon,
   Luggage01Icon,
-} from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { ErrorState } from "@/components/feedback/error-state";
-import { RetryButton } from "@/components/home/retry-button";
-import { PackageEnquiryForm } from "@/components/packages/package-enquiry-form";
-import { PackageGallery } from "@/components/packages/package-gallery";
+} from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/feedback/error-state"
+import { RetryButton } from "@/components/home/retry-button"
+import { PackageEnquiryForm } from "@/components/packages/package-enquiry-form"
+import { PackageGallery } from "@/components/packages/package-gallery"
 import {
   PackageShareButton,
   PackageMobileBar,
-} from "@/components/packages/package-detail-client";
-import { ViewTracker } from "@/components/analytics/view-tracker";
-import { TrackLink } from "@/components/analytics/track-link";
-import { TerminalCta } from "@/components/shared/terminal-cta";
-import { getPackages, getPackageDetail } from "@/lib/api/packages";
-import { ApiError } from "@/lib/api/client";
-import { formatNaira } from "@/lib/format";
-import { canonicalUrl } from "@/lib/seo";
-import { humanizeSlug, packageDetailJsonLd, resolveListingImageUrl } from "@/lib/listings";
-import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
+} from "@/components/packages/package-detail-client"
+import { ViewTracker } from "@/components/analytics/view-tracker"
+import { TrackLink } from "@/components/analytics/track-link"
+import { TerminalCta } from "@/components/shared/terminal-cta"
+import { getPackages, getPackageDetail } from "@/lib/api/packages"
+import { ApiError } from "@/lib/api/client"
+import { formatNaira } from "@/lib/format"
+import { canonicalUrl } from "@/lib/seo"
+import {
+  humanizeSlug,
+  packageDetailJsonLd,
+  resolveListingImageUrl,
+} from "@/lib/listings"
+import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
 
-export const revalidate = 3600;
-export const dynamicParams = true;
+export const revalidate = 3600
+export const dynamicParams = true
 
-type DetailParams = { slug: string };
+type DetailParams = { slug: string }
 
 export async function generateStaticParams(): Promise<DetailParams[]> {
   try {
-    const page = await getPackages();
-    return page.results.map((pkg) => ({ slug: pkg.slug }));
+    const page = await getPackages()
+    return page.results.map((pkg) => ({ slug: pkg.slug }))
   } catch {
     // Backend may be unreachable at build time; ISR + dynamicParams
     // still renders new slugs on demand at runtime.
-    return [];
+    return []
   }
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<DetailParams>;
+  params: Promise<DetailParams>
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const url = canonicalUrl(`/packages/${slug}`);
+  const { slug } = await params
+  const url = canonicalUrl(`/packages/${slug}`)
   try {
-    const pkg = await getPackageDetail(slug);
+    const pkg = await getPackageDetail(slug)
     const description =
       pkg.summary.length > 0
         ? pkg.summary.slice(0, 155)
-        : `${pkg.title} — a ${pkg.duration_days}-day curated itinerary to ${pkg.destination_name} from ${formatNaira(pkg.price)} per person.`;
+        : `${pkg.title} — a ${pkg.duration_days}-day curated itinerary to ${pkg.destination_name} from ${formatNaira(pkg.price)} per person.`
     return {
       title: `${pkg.title} | Alphaa Africa`,
       description,
@@ -81,14 +85,14 @@ export async function generateMetadata({
           },
         ],
       },
-    };
+    }
   } catch {
-    const name = humanizeSlug(slug);
+    const name = humanizeSlug(slug)
     return {
       title: `${name} | Alphaa Africa`,
       description: `Curated holiday package with clear pricing and a no-payment enquiry from Alphaa Africa.`,
       alternates: { canonical: url },
-    };
+    }
   }
 }
 
@@ -109,7 +113,7 @@ const PACKAGE_FAQS = [
     q: "Can you assist with visas for this destination?",
     a: "Absolutely. Alphaa Africa offers comprehensive visa advisory and document preparation services for all our travel destinations.",
   },
-];
+]
 
 /**
  * `/packages/[slug]` (RSC, ISR 3600): Elevated editorial luxury package detail page.
@@ -124,15 +128,15 @@ const PACKAGE_FAQS = [
 export default async function PackageDetailPage({
   params,
 }: {
-  params: Promise<DetailParams>;
+  params: Promise<DetailParams>
 }) {
-  const { slug } = await params;
+  const { slug } = await params
 
-  let pkg;
+  let pkg
   try {
-    pkg = await getPackageDetail(slug);
+    pkg = await getPackageDetail(slug)
   } catch (error) {
-    if (error instanceof ApiError && error.code === "not-found") notFound();
+    if (error instanceof ApiError && error.code === "not-found") notFound()
     return (
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-16 sm:px-6 lg:px-8">
         <ErrorState
@@ -142,7 +146,7 @@ export default async function PackageDetailPage({
         />
         <RetryButton label="Retry loading package" />
       </div>
-    );
+    )
   }
 
   const jsonLd = packageDetailJsonLd({
@@ -153,49 +157,75 @@ export default async function PackageDetailPage({
     price: pkg.price,
     main_image: pkg.main_image,
     description: pkg.description || pkg.summary,
-  });
+  })
 
   const durationFormatted =
     pkg.duration_nights > 0
       ? `${pkg.duration_days} Days / ${pkg.duration_nights} Nights`
-      : `${pkg.duration_days} Days`;
+      : `${pkg.duration_days} Days`
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-10 sm:gap-14 px-4 py-8 sm:px-6 md:py-12 lg:px-8 pb-24 sm:pb-32">
+    <div className="mx-auto flex max-w-7xl flex-col gap-10 px-4 py-8 pb-24 sm:gap-14 sm:px-6 sm:pb-32 md:py-12 lg:px-8">
       <ViewTracker event="package_viewed" props={{ slug: pkg.slug }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
       {/* 1. Top Bar: Breadcrumb & Social Actions */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Link href="/" className="hover:text-primary transition-colors">
+        <nav
+          aria-label="Breadcrumb"
+          className="flex items-center gap-2 text-xs text-muted-foreground"
+        >
+          <Link href="/" className="transition-colors hover:text-primary">
             Home
           </Link>
-          <span aria-hidden="true" className="text-muted-foreground/60">/</span>
-          <Link href="/packages" className="hover:text-primary transition-colors">
+          <span aria-hidden="true" className="text-muted-foreground/60">
+            /
+          </span>
+          <Link
+            href="/packages"
+            className="transition-colors hover:text-primary"
+          >
             Holiday Packages
           </Link>
-          <span aria-hidden="true" className="text-muted-foreground/60">/</span>
+          <span aria-hidden="true" className="text-muted-foreground/60">
+            /
+          </span>
           <Link
             href={`/destinations/${pkg.destination_slug}`}
-            className="hover:text-primary transition-colors"
+            className="transition-colors hover:text-primary"
           >
             {pkg.destination_name}
           </Link>
-          <span aria-hidden="true" className="text-muted-foreground/60">/</span>
-          <span aria-current="page" className="truncate font-semibold text-foreground max-w-[200px] sm:max-w-xs">
+          <span aria-hidden="true" className="text-muted-foreground/60">
+            /
+          </span>
+          <span
+            aria-current="page"
+            className="max-w-[200px] truncate font-semibold text-foreground sm:max-w-xs"
+          >
             {pkg.title}
           </span>
         </nav>
 
         <div className="flex items-center gap-2.5">
-          <PackageShareButton title={pkg.title} destinationName={pkg.destination_name} />
+          <PackageShareButton
+            title={pkg.title}
+            destinationName={pkg.destination_name}
+          />
           <Button
             render={
               <TrackLink
                 event="support_click"
-                eventProps={{ context: "package detail top bar", channel: "whatsapp" }}
-                href={getSupportWhatsAppUrl(`the ${pkg.title} holiday package to ${pkg.destination_name}`)}
+                eventProps={{
+                  context: "package detail top bar",
+                  channel: "whatsapp",
+                }}
+                href={getSupportWhatsAppUrl(
+                  `the ${pkg.title} holiday package to ${pkg.destination_name}`
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
               />
@@ -204,7 +234,12 @@ export default async function PackageDetailPage({
             size="xs"
             className="h-8 gap-1.5 rounded-full px-3 text-xs"
           >
-            <HugeiconsIcon icon={Message01Icon} size={14} className="text-emerald-600" aria-hidden="true" />
+            <HugeiconsIcon
+              icon={Message01Icon}
+              size={14}
+              className="text-emerald-600"
+              aria-hidden="true"
+            />
             <span>Ask Specialist</span>
           </Button>
         </div>
@@ -212,38 +247,51 @@ export default async function PackageDetailPage({
 
       {/* 2. Package Title & Hero Section */}
       <section aria-labelledby="package-title" className="flex flex-col gap-6">
-        <div className="flex flex-col gap-3 max-w-4xl">
+        <div className="flex max-w-4xl flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
             <Link
               href={`/destinations/${pkg.destination_slug}`}
               className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
             >
-              <HugeiconsIcon icon={Location01Icon} size={14} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={Location01Icon}
+                size={14}
+                aria-hidden="true"
+              />
               <span>{pkg.destination_name}</span>
             </Link>
 
             {pkg.is_featured === true && (
               <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                <HugeiconsIcon icon={StarIcon} size={12} className="text-amber-500" aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={StarIcon}
+                  size={12}
+                  className="text-amber-500"
+                  aria-hidden="true"
+                />
                 <span>Featured Journey</span>
               </span>
             )}
 
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-              <HugeiconsIcon icon={Calendar01Icon} size={13} aria-hidden="true" />
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              <HugeiconsIcon
+                icon={Calendar01Icon}
+                size={13}
+                aria-hidden="true"
+              />
               <span>{durationFormatted}</span>
             </span>
           </div>
 
           <h1
             id="package-title"
-            className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground leading-[1.15] text-balance"
+            className="text-3xl leading-[1.15] font-extrabold tracking-tight text-balance text-foreground sm:text-4xl lg:text-5xl"
           >
             {pkg.title}
           </h1>
 
           {pkg.summary && (
-            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed text-pretty">
+            <p className="text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
               {pkg.summary}
             </p>
           )}
@@ -260,37 +308,49 @@ export default async function PackageDetailPage({
 
       {/* 3. Luxury Spec Ribbon / Key Facts Strip */}
       <section aria-label="Key trip specifications">
-        <div className="rounded-3xl p-1.5 sm:p-2 bg-muted/40 border border-border/80 shadow-xs dark:bg-zinc-900/40 dark:border-white/10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 rounded-[calc(1.5rem-2px)] bg-card border border-black/[0.04] dark:border-white/[0.06] p-4 sm:p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]">
+        <div className="rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 dark:border-white/10 dark:bg-zinc-900/40">
+          <div className="grid grid-cols-2 gap-3 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:gap-4 sm:p-6 md:grid-cols-4 dark:border-white/[0.06]">
             {/* Duration */}
             <div className="flex items-start gap-3 p-2">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <HugeiconsIcon icon={Calendar01Icon} size={20} aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={Calendar01Icon}
+                  size={20}
+                  aria-hidden="true"
+                />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   Duration
                 </span>
-                <span className="text-sm font-bold text-foreground font-variant-numeric tabular-nums">
+                <span className="font-variant-numeric text-sm font-bold text-foreground tabular-nums">
                   {durationFormatted}
                 </span>
-                <span className="text-[11px] text-muted-foreground">Customizable pace</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Customizable pace
+                </span>
               </div>
             </div>
 
             {/* Destination */}
             <div className="flex items-start gap-3 p-2">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <HugeiconsIcon icon={Location01Icon} size={20} aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={Location01Icon}
+                  size={20}
+                  aria-hidden="true"
+                />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   Destination
                 </span>
-                <span className="text-sm font-bold text-foreground truncate max-w-[140px]">
+                <span className="max-w-[140px] truncate text-sm font-bold text-foreground">
                   {pkg.destination_name}
                 </span>
-                <span className="text-[11px] text-muted-foreground">Curated itinerary</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Curated itinerary
+                </span>
               </div>
             </div>
 
@@ -300,29 +360,37 @@ export default async function PackageDetailPage({
                 <HugeiconsIcon icon={Tick01Icon} size={20} aria-hidden="true" />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   Starting Price
                 </span>
                 <span className="text-sm font-bold text-foreground">
                   {formatNaira(pkg.price)}
                 </span>
-                <span className="text-[11px] text-muted-foreground">Per person · No hidden fees</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Per person · No hidden fees
+                </span>
               </div>
             </div>
 
             {/* Assisted Service */}
             <div className="flex items-start gap-3 p-2">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-                <HugeiconsIcon icon={Passport01Icon} size={20} aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={Passport01Icon}
+                  size={20}
+                  aria-hidden="true"
+                />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   Service Level
                 </span>
                 <span className="text-sm font-bold text-foreground">
                   Human-Guided
                 </span>
-                <span className="text-[11px] text-muted-foreground">Abuja travel desk</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Abuja travel desk
+                </span>
               </div>
             </div>
           </div>
@@ -335,12 +403,22 @@ export default async function PackageDetailPage({
         <div className="flex min-w-0 flex-col gap-12 sm:gap-14">
           {/* About & Narrative Description */}
           {pkg.description && (
-            <section aria-labelledby="package-about-heading" className="flex flex-col gap-4">
+            <section
+              aria-labelledby="package-about-heading"
+              className="flex flex-col gap-4"
+            >
               <div className="flex items-center gap-2">
                 <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <HugeiconsIcon icon={SparklesIcon} size={16} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={SparklesIcon}
+                    size={16}
+                    aria-hidden="true"
+                  />
                 </span>
-                <h2 id="package-about-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                <h2
+                  id="package-about-heading"
+                  className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+                >
                   About this experience
                 </h2>
               </div>
@@ -354,16 +432,23 @@ export default async function PackageDetailPage({
               </div>
 
               {/* Specialist Promise Callout */}
-              <div className="mt-2 rounded-2xl border border-border/80 bg-muted/30 p-5 sm:p-6 flex flex-col sm:flex-row items-start gap-4">
+              <div className="mt-2 flex flex-col items-start gap-4 rounded-2xl border border-border/80 bg-muted/30 p-5 sm:flex-row sm:p-6">
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <HugeiconsIcon icon={HeadphonesIcon} size={22} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={HeadphonesIcon}
+                    size={22}
+                    aria-hidden="true"
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <h3 className="text-sm font-bold text-foreground">
                     Tailored around your lifestyle
                   </h3>
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    Looking to adjust hotel tiers, extend your stay, or add a private excursion? Our Abuja travel advisors work directly with you to craft the perfect itinerary before any payment is made.
+                    Looking to adjust hotel tiers, extend your stay, or add a
+                    private excursion? Our Abuja travel advisors work directly
+                    with you to craft the perfect itinerary before any payment
+                    is made.
                   </p>
                 </div>
               </div>
@@ -372,27 +457,33 @@ export default async function PackageDetailPage({
 
           {/* Curated Highlights */}
           {pkg.highlights_list.length > 0 && (
-            <section aria-labelledby="package-highlights-heading" className="flex flex-col gap-5">
+            <section
+              aria-labelledby="package-highlights-heading"
+              className="flex flex-col gap-5"
+            >
               <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                <span className="text-xs font-bold tracking-wider text-primary uppercase">
                   Memorable Moments
                 </span>
-                <h2 id="package-highlights-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                <h2
+                  id="package-highlights-heading"
+                  className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+                >
                   Trip Highlights
                 </h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 sm:gap-4">
                 {pkg.highlights_list.map((highlight, index) => (
                   <div
                     key={highlight}
-                    className="group relative flex flex-col rounded-2xl p-1 bg-muted/30 border border-border/80 shadow-2xs transition-all hover:border-foreground/20 hover:shadow-xs"
+                    className="group relative flex flex-col rounded-2xl border border-border/80 bg-muted/30 p-1 shadow-2xs transition-all hover:border-foreground/20 hover:shadow-xs"
                   >
                     <div className="flex flex-1 items-start gap-3 rounded-[calc(1rem-2px)] bg-card p-4">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-mono text-xs font-bold">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 font-mono text-xs font-bold text-primary">
                         {String(index + 1).padStart(2, "0")}
                       </span>
-                      <p className="text-xs sm:text-sm font-medium leading-relaxed text-foreground">
+                      <p className="text-xs leading-relaxed font-medium text-foreground sm:text-sm">
                         {highlight}
                       </p>
                     </div>
@@ -404,45 +495,72 @@ export default async function PackageDetailPage({
 
           {/* What's Included & Alphaa Guarantees */}
           {pkg.inclusions_list.length > 0 && (
-            <section aria-labelledby="package-included-heading" className="flex flex-col gap-6">
+            <section
+              aria-labelledby="package-included-heading"
+              className="flex flex-col gap-6"
+            >
               <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                <span className="text-xs font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-400">
                   Comprehensive Inclusions
                 </span>
-                <h2 id="package-included-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                <h2
+                  id="package-included-heading"
+                  className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+                >
                   What&apos;s Included
                 </h2>
               </div>
 
-              <div className="rounded-3xl p-1.5 sm:p-2 bg-muted/40 border border-border/80 shadow-xs dark:bg-zinc-900/40 dark:border-white/10">
-                <div className="rounded-[calc(1.5rem-2px)] bg-card border border-black/[0.04] p-5 sm:p-7 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]">
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 dark:border-white/10 dark:bg-zinc-900/40">
+                <div className="rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-7">
+                  <ul className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                     {pkg.inclusions_list.map((inclusion) => (
-                      <li key={inclusion} className="flex items-start gap-3 text-xs sm:text-sm text-foreground">
-                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 mt-0.5">
-                          <HugeiconsIcon icon={Tick01Icon} size={14} aria-hidden="true" />
+                      <li
+                        key={inclusion}
+                        className="flex items-start gap-3 text-xs text-foreground sm:text-sm"
+                      >
+                        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                          <HugeiconsIcon
+                            icon={Tick01Icon}
+                            size={14}
+                            aria-hidden="true"
+                          />
                         </span>
-                        <span className="leading-relaxed font-medium">{inclusion}</span>
+                        <span className="leading-relaxed font-medium">
+                          {inclusion}
+                        </span>
                       </li>
                     ))}
                   </ul>
 
                   {/* Alphaa Peace of Mind Pack */}
-                  <div className="mt-6 pt-6 border-t border-border/70 flex flex-col gap-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <div className="mt-6 flex flex-col gap-3 border-t border-border/70 pt-6">
+                    <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
                       Complimentary Alphaa Africa Perks
                     </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-muted-foreground">
+                    <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground sm:grid-cols-3">
                       <div className="flex items-center gap-2">
-                        <HugeiconsIcon icon={SecurityCheckIcon} size={16} className="text-primary shrink-0" />
+                        <HugeiconsIcon
+                          icon={SecurityCheckIcon}
+                          size={16}
+                          className="shrink-0 text-primary"
+                        />
                         <span>Airport Meet & Greet</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <HugeiconsIcon icon={HeadphonesIcon} size={16} className="text-primary shrink-0" />
+                        <HugeiconsIcon
+                          icon={HeadphonesIcon}
+                          size={16}
+                          className="shrink-0 text-primary"
+                        />
                         <span>24/7 On-Trip Concierge</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <HugeiconsIcon icon={Passport01Icon} size={16} className="text-primary shrink-0" />
+                        <HugeiconsIcon
+                          icon={Passport01Icon}
+                          size={16}
+                          className="shrink-0 text-primary"
+                        />
                         <span>Visa Application Guidance</span>
                       </div>
                     </div>
@@ -453,36 +571,58 @@ export default async function PackageDetailPage({
           )}
 
           {/* Why Book With Alphaa Africa (Brand Trust Bento) */}
-          <section aria-labelledby="why-alphaa-heading" className="flex flex-col gap-5">
+          <section
+            aria-labelledby="why-alphaa-heading"
+            className="flex flex-col gap-5"
+          >
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">
+              <span className="text-xs font-bold tracking-wider text-primary uppercase">
                 The Alphaa Guarantee
               </span>
-              <h2 id="why-alphaa-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              <h2
+                id="why-alphaa-heading"
+                className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+              >
                 Why book this journey with us?
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Card 1: Zero Deposit */}
               <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <HugeiconsIcon icon={Tick01Icon} size={20} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={Tick01Icon}
+                    size={20}
+                    aria-hidden="true"
+                  />
                 </div>
-                <h3 className="text-base font-bold text-foreground">Zero Upfront Deposit</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Enquire and customize your itinerary completely free of charge. You only pay when you are 100% satisfied with the plan.
+                <h3 className="text-base font-bold text-foreground">
+                  Zero Upfront Deposit
+                </h3>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Enquire and customize your itinerary completely free of
+                  charge. You only pay when you are 100% satisfied with the
+                  plan.
                 </p>
               </div>
 
               {/* Card 2: Real Travel Specialists */}
               <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-                  <HugeiconsIcon icon={HeadphonesIcon} size={20} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={HeadphonesIcon}
+                    size={20}
+                    aria-hidden="true"
+                  />
                 </div>
-                <h3 className="text-base font-bold text-foreground">Abuja Travel Concierge</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Real human specialists in Abuja CBD dedicated to answering questions, managing flight changes, and ensuring seamless travel.
+                <h3 className="text-base font-bold text-foreground">
+                  Abuja Travel Concierge
+                </h3>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Real human specialists in Abuja CBD dedicated to answering
+                  questions, managing flight changes, and ensuring seamless
+                  travel.
                 </p>
               </div>
 
@@ -491,32 +631,49 @@ export default async function PackageDetailPage({
                 <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
                   <HugeiconsIcon icon={StarIcon} size={20} aria-hidden="true" />
                 </div>
-                <h3 className="text-base font-bold text-foreground">Handpicked Stays & Tours</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Every resort, vehicle, and excursion is vetted for comfort, safety, and authentic hospitality by experienced scouts.
+                <h3 className="text-base font-bold text-foreground">
+                  Handpicked Stays & Tours
+                </h3>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Every resort, vehicle, and excursion is vetted for comfort,
+                  safety, and authentic hospitality by experienced scouts.
                 </p>
               </div>
 
               {/* Card 4: End-to-End Assistance */}
               <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <HugeiconsIcon icon={Luggage01Icon} size={20} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={Luggage01Icon}
+                    size={20}
+                    aria-hidden="true"
+                  />
                 </div>
-                <h3 className="text-base font-bold text-foreground">End-to-End Coverage</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  From international flights to visa approvals and travel insurance, we orchestrate all elements under one unified booking.
+                <h3 className="text-base font-bold text-foreground">
+                  End-to-End Coverage
+                </h3>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  From international flights to visa approvals and travel
+                  insurance, we orchestrate all elements under one unified
+                  booking.
                 </p>
               </div>
             </div>
           </section>
 
           {/* Frequently Asked Questions */}
-          <section aria-labelledby="package-faq-heading" className="flex flex-col gap-5">
+          <section
+            aria-labelledby="package-faq-heading"
+            className="flex flex-col gap-5"
+          >
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
                 Helpful Details
               </span>
-              <h2 id="package-faq-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              <h2
+                id="package-faq-heading"
+                className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+              >
                 Frequently Asked Questions
               </h2>
             </div>
@@ -525,13 +682,18 @@ export default async function PackageDetailPage({
               {PACKAGE_FAQS.map((faq) => (
                 <div
                   key={faq.q}
-                  className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs flex flex-col gap-2"
+                  className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-card p-5 shadow-xs sm:p-6"
                 >
-                  <h3 className="text-sm sm:text-base font-bold text-foreground flex items-center gap-2">
-                    <HugeiconsIcon icon={InformationCircleIcon} size={16} className="text-primary shrink-0" aria-hidden="true" />
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-foreground sm:text-base">
+                    <HugeiconsIcon
+                      icon={InformationCircleIcon}
+                      size={16}
+                      className="shrink-0 text-primary"
+                      aria-hidden="true"
+                    />
                     <span>{faq.q}</span>
                   </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
+                  <p className="pl-6 text-xs leading-relaxed text-muted-foreground sm:text-sm">
                     {faq.a}
                   </p>
                 </div>
@@ -554,14 +716,22 @@ export default async function PackageDetailPage({
             </div>
 
             {/* Quick Contact Help Card */}
-            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col gap-3">
+            <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
               <div className="flex items-center gap-2.5">
                 <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <HugeiconsIcon icon={Call02Icon} size={18} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={Call02Icon}
+                    size={18}
+                    aria-hidden="true"
+                  />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-foreground">Need immediate assistance?</span>
-                  <span className="text-[11px] text-muted-foreground">Speak directly with our Abuja desk</span>
+                  <span className="text-xs font-bold text-foreground">
+                    Need immediate assistance?
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Speak directly with our Abuja desk
+                  </span>
                 </div>
               </div>
 
@@ -576,14 +746,21 @@ export default async function PackageDetailPage({
                   variant="outline"
                   size="sm"
                 >
-                  <HugeiconsIcon icon={Call02Icon} size={14} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={Call02Icon}
+                    size={14}
+                    aria-hidden="true"
+                  />
                   <span>Call Office</span>
                 </Button>
                 <Button
                   render={
                     <TrackLink
                       event="support_click"
-                      eventProps={{ context: "package detail sidebar", channel: "whatsapp" }}
+                      eventProps={{
+                        context: "package detail sidebar",
+                        channel: "whatsapp",
+                      }}
                       href={getSupportWhatsAppUrl(`package: ${pkg.title}`)}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -592,14 +769,19 @@ export default async function PackageDetailPage({
                   }
                   variant="outline"
                   size="sm"
-                  className="text-emerald-700 hover:text-emerald-800 border-emerald-300 dark:border-emerald-800"
+                  className="border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-800"
                 >
-                  <HugeiconsIcon icon={Message01Icon} size={14} className="text-emerald-600" aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={Message01Icon}
+                    size={14}
+                    className="text-emerald-600"
+                    aria-hidden="true"
+                  />
                   <span>WhatsApp</span>
                 </Button>
               </div>
 
-              <p className="text-[11px] text-muted-foreground text-center pt-1 border-t border-border/50">
+              <p className="border-t border-border/50 pt-1 text-center text-[11px] text-muted-foreground">
                 Office: Suite B4, Statement Hotel Building, CBD Abuja
               </p>
             </div>
@@ -619,5 +801,5 @@ export default async function PackageDetailPage({
       {/* 6. Mobile Floating Action Bar */}
       <PackageMobileBar price={pkg.price} title={pkg.title} />
     </div>
-  );
+  )
 }

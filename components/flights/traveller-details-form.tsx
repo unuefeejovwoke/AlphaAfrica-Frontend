@@ -1,6 +1,6 @@
-"use client";
+"use client"
 
-import * as React from "react";
+import * as React from "react"
 import {
   Controller,
   useFieldArray,
@@ -8,16 +8,22 @@ import {
   useWatch,
   type Control,
   type FieldErrors,
-} from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { AlertCircleIcon, InformationCircleIcon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { TrackLink } from "@/components/analytics/track-link";
-import { getFlightSupportWhatsAppUrl, type FlightTripContext } from "@/lib/api/flights";
+} from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  AlertCircleIcon,
+  InformationCircleIcon,
+} from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { TrackLink } from "@/components/analytics/track-link"
+import {
+  getFlightSupportWhatsAppUrl,
+  type FlightTripContext,
+} from "@/lib/api/flights"
 import {
   buildBookingTravellersPayload,
   createTravellerFormSchema,
@@ -28,27 +34,27 @@ import {
   type TravellerFormTraveller,
   type TravellerFormValues,
   type TravelerType,
-} from "@/lib/schemas/travel";
+} from "@/lib/schemas/travel"
 
 export interface TravellerDetailsFormProps {
-  party: TravellerComposition;
-  isInternational: boolean;
-  onSubmit: (payload: BookingTravellersPayload) => void;
-  isSubmitting?: boolean;
+  party: TravellerComposition
+  isInternational: boolean
+  onSubmit: (payload: BookingTravellersPayload) => void
+  isSubmitting?: boolean
   /** Trip context (route, dates, party) for the support hatch. */
-  trip?: FlightTripContext;
+  trip?: FlightTripContext
 }
 
 const GENDER_OPTIONS = [
   { value: "MALE", label: "Male" },
   { value: "FEMALE", label: "Female" },
-];
+]
 
 const TRAVELER_TYPE_LABELS: Record<TravelerType, string> = {
   ADULT: "Adult",
   CHILD: "Child",
   HELD_INFANT: "Held infant",
-};
+}
 
 type TravellerFieldName =
   | "first_name"
@@ -60,24 +66,27 @@ type TravellerFieldName =
   | "phone"
   | "passport_number"
   | "passport_expiry"
-  | "nationality";
+  | "nationality"
 
 /** Array-level issues (path ["travellers"]) surface as one alert, not per card. */
-function getTravellersArrayError(errors: FieldErrors<TravellerFormValues>): string | undefined {
-  const list = errors.travellers;
-  if (!Array.isArray(list) && typeof list?.message === "string") return list.message;
-  return undefined;
+function getTravellersArrayError(
+  errors: FieldErrors<TravellerFormValues>
+): string | undefined {
+  const list = errors.travellers
+  if (!Array.isArray(list) && typeof list?.message === "string")
+    return list.message
+  return undefined
 }
 
 function getTravellerFieldError(
   errors: FieldErrors<TravellerFormValues>,
   index: number,
-  field: TravellerFieldName,
+  field: TravellerFieldName
 ): string | undefined {
-  const list = errors.travellers;
-  if (!Array.isArray(list)) return undefined;
-  const message = list[index]?.[field]?.message;
-  return typeof message === "string" ? message : undefined;
+  const list = errors.travellers
+  if (!Array.isArray(list)) return undefined
+  const message = list[index]?.[field]?.message
+  return typeof message === "string" ? message : undefined
 }
 
 /**
@@ -87,20 +96,20 @@ function getTravellerFieldError(
 const AgeBandWarnings = React.memo(function AgeBandWarnings({
   control,
 }: {
-  control: Control<TravellerFormValues>;
+  control: Control<TravellerFormValues>
 }) {
-  const travellers = useWatch({ control, name: "travellers" });
+  const travellers = useWatch({ control, name: "travellers" })
   const warnings = React.useMemo(
     () =>
       getTravellerAgeWarnings(
         (travellers ?? []).map((traveller: TravellerFormTraveller) => ({
           date_of_birth: traveller.date_of_birth,
           traveler_type: traveller.traveler_type,
-        })),
+        }))
       ),
-    [travellers],
-  );
-  if (warnings.length === 0) return null;
+    [travellers]
+  )
+  if (warnings.length === 0) return null
   return (
     <div
       role="status"
@@ -108,14 +117,22 @@ const AgeBandWarnings = React.memo(function AgeBandWarnings({
       className="flex flex-col gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5"
     >
       {warnings.map((warning) => (
-        <p key={`${warning.index}-${warning.traveler_type}`} className="flex items-start gap-2 text-xs leading-relaxed text-foreground">
-          <HugeiconsIcon icon={InformationCircleIcon} size={16} className="mt-0.5 shrink-0 text-amber-600" aria-hidden="true" />
+        <p
+          key={`${warning.index}-${warning.traveler_type}`}
+          className="flex items-start gap-2 text-xs leading-relaxed text-foreground"
+        >
+          <HugeiconsIcon
+            icon={InformationCircleIcon}
+            size={16}
+            className="mt-0.5 shrink-0 text-amber-600"
+            aria-hidden="true"
+          />
           <span>{warning.message}</span>
         </p>
       ))}
     </div>
-  );
-});
+  )
+})
 
 /**
  * Guided Traveller + Customer entry (RHF + Zod, onTouched + onSubmit).
@@ -137,48 +154,54 @@ export function TravellerDetailsForm({
   // Factory schema memoized on primitives so resolver identity stays stable.
   const schema = React.useMemo(
     () => createTravellerFormSchema({ party, isInternational }),
-    [party.adults, party.children, party.infants, isInternational],
-  );
+    [party.adults, party.children, party.infants, isInternational]
+  )
   const defaultValues = React.useMemo<TravellerFormValues>(
     () => ({
       travellers: createTravellerSlots(party),
       contactIsFirstTraveller: true,
       customer: { name: "", email: "", phone: "" },
     }),
-    [party.adults, party.children, party.infants],
-  );
+    [party.adults, party.children, party.infants]
+  )
 
   const form = useForm<TravellerFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
     mode: "onTouched",
     shouldFocusError: true,
-  });
+  })
 
-  const { fields } = useFieldArray({ control: form.control, name: "travellers" });
+  const { fields } = useFieldArray({
+    control: form.control,
+    name: "travellers",
+  })
 
   const today = React.useMemo(() => {
-    const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 10);
-  }, []);
+    const now = new Date()
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    return local.toISOString().slice(0, 10)
+  }, [])
 
-  const contactIsFirstTraveller = form.watch("contactIsFirstTraveller") ?? true;
-  const firstTraveller = form.watch("travellers.0");
-  const errors = form.formState.errors;
-  const arrayError = getTravellersArrayError(errors);
-  const customerErrors = errors.customer;
+  const contactIsFirstTraveller = form.watch("contactIsFirstTraveller") ?? true
+  const firstTraveller = form.watch("travellers.0")
+  const errors = form.formState.errors
+  const arrayError = getTravellersArrayError(errors)
+  const customerErrors = errors.customer
 
   const handleFormSubmit = form.handleSubmit((values) => {
-    onSubmit(buildBookingTravellersPayload(values));
-  });
+    onSubmit(buildBookingTravellersPayload(values))
+  })
 
   const contactSummary =
-    firstTraveller?.first_name || firstTraveller?.last_name || firstTraveller?.email || firstTraveller?.phone
+    firstTraveller?.first_name ||
+    firstTraveller?.last_name ||
+    firstTraveller?.email ||
+    firstTraveller?.phone
       ? `${firstTraveller.first_name} ${firstTraveller.last_name}`.trim() +
         (firstTraveller.email ? ` · ${firstTraveller.email}` : "") +
         (firstTraveller.phone ? ` · ${firstTraveller.phone}` : "")
-      : "Fill in Traveller 1 above — the contact copies automatically.";
+      : "Fill in Traveller 1 above — the contact copies automatically."
 
   return (
     <form
@@ -192,13 +215,18 @@ export function TravellerDetailsForm({
           role="alert"
           className="flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-xs leading-relaxed text-foreground"
         >
-          <HugeiconsIcon icon={AlertCircleIcon} size={16} className="mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
+          <HugeiconsIcon
+            icon={AlertCircleIcon}
+            size={16}
+            className="mt-0.5 shrink-0 text-destructive"
+            aria-hidden="true"
+          />
           <span>{arrayError}</span>
         </div>
       ) : null}
 
       {fields.map((field, index) => {
-        const travellerType = field.traveler_type;
+        const travellerType = field.traveler_type
         return (
           <fieldset
             key={field.id}
@@ -265,7 +293,11 @@ export function TravellerDetailsForm({
                 maxLength={4}
                 placeholder="234"
                 helperText="Country"
-                error={getTravellerFieldError(errors, index, "phone_country_code")}
+                error={getTravellerFieldError(
+                  errors,
+                  index,
+                  "phone_country_code"
+                )}
                 {...form.register(`travellers.${index}.phone_country_code`)}
               />
               <Input
@@ -288,7 +320,11 @@ export function TravellerDetailsForm({
                   label="Passport number"
                   autoComplete="off"
                   placeholder="A12345678"
-                  error={getTravellerFieldError(errors, index, "passport_number")}
+                  error={getTravellerFieldError(
+                    errors,
+                    index,
+                    "passport_number"
+                  )}
                   {...form.register(`travellers.${index}.passport_number`)}
                 />
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -296,7 +332,11 @@ export function TravellerDetailsForm({
                     label="Passport expiry"
                     type="date"
                     min={today}
-                    error={getTravellerFieldError(errors, index, "passport_expiry")}
+                    error={getTravellerFieldError(
+                      errors,
+                      index,
+                      "passport_expiry"
+                    )}
                     {...form.register(`travellers.${index}.passport_expiry`)}
                   />
                   <Input
@@ -313,7 +353,7 @@ export function TravellerDetailsForm({
               </div>
             ) : null}
           </fieldset>
-        );
+        )
       })}
 
       <AgeBandWarnings control={form.control} />
@@ -333,7 +373,10 @@ export function TravellerDetailsForm({
           )}
         />
         {contactIsFirstTraveller ? (
-          <p aria-live="polite" className="min-w-0 rounded-lg bg-muted/50 px-3 py-2.5 text-xs leading-relaxed break-words text-muted-foreground">
+          <p
+            aria-live="polite"
+            className="min-w-0 rounded-lg bg-muted/50 px-3 py-2.5 text-xs leading-relaxed break-words text-muted-foreground"
+          >
             {contactSummary}
           </p>
         ) : (
@@ -342,7 +385,11 @@ export function TravellerDetailsForm({
               label="Contact name"
               autoComplete="name"
               placeholder="Full name"
-              error={typeof customerErrors?.name?.message === "string" ? customerErrors.name.message : undefined}
+              error={
+                typeof customerErrors?.name?.message === "string"
+                  ? customerErrors.name.message
+                  : undefined
+              }
               {...form.register("customer.name")}
             />
             <Input
@@ -350,7 +397,11 @@ export function TravellerDetailsForm({
               type="email"
               autoComplete="email"
               placeholder="you@example.com"
-              error={typeof customerErrors?.email?.message === "string" ? customerErrors.email.message : undefined}
+              error={
+                typeof customerErrors?.email?.message === "string"
+                  ? customerErrors.email.message
+                  : undefined
+              }
               {...form.register("customer.email")}
             />
             <Input
@@ -359,7 +410,11 @@ export function TravellerDetailsForm({
               autoComplete="tel"
               placeholder="0803 123 4567"
               helperText="Nigerian formats accepted."
-              error={typeof customerErrors?.phone?.message === "string" ? customerErrors.phone.message : undefined}
+              error={
+                typeof customerErrors?.phone?.message === "string"
+                  ? customerErrors.phone.message
+                  : undefined
+              }
               {...form.register("customer.phone")}
             />
           </div>
@@ -367,8 +422,16 @@ export function TravellerDetailsForm({
       </div>
 
       <div className="sticky bottom-4 rounded-2xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur">
-        <Button type="submit" size="lg" isLoading={!!isSubmitting} disabled={!!isSubmitting} className="w-full justify-center">
-          <span>{isSubmitting ? "Saving details…" : "Save traveller details"}</span>
+        <Button
+          type="submit"
+          size="lg"
+          isLoading={!!isSubmitting}
+          disabled={!!isSubmitting}
+          className="w-full justify-center"
+        >
+          <span>
+            {isSubmitting ? "Saving details…" : "Save traveller details"}
+          </span>
         </Button>
       </div>
 
@@ -376,7 +439,10 @@ export function TravellerDetailsForm({
         No account needed. Details are validated before payment —{" "}
         <TrackLink
           event="support_click"
-          eventProps={{ context: "entering traveller details", channel: "whatsapp" }}
+          eventProps={{
+            context: "entering traveller details",
+            channel: "whatsapp",
+          }}
           href={getFlightSupportWhatsAppUrl("entering traveller details", trip)}
           target="_blank"
           rel="noopener noreferrer"
@@ -387,5 +453,5 @@ export function TravellerDetailsForm({
         if anything is unclear.
       </p>
     </form>
-  );
+  )
 }

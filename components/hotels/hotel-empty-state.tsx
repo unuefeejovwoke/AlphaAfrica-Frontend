@@ -1,21 +1,21 @@
-import { HugeiconsIcon } from "@hugeicons/react";
-import { AlertCircleIcon, Message01Icon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { TrackLink } from "@/components/analytics/track-link";
+import { HugeiconsIcon } from "@hugeicons/react"
+import { AlertCircleIcon, Message01Icon } from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { TrackLink } from "@/components/analytics/track-link"
 import {
   getHotelSupportWhatsAppUrl,
   type HotelStayContext,
-} from "@/lib/api/hotels";
+} from "@/lib/api/hotels"
 
 export interface HotelEmptyStateProps {
-  stayContext: HotelStayContext;
-  hasDates: boolean;
-  hasPriceCap: boolean;
-  hasStarFloor: boolean;
-  onWidenDates: () => void;
-  onRaisePriceCap: () => void;
-  onLowerStars: () => void;
-  onStartOver: () => void;
+  stayContext: HotelStayContext
+  hasDates: boolean
+  hasPriceCap: boolean
+  hasStarFloor: boolean
+  onWidenDates: () => void
+  onRaisePriceCap: () => void
+  onLowerStars: () => void
+  onStartOver: () => void
 }
 
 /**
@@ -34,11 +34,12 @@ export function HotelEmptyState({
   onLowerStars,
   onStartOver,
 }: HotelEmptyStateProps) {
-  const suggestions: string[] = [];
-  if (hasDates) suggestions.push("widening your dates");
-  if (hasPriceCap) suggestions.push("raising your price cap");
-  if (hasStarFloor) suggestions.push("lowering the star floor");
-  if (suggestions.length === 0) suggestions.push("trying a different city or Hotel name");
+  const suggestions: string[] = []
+  if (hasDates) suggestions.push("widening your dates")
+  if (hasPriceCap) suggestions.push("raising your price cap")
+  if (hasStarFloor) suggestions.push("lowering the star floor")
+  if (suggestions.length === 0)
+    suggestions.push("trying a different city or Hotel name")
 
   return (
     <div
@@ -49,24 +50,41 @@ export function HotelEmptyState({
       <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
         <HugeiconsIcon icon={AlertCircleIcon} size={24} aria-hidden="true" />
       </div>
-      <h3 className="text-base font-bold text-foreground">No Hotels found for this search</h3>
+      <h3 className="text-base font-bold text-foreground">
+        No Hotels found for this search
+      </h3>
       <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-        Try {suggestions.join(", ").replace(/, ([^,]*)$/, " or $1")}. Our specialists can also check
-        options for you.
+        Try {suggestions.join(", ").replace(/, ([^,]*)$/, " or $1")}. Our
+        specialists can also check options for you.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         {hasDates ? (
-          <Button type="button" variant="outline" size="sm" onClick={onWidenDates}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onWidenDates}
+          >
             <span>Widen dates</span>
           </Button>
         ) : null}
         {hasPriceCap ? (
-          <Button type="button" variant="outline" size="sm" onClick={onRaisePriceCap}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRaisePriceCap}
+          >
             <span>Raise price cap</span>
           </Button>
         ) : null}
         {hasStarFloor ? (
-          <Button type="button" variant="outline" size="sm" onClick={onLowerStars}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onLowerStars}
+          >
             <span>Lower stars</span>
           </Button>
         ) : null}
@@ -77,8 +95,14 @@ export function HotelEmptyState({
           render={
             <TrackLink
               event="support_click"
-              eventProps={{ context: "finding a hotel for my stay", channel: "whatsapp" }}
-              href={getHotelSupportWhatsAppUrl("finding a hotel for my stay", stayContext)}
+              eventProps={{
+                context: "finding a hotel for my stay",
+                channel: "whatsapp",
+              }}
+              href={getHotelSupportWhatsAppUrl(
+                "finding a hotel for my stay",
+                stayContext
+              )}
               target="_blank"
               rel="noopener noreferrer"
             />
@@ -92,5 +116,5 @@ export function HotelEmptyState({
         </Button>
       </div>
     </div>
-  );
+  )
 }

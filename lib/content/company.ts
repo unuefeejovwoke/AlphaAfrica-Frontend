@@ -4,46 +4,46 @@
  * All consumer components must read from here — no hardcoded numbers.
  */
 
-export type ContentSource = "draft" | "verified";
+export type ContentSource = "draft" | "verified"
 
 export interface CompanySeo {
-  title: string;
-  description: string;
+  title: string
+  description: string
 }
 
 export interface CompanyInfo {
-  source: ContentSource;
-  updatedAt: string;
-  legalName: string;
-  brandName: string;
-  positioning: string;
-  promise: string;
+  source: ContentSource
+  updatedAt: string
+  legalName: string
+  brandName: string
+  positioning: string
+  promise: string
   office: {
-    label: string;
-    address: string;
-    mapQuery: string;
-    coordinates: { lat: number; lng: number };
-  };
+    label: string
+    address: string
+    mapQuery: string
+    coordinates: { lat: number; lng: number }
+  }
   phone: {
-    display: string;
+    display: string
     /** E.164 digits with leading `+`, e.g. `+2348000000000`. */
-    e164: string;
-    href: string;
-    secondaryDisplay: string | null;
-  };
+    e164: string
+    href: string
+    secondaryDisplay: string | null
+  }
   whatsapp: {
     /** Digits only, no `+`, for `wa.me/<number>`. */
-    number: string;
-    display: string;
-  };
-  email: string;
+    number: string
+    display: string
+  }
+  email: string
   socials: {
-    instagram: string;
-    x: string;
-    facebook: string;
-    tiktok: string;
-  };
-  seo: CompanySeo;
+    instagram: string
+    x: string
+    facebook: string
+    tiktok: string
+  }
+  seo: CompanySeo
 }
 
 export const company: CompanyInfo = {
@@ -80,31 +80,33 @@ export const company: CompanyInfo = {
     tiktok: "https://tiktok.com/@alphaaafrica",
   },
   seo: {
-    title: "Alphaa Africa — Flights, Hotels, Packages, Visa Help & Car Rentals",
+    title: "Alphaa Africa — Book Flights, Hotels & Holidays, or Get Visa Help",
     description:
-      "Abuja-based assisted-service travel platform. Book flights, hotels, and car rentals yourself, or get human help with holiday packages and visa consultations.",
+      "Book flights, hotels, and car rentals yourself — or get human help with holiday packages and visa applications. Clear prices, real support, no account needed to start.",
   },
-};
+}
 
 /** Google Maps embed without an API key, driven by the canonical address. */
 export function getOfficeMapEmbedUrl(): string {
-  return `https://maps.google.com/maps?q=${encodeURIComponent(company.office.mapQuery)}&output=embed`;
+  return `https://maps.google.com/maps?q=${encodeURIComponent(company.office.mapQuery)}&output=embed`
 }
 
 export function getWhatsAppUrl(message: string): string {
-  return `https://wa.me/${company.whatsapp.number}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${company.whatsapp.number}?text=${encodeURIComponent(message)}`
 }
 
 export function getSupportWhatsAppUrl(context = "travel planning"): string {
-  return getWhatsAppUrl(`Hello Alphaa Africa! I need assistance with ${context}.`);
+  return getWhatsAppUrl(
+    `Hello Alphaa Africa! I need assistance with ${context}.`
+  )
 }
 
 export function getPhoneHref(): string {
-  return company.phone.href;
+  return company.phone.href
 }
 
 export function getEmailHref(subject?: string): string {
   return subject
     ? `mailto:${company.email}?subject=${encodeURIComponent(subject)}`
-    : `mailto:${company.email}`;
+    : `mailto:${company.email}`
 }

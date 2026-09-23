@@ -1,40 +1,42 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { HugeiconsIcon } from "@hugeicons/react";
+import type { Metadata } from "next"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Location01Icon,
   Calendar01Icon,
   Message01Icon,
   ArrowRight01Icon,
   Tick01Icon,
-} from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { ErrorState } from "@/components/feedback/error-state";
-import { RetryButton } from "@/components/home/retry-button";
-import { PackageCard } from "@/components/packages/package-card";
-import { TerminalCta } from "@/components/shared/terminal-cta";
-import { getDestinations, getDestinationDetail } from "@/lib/api/destinations";
-import type { DestinationDetail } from "@/lib/api/destinations";
-import type { PackageList } from "@/lib/api/packages";
-import { ApiError } from "@/lib/api/client";
-import { formatNaira } from "@/lib/format";
-import { canonicalUrl } from "@/lib/seo";
+} from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/feedback/error-state"
+import { RetryButton } from "@/components/home/retry-button"
+import { PackageCard } from "@/components/packages/package-card"
+import { TerminalCta } from "@/components/shared/terminal-cta"
+import { getDestinations, getDestinationDetail } from "@/lib/api/destinations"
+import type { DestinationDetail } from "@/lib/api/destinations"
+import type { PackageList } from "@/lib/api/packages"
+import { ApiError } from "@/lib/api/client"
+import { formatNaira } from "@/lib/format"
+import { canonicalUrl } from "@/lib/seo"
 import {
   destinationDetailJsonLd,
   humanizeSlug,
   parsePriceAmount,
   resolveListingImageUrl,
-} from "@/lib/listings";
-import { getSupportWhatsAppUrl } from "@/lib/content/company";
+} from "@/lib/listings"
+import { getSupportWhatsAppUrl } from "@/lib/content/company"
 
-export const revalidate = 3600;
-export const dynamicParams = true;
+export const revalidate = 3600
+export const dynamicParams = true
 
-type DetailParams = { slug: string };
+type DetailParams = { slug: string }
 
 /** Destination detail embeds package summaries; cards take PackageList. */
-function toPackageList(pkg: DestinationDetail["packages"][number]): PackageList {
+function toPackageList(
+  pkg: DestinationDetail["packages"][number]
+): PackageList {
   return {
     id: pkg.id,
     title: pkg.title,
@@ -47,37 +49,37 @@ function toPackageList(pkg: DestinationDetail["packages"][number]): PackageList 
     main_image: pkg.main_image,
     inclusions_list: pkg.inclusions_list,
     is_featured: pkg.is_featured,
-  };
+  }
 }
 
 export async function generateStaticParams(): Promise<DetailParams[]> {
   try {
-    const page = await getDestinations();
-    return page.results.map((destination) => ({ slug: destination.slug }));
+    const page = await getDestinations()
+    return page.results.map((destination) => ({ slug: destination.slug }))
   } catch {
     // Backend may be unreachable at build time; ISR + dynamicParams
     // still renders new slugs on demand at runtime.
-    return [];
+    return []
   }
 }
 
 function humanizeFallback(slug: string): string {
-  return humanizeSlug(slug);
+  return humanizeSlug(slug)
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<DetailParams>;
+  params: Promise<DetailParams>
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const url = canonicalUrl(`/destinations/${slug}`);
+  const { slug } = await params
+  const url = canonicalUrl(`/destinations/${slug}`)
   try {
-    const destination = await getDestinationDetail(slug);
+    const destination = await getDestinationDetail(slug)
     const description =
       destination.description.length > 0
         ? destination.description.slice(0, 155)
-        : `${destination.name}, ${destination.country} — curated holiday packages with starting prices and human planning help.`;
+        : `${destination.name}, ${destination.country} — curated holiday packages with starting prices and human planning help.`
     return {
       title: `${destination.name}, ${destination.country} Holiday Packages | Alphaa Africa`,
       description,
@@ -94,14 +96,14 @@ export async function generateMetadata({
           },
         ],
       },
-    };
+    }
   } catch {
-    const name = humanizeSlug(slug);
+    const name = humanizeSlug(slug)
     return {
       title: `${name} Holiday Packages | Alphaa Africa`,
       description: `Curated holiday packages for ${name} with starting prices and human planning help from Alphaa Africa.`,
       alternates: { canonical: url },
-    };
+    }
   }
 }
 
@@ -113,15 +115,15 @@ export async function generateMetadata({
 export default async function DestinationDetailPage({
   params,
 }: {
-  params: Promise<DetailParams>;
+  params: Promise<DetailParams>
 }) {
-  const { slug } = await params;
+  const { slug } = await params
 
-  let destination;
+  let destination
   try {
-    destination = await getDestinationDetail(slug);
+    destination = await getDestinationDetail(slug)
   } catch (error) {
-    if (error instanceof ApiError && error.code === "not-found") notFound();
+    if (error instanceof ApiError && error.code === "not-found") notFound()
     return (
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-12 sm:px-6 lg:px-8">
         <ErrorState
@@ -131,18 +133,19 @@ export default async function DestinationDetailPage({
         />
         <RetryButton label="Retry loading destination" />
       </div>
-    );
+    )
   }
 
-  const packages = destination.packages;
-  const featured = packages.filter((pkg) => pkg.is_featured === true);
-  const nonFeatured = packages.filter((pkg) => pkg.is_featured !== true);
+  const packages = destination.packages
+  const featured = packages.filter((pkg) => pkg.is_featured === true)
+  const nonFeatured = packages.filter((pkg) => pkg.is_featured !== true)
   // DestinationDetail carries no starting_price; derive it honestly from
   // the lowest listed from-price (matches the listing card derivation).
   const prices = packages
     .map((pkg) => parsePriceAmount(pkg.price))
-    .filter((value): value is number => value !== null);
-  const startingPrice = prices.length > 0 ? formatNaira(String(Math.min(...prices))) : null;
+    .filter((value): value is number => value !== null)
+  const startingPrice =
+    prices.length > 0 ? formatNaira(String(Math.min(...prices))) : null
 
   const jsonLd = destinationDetailJsonLd({
     name: destination.name,
@@ -151,19 +154,25 @@ export default async function DestinationDetailPage({
     description: destination.description,
     main_image: destination.main_image,
     packages: packages.map((pkg) => ({ title: pkg.title, slug: pkg.slug })),
-  });
+  })
 
   const intro =
     destination.description.length > 0
       ? destination.description
-      : `${destination.name} is one of our curated destinations. Open a package below to compare durations, inclusions, and from-prices — or tell a specialist your dates and they will shape the trip with you.`;
+      : `${destination.name} is one of our curated destinations. Open a package below to compare durations, inclusions, and from-prices — or tell a specialist your dates and they will shape the trip with you.`
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-12 px-4 py-12 sm:px-6 md:gap-16 lg:px-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
       {/* 1. Hero */}
-      <section aria-labelledby="destination-heading" className="overflow-hidden rounded-3xl border border-border bg-card">
+      <section
+        aria-labelledby="destination-heading"
+        className="overflow-hidden rounded-3xl border border-border bg-card"
+      >
         <div className="relative">
           <img
             src={resolveListingImageUrl(destination.main_image)}
@@ -178,24 +187,42 @@ export default async function DestinationDetailPage({
           />
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-2 p-6 sm:p-10">
             <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-white/85 uppercase">
-              <HugeiconsIcon icon={Location01Icon} size={14} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={Location01Icon}
+                size={14}
+                aria-hidden="true"
+              />
               {destination.country}
             </span>
-            <h1 id="destination-heading" className="text-3xl font-extrabold tracking-tight text-balance text-white sm:text-5xl">
+            <h1
+              id="destination-heading"
+              className="text-3xl font-extrabold tracking-tight text-balance text-white sm:text-5xl"
+            >
               {destination.name}
             </h1>
             <p className="text-sm font-medium text-white/85">
               {packages.length} {packages.length === 1 ? "package" : "packages"}
               {startingPrice ? (
                 <>
-                  {" "}· From <span className="font-semibold text-white">{startingPrice}</span> per person
+                  {" "}
+                  · From{" "}
+                  <span className="font-semibold text-white">
+                    {startingPrice}
+                  </span>{" "}
+                  per person
                 </>
               ) : null}
             </p>
           </div>
         </div>
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 px-6 py-4 text-xs text-muted-foreground sm:px-10">
-          <Link href="/destinations" className="font-medium hover:text-primary hover:underline">
+        <nav
+          aria-label="Breadcrumb"
+          className="flex items-center gap-2 px-6 py-4 text-xs text-muted-foreground sm:px-10"
+        >
+          <Link
+            href="/destinations"
+            className="font-medium hover:text-primary hover:underline"
+          >
             Destinations
           </Link>
           <span aria-hidden="true">/</span>
@@ -206,8 +233,14 @@ export default async function DestinationDetailPage({
       </section>
 
       {/* 2. Introduction */}
-      <section aria-labelledby="destination-intro-heading" className="max-w-3xl">
-        <h2 id="destination-intro-heading" className="text-2xl font-bold tracking-tight text-foreground">
+      <section
+        aria-labelledby="destination-intro-heading"
+        className="max-w-3xl"
+      >
+        <h2
+          id="destination-intro-heading"
+          className="text-2xl font-bold tracking-tight text-foreground"
+        >
           Planning a trip to {destination.name}?
         </h2>
         <p className="mt-3 text-sm leading-relaxed break-words text-muted-foreground md:text-base">
@@ -235,22 +268,33 @@ export default async function DestinationDetailPage({
       </section>
 
       {/* 3 + 4. Featured + other packages */}
-      <section id="packages" aria-labelledby="destination-packages-heading" className="scroll-mt-24">
+      <section
+        id="packages"
+        aria-labelledby="destination-packages-heading"
+        className="scroll-mt-24"
+      >
         <div className="mb-6 flex max-w-2xl flex-col gap-2">
-          <h2 id="destination-packages-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h2
+            id="destination-packages-heading"
+            className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+          >
             {featured.length > 0 ? "Featured packages" : "Available packages"}
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Curated itineraries to {destination.name} with clear durations and
-            from-prices. Open one to see highlights, inclusions, and to send an enquiry.
+            from-prices. Open one to see highlights, inclusions, and to send an
+            enquiry.
           </p>
         </div>
         {packages.length === 0 ? (
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center">
-            <p className="text-sm font-semibold text-foreground">New {destination.name} itineraries are on the way.</p>
+            <p className="text-sm font-semibold text-foreground">
+              New {destination.name} itineraries are on the way.
+            </p>
             <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
               Nothing is published for this destination yet. Describe your ideal
-              trip and a specialist will design it with you — no payment needed to start.
+              trip and a specialist will design it with you — no payment needed
+              to start.
             </p>
             <Button
               render={
@@ -263,7 +307,11 @@ export default async function DestinationDetailPage({
               size="sm"
               className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
-              <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={Message01Icon}
+                size={16}
+                aria-hidden="true"
+              />
               <span>Plan a custom trip</span>
             </Button>
           </div>
@@ -290,12 +338,19 @@ export default async function DestinationDetailPage({
       </section>
 
       {/* 5. Travel inspiration (planning prompts — no fabricated claims) */}
-      <section aria-labelledby="destination-inspiration-heading" className="rounded-3xl border border-border bg-card p-8 sm:p-10">
-        <h2 id="destination-inspiration-heading" className="text-2xl font-bold tracking-tight text-foreground">
+      <section
+        aria-labelledby="destination-inspiration-heading"
+        className="rounded-3xl border border-border bg-card p-8 sm:p-10"
+      >
+        <h2
+          id="destination-inspiration-heading"
+          className="text-2xl font-bold tracking-tight text-foreground"
+        >
           Start shaping your {destination.name} trip
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Three answers help a specialist match you with the right itinerary fast.
+          Three answers help a specialist match you with the right itinerary
+          fast.
         </p>
         <ol className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
           {[
@@ -319,8 +374,12 @@ export default async function DestinationDetailPage({
               <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <HugeiconsIcon icon={item.icon} size={20} aria-hidden="true" />
               </span>
-              <h3 className="text-base font-bold text-foreground">{item.title}</h3>
-              <p className="text-xs leading-relaxed text-muted-foreground">{item.body}</p>
+              <h3 className="text-base font-bold text-foreground">
+                {item.title}
+              </h3>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {item.body}
+              </p>
             </li>
           ))}
         </ol>
@@ -344,7 +403,11 @@ export default async function DestinationDetailPage({
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
           >
             <span>Or compare every package</span>
-            <HugeiconsIcon icon={ArrowRight01Icon} size={14} aria-hidden="true" />
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              size={14}
+              aria-hidden="true"
+            />
           </Link>
         </div>
       </section>
@@ -357,5 +420,5 @@ export default async function DestinationDetailPage({
         primaryLabel="Contact Us"
       />
     </div>
-  );
+  )
 }

@@ -1,49 +1,58 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Share01Icon, ArrowRight01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { formatNaira } from "@/lib/format";
+import * as React from "react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  Share01Icon,
+  ArrowRight01Icon,
+  Tick01Icon,
+} from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
+import { formatNaira } from "@/lib/format"
 
 export function PackageShareButton({
   title,
   destinationName,
 }: {
-  title: string;
-  destinationName: string;
+  title: string
+  destinationName: string
 }) {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = React.useState(false)
 
   const handleShare = async () => {
-    const url = typeof window !== "undefined" ? window.location.href : "";
+    const url = typeof window !== "undefined" ? window.location.href : ""
     const shareData = {
       title: `${title} | Alphaa Africa`,
       text: `Check out this holiday package to ${destinationName} on Alphaa Africa:`,
       url,
-    };
+    }
 
-    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare(shareData)
+    ) {
       try {
-        await navigator.share(shareData);
-        return;
+        await navigator.share(shareData)
+        return
       } catch {
         // Fallback to clipboard copy if user dismissed or cancelled native share
       }
     }
 
     try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
       toast.success("Link copied to clipboard", {
-        description: "You can now paste and share this package with friends and family.",
-      });
-      setTimeout(() => setCopied(false), 2500);
+        description:
+          "You can now paste and share this package with friends and family.",
+      })
+      setTimeout(() => setCopied(false), 2500)
     } catch {
-      toast.error("Could not copy link");
+      toast.error("Could not copy link")
     }
-  };
+  }
 
   return (
     <button
@@ -60,53 +69,53 @@ export function PackageShareButton({
       />
       <span>{copied ? "Copied" : "Share"}</span>
     </button>
-  );
+  )
 }
 
 export function PackageMobileBar({
   price,
   title,
 }: {
-  price: string;
-  title: string;
+  price: string
+  title: string
 }) {
-  const [visible, setVisible] = React.useState(false);
+  const [visible, setVisible] = React.useState(false)
 
   React.useEffect(() => {
     const handleScroll = () => {
       // Show when scrolled down past 350px
       if (window.scrollY > 350) {
-        setVisible(true);
+        setVisible(true)
       } else {
-        setVisible(false);
+        setVisible(false)
       }
-    };
+    }
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   const scrollToEnquiry = () => {
-    const element = document.getElementById("enquiry");
+    const element = document.getElementById("enquiry")
     if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
+      element.scrollIntoView({ behavior: "smooth" })
     }
-  };
+  }
 
-  if (!visible) return null;
+  if (!visible) return null
 
   return (
     <aside
       aria-label="Quick booking bar"
-      className="fixed bottom-0 inset-x-0 z-40 lg:hidden border-t border-border/80 bg-background/95 backdrop-blur-md px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] animate-in slide-in-from-bottom duration-200"
+      className="fixed inset-x-0 bottom-0 z-40 animate-in border-t border-border/80 bg-background/95 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md duration-200 slide-in-from-bottom lg:hidden"
     >
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
-        <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="flex min-w-0 flex-col">
+          <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
             From
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-base font-bold text-foreground truncate">
+            <span className="truncate text-base font-bold text-foreground">
               {formatNaira(price)}
             </span>
             <span className="text-[11px] text-muted-foreground">/ person</span>
@@ -123,5 +132,5 @@ export function PackageMobileBar({
         </Button>
       </div>
     </aside>
-  );
+  )
 }

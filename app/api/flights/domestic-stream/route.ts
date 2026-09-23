@@ -1,5 +1,5 @@
-import { getApiBaseUrl } from "@/lib/api/client";
-import { parseDomesticParams, toDomesticQuery } from "@/lib/api/domestic";
+import { getApiBaseUrl } from "@/lib/api/client"
+import { parseDomesticParams, toDomesticQuery } from "@/lib/api/domestic"
 
 /**
  * Domestic SSE proxy — Phase 3, ticket 03 (ADR-0004).
@@ -12,13 +12,13 @@ import { parseDomesticParams, toDomesticQuery } from "@/lib/api/domestic";
  * - Client disconnects abort the upstream fetch via `request.signal`.
  */
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"
 
 export async function GET(request: Request): Promise<Response> {
-  const url = new URL(request.url);
-  const adultsRaw = Number(url.searchParams.get("adults") ?? "1");
-  const childrenRaw = Number(url.searchParams.get("children") ?? "0");
-  const infantsRaw = Number(url.searchParams.get("infants") ?? "0");
+  const url = new URL(request.url)
+  const adultsRaw = Number(url.searchParams.get("adults") ?? "1")
+  const childrenRaw = Number(url.searchParams.get("children") ?? "0")
+  const infantsRaw = Number(url.searchParams.get("infants") ?? "0")
 
   const params = parseDomesticParams({
     origin: url.searchParams.get("origin") ?? "",
@@ -28,45 +28,49 @@ export async function GET(request: Request): Promise<Response> {
     children: Number.isFinite(childrenRaw) ? childrenRaw : 0,
     infants: Number.isFinite(infantsRaw) ? infantsRaw : 0,
     return_date: url.searchParams.get("return_date"),
-  });
+  })
 
   if (!params) {
     return Response.json(
-      { message: "Select a valid origin, destination, and date to search domestic flights." },
-      { status: 400 },
-    );
+      {
+        message:
+          "Select a valid origin, destination, and date to search domestic flights.",
+      },
+      { status: 400 }
+    )
   }
 
   // Query holds only safe primitives (IATA, date, party counts) — never
   // tokens, passports, payment data, or opaque blobs (spec §59).
   const backendUrl = `${getApiBaseUrl()}/api/flights/local-search-stream/?${new URLSearchParams(
-    toDomesticQuery(params),
-  ).toString()}`;
+    toDomesticQuery(params)
+  ).toString()}`
 
-  let upstream: Response;
+  let upstream: Response
   try {
     upstream = await fetch(backendUrl, {
       method: "GET",
       headers: { Accept: "text/event-stream" },
       cache: "no-store",
       signal: request.signal,
-    });
+    })
   } catch (error) {
     if ((error as Error)?.name === "AbortError") {
-      return new Response(null, { status: 499 });
+      return new Response(null, { status: 499 })
     }
     return Response.json(
       { message: "The travel service is temporarily unavailable." },
-      { status: 502 },
-    );
+      { status: 502 }
+    )
   }
 
   if (!upstream.ok || !upstream.body) {
-    const status = upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502;
+    const status =
+      upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502
     return Response.json(
       { message: "The travel service is temporarily unavailable." },
-      { status },
-    );
+      { status }
+    )
   }
 
   // Pipe verbatim — no buffering, no transformation (Context7 SSE pattern).
@@ -77,5 +81,5 @@ export async function GET(request: Request): Promise<Response> {
       Connection: "keep-alive",
       "X-Content-Type-Options": "nosniff",
     },
-  });
+  })
 }

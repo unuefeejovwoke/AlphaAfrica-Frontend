@@ -1,9 +1,9 @@
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Calendar01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
-import type { PackageList } from "@/lib/api/packages";
-import { formatNaira } from "@/lib/format";
-import { resolveListingImageUrl } from "@/lib/listings";
-import { ListingCardShell, CardCta } from "@/components/shared/listing-card";
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Calendar01Icon, Tick01Icon } from "@hugeicons/core-free-icons"
+import type { PackageList } from "@/lib/api/packages"
+import { formatNaira } from "@/lib/format"
+import { resolveListingImageUrl } from "@/lib/listings"
+import { ListingCardShell, CardCta } from "@/components/shared/listing-card"
 
 /**
  * Package card (RSC): destination, duration, title, summary,
@@ -22,7 +22,12 @@ export function PackageCard({ pkg }: { pkg: PackageList }) {
           {pkg.destination_name}
         </span>
         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-          <HugeiconsIcon icon={Calendar01Icon} size={13} className="text-muted-foreground" aria-hidden="true" />
+          <HugeiconsIcon
+            icon={Calendar01Icon}
+            size={13}
+            className="text-muted-foreground"
+            aria-hidden="true"
+          />
           {pkg.duration_days} {pkg.duration_days === 1 ? "day" : "days"}
         </span>
       </div>
@@ -32,13 +37,18 @@ export function PackageCard({ pkg }: { pkg: PackageList }) {
       </h3>
 
       {pkg.summary && (
-        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{pkg.summary}</p>
+        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+          {pkg.summary}
+        </p>
       )}
 
       {pkg.inclusions_list.length > 0 && (
         <ul className="mt-1 flex flex-col gap-1.5 pt-1">
           {pkg.inclusions_list.slice(0, 3).map((inclusion) => (
-            <li key={inclusion} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <li
+              key={inclusion}
+              className="flex items-start gap-1.5 text-xs text-muted-foreground"
+            >
               <HugeiconsIcon
                 icon={Tick01Icon}
                 size={14}
@@ -51,15 +61,17 @@ export function PackageCard({ pkg }: { pkg: PackageList }) {
         </ul>
       )}
 
-      <div className="mt-auto pt-4 border-t border-border/60 flex items-end justify-between gap-2">
+      <div className="mt-auto flex items-end justify-between gap-2 border-t border-border/60 pt-4">
         <div className="flex flex-col">
-          <span className="text-[10px] uppercase font-medium tracking-wider text-muted-foreground">From</span>
-          <span className="text-base sm:text-lg font-bold text-foreground tracking-tight">
+          <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+            From
+          </span>
+          <span className="text-base font-bold tracking-tight text-foreground sm:text-lg">
             {formatNaira(pkg.price)}
           </span>
         </div>
         <CardCta label="View package" />
       </div>
     </ListingCardShell>
-  );
+  )
 }

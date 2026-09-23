@@ -1,17 +1,21 @@
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Location01Icon } from "@hugeicons/core-free-icons";
-import type { DestinationList } from "@/lib/api/destinations";
-import { formatNaira } from "@/lib/format";
-import { resolveListingImageUrl } from "@/lib/listings";
-import { ListingCardShell, CardCta } from "@/components/shared/listing-card";
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Location01Icon } from "@hugeicons/core-free-icons"
+import type { DestinationList } from "@/lib/api/destinations"
+import { formatNaira } from "@/lib/format"
+import { resolveListingImageUrl } from "@/lib/listings"
+import { ListingCardShell, CardCta } from "@/components/shared/listing-card"
 
 /**
  * Destination card (RSC): image, destination, country, package count,
  * starting price, and CTA. Featured entries carry a badge and sort first
  * (see `sortFeaturedFirst`). Links are crawlable by construction.
  */
-export function DestinationCard({ destination }: { destination: DestinationList }) {
-  const packageCount = destination.package_count;
+export function DestinationCard({
+  destination,
+}: {
+  destination: DestinationList
+}) {
+  const packageCount = destination.package_count
   return (
     <ListingCardShell
       href={`/destinations/${destination.slug}`}
@@ -20,7 +24,12 @@ export function DestinationCard({ destination }: { destination: DestinationList 
       isFeatured={destination.is_featured}
     >
       <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-        <HugeiconsIcon icon={Location01Icon} size={14} className="text-primary" aria-hidden="true" />
+        <HugeiconsIcon
+          icon={Location01Icon}
+          size={14}
+          className="text-primary"
+          aria-hidden="true"
+        />
         {destination.country}
       </span>
       <h3 className="text-lg font-bold text-foreground transition-colors group-hover:text-primary">
@@ -34,5 +43,5 @@ export function DestinationCard({ destination }: { destination: DestinationList 
       </p>
       <CardCta label="Explore destination" />
     </ListingCardShell>
-  );
+  )
 }

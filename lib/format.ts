@@ -9,12 +9,12 @@ const nairaFormatter = new Intl.NumberFormat("en-NG", {
   style: "currency",
   currency: "NGN",
   maximumFractionDigits: 0,
-});
+})
 
 export function formatNaira(amount: string): string {
-  const value = Number(amount);
+  const value = Number(amount)
   if (amount.trim().length === 0 || Number.isNaN(value)) {
-    return amount;
+    return amount
   }
-  return nairaFormatter.format(value);
+  return nairaFormatter.format(value)
 }

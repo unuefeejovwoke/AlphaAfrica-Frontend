@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { apiGet } from "./client.ts";
+import { z } from "zod"
+import { apiGet } from "./client.ts"
 
 /**
  * Post-payment order lookup (PRD §13, §8.4).
@@ -22,25 +22,32 @@ export const paymentOrderSchema = z.object({
   currency: z.string().optional().default("NGN"),
   customer_name: z.string().optional().default(""),
   description: z.string().optional().default(""),
-});
+})
 
-export type PaymentOrder = z.infer<typeof paymentOrderSchema>;
+export type PaymentOrder = z.infer<typeof paymentOrderSchema>
 
 /**
  * Fetch the final order for a payment reference. Never cached: verification
  * must reflect the live payment state, not a stale "pending" snapshot.
  */
-export async function getPaymentOrder(reference: string): Promise<PaymentOrder> {
-  const raw = await apiGet<unknown>(`/api/payments/order/${encodeURIComponent(reference)}/`, {
-    noStore: true,
-  });
-  return paymentOrderSchema.parse(raw);
+export async function getPaymentOrder(
+  reference: string
+): Promise<PaymentOrder> {
+  const raw = await apiGet<unknown>(
+    `/api/payments/order/${encodeURIComponent(reference)}/`,
+    {
+      noStore: true,
+    }
+  )
+  return paymentOrderSchema.parse(raw)
 }
 
 /** A universal order counts as complete only for explicit success states. */
 export function isOrderPaid(status: string | undefined | null): boolean {
-  if (!status) return false;
-  return ["paid", "confirmed", "completed"].includes(status.trim().toLowerCase());
+  if (!status) return false
+  return ["paid", "confirmed", "completed"].includes(
+    status.trim().toLowerCase()
+  )
 }
 
 /**
@@ -48,7 +55,11 @@ export function isOrderPaid(status: string | undefined | null): boolean {
  * the universal order, `contacted` is terminal-proof here: a specialist
  * only contacts the customer after the consultation fee has moved.
  */
-export function isVisaApplicationPaid(status: string | undefined | null): boolean {
-  if (!status) return false;
-  return ["paid", "contacted", "completed"].includes(status.trim().toLowerCase());
+export function isVisaApplicationPaid(
+  status: string | undefined | null
+): boolean {
+  if (!status) return false
+  return ["paid", "contacted", "completed"].includes(
+    status.trim().toLowerCase()
+  )
 }

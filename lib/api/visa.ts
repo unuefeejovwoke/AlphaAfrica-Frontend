@@ -1,11 +1,11 @@
-import { z } from "zod";
-import { apiGet, apiPost, type PaginatedResponse } from "./client.ts";
+import { z } from "zod"
+import { apiGet, apiPost, type PaginatedResponse } from "./client.ts"
 import {
   emailSchema,
   fullNameSchema,
   nigerianPhoneSchema,
   optionalFutureDateStringSchema,
-} from "./validation.ts";
+} from "./validation.ts"
 
 /**
  * Visa types mirror `apidoc.yaml`: `VisaCountryList`, `VisaCountryDetail`,
@@ -24,9 +24,9 @@ export const travelPurposeSchema = z.enum([
   "medical",
   "family",
   "other",
-]);
+])
 
-export type TravelPurpose = z.infer<typeof travelPurposeSchema>;
+export type TravelPurpose = z.infer<typeof travelPurposeSchema>
 
 export const TRAVEL_PURPOSE_LABELS: Record<TravelPurpose, string> = {
   tourism: "Tourism",
@@ -36,7 +36,7 @@ export const TRAVEL_PURPOSE_LABELS: Record<TravelPurpose, string> = {
   medical: "Medical",
   family: "Family Visit",
   other: "Other",
-};
+}
 
 export const visaCountryListSchema = z.object({
   id: z.number().int(),
@@ -46,9 +46,9 @@ export const visaCountryListSchema = z.object({
   processing_time: z.string().optional().default(""),
   flag_image: z.string(),
   is_featured: z.boolean().optional(),
-});
+})
 
-export type VisaCountryList = z.infer<typeof visaCountryListSchema>;
+export type VisaCountryList = z.infer<typeof visaCountryListSchema>
 
 export const visaCountryDetailSchema = z.object({
   id: z.number().int(),
@@ -58,17 +58,20 @@ export const visaCountryDetailSchema = z.object({
   processing_time: z.string().optional().default(""),
   description: z.string().optional().default(""),
   flag_image: z.string(),
-});
+})
 
-export type VisaCountryDetail = z.infer<typeof visaCountryDetailSchema>;
-export type PaginatedVisaCountries = PaginatedResponse<VisaCountryList>;
+export type VisaCountryDetail = z.infer<typeof visaCountryDetailSchema>
+export type PaginatedVisaCountries = PaginatedResponse<VisaCountryList>
 
 /**
  * RHF-validated Visa Consultation payload (PRD §10 parity):
  * phone normalized, preferred date today-or-later, applicants ≥ 1.
  */
 export const visaConsultationSchema = z.object({
-  country_id: z.coerce.number().int().min(1, "Choose a country for this consultation"),
+  country_id: z.coerce
+    .number()
+    .int()
+    .min(1, "Choose a country for this consultation"),
   full_name: fullNameSchema,
   email: emailSchema,
   phone: nigerianPhoneSchema("Phone number"),
@@ -79,11 +82,16 @@ export const visaConsultationSchema = z.object({
     .int()
     .min(1, "At least 1 applicant is required")
     .max(30, "Too many applicants for one consultation"),
-  message: z.string().trim().max(2000, "Message is too long").optional().default(""),
-});
+  message: z
+    .string()
+    .trim()
+    .max(2000, "Message is too long")
+    .optional()
+    .default(""),
+})
 
-export type VisaConsultationInput = z.input<typeof visaConsultationSchema>;
-export type VisaConsultationPayload = z.output<typeof visaConsultationSchema>;
+export type VisaConsultationInput = z.input<typeof visaConsultationSchema>
+export type VisaConsultationPayload = z.output<typeof visaConsultationSchema>
 
 export const visaApplicationSchema = z.object({
   id: z.number().int(),
@@ -100,9 +108,9 @@ export const visaApplicationSchema = z.object({
   consultation_fee: z.string(),
   status: z.string(),
   created_at: z.string(),
-});
+})
 
-export type VisaApplication = z.infer<typeof visaApplicationSchema>;
+export type VisaApplication = z.infer<typeof visaApplicationSchema>
 
 /**
  * Backend creates the consultation and initializes Paystack, returning an
@@ -113,24 +121,31 @@ export type VisaApplication = z.infer<typeof visaApplicationSchema>;
 export const visaConsultationResultSchema = z.object({
   reference: z.string(),
   authorization_url: z.string(),
-});
+})
 
-export type VisaConsultationResult = z.infer<typeof visaConsultationResultSchema>;
+export type VisaConsultationResult = z.infer<
+  typeof visaConsultationResultSchema
+>
 
 export async function getVisaCountries(params?: {
-  page?: number;
+  page?: number
 }): Promise<PaginatedVisaCountries> {
   return apiGet<PaginatedVisaCountries>("/api/visa/countries/", {
     query: { page: params?.page },
     tags: ["visa-countries"],
-  });
+  })
 }
 
-export async function getVisaCountryDetail(slug: string): Promise<VisaCountryDetail> {
-  const raw = await apiGet<unknown>(`/api/visa/countries/${encodeURIComponent(slug)}/`, {
-    tags: ["visa-countries", `visa-country:${slug}`],
-  });
-  return visaCountryDetailSchema.parse(raw);
+export async function getVisaCountryDetail(
+  slug: string
+): Promise<VisaCountryDetail> {
+  const raw = await apiGet<unknown>(
+    `/api/visa/countries/${encodeURIComponent(slug)}/`,
+    {
+      tags: ["visa-countries", `visa-country:${slug}`],
+    }
+  )
+  return visaCountryDetailSchema.parse(raw)
 }
 
 /**
@@ -139,20 +154,25 @@ export async function getVisaCountryDetail(slug: string): Promise<VisaCountryDet
  * Paystack redirect. Verification happens via {@link verifyVisaPayment}.
  */
 export async function submitVisaConsultation(
-  input: VisaConsultationInput,
+  input: VisaConsultationInput
 ): Promise<VisaConsultationResult> {
-  const payload = visaConsultationSchema.parse(input);
+  const payload = visaConsultationSchema.parse(input)
   const raw = await apiPost<unknown, Record<string, unknown>>(
     "/api/visa/apply/",
-    payload as Record<string, unknown>,
-  );
-  return visaConsultationResultSchema.parse(raw);
+    payload as Record<string, unknown>
+  )
+  return visaConsultationResultSchema.parse(raw)
 }
 
-export async function verifyVisaPayment(reference: string): Promise<VisaApplication> {
+export async function verifyVisaPayment(
+  reference: string
+): Promise<VisaApplication> {
   // Never cached: verification must reflect the live payment state (PRD §13).
-  const raw = await apiGet<unknown>(`/api/visa/verify/${encodeURIComponent(reference)}/`, {
-    noStore: true,
-  });
-  return visaApplicationSchema.parse(raw);
+  const raw = await apiGet<unknown>(
+    `/api/visa/verify/${encodeURIComponent(reference)}/`,
+    {
+      noStore: true,
+    }
+  )
+  return visaApplicationSchema.parse(raw)
 }

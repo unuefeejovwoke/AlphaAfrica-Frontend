@@ -1,33 +1,38 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { BedSingle01Icon, UserGroupIcon, PlusSignIcon, MinusSignIcon } from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
-import { MAX_HOTEL_GUESTS, MAX_HOTEL_ROOMS } from "@/lib/api/hotels";
+import * as React from "react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  BedSingle01Icon,
+  UserGroupIcon,
+  PlusSignIcon,
+  MinusSignIcon,
+} from "@hugeicons/core-free-icons"
+import { cn } from "@/lib/utils"
+import { MAX_HOTEL_GUESTS, MAX_HOTEL_ROOMS } from "@/lib/api/hotels"
 
 export interface HotelParty {
-  guests: number;
-  rooms: number;
+  guests: number
+  rooms: number
 }
 
 export interface HotelPartyStepperProps {
-  value: HotelParty;
-  onChange: (value: HotelParty) => void;
-  error?: string;
-  className?: string;
-  disabled?: boolean;
+  value: HotelParty
+  onChange: (value: HotelParty) => void
+  error?: string
+  className?: string
+  disabled?: boolean
 }
 
 interface CounterRowProps {
-  id: string;
-  icon: React.ComponentProps<typeof HugeiconsIcon>["icon"];
-  label: string;
-  hint: string;
-  value: number;
-  max: number;
-  disabled?: boolean;
-  onChange: (next: number) => void;
+  id: string
+  icon: React.ComponentProps<typeof HugeiconsIcon>["icon"]
+  label: string
+  hint: string
+  value: number
+  max: number
+  disabled?: boolean
+  onChange: (next: number) => void
 }
 
 /**
@@ -35,8 +40,17 @@ interface CounterRowProps {
  * 44px tap targets, disabled bounds, and screen-reader labels. Large tap
  * targets and stepper semantics per the mobile-first accessibility mandate.
  */
-function CounterRow({ id, icon, label, hint, value, max, disabled, onChange }: CounterRowProps) {
-  const valueId = `${id}-value`;
+function CounterRow({
+  id,
+  icon,
+  label,
+  hint,
+  value,
+  max,
+  disabled,
+  onChange,
+}: CounterRowProps) {
+  const valueId = `${id}-value`
   return (
     <div className="flex items-center justify-between py-2.5">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -64,7 +78,7 @@ function CounterRow({ id, icon, label, hint, value, max, disabled, onChange }: C
           role="status"
           aria-live="polite"
           aria-atomic="true"
-          className="w-6 text-center text-sm font-semibold tabular-nums text-foreground"
+          className="w-6 text-center text-sm font-semibold text-foreground tabular-nums"
         >
           {value}
         </span>
@@ -80,7 +94,7 @@ function CounterRow({ id, icon, label, hint, value, max, disabled, onChange }: C
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 /**
@@ -94,17 +108,20 @@ export function HotelPartyStepper({
   className,
   disabled,
 }: HotelPartyStepperProps) {
-  const headingId = React.useId();
-  const errorId = React.useId();
-  const guestsId = React.useId();
-  const roomsId = React.useId();
+  const headingId = React.useId()
+  const errorId = React.useId()
+  const guestsId = React.useId()
+  const roomsId = React.useId()
 
   return (
     <div
       role="group"
       aria-labelledby={headingId}
       aria-describedby={error ? errorId : undefined}
-      className={cn("w-full rounded-2xl border border-border bg-card p-4 shadow-xs", className)}
+      className={cn(
+        "w-full rounded-2xl border border-border bg-card p-4 shadow-xs",
+        className
+      )}
     >
       <div className="flex items-center justify-between border-b border-border/70 pb-3">
         <div className="flex items-center gap-2">
@@ -112,7 +129,10 @@ export function HotelPartyStepper({
             <HugeiconsIcon icon={UserGroupIcon} size={18} aria-hidden="true" />
           </div>
           <div>
-            <h4 id={headingId} className="text-sm font-semibold text-foreground">
+            <h4
+              id={headingId}
+              className="text-sm font-semibold text-foreground"
+            >
               Guests and rooms
             </h4>
             <p className="text-xs text-muted-foreground">
@@ -146,10 +166,14 @@ export function HotelPartyStepper({
       </div>
 
       {error ? (
-        <p id={errorId} role="alert" className="mt-2 text-xs font-medium text-destructive">
+        <p
+          id={errorId}
+          role="alert"
+          className="mt-2 text-xs font-medium text-destructive"
+        >
           {error}
         </p>
       ) : null}
     </div>
-  );
+  )
 }

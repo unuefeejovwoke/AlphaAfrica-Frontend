@@ -1,19 +1,19 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
+import * as React from "react"
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Cancel01Icon } from "@hugeicons/core-free-icons"
+import { cn } from "@/lib/utils"
 
 export interface DialogProps {
-  title: string;
-  description?: string;
-  triggerLabel: string;
-  children: React.ReactNode;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  className?: string;
+  title: string
+  description?: string
+  triggerLabel: string
+  children: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  className?: string
 }
 
 export function Dialog({
@@ -34,7 +34,7 @@ export function Dialog({
         <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-foreground/40" />
         <DialogPrimitive.Popup
           className={cn(
-            "fixed top-1/2 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 overscroll-contain text-foreground shadow-2xl",
+            "fixed top-1/2 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overscroll-contain rounded-2xl border border-border bg-card p-6 text-foreground shadow-2xl",
             className
           )}
         >
@@ -51,7 +51,7 @@ export function Dialog({
             </div>
             <DialogPrimitive.Close
               aria-label="Close dialog"
-              className="rounded-lg p-1.5 touch-manipulation text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="touch-manipulation rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               <HugeiconsIcon icon={Cancel01Icon} size={18} aria-hidden="true" />
             </DialogPrimitive.Close>
@@ -60,5 +60,5 @@ export function Dialog({
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
-  );
+  )
 }

@@ -1,6 +1,6 @@
-"use client";
+"use client"
 
-import dynamic from "next/dynamic";
+import dynamic from "next/dynamic"
 
 // Lazy-load the measurement provider after hydration (vercel:
 // bundle-dynamic-imports). This loader is the client boundary the root
@@ -9,11 +9,11 @@ import dynamic from "next/dynamic";
 const AnalyticsProvider = dynamic(
   () =>
     import("@/components/analytics/analytics-provider").then(
-      (m) => m.AnalyticsProvider,
+      (m) => m.AnalyticsProvider
     ),
-  { ssr: false },
-);
+  { ssr: false }
+)
 
 export function AnalyticsLoader() {
-  return <AnalyticsProvider />;
+  return <AnalyticsProvider />
 }

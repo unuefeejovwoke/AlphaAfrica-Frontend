@@ -1,9 +1,9 @@
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Message01Icon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { ErrorState } from "@/components/feedback/error-state";
-import { RetryButton } from "@/components/home/retry-button";
-import { getSupportWhatsAppUrl } from "@/lib/content/company";
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Message01Icon } from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/feedback/error-state"
+import { RetryButton } from "@/components/home/retry-button"
+import { getSupportWhatsAppUrl } from "@/lib/content/company"
 
 /**
  * Shared empty/error states for the live featured sections (§12).
@@ -15,16 +15,24 @@ export function FeaturedEmpty({
   whatsappContext,
   description,
 }: {
-  whatsappContext: string;
-  description: string;
+  whatsappContext: string
+  description: string
 }) {
   return (
     <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center">
-      <p className="text-sm font-semibold text-foreground">No featured trips right now, talk to Alphaa.</p>
-      <p className="text-xs text-muted-foreground leading-relaxed max-w-md">{description}</p>
+      <p className="text-sm font-semibold text-foreground">
+        No featured trips right now, talk to Alphaa.
+      </p>
+      <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
+        {description}
+      </p>
       <Button
         render={
-          <a href={getSupportWhatsAppUrl(whatsappContext)} target="_blank" rel="noopener noreferrer" />
+          <a
+            href={getSupportWhatsAppUrl(whatsappContext)}
+            target="_blank"
+            rel="noopener noreferrer"
+          />
         }
         size="sm"
         className="bg-emerald-600 text-white hover:bg-emerald-700"
@@ -33,7 +41,7 @@ export function FeaturedEmpty({
         <span>Talk to Alphaa</span>
       </Button>
     </div>
-  );
+  )
 }
 
 export function FeaturedError({
@@ -41,10 +49,10 @@ export function FeaturedError({
   whatsappContext,
   error,
 }: {
-  title: string;
-  whatsappContext: string;
+  title: string
+  whatsappContext: string
   /** Typed API failure: rendered as customer-safe copy, never raw backend text. */
-  error?: unknown;
+  error?: unknown
 }) {
   return (
     <div className="flex flex-col items-center gap-4">
@@ -53,7 +61,11 @@ export function FeaturedError({
         <RetryButton />
         <Button
           render={
-            <a href={getSupportWhatsAppUrl(whatsappContext)} target="_blank" rel="noopener noreferrer" />
+            <a
+              href={getSupportWhatsAppUrl(whatsappContext)}
+              target="_blank"
+              rel="noopener noreferrer"
+            />
           }
           variant="secondary"
           size="sm"
@@ -63,5 +75,5 @@ export function FeaturedError({
         </Button>
       </div>
     </div>
-  );
+  )
 }

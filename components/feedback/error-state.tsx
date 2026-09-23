@@ -1,37 +1,34 @@
-import * as React from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  AlertCircleIcon,
-  Message01Icon,
-} from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { TrackLink } from "@/components/analytics/track-link";
-import { getErrorPreset, type ErrorPreset } from "@/lib/feedback-presets";
-import { ApiError, getHumanErrorMessage } from "@/lib/api/client";
-import { getSupportWhatsAppUrl } from "@/lib/content/company";
+import * as React from "react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { AlertCircleIcon, Message01Icon } from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { TrackLink } from "@/components/analytics/track-link"
+import { getErrorPreset, type ErrorPreset } from "@/lib/feedback-presets"
+import { ApiError, getHumanErrorMessage } from "@/lib/api/client"
+import { getSupportWhatsAppUrl } from "@/lib/content/company"
 
 export interface ErrorStateProps {
-  preset?: ErrorPreset;
-  title?: string;
-  description?: string;
+  preset?: ErrorPreset
+  title?: string
+  description?: string
   /**
    * Optional typed API failure. When an {@link ApiError} is passed, its
    * customer-safe copy (never the raw backend payload) overrides
    * `description`, so API-backed pages get diagnosis + recovery for free.
    */
-  error?: unknown;
-  onRetry?: () => void;
-  retryLabel?: string;
-  alternateLabel?: string;
-  alternateHref?: string;
+  error?: unknown
+  onRetry?: () => void
+  retryLabel?: string
+  alternateLabel?: string
+  alternateHref?: string
   /**
    * Trip-aware WhatsApp prefill, e.g. "finding a flight for my route
    * (LOS → DXB on 2026-05-01)". Overrides the preset text so error branches
    * can carry route, dates, party, or reference context.
    */
-  supportContext?: string;
-  className?: string;
+  supportContext?: string
+  className?: string
 }
 
 export function ErrorState({
@@ -46,15 +43,21 @@ export function ErrorState({
   supportContext,
   className,
 }: ErrorStateProps) {
-  const presetData = getErrorPreset(preset);
-  const displayTitle = title || presetData.title;
+  const presetData = getErrorPreset(preset)
+  const displayTitle = title || presetData.title
   const displayDescription =
-    description || (error instanceof ApiError ? getHumanErrorMessage(error) : presetData.description);
-  const displayAlternateLabel = alternateLabel || presetData.alternateRoute.label;
-  const displayAlternateHref = alternateHref || presetData.alternateRoute.href;
+    description ||
+    (error instanceof ApiError
+      ? getHumanErrorMessage(error)
+      : presetData.description)
+  const displayAlternateLabel =
+    alternateLabel || presetData.alternateRoute.label
+  const displayAlternateHref = alternateHref || presetData.alternateRoute.href
 
   // Single source of truth: WhatsApp number comes from lib/content/company.ts.
-  const whatsappUrl = getSupportWhatsAppUrl(supportContext ?? presetData.whatsappText);
+  const whatsappUrl = getSupportWhatsAppUrl(
+    supportContext ?? presetData.whatsappText
+  )
 
   return (
     <div
@@ -68,7 +71,9 @@ export function ErrorState({
         <HugeiconsIcon icon={AlertCircleIcon} size={24} aria-hidden="true" />
       </div>
 
-      <h3 className="min-w-0 text-base font-bold text-balance text-foreground">{displayTitle}</h3>
+      <h3 className="min-w-0 text-base font-bold text-balance text-foreground">
+        {displayTitle}
+      </h3>
       <p className="mt-1.5 max-w-md min-w-0 text-xs leading-relaxed break-words text-muted-foreground">
         {displayDescription}
       </p>
@@ -81,7 +86,10 @@ export function ErrorState({
         ) : null}
         <Button
           render={
-            <a href={displayAlternateHref} className="flex items-center gap-2" />
+            <a
+              href={displayAlternateHref}
+              className="flex items-center gap-2"
+            />
           }
           variant="ghost"
           size="sm"
@@ -92,7 +100,10 @@ export function ErrorState({
           render={
             <TrackLink
               event="support_click"
-              eventProps={{ context: supportContext ?? presetData.whatsappText, channel: "whatsapp" }}
+              eventProps={{
+                context: supportContext ?? presetData.whatsappText,
+                channel: "whatsapp",
+              }}
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -107,5 +118,5 @@ export function ErrorState({
         </Button>
       </div>
     </div>
-  );
+  )
 }

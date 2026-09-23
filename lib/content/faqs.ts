@@ -1,4 +1,4 @@
-import type { ContentSource } from "./company.ts";
+import type { ContentSource } from "./company.ts"
 
 /**
  * Grouped FAQs per PRD §8.12. All entries are `source: "draft"` for the
@@ -15,34 +15,34 @@ export type FaqGroupId =
   | "changes"
   | "cancellation"
   | "account"
-  | "general";
+  | "general"
 
 export interface Faq {
-  id: string;
-  question: string;
-  answer: string;
-  source: ContentSource;
+  id: string
+  question: string
+  answer: string
+  source: ContentSource
 }
 
 export interface FaqGroup {
-  id: FaqGroupId;
-  title: string;
-  description: string;
-  faqs: Faq[];
+  id: FaqGroupId
+  title: string
+  description: string
+  faqs: Faq[]
 }
 
 export interface FaqContent {
-  source: ContentSource;
-  updatedAt: string;
-  groups: FaqGroup[];
+  source: ContentSource
+  updatedAt: string
+  groups: FaqGroup[]
   seo: {
-    title: string;
-    description: string;
-  };
+    title: string
+    description: string
+  }
 }
 
 function draft(id: string, question: string, answer: string): Faq {
-  return { id, question, answer, source: "draft" };
+  return { id, question, answer, source: "draft" }
 }
 
 export const faqs: FaqContent = {
@@ -57,17 +57,17 @@ export const faqs: FaqContent = {
         draft(
           "flights-search-how",
           "How do I search for flights?",
-          "Choose your trip type, enter origin and destination airports, pick dates and travellers, then compare options. Domestic Nigerian searches can take up to a minute because airlines are checked live — results appear as they arrive.",
+          "Choose your trip type, enter origin and destination airports, pick dates and travellers, then compare options. Domestic Nigerian searches can take up to a minute because airlines are checked live — results appear as they arrive."
         ),
         draft(
           "flights-price-change",
           "Why did my flight price change before booking?",
-          "Airlines update fares frequently. We re-check the fare with the airline before payment. If it changed, we show the old price, the new price, and the difference so you can continue or cancel.",
+          "Airlines update fares frequently. We re-check the fare with the airline before payment. If it changed, we show the old price, the new price, and the difference so you can continue or cancel."
         ),
         draft(
           "flights-pnr",
           "When do I get my ticket or PNR?",
-          "Your airline booking reference (PNR) is created only after payment succeeds. It appears on your confirmation screen and receipt — keep it for check-in.",
+          "Your airline booking reference (PNR) is created only after payment succeeds. It appears on your confirmation screen and receipt — keep it for check-in."
         ),
       ],
     },
@@ -79,12 +79,12 @@ export const faqs: FaqContent = {
         draft(
           "hotels-search-how",
           "How do I find a hotel?",
-          "Search by city or hotel name, then filter by dates, guests, rooms, star rating, and price. Each card shows the starting nightly rate so you can compare quickly.",
+          "Search by city or hotel name, then filter by dates, guests, rooms, star rating, and price. Each card shows the starting nightly rate so you can compare quickly."
         ),
         draft(
           "hotels-guest-booking",
           "Can I book a hotel without creating an account?",
-          "Yes. Hotel bookings support guest checkout — you only provide guest name, email, and phone plus your stay details. No account is required.",
+          "Yes. Hotel bookings support guest checkout — you only provide guest name, email, and phone plus your stay details. No account is required."
         ),
       ],
     },
@@ -96,12 +96,12 @@ export const faqs: FaqContent = {
         draft(
           "packages-what",
           "What is a holiday package?",
-          "A curated itinerary for one destination with duration, from-price per person, inclusions, and highlights. Packages are enquiry-first: you send details and a travel specialist plans with you.",
+          "A curated itinerary for one destination with duration, from-price per person, inclusions, and highlights. Packages are enquiry-first: you send details and a travel specialist plans with you."
         ),
         draft(
           "packages-enquiry-payment",
           "Do I pay when I submit a package enquiry?",
-          "No. An enquiry is a no-payment request. The travel team follows up with options and pricing, and you only pay once you agree a plan.",
+          "No. An enquiry is a no-payment request. The travel team follows up with options and pricing, and you only pay once you agree a plan."
         ),
       ],
     },
@@ -113,17 +113,17 @@ export const faqs: FaqContent = {
         draft(
           "visa-what",
           "What is a visa consultation?",
-          "A paid, country-specific guidance session: document review, process walkthrough, and interview preparation with a travel specialist. It is guidance — the embassy makes the final decision.",
+          "A paid, country-specific guidance session: document review, process walkthrough, and interview preparation with a travel specialist. It is guidance — the embassy makes the final decision."
         ),
         draft(
           "visa-fee",
           "What does the consultation fee cover?",
-          "The fee shown per country covers the consultation itself and follow-up guidance. Embassy or application fees charged by authorities are separate where they apply.",
+          "The fee shown per country covers the consultation itself and follow-up guidance. Embassy or application fees charged by authorities are separate where they apply."
         ),
         draft(
           "visa-time",
           "How long does visa processing take?",
-          "Each country page shows an indicative processing time (for example, 3 to 4 weeks). Timelines vary by season and applicant history — your specialist confirms expectations during consultation.",
+          "Each country page shows an indicative processing time (for example, 3 to 4 weeks). Timelines vary by season and applicant history — your specialist confirms expectations during consultation."
         ),
       ],
     },
@@ -135,12 +135,12 @@ export const faqs: FaqContent = {
         draft(
           "cars-rate",
           "How is the car rental price calculated?",
-          "Vehicles are priced per hour. Your total is the hourly rate multiplied by the number of hours booked, shown clearly before payment.",
+          "Vehicles are priced per hour. Your total is the hourly rate multiplied by the number of hours booked, shown clearly before payment."
         ),
         draft(
           "cars-booking-details",
           "What details do I provide for a car booking?",
-          "Pickup and drop-off locations, pickup date and time, number of hours, plus guest name, email, and phone. Guest checkout is supported.",
+          "Pickup and drop-off locations, pickup date and time, number of hours, plus guest name, email, and phone. Guest checkout is supported."
         ),
       ],
     },
@@ -152,12 +152,12 @@ export const faqs: FaqContent = {
         draft(
           "payments-how",
           "How do I pay for a booking?",
-          "After you confirm details, we create a pending booking and redirect you to Paystack to pay securely. We never collect or store your card details on this site.",
+          "After you confirm details, we create a pending booking and redirect you to Paystack to pay securely. We never collect or store your card details on this site."
         ),
         draft(
           "payments-confirm",
           "How do I know my payment succeeded?",
-          "After payment you return to a confirmation page that verifies your reference with the provider. Never assume success from the redirect alone — wait for the verified confirmation state.",
+          "After payment you return to a confirmation page that verifies your reference with the provider. Never assume success from the redirect alone — wait for the verified confirmation state."
         ),
       ],
     },
@@ -169,12 +169,12 @@ export const faqs: FaqContent = {
         draft(
           "changes-request",
           "Can I change my booking after payment?",
-          "Change options depend on the airline, hotel, or vehicle policy for your specific booking. Contact us with your reference and we will explain what is possible before any charges apply.",
+          "Change options depend on the airline, hotel, or vehicle policy for your specific booking. Contact us with your reference and we will explain what is possible before any charges apply."
         ),
         draft(
           "changes-name",
           "Can I correct a traveller name?",
-          "Small spelling corrections are often possible, but full name changes usually are not. Share your reference on WhatsApp and we will advise quickly.",
+          "Small spelling corrections are often possible, but full name changes usually are not. Share your reference on WhatsApp and we will advise quickly."
         ),
       ],
     },
@@ -186,12 +186,12 @@ export const faqs: FaqContent = {
         draft(
           "cancellation-policy",
           "Can I cancel and get a refund?",
-          "Cancellation and refund terms follow the specific airline, hotel, or provider policy attached to your booking. We explain the applicable terms before you pay and help process eligible requests.",
+          "Cancellation and refund terms follow the specific airline, hotel, or provider policy attached to your booking. We explain the applicable terms before you pay and help process eligible requests."
         ),
         draft(
           "cancellation-payment-deducted",
           "My payment was deducted but the booking failed. What next?",
-          "Keep your payment reference and contact us immediately. Our team can locate and reconcile the transaction and advise on rebooking or refund.",
+          "Keep your payment reference and contact us immediately. Our team can locate and reconcile the transaction and advise on rebooking or refund."
         ),
       ],
     },
@@ -203,12 +203,12 @@ export const faqs: FaqContent = {
         draft(
           "account-needed",
           "Do I need an account to book?",
-          "No. Browsing, flight, hotel, and car bookings support guest checkout. Creating an account is optional and useful for keeping booking history in one place.",
+          "No. Browsing, flight, hotel, and car bookings support guest checkout. Creating an account is optional and useful for keeping booking history in one place."
         ),
         draft(
           "account-history",
           "How do I view past bookings as a guest?",
-          "Use the secure link or token from your confirmation email. Logged-in customers see their orders automatically in booking history.",
+          "Use the secure link or token from your confirmation email. Logged-in customers see their orders automatically in booking history."
         ),
       ],
     },
@@ -220,33 +220,34 @@ export const faqs: FaqContent = {
         draft(
           "general-first-trip",
           "Planning your first international trip?",
-          "Start with your destination and dates, then speak with us. We help you understand flights, documents, and what to expect at each step so nothing expensive is left to guesswork.",
+          "Start with your destination and dates, then speak with us. We help you understand flights, documents, and what to expect at each step so nothing expensive is left to guesswork."
         ),
         draft(
           "general-support",
           "How do I get human help?",
-          "Use the Need Help widget, WhatsApp, phone, or email. Real specialists in Abuja respond during desk hours, Monday to Saturday.",
+          "Use the Need Help widget, WhatsApp, phone, or email. Real specialists respond during desk hours, Monday to Saturday."
         ),
       ],
     },
   ],
   seo: {
-    title: "Travel FAQs — Flights, Hotels, Packages, Visa & Payments | Alphaa Africa",
+    title:
+      "Travel FAQs — Flights, Hotels, Packages, Visa & Payments | Alphaa Africa",
     description:
       "Clear answers on flights, hotels, holiday packages, visa consultations, car rentals, payments, changes, cancellations, and accounts.",
   },
-};
+}
 
 export function getFaqGroup(id: FaqGroupId): FaqGroup | undefined {
-  return faqs.groups.find((group) => group.id === id);
+  return faqs.groups.find((group) => group.id === id)
 }
 
 export function getAllFaqs(): Faq[] {
-  return faqs.groups.flatMap((group) => group.faqs);
+  return faqs.groups.flatMap((group) => group.faqs)
 }
 
 export interface HomepageFaqItem extends Faq {
-  category: string;
+  category: string
 }
 
 export const HOMEPAGE_FAQ_SELECTION = [
@@ -255,18 +256,20 @@ export const HOMEPAGE_FAQ_SELECTION = [
   { groupId: "packages", faqId: "packages-enquiry-payment" },
   { groupId: "visa", faqId: "visa-what" },
   { groupId: "payments", faqId: "payments-how" },
-] as const;
+] as const
 
 export function getHomepageFaqs(): HomepageFaqItem[] {
   return HOMEPAGE_FAQ_SELECTION.map(({ groupId, faqId }) => {
-    const group = faqs.groups.find((g) => g.id === groupId);
-    const faq = group?.faqs.find((f) => f.id === faqId);
+    const group = faqs.groups.find((g) => g.id === groupId)
+    const faq = group?.faqs.find((f) => f.id === faqId)
     if (!faq || !group) {
-      throw new Error(`FAQ ${faqId} in group ${groupId} not found in lib/content/faqs.ts`);
+      throw new Error(
+        `FAQ ${faqId} in group ${groupId} not found in lib/content/faqs.ts`
+      )
     }
     return {
       ...faq,
       category: group.title,
-    };
-  });
+    }
+  })
 }

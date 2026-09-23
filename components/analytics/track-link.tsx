@@ -1,11 +1,15 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { track, type AnalyticsEvent, type AnalyticsProps } from "@/lib/analytics";
+import * as React from "react"
+import {
+  track,
+  type AnalyticsEvent,
+  type AnalyticsProps,
+} from "@/lib/analytics"
 
 export interface TrackLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
-  event: AnalyticsEvent;
-  eventProps?: AnalyticsProps;
+  event: AnalyticsEvent
+  eventProps?: AnalyticsProps
 }
 
 /**
@@ -13,13 +17,18 @@ export interface TrackLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorEle
  * `href` normally. Used for WhatsApp/support hatches so §22 stays truthful
  * without intercepting navigation.
  */
-export function TrackLink({ event, eventProps, onClick, ...anchorProps }: TrackLinkProps) {
+export function TrackLink({
+  event,
+  eventProps,
+  onClick,
+  ...anchorProps
+}: TrackLinkProps) {
   const handleClick = React.useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
-      track(event, eventProps);
-      onClick?.(e);
+      track(event, eventProps)
+      onClick?.(e)
     },
-    [event, eventProps, onClick],
-  );
-  return <a {...anchorProps} onClick={handleClick} />;
+    [event, eventProps, onClick]
+  )
+  return <a {...anchorProps} onClick={handleClick} />
 }

@@ -1,21 +1,21 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Tick01Icon } from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
+import * as React from "react"
+import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Tick01Icon } from "@hugeicons/core-free-icons"
+import { cn } from "@/lib/utils"
 
 export interface CheckboxProps {
-  label: string;
-  name?: string;
-  checked?: boolean;
-  defaultChecked?: boolean;
-  onCheckedChange?: (checked: boolean) => void;
-  error?: string;
-  helperText?: string;
-  className?: string;
-  disabled?: boolean;
+  label: string
+  name?: string
+  checked?: boolean
+  defaultChecked?: boolean
+  onCheckedChange?: (checked: boolean) => void
+  error?: string
+  helperText?: string
+  className?: string
+  disabled?: boolean
 }
 
 export function Checkbox({
@@ -29,7 +29,7 @@ export function Checkbox({
   className,
   disabled,
 }: CheckboxProps) {
-  const id = React.useId();
+  const id = React.useId()
   return (
     <div className={cn("w-full space-y-1.5", className)}>
       <label
@@ -44,7 +44,9 @@ export function Checkbox({
           onCheckedChange={(next) => onCheckedChange?.(next === true)}
           disabled={disabled}
           aria-invalid={!!error}
-          aria-describedby={error ? `${id}-error` : helperText ? `${id}-helper` : undefined}
+          aria-describedby={
+            error ? `${id}-error` : helperText ? `${id}-helper` : undefined
+          }
           className={cn(
             "flex size-5 shrink-0 items-center justify-center rounded-md border border-input bg-card text-primary-foreground shadow-xs transition-colors",
             "data-checked:border-primary data-checked:bg-primary",
@@ -57,7 +59,9 @@ export function Checkbox({
             <HugeiconsIcon icon={Tick01Icon} size={14} aria-hidden="true" />
           </CheckboxPrimitive.Indicator>
         </CheckboxPrimitive.Root>
-        <span className="min-w-0 flex-1 text-sm break-words text-foreground">{label}</span>
+        <span className="min-w-0 flex-1 text-sm break-words text-foreground">
+          {label}
+        </span>
       </label>
       {error ? (
         <p id={`${id}-error`} className="text-xs font-medium text-destructive">
@@ -69,5 +73,5 @@ export function Checkbox({
         </p>
       ) : null}
     </div>
-  );
+  )
 }

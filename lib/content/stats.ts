@@ -1,4 +1,4 @@
-import type { ContentSource } from "./company.ts";
+import type { ContentSource } from "./company.ts"
 
 /**
  * Company statistics (Phase 2).
@@ -8,20 +8,20 @@ import type { ContentSource } from "./company.ts";
  */
 
 export interface Stat {
-  id: string;
-  label: string;
-  value: string;
-  source: ContentSource;
+  id: string
+  label: string
+  value: string
+  source: ContentSource
 }
 
 export interface StatContent {
-  source: ContentSource;
-  updatedAt: string;
-  stats: Stat[];
+  source: ContentSource
+  updatedAt: string
+  stats: Stat[]
   seo: {
-    title: string;
-    description: string;
-  };
+    title: string
+    description: string
+  }
 }
 
 export const stats: StatContent = {
@@ -29,8 +29,8 @@ export const stats: StatContent = {
   updatedAt: "2026-09-21",
   stats: [],
   seo: {
-    title: "About Alphaa Africa — Trusted Travel Partner in Abuja",
+    title: "About Alphaa Africa — Book Flights, Hotels & Get Travel Help",
     description:
       "Alphaa Africa combines self-service booking with human assistance. Verified company figures will appear here once supplied.",
   },
-};
+}

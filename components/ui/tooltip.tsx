@@ -1,14 +1,14 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
-import { cn } from "@/lib/utils";
+import * as React from "react"
+import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
+import { cn } from "@/lib/utils"
 
 export interface TooltipProps {
-  label: string;
-  content: string;
-  children?: React.ReactNode;
-  className?: string;
+  label: string
+  content: string
+  children?: React.ReactNode
+  className?: string
 }
 
 export function Tooltip({ label, content, children, className }: TooltipProps) {
@@ -21,7 +21,10 @@ export function Tooltip({ label, content, children, className }: TooltipProps) {
         {children ?? label}
       </TooltipPrimitive.Trigger>
       <TooltipPrimitive.Portal>
-        <TooltipPrimitive.Positioner sideOffset={6} className="z-50 outline-none">
+        <TooltipPrimitive.Positioner
+          sideOffset={6}
+          className="z-50 outline-none"
+        >
           <TooltipPrimitive.Popup
             className={cn(
               "max-w-60 rounded-lg border border-border bg-foreground px-2.5 py-1.5 text-xs break-words text-background shadow-md",
@@ -33,5 +36,5 @@ export function Tooltip({ label, content, children, className }: TooltipProps) {
         </TooltipPrimitive.Positioner>
       </TooltipPrimitive.Portal>
     </TooltipPrimitive.Root>
-  );
+  )
 }

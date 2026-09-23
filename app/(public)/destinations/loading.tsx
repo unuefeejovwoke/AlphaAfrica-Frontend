@@ -1,4 +1,4 @@
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { CardSkeleton } from "@/components/ui/skeleton"
 
 /** Loading fallback for `/destinations`: skeletons match the card shape. */
 export default function DestinationsLoading() {
@@ -21,5 +21,5 @@ export default function DestinationsLoading() {
       </div>
       <span className="sr-only">Loading destinations…</span>
     </div>
-  );
+  )
 }

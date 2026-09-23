@@ -1,17 +1,21 @@
-import * as React from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Call02Icon, SecurityCheckIcon } from "@hugeicons/core-free-icons";
-import { company } from "@/lib/content/company";
+import * as React from "react"
+import Link from "next/link"
+import Image from "next/image"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Call02Icon, SecurityCheckIcon } from "@hugeicons/core-free-icons"
+import { company } from "@/lib/content/company"
 
 const CHECKOUT_STEPS = [
   { label: "Traveller Details", current: true },
   { label: "Payment", current: false },
   { label: "Confirmed", current: false },
-] as const;
+] as const
 
-export default function CheckoutLayout({ children }: { children: React.ReactNode }) {
+export default function CheckoutLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <a
@@ -26,7 +30,7 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
           <Link
             href="/"
             aria-label="Alphaa Africa home"
-            className="flex touch-manipulation items-center gap-2.5 rounded-lg hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex touch-manipulation items-center gap-2.5 rounded-lg hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             <span
               aria-hidden="true"
@@ -42,7 +46,10 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
               />
             </span>
             <span className="flex flex-col leading-tight">
-              <span translate="no" className="text-base font-bold tracking-tight text-foreground">
+              <span
+                translate="no"
+                className="text-base font-bold tracking-tight text-foreground"
+              >
                 Alphaa <span className="font-medium text-primary">Africa</span>
               </span>
               <span className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
@@ -54,7 +61,10 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
           <nav aria-label="Booking progress" className="hidden md:block">
             <ol className="flex min-w-0 items-center gap-2">
               {CHECKOUT_STEPS.map((step, index) => (
-                <li key={step.label} className="flex min-w-0 items-center gap-2">
+                <li
+                  key={step.label}
+                  className="flex min-w-0 items-center gap-2"
+                >
                   {index > 0 && (
                     <span aria-hidden="true" className="h-px w-6 bg-border" />
                   )}
@@ -66,7 +76,9 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
                         : "flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground"
                     }
                   >
-                    <span className="font-variant-numeric tabular-nums">{index + 1}</span>
+                    <span className="font-variant-numeric tabular-nums">
+                      {index + 1}
+                    </span>
                     <span className="truncate">{step.label}</span>
                   </span>
                 </li>
@@ -76,18 +88,25 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
 
           <div className="flex items-center gap-3">
             <span className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground sm:flex">
-              <HugeiconsIcon icon={SecurityCheckIcon} size={14} aria-hidden="true" className="text-emerald-600" />
+              <HugeiconsIcon
+                icon={SecurityCheckIcon}
+                size={14}
+                aria-hidden="true"
+                className="text-emerald-600"
+              />
               <span>
                 256-bit Encrypted · <span translate="no">Paystack</span> Secured
               </span>
             </span>
             <a
               href={`tel:${company.phone.e164}`}
-              className="flex min-h-11 touch-manipulation items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-foreground hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-11 touch-manipulation items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-foreground hover:bg-muted hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               <HugeiconsIcon icon={Call02Icon} size={16} aria-hidden="true" />
               <span className="hidden lg:inline">Emergency Help:</span>
-              <span className="font-variant-numeric tabular-nums">{company.phone.display}</span>
+              <span className="font-variant-numeric tabular-nums">
+                {company.phone.display}
+              </span>
             </a>
           </div>
         </div>
@@ -104,7 +123,9 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
                       : "w-full truncate rounded-full px-2.5 py-1 text-center text-xs font-medium text-muted-foreground"
                   }
                 >
-                  <span className="font-variant-numeric tabular-nums">{index + 1}. </span>
+                  <span className="font-variant-numeric tabular-nums">
+                    {index + 1}.{" "}
+                  </span>
                   {step.label}
                 </span>
               </li>
@@ -120,7 +141,8 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
       <footer className="border-t border-border bg-card">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-4 py-5 text-center text-[11px] text-muted-foreground sm:flex-row sm:px-6 sm:text-left">
           <p className="min-w-0 break-words">
-            Guest Booking — no account needed. Your details stay encrypted during checkout…
+            Guest Booking — no account needed. Your details stay encrypted
+            during checkout…
           </p>
           <p className="flex shrink-0 items-center gap-4">
             <span>
@@ -132,5 +154,5 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
         </div>
       </footer>
     </div>
-  );
+  )
 }

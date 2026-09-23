@@ -1,10 +1,10 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { Drawer } from "@base-ui/react/drawer";
-import { HugeiconsIcon } from "@hugeicons/react";
+import * as React from "react"
+import Link from "next/link"
+import Image from "next/image"
+import { Drawer } from "@base-ui/react/drawer"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Menu01Icon,
   Cancel01Icon,
@@ -13,122 +13,132 @@ import {
   HelpCircleIcon,
   PhoneIcon,
   CustomerService01Icon,
-} from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+} from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 const SERVICES = [
   {
     title: "Flights",
     href: "/flights",
-    description: "Domestic and international flights with transparent pricing.",
-    image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=800&q=80",
+                    description: "Compare live fares and book in minutes — no account needed.",
+    image:
+      "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=800&q=80",
     span: "col-span-2",
     sizes: "(max-width: 1280px) 50vw, 600px",
   },
   {
     title: "Hotels",
     href: "/hotels",
-    description: "Handpicked hotels, lodges, and luxury stays.",
-    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    description: "Find a place to stay, check the price, book it. Done.",
+    image:
+      "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
   },
   {
     title: "Destinations",
     href: "/destinations",
-    description: "Travel guides and insider recommendations across Africa and beyond.",
-    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+    description:
+      "See where you can go, what trips are available, and what they cost.",
+    image:
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
   },
   {
     title: "Visa Assistance",
     href: "/visa",
-    description: "Step-by-step guidance and document review from consultants.",
-    image: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
+    description: "Unsure about your visa? A specialist reviews your documents and guides you.",
+    image:
+      "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
   },
   {
     title: "Car Rentals",
     href: "/car-rentals",
-    description: "Airport pickups, chauffeured rides, and self-drive rentals.",
-    image: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+    description: "Airport pickup or a car for the week — book by the hour.",
+    image:
+      "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
   },
   {
     title: "Packages",
     href: "/packages",
-    description: "Curated holiday packages with flights, stays, and guided tours.",
-    image: "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=800&q=80",
+    description:
+      "Ready-made holidays with flights and stays included. Tell us what you want.",
+    image:
+      "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=800&q=80",
     span: "col-span-2",
     sizes: "(max-width: 1280px) 50vw, 600px",
   },
-];
+]
 
 export function PublicNav() {
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
-  const [megaMenuOpen, setMegaMenuOpen] = React.useState(false);
-  const [mobileServicesOpen, setMobileServicesOpen] = React.useState(true);
-  const megaMenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const exploreTriggerRef = React.useRef<HTMLDivElement>(null);
-  const megaMenuRef = React.useRef<HTMLDivElement>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
+  const [megaMenuOpen, setMegaMenuOpen] = React.useState(false)
+  const [mobileServicesOpen, setMobileServicesOpen] = React.useState(true)
+  const megaMenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  )
+  const exploreTriggerRef = React.useRef<HTMLDivElement>(null)
+  const megaMenuRef = React.useRef<HTMLDivElement>(null)
 
   const handleMegaMenuEnter = React.useCallback(() => {
     if (megaMenuTimeoutRef.current) {
-      clearTimeout(megaMenuTimeoutRef.current);
-      megaMenuTimeoutRef.current = null;
+      clearTimeout(megaMenuTimeoutRef.current)
+      megaMenuTimeoutRef.current = null
     }
-    setMegaMenuOpen(true);
-  }, []);
+    setMegaMenuOpen(true)
+  }, [])
 
   const handleMegaMenuLeave = React.useCallback(() => {
     megaMenuTimeoutRef.current = setTimeout(() => {
-      setMegaMenuOpen(false);
-    }, 200);
-  }, []);
+      setMegaMenuOpen(false)
+    }, 200)
+  }, [])
 
   React.useEffect(() => {
     return () => {
       if (megaMenuTimeoutRef.current) {
-        clearTimeout(megaMenuTimeoutRef.current);
+        clearTimeout(megaMenuTimeoutRef.current)
       }
-    };
-  }, []);
+    }
+  }, [])
 
   React.useEffect(() => {
-    if (!megaMenuOpen) return;
+    if (!megaMenuOpen) return
 
     function handleClickOutside(event: MouseEvent | TouchEvent) {
-      const target = event.target as Node;
+      const target = event.target as Node
       if (
         exploreTriggerRef.current &&
         !exploreTriggerRef.current.contains(target) &&
         megaMenuRef.current &&
         !megaMenuRef.current.contains(target)
       ) {
-        setMegaMenuOpen(false);
+        setMegaMenuOpen(false)
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setMegaMenuOpen(false);
+        setMegaMenuOpen(false)
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("touchstart", handleClickOutside)
+    document.addEventListener("keydown", handleKeyDown)
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [megaMenuOpen]);
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("touchstart", handleClickOutside)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [megaMenuOpen])
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background">
@@ -185,14 +195,10 @@ export function PublicNav() {
             className="size-8 object-contain transition-transform duration-300 ease-out group-hover:scale-105"
             priority
           />
-          <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight leading-none">
-              <span className="text-secondary">Alphaa</span> <span className="font-medium text-primary">Africa</span>
-            </span>
-            <span className="text-[7.5px] font-semibold tracking-[0.18em] text-muted-foreground uppercase leading-none mt-0.5">
-              Travel & Assisted Service
-            </span>
-          </div>
+          <span className="text-lg leading-none font-bold tracking-tight">
+            <span className="text-secondary">Alphaa</span>{" "}
+            <span className="font-medium text-primary">Africa</span>
+          </span>
         </Link>
 
         <div className="hidden items-center gap-2 lg:flex">
@@ -203,14 +209,18 @@ export function PublicNav() {
             <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
             <span>Sign In</span>
           </Link>
-          <Button render={<Link href="/packages" />} size="default">
-            Plan a Trip
+          <Button render={<Link href="/flights" />} size="default">
+            Book a Trip
           </Button>
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
-          <Button render={<Link href="/packages" />} size="sm" className="text-xs">
-            Plan
+          <Button
+            render={<Link href="/flights" />}
+            size="sm"
+            className="text-xs"
+          >
+            Book
           </Button>
           <button
             type="button"
@@ -228,7 +238,7 @@ export function PublicNav() {
             ref={megaMenuRef}
             onMouseEnter={handleMegaMenuEnter}
             onMouseLeave={handleMegaMenuLeave}
-            className="absolute left-4 right-4 sm:left-6 sm:right-6 lg:left-8 lg:right-8 top-full pt-2 hidden lg:block"
+            className="absolute top-full right-4 left-4 hidden pt-2 sm:right-6 sm:left-6 lg:right-8 lg:left-8 lg:block"
           >
             <div className="w-full rounded-2xl border border-border/80 bg-card p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)]">
               <div className="grid grid-cols-4 gap-3.5">
@@ -239,7 +249,7 @@ export function PublicNav() {
                     onClick={() => setMegaMenuOpen(false)}
                     className={cn(
                       "group/card relative flex h-[190px] flex-col justify-end overflow-hidden rounded-xl border border-border/40 p-4 transition-all duration-300 hover:border-primary/50 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                      service.span,
+                      service.span
                     )}
                   >
                     <Image
@@ -254,10 +264,10 @@ export function PublicNav() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
                     <div className="relative z-10">
-                      <h3 className="text-base font-bold text-white tracking-tight">
+                      <h3 className="text-base font-bold tracking-tight text-white">
                         {service.title}
                       </h3>
-                      <p className="mt-1 text-xs text-white/80 line-clamp-2 leading-relaxed">
+                      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/80">
                         {service.description}
                       </p>
                     </div>
@@ -267,20 +277,25 @@ export function PublicNav() {
 
               <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <HugeiconsIcon icon={CustomerService01Icon} size={15} className="text-primary" aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={CustomerService01Icon}
+                    size={15}
+                    className="text-primary"
+                    aria-hidden="true"
+                  />
                   <span>
-                    Have questions or need trip assistance?{" "}
+                    Not sure where to start?{" "}
                     <Link
                       href="/contact"
                       onClick={() => setMegaMenuOpen(false)}
                       className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
                     >
-                      Contact our Abuja team
+                      Talk to our travel specialists
                     </Link>
                   </span>
                 </div>
                 <span className="text-[11px] text-muted-foreground">
-                  Verified assistance & Paystack secured
+                  Secure payments by Paystack
                 </span>
               </div>
             </div>
@@ -291,7 +306,7 @@ export function PublicNav() {
       <Drawer.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <Drawer.Portal>
           <Drawer.Viewport className="fixed inset-0 z-50 flex items-start justify-center p-4">
-            <Drawer.Popup className="max-h-[88vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-border/60 bg-background overscroll-contain px-4 py-5 shadow-2xl lg:hidden">
+            <Drawer.Popup className="max-h-[88vh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl border border-border/60 bg-background px-4 py-5 shadow-2xl lg:hidden">
               <Drawer.Content className="flex min-w-0 flex-col gap-1">
                 <div className="flex items-center justify-between px-2 pb-3">
                   <Drawer.Title className="text-sm font-semibold text-foreground">
@@ -301,7 +316,11 @@ export function PublicNav() {
                     aria-label="Close navigation menu"
                     className="inline-flex size-8 touch-manipulation items-center justify-center rounded-lg border border-border/60 bg-card text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+                    <HugeiconsIcon
+                      icon={Cancel01Icon}
+                      size={16}
+                      aria-hidden="true"
+                    />
                   </Drawer.Close>
                 </div>
                 <Drawer.Description className="sr-only">
@@ -342,7 +361,9 @@ export function PublicNav() {
                         <div className="absolute inset-0 bg-black/45" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
                         <div className="relative z-10">
-                          <span className="text-xs font-bold text-white leading-tight">{item.title}</span>
+                          <span className="text-xs leading-tight font-bold text-white">
+                            {item.title}
+                          </span>
                         </div>
                       </Link>
                     ))}
@@ -354,7 +375,12 @@ export function PublicNav() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex touch-manipulation items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
-                  <HugeiconsIcon icon={HelpCircleIcon} size={15} className="text-muted-foreground" aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={HelpCircleIcon}
+                    size={15}
+                    className="text-muted-foreground"
+                    aria-hidden="true"
+                  />
                   <span>FAQ</span>
                 </Link>
 
@@ -363,7 +389,12 @@ export function PublicNav() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex touch-manipulation items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
-                  <HugeiconsIcon icon={PhoneIcon} size={15} className="text-muted-foreground" aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={PhoneIcon}
+                    size={15}
+                    className="text-muted-foreground"
+                    aria-hidden="true"
+                  />
                   <span>Contact</span>
                 </Link>
 
@@ -373,15 +404,24 @@ export function PublicNav() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex touch-manipulation items-center justify-center gap-2 rounded-xl border border-border/60 bg-card py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
-                    <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
+                    <HugeiconsIcon
+                      icon={UserIcon}
+                      size={15}
+                      aria-hidden="true"
+                    />
                     <span>Sign In</span>
                   </Link>
                   <Button
-                    render={<Link href="/packages" onClick={() => setMobileMenuOpen(false)} />}
+                    render={
+                      <Link
+                        href="/flights"
+                        onClick={() => setMobileMenuOpen(false)}
+                      />
+                    }
                     size="lg"
                     className="w-full justify-center"
                   >
-                    Plan a Trip
+                    Book a Trip
                   </Button>
                 </div>
               </Drawer.Content>
@@ -390,5 +430,5 @@ export function PublicNav() {
         </Drawer.Portal>
       </Drawer.Root>
     </header>
-  );
+  )
 }

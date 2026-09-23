@@ -1,51 +1,51 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { Accordion } from "@base-ui/react/accordion";
-import { HugeiconsIcon } from "@hugeicons/react";
+import * as React from "react"
+import { Accordion } from "@base-ui/react/accordion"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
   Cancel01Icon,
   ArrowDown01Icon,
   WhatsappIcon,
   HelpCircleIcon,
-} from "@hugeicons/core-free-icons";
-import type { FaqGroup } from "@/lib/content/faqs";
-import { getSupportWhatsAppUrl } from "@/lib/content/company";
-import { TrackLink } from "@/components/analytics/track-link";
+} from "@hugeicons/core-free-icons"
+import type { FaqGroup } from "@/lib/content/faqs"
+import { getSupportWhatsAppUrl } from "@/lib/content/company"
+import { TrackLink } from "@/components/analytics/track-link"
 
 interface FaqInteractiveProps {
-  groups: FaqGroup[];
+  groups: FaqGroup[]
 }
 
 export function FaqInteractive({ groups }: FaqInteractiveProps) {
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = React.useState("")
   // Default to empty array so all questions start collapsed, allowing visitors to scan questions first.
-  const [openItems, setOpenItems] = React.useState<string[]>([]);
+  const [openItems, setOpenItems] = React.useState<string[]>([])
 
   // Filter logic: apply search query
   const filteredGroups = React.useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return groups;
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return groups
 
     return groups
       .map((group) => {
         const matchingFaqs = group.faqs.filter(
           (faq) =>
             faq.question.toLowerCase().includes(q) ||
-            faq.answer.toLowerCase().includes(q),
-        );
+            faq.answer.toLowerCase().includes(q)
+        )
         return {
           ...group,
           faqs: matchingFaqs,
-        };
+        }
       })
-      .filter((group) => group.faqs.length > 0);
-  }, [groups, searchQuery]);
+      .filter((group) => group.faqs.length > 0)
+  }, [groups, searchQuery])
 
   const totalMatchingFaqs = React.useMemo(() => {
-    return filteredGroups.reduce((acc, group) => acc + group.faqs.length, 0);
-  }, [filteredGroups]);
+    return filteredGroups.reduce((acc, group) => acc + group.faqs.length, 0)
+  }, [filteredGroups])
 
   return (
     <div className="flex flex-col gap-10 sm:gap-14">
@@ -80,7 +80,9 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
         {searchQuery.trim() && (
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              Showing {totalMatchingFaqs} question{totalMatchingFaqs === 1 ? "" : "s"} matching &ldquo;{searchQuery}&rdquo;
+              Showing {totalMatchingFaqs} question
+              {totalMatchingFaqs === 1 ? "" : "s"} matching &ldquo;{searchQuery}
+              &rdquo;
             </span>
             <button
               type="button"
@@ -104,8 +106,9 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
               No matching answers found
             </h3>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              We couldn&apos;t find an answer for &ldquo;{searchQuery}&rdquo;. Connect directly with a
-              travel specialist on WhatsApp for instant assistance.
+              We couldn&apos;t find an answer for &ldquo;{searchQuery}&rdquo;.
+              Connect directly with a travel specialist on WhatsApp for instant
+              assistance.
             </p>
           </div>
           <TrackLink
@@ -146,7 +149,7 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
                 value={openItems}
                 onValueChange={(val) => setOpenItems(val as string[])}
                 multiple
-                className="overflow-hidden rounded-2xl border border-border/80 bg-card/60 divide-y divide-border/60 shadow-xs backdrop-blur-xs"
+                className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card/60 shadow-xs backdrop-blur-xs"
               >
                 {group.faqs.map((faq) => (
                   <Accordion.Item
@@ -169,7 +172,7 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
                       </Accordion.Trigger>
                     </Accordion.Header>
 
-                    <Accordion.Panel className="overflow-hidden transition-[height,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] data-[ending-style]:h-0 data-[ending-style]:opacity-0 data-[starting-style]:h-0 data-[starting-style]:opacity-0 h-[var(--accordion-panel-height)]">
+                    <Accordion.Panel className="h-[var(--accordion-panel-height)] overflow-hidden transition-[height,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] data-[ending-style]:h-0 data-[ending-style]:opacity-0 data-[starting-style]:h-0 data-[starting-style]:opacity-0">
                       <div className="flex flex-col gap-3 px-5 pb-5 sm:px-6 sm:pb-6">
                         <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm sm:leading-relaxed">
                           {faq.answer}
@@ -180,8 +183,12 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
                           </span>
                           <TrackLink
                             event="support_click"
-                            eventProps={{ context: `Question: ${faq.question}` }}
-                            href={getSupportWhatsAppUrl(`Question: ${faq.question}`)}
+                            eventProps={{
+                              context: `Question: ${faq.question}`,
+                            }}
+                            href={getSupportWhatsAppUrl(
+                              `Question: ${faq.question}`
+                            )}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
@@ -200,5 +207,5 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
         </div>
       )}
     </div>
-  );
+  )
 }

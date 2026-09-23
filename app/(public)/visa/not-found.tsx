@@ -1,11 +1,13 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 /** 404 for unknown `/visa/*` routes — points back with a support hatch. */
 export default function VisaNotFound() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-16 text-center sm:px-6 lg:px-8">
-      <p className="text-xs font-semibold tracking-wider text-primary uppercase">Visa assistance</p>
+      <p className="text-xs font-semibold tracking-wider text-primary uppercase">
+        Visa assistance
+      </p>
       <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
         We couldn&apos;t find that visa country.
       </h1>
@@ -22,5 +24,5 @@ export default function VisaNotFound() {
         </Button>
       </div>
     </div>
-  );
+  )
 }

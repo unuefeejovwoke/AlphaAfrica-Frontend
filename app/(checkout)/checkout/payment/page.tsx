@@ -1,8 +1,8 @@
-import * as React from "react";
-import type { Metadata } from "next";
-import { CheckoutPaymentClient } from "@/components/flights/checkout-payment-client";
-import { Skeleton } from "@/components/ui/skeleton";
-import { canonicalUrl } from "@/lib/seo";
+import * as React from "react"
+import type { Metadata } from "next"
+import { CheckoutPaymentClient } from "@/components/flights/checkout-payment-client"
+import { Skeleton } from "@/components/ui/skeleton"
+import { canonicalUrl } from "@/lib/seo"
 
 export const metadata: Metadata = {
   title: "Pay Securely via Paystack | Alphaa Africa",
@@ -13,15 +13,20 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
-};
+}
 
 function PaymentFallback() {
   return (
-    <div role="status" aria-live="polite" aria-label="Loading payment step" className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Loading payment step"
+      className="mx-auto flex w-full max-w-2xl flex-col gap-4"
+    >
       <Skeleton className="h-56 w-full rounded-2xl" />
       <Skeleton className="h-12 w-full rounded-2xl" />
     </div>
-  );
+  )
 }
 
 // Static shell in the distraction-free checkout group (ADR-0001). The
@@ -49,5 +54,5 @@ export default function CheckoutPaymentPage() {
         </React.Suspense>
       </div>
     </section>
-  );
+  )
 }

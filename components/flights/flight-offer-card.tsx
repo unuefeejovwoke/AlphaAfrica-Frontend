@@ -1,19 +1,27 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Airplane01Icon, Clock01Icon, Luggage01Icon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { formatNaira } from "@/lib/format";
-import type { FlightOfferDisplay } from "@/lib/api/flights";
+import * as React from "react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  Airplane01Icon,
+  Clock01Icon,
+  Luggage01Icon,
+} from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { formatNaira } from "@/lib/format"
+import type { FlightOfferDisplay } from "@/lib/api/flights"
 
 export interface FlightOfferCardProps {
-  offer: FlightOfferDisplay;
-  onSelect: (offer: FlightOfferDisplay) => void;
-  isSelecting?: boolean;
+  offer: FlightOfferDisplay
+  onSelect: (offer: FlightOfferDisplay) => void
+  isSelecting?: boolean
 }
 
-export function FlightOfferCard({ offer, onSelect, isSelecting }: FlightOfferCardProps) {
+export function FlightOfferCard({
+  offer,
+  onSelect,
+  isSelecting,
+}: FlightOfferCardProps) {
   return (
     <article
       aria-label={`Flight ${offer.airline} ${offer.airportsLabel}`}
@@ -26,7 +34,9 @@ export function FlightOfferCard({ offer, onSelect, isSelecting }: FlightOfferCar
             <HugeiconsIcon icon={Airplane01Icon} size={18} aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-bold text-foreground">{offer.airline}</h3>
+            <h3 className="truncate text-sm font-bold text-foreground">
+              {offer.airline}
+            </h3>
             <p className="truncate text-xs text-muted-foreground">
               {offer.airportsLabel} · {offer.cabin}
             </p>
@@ -34,37 +44,60 @@ export function FlightOfferCard({ offer, onSelect, isSelecting }: FlightOfferCar
         </div>
 
         <div className="shrink-0 text-right">
-          <p className="font-variant-numeric text-sm font-extrabold tabular-nums text-foreground">
+          <p className="font-variant-numeric text-sm font-extrabold text-foreground tabular-nums">
             {offer.price === "—" ? "—" : formatNaira(offer.price)}
           </p>
-          <p className="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">{offer.currency}</p>
+          <p className="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+            {offer.currency}
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3 rounded-xl bg-muted/50 px-3 py-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Departure</p>
-          <p className="font-variant-numeric text-sm font-semibold tabular-nums text-foreground">{offer.departureAt}</p>
-          <p className="truncate text-xs text-muted-foreground">{offer.origin}</p>
+          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Departure
+          </p>
+          <p className="font-variant-numeric text-sm font-semibold text-foreground tabular-nums">
+            {offer.departureAt}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {offer.origin}
+          </p>
         </div>
         <div className="flex min-w-0 flex-col items-center justify-center gap-1">
-          <p className="text-xs font-medium text-muted-foreground">{offer.stopsLabel}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {offer.stopsLabel}
+          </p>
           <span aria-hidden="true" className="flex w-full items-center gap-1">
             <span className="size-1.5 rounded-full bg-border" />
             <span className="h-px flex-1 bg-border" />
-            <HugeiconsIcon icon={Airplane01Icon} size={12} aria-hidden="true" className="text-muted-foreground" />
+            <HugeiconsIcon
+              icon={Airplane01Icon}
+              size={12}
+              aria-hidden="true"
+              className="text-muted-foreground"
+            />
             <span className="h-px flex-1 bg-border" />
             <span className="size-1.5 rounded-full bg-border" />
           </span>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <HugeiconsIcon icon={Clock01Icon} size={12} aria-hidden="true" />
-            <span className="font-variant-numeric tabular-nums">{offer.duration}</span>
+            <span className="font-variant-numeric tabular-nums">
+              {offer.duration}
+            </span>
           </p>
         </div>
         <div className="min-w-0 text-right">
-          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Arrival</p>
-          <p className="font-variant-numeric text-sm font-semibold tabular-nums text-foreground">{offer.arrivalAt}</p>
-          <p className="truncate text-xs text-muted-foreground">{offer.destination}</p>
+          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Arrival
+          </p>
+          <p className="font-variant-numeric text-sm font-semibold text-foreground tabular-nums">
+            {offer.arrivalAt}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {offer.destination}
+          </p>
         </div>
       </div>
 
@@ -99,12 +132,15 @@ export function FlightOfferCard({ offer, onSelect, isSelecting }: FlightOfferCar
         <span>Select flight</span>
       </Button>
     </article>
-  );
+  )
 }
 
 export function FlightOfferSkeleton() {
   return (
-    <div aria-hidden="true" className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
+    <div
+      aria-hidden="true"
+      className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:p-5"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="size-10 animate-pulse rounded-xl bg-muted" />
@@ -118,5 +154,5 @@ export function FlightOfferSkeleton() {
       <div className="h-16 animate-pulse rounded-xl bg-muted" />
       <div className="h-9 animate-pulse rounded-xl bg-muted" />
     </div>
-  );
+  )
 }

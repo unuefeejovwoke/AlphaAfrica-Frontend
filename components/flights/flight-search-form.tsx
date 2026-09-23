@@ -1,17 +1,34 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, AlertCircleIcon, PlusSignIcon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { TravellerStepper } from "@/components/ui/traveller-stepper";
-import { AirportAutocomplete } from "@/components/flights/airport-autocomplete";
-import { LegFields, type LegSelection } from "@/components/flights/leg-fields";
+import * as React from "react"
+import {
+  Controller,
+  FormProvider,
+  useFieldArray,
+  useForm,
+} from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  Search01Icon,
+  AlertCircleIcon,
+  PlusSignIcon,
+  ArrowRight01Icon,
+  Exchange01Icon,
+  Airplane01Icon,
+  ArrowLeftRightIcon,
+  ArrowDown01Icon,
+  UserIcon,
+  Calendar01Icon,
+} from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { TravellerStepper } from "@/components/ui/traveller-stepper"
+import { AirportAutocomplete } from "@/components/flights/airport-autocomplete"
+import { LegFields, type LegSelection } from "@/components/flights/leg-fields"
 import {
   type Airport,
   type Cabin,
@@ -22,33 +39,33 @@ import {
   createEmptyLeg,
   flightSearchFormSchema,
   tripTypeSchema,
-} from "@/lib/api/flights";
-import { cn } from "@/lib/utils";
+} from "@/lib/api/flights"
+import { cn } from "@/lib/utils"
 
 export interface FlightSearchFormProps {
-  defaultValues: Partial<FlightSearchFormValues>;
-  defaultOriginAirport: Airport | null;
-  defaultDestinationAirport: Airport | null;
+  defaultValues: Partial<FlightSearchFormValues>
+  defaultOriginAirport: Airport | null
+  defaultDestinationAirport: Airport | null
   /** URL-hydrated multi-city airports, aligned by leg position at first mount. */
-  defaultLegAirports?: { origin: Airport | null; destination: Airport | null }[];
-  onSubmit: (values: FlightSearchPayload) => void;
-  isSearching?: boolean;
+  defaultLegAirports?: { origin: Airport | null; destination: Airport | null }[]
+  onSubmit: (values: FlightSearchPayload) => void
+  isSearching?: boolean
 }
 
 const TRIP_TYPE_OPTIONS = [
-  { value: "one_way", label: "One-way", hint: "Single leg" },
-  { value: "round_trip", label: "Round-trip", hint: "Outbound + return" },
-  { value: "multi_city", label: "Multi-city", hint: "2–6 legs" },
-] as const;
+  { value: "one_way", label: "One way", icon: ArrowRight01Icon },
+  { value: "round_trip", label: "Round trip", icon: Exchange01Icon },
+  { value: "multi_city", label: "Multi-city", icon: Airplane01Icon },
+] as const
 
-type TripType = (typeof TRIP_TYPE_OPTIONS)[number]["value"];
+type TripType = (typeof TRIP_TYPE_OPTIONS)[number]["value"]
 
 const CABIN_OPTIONS = [
   { value: "ECONOMY", label: "Economy" },
   { value: "PREMIUM_ECONOMY", label: "Premium Economy" },
   { value: "BUSINESS", label: "Business" },
   { value: "FIRST", label: "First" },
-] as const;
+] as const
 
 const MAX_STOPS_OPTIONS = [
   { value: "", label: "Any stops" },
@@ -56,7 +73,7 @@ const MAX_STOPS_OPTIONS = [
   { value: "1", label: "At most 1" },
   { value: "2", label: "At most 2" },
   { value: "3", label: "At most 3" },
-];
+]
 
 /**
  * Trip-type search form (RHF + Zod, onBlur + onSubmit re-validation).
@@ -78,36 +95,48 @@ export function FlightSearchForm({
   onSubmit,
   isSearching,
 }: FlightSearchFormProps) {
-  const [originAirport, setOriginAirport] = React.useState<Airport | null>(defaultOriginAirport);
-  const [destinationAirport, setDestinationAirport] = React.useState<Airport | null>(defaultDestinationAirport);
+  const [originAirport, setOriginAirport] = React.useState<Airport | null>(
+    defaultOriginAirport
+  )
+  const [destinationAirport, setDestinationAirport] =
+    React.useState<Airport | null>(defaultDestinationAirport)
   const [originInput, setOriginInput] = React.useState(
-    defaultOriginAirport ? `${defaultOriginAirport.city} (${defaultOriginAirport.iata_code})` : (defaultValues.origin ?? ""),
-  );
+    defaultOriginAirport
+      ? `${defaultOriginAirport.iata_code} – ${defaultOriginAirport.name || defaultOriginAirport.city}`
+      : (defaultValues.origin ?? "")
+  )
   const [destinationInput, setDestinationInput] = React.useState(
     defaultDestinationAirport
-      ? `${defaultDestinationAirport.city} (${defaultDestinationAirport.iata_code})`
-      : (defaultValues.destination ?? ""),
-  );
+      ? `${defaultDestinationAirport.iata_code} – ${defaultDestinationAirport.name || defaultDestinationAirport.city}`
+      : (defaultValues.destination ?? "")
+  )
 
   // Sync when defaults change (URL hydration)
   React.useEffect(() => {
-    setOriginAirport(defaultOriginAirport);
-    setDestinationAirport(defaultDestinationAirport);
+    setOriginAirport(defaultOriginAirport)
+    setDestinationAirport(defaultDestinationAirport)
     setOriginInput(
-      defaultOriginAirport ? `${defaultOriginAirport.city} (${defaultOriginAirport.iata_code})` : (defaultValues.origin ?? ""),
-    );
+      defaultOriginAirport
+        ? `${defaultOriginAirport.iata_code} – ${defaultOriginAirport.name || defaultOriginAirport.city}`
+        : (defaultValues.origin ?? "")
+    )
     setDestinationInput(
       defaultDestinationAirport
-        ? `${defaultDestinationAirport.city} (${defaultDestinationAirport.iata_code})`
-        : (defaultValues.destination ?? ""),
-    );
-  }, [defaultOriginAirport, defaultDestinationAirport, defaultValues.origin, defaultValues.destination]);
+        ? `${defaultDestinationAirport.iata_code} – ${defaultDestinationAirport.name || defaultDestinationAirport.city}`
+        : (defaultValues.destination ?? "")
+    )
+  }, [
+    defaultOriginAirport,
+    defaultDestinationAirport,
+    defaultValues.origin,
+    defaultValues.destination,
+  ])
 
   const today = React.useMemo(() => {
-    const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 10);
-  }, []);
+    const now = new Date()
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    return local.toISOString().slice(0, 10)
+  }, [])
 
   const form = useForm<FlightSearchFormValues>({
     resolver: zodResolver(flightSearchFormSchema),
@@ -128,7 +157,7 @@ export function FlightSearchForm({
     },
     mode: "onTouched",
     shouldFocusError: true,
-  });
+  })
 
   // Multi-city legs — stable array path for every trip type (the flat form
   // schema keeps `legs` mounted so useFieldArray never loses its field).
@@ -136,104 +165,186 @@ export function FlightSearchForm({
     fields: legFields,
     append: appendLeg,
     remove: removeLeg,
-  } = useFieldArray({ control: form.control, name: "legs" });
+  } = useFieldArray({ control: form.control, name: "legs" })
 
   // Leg autocomplete selections live in a ref (not state) so typing in one
   // leg never re-renders the parent or sibling legs (vercel: rerender-split).
-  const legSelectionsRef = React.useRef(new Map<string, LegSelection>());
-  const handleLegSelection = React.useCallback((fieldId: string, selection: LegSelection) => {
-    legSelectionsRef.current.set(fieldId, selection);
-  }, []);
+  const legSelectionsRef = React.useRef(new Map<string, LegSelection>())
+  const handleLegSelection = React.useCallback(
+    (fieldId: string, selection: LegSelection) => {
+      legSelectionsRef.current.set(fieldId, selection)
+    },
+    []
+  )
 
-  const tripType: TripType = form.watch("trip_type") ?? "one_way";
+  const tripType: TripType = form.watch("trip_type") ?? "one_way"
 
   const handleTripChange = (next: TripType) => {
-    form.setValue("trip_type", next, { shouldValidate: true });
+    form.setValue("trip_type", next, { shouldValidate: true })
     // Hidden-branch errors must not linger after switching trip type.
-    form.clearErrors();
-  };
+    form.clearErrors()
+  }
 
   const handleAddLeg = () => {
     if (canAddLeg(legFields.length)) {
-      appendLeg(createEmptyLeg());
+      appendLeg(createEmptyLeg())
     }
-  };
+  }
 
   const handleRemoveLeg = (index: number, fieldId: string) => {
     if (canRemoveLeg(legFields.length)) {
-      legSelectionsRef.current.delete(fieldId);
-      removeLeg(index);
+      legSelectionsRef.current.delete(fieldId)
+      removeLeg(index)
     }
-  };
+  }
 
-  // Keep RHF origin/destination in sync with autocomplete selection
+  const formatAirportDisplay = (airport: Airport) => {
+    return `${airport.iata_code} – ${airport.name || airport.city}`
+  }
+
+  const handleOriginSelect = (airport: Airport | null) => {
+    setOriginAirport(airport)
+    if (airport) {
+      form.setValue("origin", airport.iata_code, { shouldValidate: false })
+      form.clearErrors("origin")
+      if (
+        destinationAirport &&
+        destinationAirport.iata_code !== airport.iata_code
+      ) {
+        form.clearErrors("destination")
+      }
+    } else {
+      form.setValue("origin", "", { shouldValidate: false })
+    }
+  }
+
+  const handleOriginInputChange = (val: string) => {
+    setOriginInput(val)
+    form.clearErrors("origin")
+  }
+
+  const handleDestinationSelect = (airport: Airport | null) => {
+    setDestinationAirport(airport)
+    if (airport) {
+      form.setValue("destination", airport.iata_code, { shouldValidate: false })
+      form.clearErrors("destination")
+      if (originAirport && originAirport.iata_code !== airport.iata_code) {
+        form.clearErrors("origin")
+      }
+    } else {
+      form.setValue("destination", "", { shouldValidate: false })
+    }
+  }
+
+  const handleDestinationInputChange = (val: string) => {
+    setDestinationInput(val)
+    form.clearErrors("destination")
+  }
+
+  const handleSwap = () => {
+    const nextOriginInput = destinationInput
+    const nextDestinationInput = originInput
+    const nextOriginAirport = destinationAirport
+    const nextDestinationAirport = originAirport
+    setOriginInput(nextOriginInput)
+    setDestinationInput(nextDestinationInput)
+    setOriginAirport(nextOriginAirport)
+    setDestinationAirport(nextDestinationAirport)
+    form.setValue("origin", nextOriginAirport?.iata_code ?? "", {
+      shouldValidate: false,
+    })
+    form.setValue("destination", nextDestinationAirport?.iata_code ?? "", {
+      shouldValidate: false,
+    })
+    form.clearErrors(["origin", "destination"])
+  }
+
+  const canSwap = originInput.trim() !== "" || destinationInput.trim() !== ""
+
+  // Sync valid airport selections into RHF
   React.useEffect(() => {
-    form.setValue("origin", originAirport?.iata_code ?? originInput.trim().toUpperCase(), {
-      shouldValidate: true,
-    });
-  }, [originAirport, originInput, form]);
+    if (originAirport) {
+      form.setValue("origin", originAirport.iata_code, {
+        shouldValidate: false,
+      })
+    }
+  }, [originAirport, form])
 
   React.useEffect(() => {
-    form.setValue("destination", destinationAirport?.iata_code ?? destinationInput.trim().toUpperCase(), {
-      shouldValidate: true,
-    });
-  }, [destinationAirport, destinationInput, form]);
+    if (destinationAirport) {
+      form.setValue("destination", destinationAirport.iata_code, {
+        shouldValidate: false,
+      })
+    }
+  }, [destinationAirport, form])
 
-  const adults = form.watch("adults");
-  const children = form.watch("children");
-  const infants = form.watch("infants");
-  const departureDateValue = form.watch("departureDate") ?? "";
+  const adults = form.watch("adults")
+  const children = form.watch("children")
+  const infants = form.watch("infants")
+  const departureDateValue = form.watch("departureDate") ?? ""
 
   const handleFormSubmit = form.handleSubmit((values) => {
-    const trip = values.trip_type;
+    const trip = values.trip_type
     if (trip === "multi_city") {
       // Final guard: every leg's airports must be selected via autocomplete.
-      let blocked = false;
+      let blocked = false
       legFields.forEach((field, i) => {
-        const selection = legSelectionsRef.current.get(field.id);
-        const leg = values.legs[i];
+        const selection = legSelectionsRef.current.get(field.id)
+        const leg = values.legs[i]
         if (!selection?.origin || selection.origin.iata_code !== leg?.origin) {
           form.setError(`legs.${i}.origin`, {
             type: "manual",
             message: "Select an origin airport from the list",
-          });
-          blocked = true;
+          })
+          blocked = true
         }
-        if (!selection?.destination || selection.destination.iata_code !== leg?.destination) {
+        if (
+          !selection?.destination ||
+          selection.destination.iata_code !== leg?.destination
+        ) {
           form.setError(`legs.${i}.destination`, {
             type: "manual",
             message: "Select a destination airport from the list",
-          });
-          blocked = true;
+          })
+          blocked = true
         }
-      });
-      if (blocked) return;
+      })
+      if (blocked) return
     } else {
       // Final guard: airports must be selected via autocomplete.
       // URL-hydrated airports arrive as defaultOriginAirport/defaultDestinationAirport
       // so shared links still submit; typed-but-unselected IATA is rejected here.
-      const origin = values.origin;
-      const destination = values.destination;
+      const origin = values.origin
+      const destination = values.destination
       if (!originAirport || originAirport.iata_code !== origin) {
-        form.setError("origin", { type: "manual", message: "Select an origin airport from the list" });
-        return;
+        form.setError("origin", {
+          type: "manual",
+          message: "Select an origin airport from the list",
+        })
+        return
       }
       if (!destinationAirport || destinationAirport.iata_code !== destination) {
-        form.setError("destination", { type: "manual", message: "Select a destination airport from the list" });
-        return;
+        form.setError("destination", {
+          type: "manual",
+          message: "Select a destination airport from the list",
+        })
+        return
       }
     }
     // Domain validation via the discriminated union (strict, backend-mapped).
-    const parsed = tripTypeSchema.safeParse(values);
+    const parsed = tripTypeSchema.safeParse(values)
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
-        const [seg0, seg1, seg2] = issue.path;
+        const [seg0, seg1, seg2] = issue.path
         if (
           seg0 === "legs" &&
           typeof seg1 === "number" &&
           (seg2 === "origin" || seg2 === "destination" || seg2 === "date")
         ) {
-          form.setError(`legs.${seg1}.${seg2}`, { type: "zod", message: issue.message });
+          form.setError(`legs.${seg1}.${seg2}`, {
+            type: "zod",
+            message: issue.message,
+          })
         } else if (
           seg0 === "origin" ||
           seg0 === "destination" ||
@@ -245,52 +356,107 @@ export function FlightSearchForm({
           seg0 === "cabin" ||
           seg0 === "max_stops"
         ) {
-          form.setError(seg0, { type: "zod", message: issue.message });
+          form.setError(seg0, { type: "zod", message: issue.message })
         } else {
           // Leg-chain and other cross-leg errors surface on the form alert.
-          form.setError("root", { type: "zod", message: issue.message });
+          form.setError("root", { type: "zod", message: issue.message })
         }
       }
-      return;
+      return
     }
-    onSubmit(parsed.data);
-  });
+    onSubmit(parsed.data)
+  })
 
   const composition = {
     adults: adults ?? 1,
     children: children ?? 0,
     infants: infants ?? 0,
-  };
+  }
+
   const handleCompositionChange = (next: typeof composition) => {
-    form.setValue("adults", next.adults, { shouldValidate: true });
-    form.setValue("children", next.children, { shouldValidate: true });
-    form.setValue("infants", next.infants, { shouldValidate: true });
-  };
+    form.setValue("adults", next.adults, { shouldValidate: true })
+    form.setValue("children", next.children, { shouldValidate: true })
+    form.setValue("infants", next.infants, { shouldValidate: true })
+    form.clearErrors(["adults", "children", "infants"])
+  }
+
   const travellerError =
-    form.formState.errors.adults?.message ?? form.formState.errors.infants?.message ?? undefined;
+    form.formState.errors.adults?.message ??
+    form.formState.errors.infants?.message ??
+    undefined
+
+  const isSoloAdult =
+    (adults ?? 1) === 1 && (children ?? 0) === 0 && (infants ?? 0) === 0
+  const totalTravellers = (adults ?? 1) + (children ?? 0) + (infants ?? 0)
+  const shortLabel = isSoloAdult
+    ? "1 Adult"
+    : `${totalTravellers} traveller${totalTravellers === 1 ? "" : "s"}`
+  const breakdown = isSoloAdult
+    ? ""
+    : [
+        `${adults ?? 1} adult${(adults ?? 1) === 1 ? "" : "s"}`,
+        ...(children && children > 0
+          ? [`${children} child${children === 1 ? "" : "ren"}`]
+          : []),
+        ...(infants && infants > 0
+          ? [`${infants} infant${infants === 1 ? "" : "s"}`]
+          : []),
+      ].join(", ")
 
   const legsArrayError =
     typeof form.formState.errors.legs?.message === "string"
       ? form.formState.errors.legs.message
-      : undefined;
+      : undefined
 
-  // Global cabin selector — one control applied to every leg in v1.
-  const cabinField = (
-    <Controller
-      name="cabin"
-      control={form.control}
-      render={({ field, fieldState }) => (
-        <Select
-          label="Cabin"
-          options={[...CABIN_OPTIONS]}
-          value={field.value}
-          onValueChange={field.onChange}
-          error={fieldState.error?.message}
-          helperText="Applied to every leg."
-        />
-      )}
-    />
-  );
+  const departureRegistration = form.register("departureDate")
+  const returnRegistration = form.register("returnDate")
+
+  const travellersField = (
+    <div className="w-full space-y-1.5">
+      <span className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase">
+        Travellers
+      </span>
+      <PopoverPrimitive.Root>
+        <PopoverPrimitive.Trigger className="flex h-10 w-full touch-manipulation items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-sm text-foreground shadow-xs transition-colors hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none">
+          <span className="flex min-w-0 items-center gap-2">
+            <HugeiconsIcon
+              icon={UserIcon}
+              size={16}
+              aria-hidden="true"
+              className="shrink-0 text-muted-foreground"
+            />
+            <span className="truncate font-medium">{shortLabel}</span>
+            {breakdown ? <span className="sr-only">: {breakdown}</span> : null}
+          </span>
+          <HugeiconsIcon
+            icon={ArrowDown01Icon}
+            size={16}
+            aria-hidden="true"
+            className="shrink-0 text-muted-foreground"
+          />
+        </PopoverPrimitive.Trigger>
+        <PopoverPrimitive.Portal>
+          <PopoverPrimitive.Positioner
+            sideOffset={4}
+            className="z-50 outline-none"
+          >
+            <PopoverPrimitive.Popup className="w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 text-foreground shadow-lg">
+              <TravellerStepper
+                value={composition}
+                onChange={handleCompositionChange}
+                error={travellerError}
+              />
+            </PopoverPrimitive.Popup>
+          </PopoverPrimitive.Positioner>
+        </PopoverPrimitive.Portal>
+      </PopoverPrimitive.Root>
+      {travellerError ? (
+        <p className="mt-1 text-xs font-medium text-destructive">
+          {travellerError}
+        </p>
+      ) : null}
+    </div>
+  )
 
   return (
     <FormProvider {...form}>
@@ -298,20 +464,23 @@ export function FlightSearchForm({
         noValidate
         onSubmit={handleFormSubmit}
         aria-label="Flight search"
-        className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6"
+        className="flex flex-col gap-5 rounded-3xl border border-border/80 bg-card/95 p-4 shadow-xl shadow-black/[0.04] backdrop-blur-xl sm:p-6 md:p-7"
       >
-        <div role="radiogroup" aria-label="Trip type" className="grid grid-cols-3 gap-2">
+        <div
+          role="radiogroup"
+          aria-label="Trip type"
+          className="inline-flex items-center gap-1 self-start rounded-2xl border border-border/50 bg-muted/70 p-1 dark:bg-muted/40"
+        >
           {TRIP_TYPE_OPTIONS.map((option) => {
-            const checked = tripType === option.value;
+            const checked = tripType === option.value
             return (
               <label
                 key={option.value}
                 className={cn(
-                  "flex min-h-16 cursor-pointer touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl border px-2 py-2.5 text-center transition-colors",
-                  "focus-within:ring-2 focus-within:ring-ring/30 focus-within:outline-none",
+                  "inline-flex touch-manipulation items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:text-sm",
                   checked
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-card hover:bg-muted/50",
+                    ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
+                    : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
                 )}
               >
                 <input
@@ -322,10 +491,19 @@ export function FlightSearchForm({
                   onChange={() => handleTripChange(option.value)}
                   className="sr-only"
                 />
-                <span className="text-sm font-semibold text-foreground">{option.label}</span>
-                <span className="text-[11px] text-muted-foreground">{option.hint}</span>
+                <HugeiconsIcon
+                  icon={option.icon}
+                  size={16}
+                  aria-hidden="true"
+                  className={
+                    checked
+                      ? "shrink-0 text-primary"
+                      : "shrink-0 text-muted-foreground"
+                  }
+                />
+                <span>{option.label}</span>
               </label>
-            );
+            )
           })}
         </div>
 
@@ -338,27 +516,36 @@ export function FlightSearchForm({
                 legCount={legFields.length}
                 fieldId={field.id}
                 initialOrigin={defaultLegAirports?.[i]?.origin ?? null}
-                initialDestination={defaultLegAirports?.[i]?.destination ?? null}
+                initialDestination={
+                  defaultLegAirports?.[i]?.destination ?? null
+                }
                 dateMin={today}
                 showRemove={canRemoveLeg(legFields.length)}
                 onRemove={() => handleRemoveLeg(i, field.id)}
                 onSelectionChange={handleLegSelection}
               />
             ))}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleAddLeg}
-              disabled={!canAddLeg(legFields.length)}
-              className="w-full justify-center"
-            >
-              <HugeiconsIcon icon={PlusSignIcon} size={16} aria-hidden="true" />
-              <span>
-                {canAddLeg(legFields.length)
-                  ? `Add leg (${legFields.length} of 6)`
-                  : "Maximum 6 legs"}
-              </span>
-            </Button>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddLeg}
+                disabled={!canAddLeg(legFields.length)}
+                className="w-full justify-center rounded-xl sm:w-auto"
+              >
+                <HugeiconsIcon
+                  icon={PlusSignIcon}
+                  size={16}
+                  aria-hidden="true"
+                />
+                <span>
+                  {canAddLeg(legFields.length)
+                    ? `Add leg (${legFields.length} of 6)`
+                    : "Maximum 6 legs"}
+                </span>
+              </Button>
+              <div className="w-full sm:w-48">{travellersField}</div>
+            </div>
             {legsArrayError ? (
               <p role="alert" className="text-xs font-medium text-destructive">
                 {legsArrayError}
@@ -366,92 +553,188 @@ export function FlightSearchForm({
             ) : null}
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <AirportAutocomplete
-                label="Origin"
-                placeholder="Lagos, LOS, Murtala Muhammed…"
-                value={originInput}
-                selectedAirport={originAirport}
-                onSelect={setOriginAirport}
-                onInputChange={setOriginInput}
-                error={form.formState.errors.origin?.message}
-                helperText="Type at least 2 characters. Pick from the list."
-                excludeIata={destinationAirport?.iata_code ?? null}
-              />
-              <AirportAutocomplete
-                label="Destination"
-                placeholder="London, LHR, Heathrow…"
-                value={destinationInput}
-                selectedAirport={destinationAirport}
-                onSelect={setDestinationAirport}
-                onInputChange={setDestinationInput}
-                error={form.formState.errors.destination?.message}
-                helperText="International search — try city, name, or code."
-                excludeIata={originAirport?.iata_code ?? null}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                label="Departure date"
-                type="date"
-                min={today}
-                helperText="Today or later — real calendar dates only."
-                error={form.formState.errors.departureDate?.message}
-                {...form.register("departureDate")}
-              />
-
-              {tripType === "round_trip" ? (
-                <Input
-                  label="Return date"
-                  type="date"
-                  min={departureDateValue || today}
-                  helperText="On or after the departure date."
-                  error={form.formState.errors.returnDate?.message}
-                  {...form.register("returnDate")}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-2.5 xl:gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2 lg:min-w-0 lg:flex-[2.4]">
+              <div className="w-full min-w-0 flex-1">
+                <AirportAutocomplete
+                  id="flight-search-from"
+                  label="From"
+                  placeholder="Lagos, LOS, Murtala Muhammed…"
+                  value={originInput}
+                  selectedAirport={originAirport}
+                  onSelect={handleOriginSelect}
+                  onInputChange={handleOriginInputChange}
+                  error={form.formState.errors.origin?.message}
+                  formatDisplay={formatAirportDisplay}
+                  showSelectedHint={false}
+                  excludeIata={destinationAirport?.iata_code ?? null}
                 />
-              ) : (
-                cabinField
-              )}
+              </div>
+              <div className="flex shrink-0 justify-center sm:mt-[22px]">
+                <button
+                  type="button"
+                  onClick={handleSwap}
+                  disabled={!canSwap}
+                  aria-label="Swap origin and destination"
+                  className="flex size-10 touch-manipulation items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <HugeiconsIcon
+                    icon={ArrowLeftRightIcon}
+                    size={16}
+                    aria-hidden="true"
+                    className="rotate-90 sm:rotate-0"
+                  />
+                </button>
+              </div>
+              <div className="w-full min-w-0 flex-1">
+                <AirportAutocomplete
+                  id="flight-search-to"
+                  label="To"
+                  placeholder="London, LHR, Heathrow…"
+                  value={destinationInput}
+                  selectedAirport={destinationAirport}
+                  onSelect={handleDestinationSelect}
+                  onInputChange={handleDestinationInputChange}
+                  error={form.formState.errors.destination?.message}
+                  formatDisplay={formatAirportDisplay}
+                  showSelectedHint={false}
+                  excludeIata={originAirport?.iata_code ?? null}
+                />
+              </div>
             </div>
 
-            {tripType === "round_trip" ? cabinField : null}
-          </>
+            <div
+              className={cn(
+                "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:min-w-0 lg:gap-2.5 xl:gap-3",
+                tripType === "round_trip" ? "lg:flex-[2.4]" : "lg:flex-[1.8]"
+              )}
+            >
+              <div className="w-full min-w-0 flex-1">
+                <Input
+                  label="Departure"
+                  type="date"
+                  min={today}
+                  error={form.formState.errors.departureDate?.message}
+                  startIcon={
+                    <HugeiconsIcon
+                      icon={Calendar01Icon}
+                      size={16}
+                      aria-hidden="true"
+                    />
+                  }
+                  {...departureRegistration}
+                  onChange={(e) => {
+                    departureRegistration.onChange(e)
+                    form.clearErrors("departureDate")
+                  }}
+                />
+              </div>
+              {tripType === "round_trip" ? (
+                <div className="w-full min-w-0 flex-1">
+                  <Input
+                    label="Return"
+                    type="date"
+                    min={departureDateValue || today}
+                    error={form.formState.errors.returnDate?.message}
+                    startIcon={
+                      <HugeiconsIcon
+                        icon={Calendar01Icon}
+                        size={16}
+                        aria-hidden="true"
+                      />
+                    }
+                    {...returnRegistration}
+                    onChange={(e) => {
+                      returnRegistration.onChange(e)
+                      form.clearErrors("returnDate")
+                    }}
+                  />
+                </div>
+              ) : null}
+
+              <div
+                className={cn(
+                  "w-full min-w-0",
+                  tripType === "round_trip" ? "flex-1" : "flex-[0.9]"
+                )}
+              >
+                {travellersField}
+              </div>
+            </div>
+          </div>
         )}
 
-        {tripType === "multi_city" ? cabinField : null}
-
-        <TravellerStepper value={composition} onChange={handleCompositionChange} error={travellerError} />
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Controller
-            name="non_stop"
-            control={form.control}
-            render={({ field }) => (
-              <Checkbox
-                label="Non-stop only"
-                checked={Boolean(field.value)}
-                onCheckedChange={field.onChange}
-                helperText="Only show flights without stops."
+        <div className="flex flex-col gap-4 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-4">
+            <Controller
+              name="non_stop"
+              control={form.control}
+              render={({ field }) => (
+                <Checkbox
+                  label="Non-stop only"
+                  checked={Boolean(field.value)}
+                  onCheckedChange={field.onChange}
+                />
+              )}
+            />
+            <div className="w-36">
+              <Controller
+                name="max_stops"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Select
+                    label="Max stops"
+                    hideLabel
+                    options={[...MAX_STOPS_OPTIONS]}
+                    value={
+                      field.value === null || field.value === undefined
+                        ? ""
+                        : String(field.value)
+                    }
+                    onValueChange={(next) =>
+                      field.onChange(next === "" ? null : Number(next))
+                    }
+                    error={fieldState.error?.message}
+                    placeholder="Any stops"
+                  />
+                )}
               />
-            )}
-          />
+            </div>
+          </div>
 
-          <Controller
-            name="max_stops"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Select
-                label="Max stops (optional)"
-                options={[...MAX_STOPS_OPTIONS]}
-                value={field.value === null || field.value === undefined ? "" : String(field.value)}
-                onValueChange={(next) => field.onChange(next === "" ? null : Number(next))}
-                error={fieldState.error?.message}
-                helperText="Cap connections per offer."
+          <div className="flex shrink-0 flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-end">
+            <div className="w-full sm:w-36">
+              <Controller
+                name="cabin"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Select
+                    label="Cabin"
+                    hideLabel
+                    options={[...CABIN_OPTIONS]}
+                    value={field.value}
+                    onValueChange={(val) => {
+                      field.onChange(val)
+                      form.clearErrors("cabin")
+                    }}
+                    error={fieldState.error?.message}
+                  />
+                )}
               />
-            )}
-          />
+            </div>
+            <Button
+              type="submit"
+              size="lg"
+              isLoading={!!isSearching}
+              disabled={!!isSearching}
+              className="w-full justify-center px-6 font-semibold sm:w-auto"
+            >
+              <HugeiconsIcon icon={Search01Icon} size={18} aria-hidden="true" />
+              <span>
+                {isSearching ? "Searching flights…" : "Search flights"}
+              </span>
+            </Button>
+          </div>
         </div>
 
         {form.formState.errors.root?.message ? (
@@ -459,20 +742,21 @@ export function FlightSearchForm({
             role="alert"
             className="flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-xs leading-relaxed text-foreground"
           >
-            <HugeiconsIcon icon={AlertCircleIcon} size={16} className="mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
+            <HugeiconsIcon
+              icon={AlertCircleIcon}
+              size={16}
+              className="mt-0.5 shrink-0 text-destructive"
+              aria-hidden="true"
+            />
             <span>{form.formState.errors.root.message}</span>
           </div>
         ) : null}
 
-        <Button type="submit" size="lg" isLoading={!!isSearching} disabled={!!isSearching} className="w-full justify-center">
-          <HugeiconsIcon icon={Search01Icon} size={18} aria-hidden="true" />
-          <span>{isSearching ? "Searching flights…" : "Search flights"}</span>
-        </Button>
-
-        <p className="text-center text-xs leading-relaxed text-muted-foreground">
-          No account needed. Prices in NGN. You&apos;ll confirm the live fare before paying.
+        <p className="text-center text-xs leading-relaxed text-muted-foreground sm:text-left">
+          No account needed. Prices in NGN. You&apos;ll confirm the live fare
+          before paying.
         </p>
       </form>
     </FormProvider>
-  );
+  )
 }

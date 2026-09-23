@@ -1,10 +1,10 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { AlertCircleIcon, LockIcon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
+import * as React from "react"
+import Link from "next/link"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { AlertCircleIcon, LockIcon } from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
 import {
   getFlightSupportWhatsAppUrl,
   normalizeFlightOffer,
@@ -12,12 +12,12 @@ import {
   readTravellersDraft,
   type FlightOffer,
   type FlightOfferDisplay,
-} from "@/lib/api/flights";
+} from "@/lib/api/flights"
 import {
   ApiError,
   getHumanErrorMessage,
   getPaymentSafetyCopy,
-} from "@/lib/api/client";
+} from "@/lib/api/client"
 import {
   createFlightBooking,
   findReusableBooking,
@@ -25,50 +25,50 @@ import {
   readPendingBooking,
   savePaymentReference,
   savePendingBooking,
-} from "@/lib/api/flight-bookings";
-import { track } from "@/lib/analytics";
-import { TrackLink } from "@/components/analytics/track-link";
-import { getSupportWhatsAppUrl } from "@/lib/content/company";
-import { formatNaira } from "@/lib/format";
+} from "@/lib/api/flight-bookings"
+import { track } from "@/lib/analytics"
+import { TrackLink } from "@/components/analytics/track-link"
+import { getSupportWhatsAppUrl } from "@/lib/content/company"
+import { formatNaira } from "@/lib/format"
 import {
   pluralize,
   type BookingTravellersPayload,
   type TravellerComposition,
-} from "@/lib/schemas/travel";
+} from "@/lib/schemas/travel"
 
-type Phase = "idle" | "creating" | "redirecting" | "failed";
+type Phase = "idle" | "creating" | "redirecting" | "failed"
 
 interface LoadedBooking {
-  offer: FlightOffer;
-  display: FlightOfferDisplay;
-  draft: BookingTravellersPayload;
-  party: TravellerComposition;
-  bookingKey: string;
-  resumable: { reference: string; authorization_url: string } | null;
+  offer: FlightOffer
+  display: FlightOfferDisplay
+  draft: BookingTravellersPayload
+  party: TravellerComposition
+  bookingKey: string
+  resumable: { reference: string; authorization_url: string } | null
 }
 
 function partyFromTravelers(
-  travelers: BookingTravellersPayload["travellers"],
+  travelers: BookingTravellersPayload["travellers"]
 ): TravellerComposition {
-  let adults = 0;
-  let children = 0;
-  let infants = 0;
+  let adults = 0
+  let children = 0
+  let infants = 0
   for (const traveler of travelers) {
-    if (traveler.traveler_type === "CHILD") children += 1;
-    else if (traveler.traveler_type === "HELD_INFANT") infants += 1;
-    else adults += 1;
+    if (traveler.traveler_type === "CHILD") children += 1
+    else if (traveler.traveler_type === "HELD_INFANT") infants += 1
+    else adults += 1
   }
-  return { adults, children, infants };
+  return { adults, children, infants }
 }
 
 function loadBooking(): LoadedBooking | null {
   try {
-    const offer = readConfirmedOffer();
-    const draft = readTravellersDraft();
-    if (!offer || !draft || draft.travellers.length === 0) return null;
-    const display = normalizeFlightOffer(offer, 0);
-    const party = partyFromTravelers(draft.travellers);
-    const bookingKey = hashBookingKey(offer, party);
+    const offer = readConfirmedOffer()
+    const draft = readTravellersDraft()
+    if (!offer || !draft || draft.travellers.length === 0) return null
+    const display = normalizeFlightOffer(offer, 0)
+    const party = partyFromTravelers(draft.travellers)
+    const bookingKey = hashBookingKey(offer, party)
     return {
       offer,
       display,
@@ -76,9 +76,9 @@ function loadBooking(): LoadedBooking | null {
       party,
       bookingKey,
       resumable: findReusableBooking(readPendingBooking(), bookingKey),
-    };
+    }
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -102,60 +102,60 @@ function loadBooking(): LoadedBooking | null {
  */
 export function CheckoutPaymentClient() {
   // Session reads plus key derivation run once (vercel: rerender-lazy-state-init).
-  const [booking] = React.useState<LoadedBooking | null>(loadBooking);
-  const [phase, setPhase] = React.useState<Phase>("idle");
-  const [failure, setFailure] = React.useState<string | null>(null);
+  const [booking] = React.useState<LoadedBooking | null>(loadBooking)
+  const [phase, setPhase] = React.useState<Phase>("idle")
+  const [failure, setFailure] = React.useState<string | null>(null)
   // Transient in-flight marker: refs avoid a rerender per tap while the
   // disabled button covers the visual state (vercel: rerender-use-ref-transient-values).
-  const creationRef = React.useRef<string | null>(null);
+  const creationRef = React.useRef<string | null>(null)
 
   const handlePay = React.useCallback(async () => {
-    if (!booking || creationRef.current) return;
-    setFailure(null);
+    if (!booking || creationRef.current) return
+    setFailure(null)
 
     // Payment initiated: coarse funnel props only — never the reference,
     // offer blob, traveller PII, or authorization URL (sanitizer drops them).
     const initiatedProps = {
       currency: booking.display.currency || "NGN",
       travellers: String(booking.draft.travellers.length),
-    } as const;
+    } as const
 
     if (booking.resumable) {
-      creationRef.current = booking.resumable.reference;
-      setPhase("redirecting");
-      savePaymentReference(booking.resumable.reference);
-      track("flight_payment_initiated", { ...initiatedProps });
-      window.location.href = booking.resumable.authorization_url;
-      return;
+      creationRef.current = booking.resumable.reference
+      setPhase("redirecting")
+      savePaymentReference(booking.resumable.reference)
+      track("flight_payment_initiated", { ...initiatedProps })
+      window.location.href = booking.resumable.authorization_url
+      return
     }
 
-    creationRef.current = "in-flight";
-    setPhase("creating");
+    creationRef.current = "in-flight"
+    setPhase("creating")
     try {
       const result = await createFlightBooking({
         flight_offer: booking.offer,
         travelers: booking.draft.travellers,
         customer: booking.draft.customer,
-      });
-      creationRef.current = result.reference;
+      })
+      creationRef.current = result.reference
       savePendingBooking({
         key: booking.bookingKey,
         reference: result.reference,
         authorization_url: result.authorization_url,
-      });
-      savePaymentReference(result.reference);
-      track("flight_payment_initiated", { ...initiatedProps });
-      setPhase("redirecting");
-      window.location.href = result.authorization_url;
+      })
+      savePaymentReference(result.reference)
+      track("flight_payment_initiated", { ...initiatedProps })
+      setPhase("redirecting")
+      window.location.href = result.authorization_url
     } catch (error) {
-      creationRef.current = null;
-      setPhase("failed");
+      creationRef.current = null
+      setPhase("failed")
       if (error instanceof ApiError && error.reference) {
-        savePaymentReference(error.reference);
+        savePaymentReference(error.reference)
       }
-      setFailure(getHumanErrorMessage(error));
+      setFailure(getHumanErrorMessage(error))
     }
-  }, [booking]);
+  }, [booking])
 
   if (!booking) {
     return (
@@ -167,9 +167,9 @@ export function CheckoutPaymentClient() {
           We could not find your booking details
         </h2>
         <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-          Your selected flight or traveller details did not carry over. No booking
-          was made and no payment was taken. Start a new search or talk to Alphaa
-          and we will help you through it.
+          Your selected flight or traveller details did not carry over. No
+          booking was made and no payment was taken. Start a new search or talk
+          to Alphaa and we will help you through it.
         </p>
         <div className="flex flex-col items-center gap-2 pt-1 sm:flex-row">
           <Button render={<Link href="/flights" />}>
@@ -180,8 +180,13 @@ export function CheckoutPaymentClient() {
             render={
               <TrackLink
                 event="support_click"
-                eventProps={{ context: "a flight payment that could not start", channel: "whatsapp" }}
-                href={getSupportWhatsAppUrl("a flight payment I could not start")}
+                eventProps={{
+                  context: "a flight payment that could not start",
+                  channel: "whatsapp",
+                }}
+                href={getSupportWhatsAppUrl(
+                  "a flight payment I could not start"
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
               />
@@ -191,19 +196,19 @@ export function CheckoutPaymentClient() {
           </Button>
         </div>
       </div>
-    );
+    )
   }
 
-  const total = formatNaira(booking.display.price);
-  const busy = phase === "creating";
+  const total = formatNaira(booking.display.price)
+  const busy = phase === "creating"
   let payLabel = booking.resumable
     ? `Resume secure payment · ${total}`
-    : `Pay ${total} securely`;
-  if (phase === "creating") payLabel = "Creating your booking…";
-  else if (phase === "failed") payLabel = `Try again · ${total}`;
-  const travellerCount = booking.draft.travellers.length;
+    : `Pay ${total} securely`
+  if (phase === "creating") payLabel = "Creating your booking…"
+  else if (phase === "failed") payLabel = `Try again · ${total}`
+  const travellerCount = booking.draft.travellers.length
   const hasDates =
-    booking.display.departureAt !== "—" && booking.display.arrivalAt !== "—";
+    booking.display.departureAt !== "—" && booking.display.arrivalAt !== "—"
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
@@ -223,19 +228,22 @@ export function CheckoutPaymentClient() {
         </div>
         {hasDates ? (
           <p className="text-sm text-muted-foreground">
-            Departs {booking.display.departureAt} · Arrives {booking.display.arrivalAt}
+            Departs {booking.display.departureAt} · Arrives{" "}
+            {booking.display.arrivalAt}
           </p>
         ) : null}
         <dl className="flex flex-col gap-2 border-t border-border pt-4 text-sm">
           <div className="flex items-center justify-between gap-4">
             <dt className="text-muted-foreground">Fare</dt>
-            <dd className="font-variant-numeric font-semibold tabular-nums text-foreground">
+            <dd className="font-variant-numeric font-semibold text-foreground tabular-nums">
               {total}
             </dd>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <dt className="text-base font-bold text-foreground">Total due today</dt>
-            <dd className="font-variant-numeric text-base font-extrabold tabular-nums text-foreground">
+            <dt className="text-base font-bold text-foreground">
+              Total due today
+            </dt>
+            <dd className="font-variant-numeric text-base font-extrabold text-foreground tabular-nums">
               {total}{" "}
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
                 {booking.display.currency}
@@ -269,7 +277,11 @@ export function CheckoutPaymentClient() {
       ) : null}
 
       {phase === "redirecting" ? (
-        <p role="status" aria-live="polite" className="text-center text-sm font-semibold text-primary">
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-center text-sm font-semibold text-primary"
+        >
           Taking you to Paystack to complete payment…
         </p>
       ) : (
@@ -289,12 +301,18 @@ export function CheckoutPaymentClient() {
               render={
                 <TrackLink
                   event="support_click"
-                  eventProps={{ context: "a flight payment that did not go through", channel: "whatsapp" }}
-                  href={getFlightSupportWhatsAppUrl("a flight payment that did not go through", {
-                    origin: booking.display.origin,
-                    destination: booking.display.destination,
-                    amount: total,
-                  })}
+                  eventProps={{
+                    context: "a flight payment that did not go through",
+                    channel: "whatsapp",
+                  }}
+                  href={getFlightSupportWhatsAppUrl(
+                    "a flight payment that did not go through",
+                    {
+                      origin: booking.display.origin,
+                      destination: booking.display.destination,
+                      amount: total,
+                    }
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                 />
@@ -306,5 +324,5 @@ export function CheckoutPaymentClient() {
         </div>
       )}
     </div>
-  );
+  )
 }

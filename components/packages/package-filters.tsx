@@ -1,12 +1,12 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { buildPackageSearchParams } from "@/lib/listings";
-import type { PackageFilters } from "@/lib/api/packages";
+import * as React from "react"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { buildPackageSearchParams } from "@/lib/listings"
+import type { PackageFilters } from "@/lib/api/packages"
 
 const PRICE_BANDS = [
   { value: "", label: "Any budget" },
@@ -14,15 +14,15 @@ const PRICE_BANDS = [
   { value: "1000000", label: "Up to ₦1,000,000" },
   { value: "2000000", label: "Up to ₦2,000,000" },
   { value: "5000000", label: "Up to ₦5,000,000" },
-] as const;
+] as const
 
 export interface DestinationOption {
-  slug: string;
-  name: string;
+  slug: string
+  name: string
 }
 
 const selectClassName =
-  "flex h-11 w-full rounded-xl border border-input/80 bg-background/80 px-3.5 text-sm font-medium text-foreground shadow-xs transition-colors hover:border-foreground/20 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50";
+  "flex h-11 w-full rounded-xl border border-input/80 bg-background/80 px-3.5 text-sm font-medium text-foreground shadow-xs transition-colors hover:border-foreground/20 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
 
 /**
  * Package listing controls (client): destination, max price, and featured
@@ -34,24 +34,28 @@ export function PackageFilters({
   initial,
   destinations,
 }: {
-  initial: PackageFilters;
-  destinations: DestinationOption[];
+  initial: PackageFilters
+  destinations: DestinationOption[]
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [isPending, startTransition] = React.useTransition();
-  const [destination, setDestination] = React.useState(initial.destination ?? "");
+  const router = useRouter()
+  const pathname = usePathname()
+  const [isPending, startTransition] = React.useTransition()
+  const [destination, setDestination] = React.useState(
+    initial.destination ?? ""
+  )
   const [maxPrice, setMaxPrice] = React.useState(
-    initial.max_price !== undefined ? String(initial.max_price) : "",
-  );
-  const [featured, setFeatured] = React.useState(initial.featured === true);
+    initial.max_price !== undefined ? String(initial.max_price) : ""
+  )
+  const [featured, setFeatured] = React.useState(initial.featured === true)
 
   // Keep controls in sync when the URL changes (back/forward navigation).
   React.useEffect(() => {
-    setDestination(initial.destination ?? "");
-    setMaxPrice(initial.max_price !== undefined ? String(initial.max_price) : "");
-    setFeatured(initial.featured === true);
-  }, [initial.destination, initial.max_price, initial.featured]);
+    setDestination(initial.destination ?? "")
+    setMaxPrice(
+      initial.max_price !== undefined ? String(initial.max_price) : ""
+    )
+    setFeatured(initial.featured === true)
+  }, [initial.destination, initial.max_price, initial.featured])
 
   const apply = React.useCallback(
     (next: { destination: string; maxPrice: string; featured: boolean }) => {
@@ -60,18 +64,20 @@ export function PackageFilters({
         destination: next.destination || undefined,
         max_price: next.maxPrice ? Number(next.maxPrice) : undefined,
         featured: next.featured || undefined,
-      });
+      })
       startTransition(() => {
-        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-      });
+        router.replace(query ? `${pathname}?${query}` : pathname, {
+          scroll: false,
+        })
+      })
     },
-    [pathname, router],
-  );
+    [pathname, router]
+  )
 
-  const hasActiveFilters = destination !== "" || maxPrice !== "" || featured;
+  const hasActiveFilters = destination !== "" || maxPrice !== "" || featured
 
   return (
-    <div className="relative rounded-3xl p-1.5 sm:p-2 bg-muted/40 border border-border/80 shadow-xs dark:bg-zinc-900/40 dark:border-white/10">
+    <div className="relative rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 dark:border-white/10 dark:bg-zinc-900/40">
       <form
         method="get"
         action="/packages"
@@ -80,10 +86,10 @@ export function PackageFilters({
         onSubmit={(event) => {
           // SPA path: replace the URL without a full navigation.
           // Without JS the native GET submit still filters server-side.
-          event.preventDefault();
-          apply({ destination, maxPrice, featured });
+          event.preventDefault()
+          apply({ destination, maxPrice, featured })
         }}
-        className="flex flex-col gap-5 rounded-[calc(1.5rem-2px)] bg-card p-5 sm:p-6 border border-black/[0.04] dark:border-white/[0.06] shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+        className="flex flex-col gap-5 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6 dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col gap-1.5">
@@ -99,9 +105,9 @@ export function PackageFilters({
               value={destination}
               disabled={isPending}
               onChange={(event) => {
-                const next = event.target.value;
-                setDestination(next);
-                apply({ destination: next, maxPrice, featured });
+                const next = event.target.value
+                setDestination(next)
+                apply({ destination: next, maxPrice, featured })
               }}
               className={selectClassName}
             >
@@ -127,9 +133,9 @@ export function PackageFilters({
               value={maxPrice}
               disabled={isPending}
               onChange={(event) => {
-                const next = event.target.value;
-                setMaxPrice(next);
-                apply({ destination, maxPrice: next, featured });
+                const next = event.target.value
+                setMaxPrice(next)
+                apply({ destination, maxPrice: next, featured })
               }}
               className={selectClassName}
             >
@@ -142,14 +148,17 @@ export function PackageFilters({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span id="package-filter-featured-label" className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            <span
+              id="package-filter-featured-label"
+              className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+            >
               Curation
             </span>
             <label
               htmlFor="package-filter-featured"
               className={cn(
                 "flex h-11 cursor-pointer touch-manipulation items-center gap-3 rounded-xl border border-input/80 bg-background/80 px-3.5 text-sm font-medium text-foreground transition-colors hover:border-foreground/20",
-                "focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20",
+                "focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
               )}
             >
               <input
@@ -161,9 +170,9 @@ export function PackageFilters({
                 disabled={isPending}
                 aria-labelledby="package-filter-featured-label"
                 onChange={(event) => {
-                  const next = event.target.checked;
-                  setFeatured(next);
-                  apply({ destination, maxPrice, featured: next });
+                  const next = event.target.checked
+                  setFeatured(next)
+                  apply({ destination, maxPrice, featured: next })
                 }}
                 className="size-4 shrink-0 rounded border-input accent-primary"
               />
@@ -172,14 +181,18 @@ export function PackageFilters({
           </div>
 
           <div className="flex items-end gap-2">
-            <Button type="submit" disabled={isPending} className="h-11 flex-1 font-semibold touch-manipulation">
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="h-11 flex-1 touch-manipulation font-semibold"
+            >
               <span>{isPending ? "Updating…" : "Apply filters"}</span>
             </Button>
             {hasActiveFilters && (
               <Button
                 render={<Link href="/packages" scroll={false} />}
                 variant="outline"
-                className="h-11 font-medium touch-manipulation"
+                className="h-11 touch-manipulation font-medium"
               >
                 <span>Clear</span>
               </Button>
@@ -187,9 +200,22 @@ export function PackageFilters({
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/50" role="status" aria-live="polite">
+        <div
+          className="flex items-center justify-between border-t border-border/50 pt-3 text-xs text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
           <span className="flex items-center gap-2">
-            <span className={cn("size-1.5 rounded-full transition-colors", isPending ? "bg-amber-500 animate-ping" : hasActiveFilters ? "bg-primary" : "bg-muted-foreground/40")} />
+            <span
+              className={cn(
+                "size-1.5 rounded-full transition-colors",
+                isPending
+                  ? "animate-ping bg-amber-500"
+                  : hasActiveFilters
+                    ? "bg-primary"
+                    : "bg-muted-foreground/40"
+              )}
+            />
             {isPending
               ? "Updating packages…"
               : hasActiveFilters
@@ -199,5 +225,5 @@ export function PackageFilters({
         </div>
       </form>
     </div>
-  );
+  )
 }

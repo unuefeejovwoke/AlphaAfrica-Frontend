@@ -1,5 +1,5 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
 function Skeleton({
   className,
@@ -14,7 +14,7 @@ function Skeleton({
       )}
       {...props}
     />
-  );
+  )
 }
 
 function CardSkeleton({ className }: { className?: string }) {
@@ -31,24 +31,27 @@ function CardSkeleton({ className }: { className?: string }) {
       <Skeleton className="h-3 w-full" />
       <Skeleton className="h-3 w-2/3" />
     </div>
-  );
+  )
 }
 
 function InputSkeleton({ className }: { className?: string }) {
   return (
-    <div aria-hidden="true" className={cn("flex min-w-0 flex-col gap-2", className)}>
+    <div
+      aria-hidden="true"
+      className={cn("flex min-w-0 flex-col gap-2", className)}
+    >
       <Skeleton className="h-3 w-24 rounded-md" />
       <Skeleton className="h-9 w-full rounded-xl" />
     </div>
-  );
+  )
 }
 
 function TableSkeleton({
   rows = 4,
   className,
 }: {
-  rows?: number;
-  className?: string;
+  rows?: number
+  className?: string
 }) {
   return (
     <div
@@ -63,7 +66,7 @@ function TableSkeleton({
         <Skeleton key={index} className="h-8 w-full rounded-lg" />
       ))}
     </div>
-  );
+  )
 }
 
-export { Skeleton, CardSkeleton, InputSkeleton, TableSkeleton };
+export { Skeleton, CardSkeleton, InputSkeleton, TableSkeleton }

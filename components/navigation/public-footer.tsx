@@ -1,7 +1,7 @@
-import * as React from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { HugeiconsIcon } from "@hugeicons/react";
+import * as React from "react"
+import Link from "next/link"
+import Image from "next/image"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Call02Icon,
   Mail01Icon,
@@ -10,11 +10,11 @@ import {
   NewTwitterIcon,
   Facebook02Icon,
   TiktokIcon,
-} from "@hugeicons/core-free-icons";
-import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
+} from "@hugeicons/core-free-icons"
+import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
 
 export function PublicFooter() {
-  const currentYear = new Date().getFullYear();
+  const currentYear = new Date().getFullYear()
 
   return (
     <footer className="w-full border-t border-border/50 bg-background text-foreground">
@@ -23,27 +23,26 @@ export function PublicFooter() {
         <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 py-6 sm:flex-row sm:items-center sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={Message01Icon}
+                size={18}
+                aria-hidden="true"
+              />
             </div>
             <p className="text-sm font-medium text-foreground">
-              Need custom itinerary planning or emergency assistance?{" "}
-              <span className="text-muted-foreground">Our Abuja specialists are standing by.</span>
+              Not sure what you need?{" "}
+              <span className="text-muted-foreground">
+                Tell us the trip — we&apos;ll tell you the next step.
+              </span>
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <a
-              href={getSupportWhatsAppUrl("travel planning")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/50 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <span>Chat on WhatsApp</span>
-            </a>
+
             <Link
               href="/contact"
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
-              <span>Contact Office</span>
+              <span>Talk to Alphaa</span>
             </Link>
           </div>
         </div>
@@ -62,39 +61,54 @@ export function PublicFooter() {
                 height={32}
                 className="size-8 object-contain transition-transform duration-300 ease-out group-hover:scale-105"
               />
-              <div className="flex flex-col">
-                <span className="text-lg font-bold tracking-tight leading-none">
-                  <span className="text-secondary">Alphaa</span>{" "}
-                  <span className="font-medium text-primary">Africa</span>
-                </span>
-                <span className="text-[7.5px] font-semibold tracking-[0.18em] text-muted-foreground uppercase leading-none mt-0.5">
-                  Travel & Assisted Service
-                </span>
-              </div>
+              <span className="text-lg leading-none font-bold tracking-tight">
+                <span className="text-secondary">Alphaa</span>{" "}
+                <span className="font-medium text-primary">Africa</span>
+              </span>
             </Link>
 
             <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
-              Assisted-service travel planning and verified bookings across Africa and beyond.
+              Book flights, hotels, packages, visas, and cars yourself — or get
+              real help from our team.
             </p>
 
             {/* Direct Contact Links */}
             <div className="mt-1 flex flex-col gap-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={Call02Icon} size={14} className="shrink-0 text-primary" aria-hidden="true" />
-                <a href={`tel:${company.phone.e164}`} className="transition-colors hover:text-foreground">
+                <HugeiconsIcon
+                  icon={Call02Icon}
+                  size={14}
+                  className="shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+                <a
+                  href={`tel:${company.phone.e164}`}
+                  className="transition-colors hover:text-foreground"
+                >
                   {company.phone.display}
                 </a>
               </div>
               <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={Mail01Icon} size={14} className="shrink-0 text-primary" aria-hidden="true" />
-                <a href={`mailto:${company.email}`} className="transition-colors hover:text-foreground">
+                <HugeiconsIcon
+                  icon={Mail01Icon}
+                  size={14}
+                  className="shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+                <a
+                  href={`mailto:${company.email}`}
+                  className="transition-colors hover:text-foreground"
+                >
                   {company.email}
                 </a>
               </div>
             </div>
 
             {/* Social Icons */}
-            <div className="mt-2 flex items-center gap-2" aria-label="Social media links">
+            <div
+              className="mt-2 flex items-center gap-2"
+              aria-label="Social media links"
+            >
               <a
                 href={company.socials.instagram}
                 target="_blank"
@@ -102,7 +116,11 @@ export function PublicFooter() {
                 aria-label="Instagram"
                 className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
               >
-                <HugeiconsIcon icon={InstagramIcon} size={15} aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={InstagramIcon}
+                  size={15}
+                  aria-hidden="true"
+                />
               </a>
               <a
                 href={company.socials.x}
@@ -111,7 +129,11 @@ export function PublicFooter() {
                 aria-label="X (formerly Twitter)"
                 className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
               >
-                <HugeiconsIcon icon={NewTwitterIcon} size={15} aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={NewTwitterIcon}
+                  size={15}
+                  aria-hidden="true"
+                />
               </a>
               <a
                 href={company.socials.facebook}
@@ -120,7 +142,11 @@ export function PublicFooter() {
                 aria-label="Facebook"
                 className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
               >
-                <HugeiconsIcon icon={Facebook02Icon} size={15} aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={Facebook02Icon}
+                  size={15}
+                  aria-hidden="true"
+                />
               </a>
               <a
                 href={company.socials.tiktok}
@@ -134,63 +160,114 @@ export function PublicFooter() {
             </div>
           </div>
 
-          {/* Column 2: Explore */}
+          {/* Column 2: Book */}
           <div>
-            <h3 className="mb-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Explore
+            <h3 className="mb-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Book
             </h3>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link href="/flights" className="text-foreground/80 transition-colors hover:text-primary">
+                <Link
+                  href="/flights"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
                   Flights
                 </Link>
               </li>
               <li>
-                <Link href="/hotels" className="text-foreground/80 transition-colors hover:text-primary">
-                  Hotels & Resorts
+                <Link
+                  href="/hotels"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
+                  Hotels
                 </Link>
               </li>
               <li>
-                <Link href="/destinations" className="text-foreground/80 transition-colors hover:text-primary">
-                  Destinations
-                </Link>
-              </li>
-              <li>
-                <Link href="/packages" className="text-foreground/80 transition-colors hover:text-primary">
+                <Link
+                  href="/packages"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
                   Packages
                 </Link>
               </li>
               <li>
-                <Link href="/visa" className="text-foreground/80 transition-colors hover:text-primary">
+                <Link
+                  href="/visa"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
                   Visa Assistance
                 </Link>
               </li>
               <li>
-                <Link href="/car-rentals" className="text-foreground/80 transition-colors hover:text-primary">
+                <Link
+                  href="/car-rentals"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
                   Car Rentals
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="text-foreground/80 transition-colors hover:text-primary">
-                  FAQs
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Column 3: Legal */}
+          {/* Column 3: Discover */}
           <div>
-            <h3 className="mb-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Legal
+            <h3 className="mb-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Discover
             </h3>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link href="/privacy" className="text-foreground/80 transition-colors hover:text-primary">
+                <Link
+                  href="/destinations"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
+                  Destinations
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/about"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
+                  About
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/faq"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
+                  FAQ
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/contact"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
+                  Contact
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/login"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
+                  Sign In
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/privacy"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="text-foreground/80 transition-colors hover:text-primary">
+                <Link
+                  href="/terms"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
                   Terms & Conditions
                 </Link>
               </li>
@@ -204,5 +281,5 @@ export function PublicFooter() {
         </div>
       </div>
     </footer>
-  );
+  )
 }

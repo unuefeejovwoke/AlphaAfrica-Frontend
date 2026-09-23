@@ -1,19 +1,19 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
+import * as React from "react"
+import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Cancel01Icon } from "@hugeicons/core-free-icons"
+import { cn } from "@/lib/utils"
 
 export interface SheetProps {
-  title: string;
-  description?: string;
-  triggerLabel: string;
-  children: React.ReactNode;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  className?: string;
+  title: string
+  description?: string
+  triggerLabel: string
+  children: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  className?: string
 }
 
 export function Sheet({
@@ -34,7 +34,7 @@ export function Sheet({
         <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
           <DrawerPrimitive.Popup
             className={cn(
-              "w-full max-w-md rounded-2xl border border-border bg-card p-6 overscroll-contain text-foreground shadow-2xl",
+              "w-full max-w-md overscroll-contain rounded-2xl border border-border bg-card p-6 text-foreground shadow-2xl",
               className
             )}
           >
@@ -52,9 +52,13 @@ export function Sheet({
                 </div>
                 <DrawerPrimitive.Close
                   aria-label="Close sheet"
-                  className="rounded-lg p-1.5 touch-manipulation text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className="touch-manipulation rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
-                  <HugeiconsIcon icon={Cancel01Icon} size={18} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={Cancel01Icon}
+                    size={18}
+                    aria-hidden="true"
+                  />
                 </DrawerPrimitive.Close>
               </div>
               <div className="mt-4 min-w-0">{children}</div>
@@ -63,5 +67,5 @@ export function Sheet({
         </DrawerPrimitive.Viewport>
       </DrawerPrimitive.Portal>
     </DrawerPrimitive.Root>
-  );
+  )
 }

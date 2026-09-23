@@ -1,36 +1,39 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, AlertCircleIcon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { DatePicker } from "@/components/ui/date-picker";
-import { HotelPartyStepper, type HotelParty } from "@/components/hotels/hotel-party-stepper";
+import * as React from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Search01Icon, AlertCircleIcon } from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { DatePicker } from "@/components/ui/date-picker"
+import {
+  HotelPartyStepper,
+  type HotelParty,
+} from "@/components/hotels/hotel-party-stepper"
 import {
   DEFAULT_HOTEL_GUESTS,
   DEFAULT_HOTEL_ROOMS,
   hotelSearchQuerySchema,
   type HotelSearchQuery,
   type HotelSearchQueryInput,
-} from "@/lib/api/hotels";
+} from "@/lib/api/hotels"
 
 export interface HotelSearchFormProps {
   /** URL-hydrated defaults so back/refresh/share restore the form. */
-  defaultValues: Partial<HotelSearchQueryInput>;
-  onSearch: (query: HotelSearchQuery) => void;
+  defaultValues: Partial<HotelSearchQueryInput>
+  onSearch: (query: HotelSearchQuery) => void
   /** Reset the search entirely (returns the listing to its idle landing). */
-  onClear: () => void;
-  isSearching?: boolean;
+  onClear: () => void
+  isSearching?: boolean
 }
 
 /** Today as a local YYYY-MM-DD string (never a past date, day precision). */
 function todayString(): string {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
+  const now = new Date()
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 10)
 }
 
 const EMPTY_FORM: HotelSearchQueryInput = {
@@ -39,18 +42,20 @@ const EMPTY_FORM: HotelSearchQueryInput = {
   check_out: "",
   guests: DEFAULT_HOTEL_GUESTS,
   rooms: DEFAULT_HOTEL_ROOMS,
-};
+}
 
 /** Normalize URL defaults into the flat form shape (single source, reused by
  *  initial mount and URL hydration). */
-function toFormDefaults(defaultValues: Partial<HotelSearchQueryInput>): HotelSearchQueryInput {
+function toFormDefaults(
+  defaultValues: Partial<HotelSearchQueryInput>
+): HotelSearchQueryInput {
   return {
     destination: defaultValues.destination ?? "",
     check_in: defaultValues.check_in ?? "",
     check_out: defaultValues.check_out ?? "",
     guests: defaultValues.guests ?? DEFAULT_HOTEL_GUESTS,
     rooms: defaultValues.rooms ?? DEFAULT_HOTEL_ROOMS,
-  };
+  }
 }
 
 /**
@@ -67,18 +72,18 @@ export function HotelSearchForm({
   onClear,
   isSearching,
 }: HotelSearchFormProps) {
-  const today = React.useMemo(todayString, []);
+  const today = React.useMemo(todayString, [])
 
   const form = useForm<HotelSearchQueryInput, unknown, HotelSearchQuery>({
     resolver: zodResolver(hotelSearchQuerySchema),
     defaultValues: toFormDefaults(defaultValues),
     mode: "onTouched",
     shouldFocusError: true,
-  });
+  })
 
   // Keep the form in step with URL hydration (back/forward/share).
   React.useEffect(() => {
-    form.reset(toFormDefaults(defaultValues));
+    form.reset(toFormDefaults(defaultValues))
   }, [
     form,
     defaultValues.destination,
@@ -86,36 +91,38 @@ export function HotelSearchForm({
     defaultValues.check_out,
     defaultValues.guests,
     defaultValues.rooms,
-  ]);
+  ])
 
-  const checkInValue = form.watch("check_in") ?? "";
+  const checkInValue = form.watch("check_in") ?? ""
   const party: HotelParty = {
     guests: form.watch("guests") ?? DEFAULT_HOTEL_GUESTS,
     rooms: form.watch("rooms") ?? DEFAULT_HOTEL_ROOMS,
-  };
+  }
   const partyError =
-    form.formState.errors.guests?.message ?? form.formState.errors.rooms?.message ?? undefined;
+    form.formState.errors.guests?.message ??
+    form.formState.errors.rooms?.message ??
+    undefined
 
   const handleSubmit = form.handleSubmit((values) => {
-    onSearch(values);
-  });
+    onSearch(values)
+  })
 
   const handleClear = () => {
-    form.reset(EMPTY_FORM);
-    form.clearErrors();
+    form.reset(EMPTY_FORM)
+    form.clearErrors()
     // Clear must also clear the URL, or the old search and its results would
     // outlive the reset (the URL is the source of truth for search state).
-    onClear();
-  };
+    onClear()
+  }
 
   const isDirty =
     (form.watch("destination") ?? "") !== "" ||
     checkInValue !== "" ||
     (form.watch("check_out") ?? "") !== "" ||
     party.guests !== DEFAULT_HOTEL_GUESTS ||
-    party.rooms !== DEFAULT_HOTEL_ROOMS;
+    party.rooms !== DEFAULT_HOTEL_ROOMS
 
-  const rootError = form.formState.errors.root?.message;
+  const rootError = form.formState.errors.root?.message
 
   return (
     <form
@@ -158,8 +165,8 @@ export function HotelSearchForm({
         error={partyError}
         disabled={isSearching}
         onChange={(next) => {
-          form.setValue("guests", next.guests, { shouldValidate: true });
-          form.setValue("rooms", next.rooms, { shouldValidate: true });
+          form.setValue("guests", next.guests, { shouldValidate: true })
+          form.setValue("rooms", next.rooms, { shouldValidate: true })
         }}
       />
 
@@ -207,5 +214,5 @@ export function HotelSearchForm({
         No account needed. From-prices are per night in Naira.
       </p>
     </form>
-  );
+  )
 }

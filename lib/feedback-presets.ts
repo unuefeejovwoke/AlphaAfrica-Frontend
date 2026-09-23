@@ -1,8 +1,9 @@
-export type LoadingPreset = "flights" | "hotels" | "price" | "payment" | "general";
+export type LoadingPreset =
+  "flights" | "hotels" | "price" | "payment" | "general"
 
 export interface LoadingPresetDetails {
-  title: string;
-  description: string;
+  title: string
+  description: string
 }
 
 const loadingPresets: Record<LoadingPreset, LoadingPresetDetails> = {
@@ -13,11 +14,13 @@ const loadingPresets: Record<LoadingPreset, LoadingPresetDetails> = {
   },
   hotels: {
     title: "Finding Hotels",
-    description: "Checking room availability, live rates, and verified guest amenities…",
+    description:
+      "Checking room availability, live rates, and verified guest amenities…",
   },
   price: {
     title: "Confirming Fare",
-    description: "Verifying live fare pricing and seat allocation with the carrier…",
+    description:
+      "Verifying live fare pricing and seat allocation with the carrier…",
   },
   payment: {
     title: "Confirming Payment",
@@ -26,26 +29,28 @@ const loadingPresets: Record<LoadingPreset, LoadingPresetDetails> = {
   },
   general: {
     title: "Loading Travel Details",
-    description: "Preparing your travel information. This will only take a moment…",
+    description:
+      "Preparing your travel information. This will only take a moment…",
   },
-};
-
-export function getLoadingPreset(preset: LoadingPreset): LoadingPresetDetails {
-  return loadingPresets[preset] ?? loadingPresets.general;
 }
 
-export type ErrorPreset = "timeout" | "no-flights" | "payment-failed" | "general";
+export function getLoadingPreset(preset: LoadingPreset): LoadingPresetDetails {
+  return loadingPresets[preset] ?? loadingPresets.general
+}
+
+export type ErrorPreset =
+  "timeout" | "no-flights" | "payment-failed" | "general"
 
 export interface AlternateRoute {
-  label: string;
-  href: string;
+  label: string
+  href: string
 }
 
 export interface ErrorPresetDetails {
-  title: string;
-  description: string;
-  whatsappText: string;
-  alternateRoute: AlternateRoute;
+  title: string
+  description: string
+  whatsappText: string
+  alternateRoute: AlternateRoute
 }
 
 const errorPresets: Record<ErrorPreset, ErrorPresetDetails> = {
@@ -61,7 +66,8 @@ const errorPresets: Record<ErrorPreset, ErrorPresetDetails> = {
     title: "No Matching Flights Found",
     description:
       "There are no scheduled flights matching this route and date combination. Try adjusting your dates by a few days or speak with our flight specialists.",
-    whatsappText: "Hello Alphaa, I need help finding flight options for my desired route.",
+    whatsappText:
+      "Hello Alphaa, I need help finding flight options for my desired route.",
     alternateRoute: { label: "Browse Destinations", href: "/destinations" },
   },
   "payment-failed": {
@@ -76,11 +82,12 @@ const errorPresets: Record<ErrorPreset, ErrorPresetDetails> = {
     title: "Travel Service Temporarily Unavailable",
     description:
       "We were unable to complete this action due to a temporary service interruption. You can retry the request or speak directly with our team.",
-    whatsappText: "Hello Alphaa, I experienced an issue on the website and need assistance.",
+    whatsappText:
+      "Hello Alphaa, I experienced an issue on the website and need assistance.",
     alternateRoute: { label: "Return Home", href: "/" },
   },
-};
+}
 
 export function getErrorPreset(preset: ErrorPreset): ErrorPresetDetails {
-  return errorPresets[preset] ?? errorPresets.general;
+  return errorPresets[preset] ?? errorPresets.general
 }

@@ -1,17 +1,17 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { HugeiconsIcon } from "@hugeicons/react";
+import * as React from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Airplane01Icon,
   AlertCircleIcon,
   Clock01Icon,
   Message01Icon,
-} from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { ErrorState } from "@/components/feedback/error-state";
+} from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/feedback/error-state"
 import {
   confirmFlightPrice,
   getFlightSupportWhatsAppUrl,
@@ -23,14 +23,15 @@ import {
   type FlightOffer,
   type FlightTripContext,
   type PriceConfirmOutcome,
-} from "@/lib/api/flights";
-import { formatNaira } from "@/lib/format";
-import { track } from "@/lib/analytics";
-import { TrackLink } from "@/components/analytics/track-link";
+} from "@/lib/api/flights"
+import { formatNaira } from "@/lib/format"
+import { track } from "@/lib/analytics"
+import { TrackLink } from "@/components/analytics/track-link"
 
-type ConfirmPhase = "loading" | "missing" | "confirmed" | "changed" | "expired" | "error";
+type ConfirmPhase =
+  "loading" | "missing" | "confirmed" | "changed" | "expired" | "error"
 
-type ChangedOutcome = Extract<PriceConfirmOutcome, { status: "changed" }>;
+type ChangedOutcome = Extract<PriceConfirmOutcome, { status: "changed" }>
 
 /**
  * Fare-confirmation step (Phase 3, ticket 05) inside the distraction-free
@@ -40,107 +41,113 @@ type ChangedOutcome = Extract<PriceConfirmOutcome, { status: "changed" }>;
  * expired → re-search + Talk to Alphaa. Never books silently.
  */
 export function PriceConfirmationClient() {
-  const router = useRouter();
-  const [phase, setPhase] = React.useState<ConfirmPhase>("loading");
-  const [selectedOffer, setSelectedOffer] = React.useState<FlightOffer | null>(null);
-  const [confirmedOffer, setConfirmedOffer] = React.useState<FlightOffer | null>(null);
-  const [changedOutcome, setChangedOutcome] = React.useState<ChangedOutcome | null>(null);
-  const [error, setError] = React.useState<unknown | null>(null);
+  const router = useRouter()
+  const [phase, setPhase] = React.useState<ConfirmPhase>("loading")
+  const [selectedOffer, setSelectedOffer] = React.useState<FlightOffer | null>(
+    null
+  )
+  const [confirmedOffer, setConfirmedOffer] =
+    React.useState<FlightOffer | null>(null)
+  const [changedOutcome, setChangedOutcome] =
+    React.useState<ChangedOutcome | null>(null)
+  const [error, setError] = React.useState<unknown | null>(null)
 
   const runConfirmation = React.useCallback(
     async (selected: FlightOffer) => {
       try {
-        const revalidated = await confirmFlightPrice(selected.flight_offer ?? selected);
+        const revalidated = await confirmFlightPrice(
+          selected.flight_offer ?? selected
+        )
         const outcome = resolvePriceConfirmation({
           selected_offer: selected,
           revalidated_offer: revalidated,
-        });
+        })
         if (outcome.status === "same") {
-          saveConfirmedOffer(revalidated);
-          setConfirmedOffer(revalidated);
-          setPhase("confirmed");
-          router.replace("/checkout");
+          saveConfirmedOffer(revalidated)
+          setConfirmedOffer(revalidated)
+          setPhase("confirmed")
+          router.replace("/checkout")
         } else if (outcome.status === "changed") {
-          setConfirmedOffer(revalidated);
-          setChangedOutcome(outcome);
+          setConfirmedOffer(revalidated)
+          setChangedOutcome(outcome)
           track("flight_price_changed", {
             direction: outcome.increased ? "increased" : "decreased",
             currency: outcome.currency,
-          });
-          setPhase("changed");
+          })
+          setPhase("changed")
         } else {
-          setPhase("expired");
+          setPhase("expired")
         }
       } catch (e) {
         if (isOfferExpiredError(e)) {
-          setPhase("expired");
+          setPhase("expired")
         } else {
-          setError(e);
-          setPhase("error");
+          setError(e)
+          setPhase("error")
         }
       }
     },
-    [router],
-  );
+    [router]
+  )
 
   // Mount-only fetch: the opaque blob is client-side (sessionStorage), so the
   // server cannot revalidate. Guarded against StrictMode double-invoke.
-  const didRun = React.useRef(false);
+  const didRun = React.useRef(false)
   React.useEffect(() => {
-    if (didRun.current) return;
-    didRun.current = true;
-    const selected = readSelectedOffer();
+    if (didRun.current) return
+    didRun.current = true
+    const selected = readSelectedOffer()
     if (!selected) {
-      setPhase("missing");
-      return;
+      setPhase("missing")
+      return
     }
-    setSelectedOffer(selected);
-    void runConfirmation(selected);
-  }, [runConfirmation]);
+    setSelectedOffer(selected)
+    void runConfirmation(selected)
+  }, [runConfirmation])
 
   const handleRetry = React.useCallback(() => {
-    const selected = selectedOffer ?? readSelectedOffer();
+    const selected = selectedOffer ?? readSelectedOffer()
     if (!selected) {
-      setPhase("missing");
-      return;
+      setPhase("missing")
+      return
     }
-    setSelectedOffer(selected);
-    setError(null);
-    setChangedOutcome(null);
-    setPhase("loading");
-    void runConfirmation(selected);
-  }, [selectedOffer, runConfirmation]);
+    setSelectedOffer(selected)
+    setError(null)
+    setChangedOutcome(null)
+    setPhase("loading")
+    void runConfirmation(selected)
+  }, [selectedOffer, runConfirmation])
 
   const handleContinue = React.useCallback(() => {
-    if (!confirmedOffer) return;
-    saveConfirmedOffer(confirmedOffer);
-    router.push("/checkout");
-  }, [confirmedOffer, router]);
+    if (!confirmedOffer) return
+    saveConfirmedOffer(confirmedOffer)
+    router.push("/checkout")
+  }, [confirmedOffer, router])
 
   const handleBackToResults = React.useCallback(() => {
-    router.back();
-  }, [router]);
+    router.back()
+  }, [router])
 
   // Derived during render, not effects (vercel: rerender-derived-state).
   const selectedSummary = React.useMemo(
     () => (selectedOffer ? normalizeFlightOffer(selectedOffer, 0) : null),
-    [selectedOffer],
-  );
+    [selectedOffer]
+  )
   // Trip context for support hatches — route from the selected offer.
   const tripContext = React.useMemo<FlightTripContext>(
     () => ({
       origin: selectedSummary?.origin ?? null,
       destination: selectedSummary?.destination ?? null,
     }),
-    [selectedSummary?.origin, selectedSummary?.destination],
-  );
+    [selectedSummary?.origin, selectedSummary?.destination]
+  )
   const differenceLabel = changedOutcome
     ? changedOutcome.increased
       ? `+${formatNaira(changedOutcome.difference)} increase`
       : `−${formatNaira(changedOutcome.difference)} decrease`
-    : "";
+    : ""
 
-  let content: React.ReactNode;
+  let content: React.ReactNode
   if (phase === "loading") {
     content = (
       <div
@@ -159,7 +166,9 @@ export function PriceConfirmationClient() {
             </h1>
             <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
               <HugeiconsIcon icon={Clock01Icon} size={14} aria-hidden="true" />
-              <span>Confirming live fare… airlines are rechecking this price…</span>
+              <span>
+                Confirming live fare… airlines are rechecking this price…
+              </span>
             </p>
           </div>
         </div>
@@ -168,10 +177,11 @@ export function PriceConfirmationClient() {
           <div className="h-9 animate-pulse rounded-xl bg-muted" />
         </div>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          This usually takes a few seconds. No booking is made and no payment is taken at this step.
+          This usually takes a few seconds. No booking is made and no payment is
+          taken at this step.
         </p>
       </div>
-    );
+    )
   } else if (phase === "confirmed") {
     content = (
       <div
@@ -186,12 +196,12 @@ export function PriceConfirmationClient() {
           The airline held this price. You will enter traveller details next.
         </p>
       </div>
-    );
+    )
   } else if (phase === "changed" && changedOutcome) {
     const changedSupportUrl = getFlightSupportWhatsAppUrl(
       "a flight fare that changed before payment",
-      { ...tripContext, amount: formatNaira(changedOutcome.newTotal) },
-    );
+      { ...tripContext, amount: formatNaira(changedOutcome.newTotal) }
+    )
     content = (
       <div
         role="status"
@@ -209,8 +219,8 @@ export function PriceConfirmationClient() {
             {selectedSummary
               ? `${selectedSummary.airline} ${selectedSummary.airportsLabel} — the price changed after your search. `
               : "The price changed after your search. "}
-            Review the new fare and continue only if you accept it. No booking has been made and no
-            payment has been taken.
+            Review the new fare and continue only if you accept it. No booking
+            has been made and no payment has been taken.
           </p>
         </div>
 
@@ -219,7 +229,7 @@ export function PriceConfirmationClient() {
             <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
               Previous fare
             </dt>
-            <dd className="font-variant-numeric mt-1 text-base font-bold tabular-nums text-muted-foreground line-through">
+            <dd className="font-variant-numeric mt-1 text-base font-bold text-muted-foreground tabular-nums line-through">
               {formatNaira(changedOutcome.previousTotal)}
             </dd>
           </div>
@@ -227,7 +237,7 @@ export function PriceConfirmationClient() {
             <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
               New fare
             </dt>
-            <dd className="font-variant-numeric mt-1 text-base font-extrabold tabular-nums text-foreground">
+            <dd className="font-variant-numeric mt-1 text-base font-extrabold text-foreground tabular-nums">
               {formatNaira(changedOutcome.newTotal)}
             </dd>
           </div>
@@ -238,8 +248,8 @@ export function PriceConfirmationClient() {
             <dd
               className={
                 changedOutcome.increased
-                  ? "font-variant-numeric mt-1 text-base font-extrabold tabular-nums text-amber-700 dark:text-amber-400"
-                  : "font-variant-numeric mt-1 text-base font-extrabold tabular-nums text-emerald-700 dark:text-emerald-400"
+                  ? "font-variant-numeric mt-1 text-base font-extrabold text-amber-700 tabular-nums dark:text-amber-400"
+                  : "font-variant-numeric mt-1 text-base font-extrabold text-emerald-700 tabular-nums dark:text-emerald-400"
               }
             >
               {differenceLabel}
@@ -248,7 +258,12 @@ export function PriceConfirmationClient() {
         </dl>
 
         <div className="sticky bottom-4 flex min-w-0 flex-col gap-2 rounded-2xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur sm:flex-row">
-          <Button type="button" size="lg" onClick={handleContinue} className="flex-1 justify-center">
+          <Button
+            type="button"
+            size="lg"
+            onClick={handleContinue}
+            className="flex-1 justify-center"
+          >
             <span>Continue with {formatNaira(changedOutcome.newTotal)}</span>
           </Button>
           <Button
@@ -267,7 +282,10 @@ export function PriceConfirmationClient() {
             render={
               <TrackLink
                 event="support_click"
-                eventProps={{ context: "a flight fare that changed before payment", channel: "whatsapp" }}
+                eventProps={{
+                  context: "a flight fare that changed before payment",
+                  channel: "whatsapp",
+                }}
                 href={changedSupportUrl}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -279,10 +297,11 @@ export function PriceConfirmationClient() {
           </Button>
         </div>
         <p className="text-center text-xs text-muted-foreground">
-          Prices are in Naira ({changedOutcome.currency}). Continuing takes you to traveller details.
+          Prices are in Naira ({changedOutcome.currency}). Continuing takes you
+          to traveller details.
         </p>
       </div>
-    );
+    )
   } else if (phase === "expired") {
     content = (
       <div className="flex min-w-0 flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs">
@@ -293,9 +312,10 @@ export function PriceConfirmationClient() {
           This fare is no longer available
         </h1>
         <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-          The airline withdrew this offer before we could confirm it, so nothing was booked and no
-          payment was taken. Search again for fresh live fares, or talk to Alphaa and a specialist
-          will check alternatives with you.
+          The airline withdrew this offer before we could confirm it, so nothing
+          was booked and no payment was taken. Search again for fresh live
+          fares, or talk to Alphaa and a specialist will check alternatives with
+          you.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button render={<Link href="/flights" />} size="lg">
@@ -305,10 +325,13 @@ export function PriceConfirmationClient() {
             render={
               <TrackLink
                 event="support_click"
-                eventProps={{ context: "a flight fare that expired before confirmation", channel: "whatsapp" }}
+                eventProps={{
+                  context: "a flight fare that expired before confirmation",
+                  channel: "whatsapp",
+                }}
                 href={getFlightSupportWhatsAppUrl(
                   "a flight fare that expired before confirmation",
-                  tripContext,
+                  tripContext
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -325,12 +348,12 @@ export function PriceConfirmationClient() {
         <button
           type="button"
           onClick={handleBackToResults}
-          className="min-h-11 touch-manipulation px-4 text-xs font-semibold text-muted-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 touch-manipulation px-4 text-xs font-semibold text-muted-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           Back to results
         </button>
       </div>
-    );
+    )
   } else if (phase === "error") {
     content = (
       <div className="flex min-w-0 flex-col gap-4">
@@ -343,11 +366,11 @@ export function PriceConfirmationClient() {
           supportContext={`confirming a live flight fare${selectedSummary ? ` (${selectedSummary.airportsLabel})` : ""}`}
         />
         <p className="text-center text-xs text-muted-foreground">
-          No booking was made and no payment was taken. Your selected flight is kept — retry, or
-          talk to Alphaa for help.
+          No booking was made and no payment was taken. Your selected flight is
+          kept — retry, or talk to Alphaa for help.
         </p>
       </div>
-    );
+    )
   } else {
     content = (
       <div className="flex min-w-0 flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs">
@@ -358,8 +381,8 @@ export function PriceConfirmationClient() {
           No flight selected
         </h1>
         <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-          Choose a flight from the search results first — this step needs a selected offer to
-          confirm its live fare.
+          Choose a flight from the search results first — this step needs a
+          selected offer to confirm its live fare.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button render={<Link href="/flights" />} size="lg">
@@ -369,8 +392,14 @@ export function PriceConfirmationClient() {
             render={
               <TrackLink
                 event="support_click"
-                eventProps={{ context: "selecting a flight to confirm", channel: "whatsapp" }}
-                href={getFlightSupportWhatsAppUrl("selecting a flight to confirm", tripContext)}
+                eventProps={{
+                  context: "selecting a flight to confirm",
+                  channel: "whatsapp",
+                }}
+                href={getFlightSupportWhatsAppUrl(
+                  "selecting a flight to confirm",
+                  tripContext
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
               />
@@ -383,7 +412,7 @@ export function PriceConfirmationClient() {
           </Button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -402,5 +431,5 @@ export function PriceConfirmationClient() {
         Guest Booking — no account needed. Amounts are in Naira.
       </p>
     </section>
-  );
+  )
 }

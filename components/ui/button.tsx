@@ -7,10 +7,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
         outline:
-          "border-border/80 bg-card text-foreground hover:bg-muted hover:border-border hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "border-border/80 bg-card text-foreground hover:border-border hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/90",
         ghost:
@@ -64,7 +63,7 @@ function Button({
       )}
       {children}
     </ButtonPrimitive>
-  );
+  )
 }
 
 export { Button, buttonVariants }

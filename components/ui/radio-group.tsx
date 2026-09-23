@@ -1,26 +1,26 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { Radio } from "@base-ui/react/radio";
-import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
-import { cn } from "@/lib/utils";
+import * as React from "react"
+import { Radio } from "@base-ui/react/radio"
+import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group"
+import { cn } from "@/lib/utils"
 
 export interface RadioOption {
-  value: string;
-  label: string;
-  description?: string;
+  value: string
+  label: string
+  description?: string
 }
 
 export interface RadioGroupProps {
-  label: string;
-  name?: string;
-  options: RadioOption[];
-  value?: string;
-  defaultValue?: string;
-  onValueChange?: (value: string) => void;
-  error?: string;
-  helperText?: string;
-  className?: string;
+  label: string
+  name?: string
+  options: RadioOption[]
+  value?: string
+  defaultValue?: string
+  onValueChange?: (value: string) => void
+  error?: string
+  helperText?: string
+  className?: string
 }
 
 export function RadioGroup({
@@ -34,11 +34,13 @@ export function RadioGroup({
   helperText,
   className,
 }: RadioGroupProps) {
-  const id = React.useId();
+  const id = React.useId()
   return (
     <fieldset
       aria-invalid={!!error}
-      aria-describedby={error ? `${id}-error` : helperText ? `${id}-helper` : undefined}
+      aria-describedby={
+        error ? `${id}-error` : helperText ? `${id}-helper` : undefined
+      }
       className={cn("w-full space-y-2", className)}
     >
       <legend className="text-xs font-semibold tracking-wider text-foreground/80 uppercase">
@@ -54,7 +56,7 @@ export function RadioGroup({
         {options.map((option) => (
           <label
             key={option.value}
-            className="flex cursor-pointer touch-manipulation items-start gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors hover:bg-muted/50 focus-within:ring-2 focus-within:ring-ring/30 has-data-checked:border-primary"
+            className="flex cursor-pointer touch-manipulation items-start gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors focus-within:ring-2 focus-within:ring-ring/30 hover:bg-muted/50 has-data-checked:border-primary"
           >
             <Radio.Root
               value={option.value}
@@ -85,5 +87,5 @@ export function RadioGroup({
         </p>
       ) : null}
     </fieldset>
-  );
+  )
 }

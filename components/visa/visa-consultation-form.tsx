@@ -1,30 +1,30 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { HugeiconsIcon } from "@hugeicons/react";
+import * as React from "react"
+import { Controller, useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Message01Icon,
   AlertCircleIcon,
   PlusSignIcon,
   MinusSignIcon,
   LockIcon,
-} from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
+} from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Select } from "@/components/ui/select"
 import {
   TRAVEL_PURPOSE_LABELS,
   submitVisaConsultation,
   visaConsultationSchema,
   type TravelPurpose,
   type VisaConsultationInput,
-} from "@/lib/api/visa";
-import { ApiError, getHumanErrorMessage } from "@/lib/api/client";
-import { formatNaira } from "@/lib/format";
-import { track } from "@/lib/analytics";
+} from "@/lib/api/visa"
+import { ApiError, getHumanErrorMessage } from "@/lib/api/client"
+import { formatNaira } from "@/lib/format"
+import { track } from "@/lib/analytics"
 
 const CONSULTATION_FIELD_NAMES = [
   "full_name",
@@ -34,19 +34,19 @@ const CONSULTATION_FIELD_NAMES = [
   "preferred_date",
   "num_applicants",
   "message",
-] as const;
+] as const
 
-type ConsultationFieldName = (typeof CONSULTATION_FIELD_NAMES)[number];
+type ConsultationFieldName = (typeof CONSULTATION_FIELD_NAMES)[number]
 
 function isConsultationFieldName(name: string): name is ConsultationFieldName {
-  return (CONSULTATION_FIELD_NAMES as readonly string[]).includes(name);
+  return (CONSULTATION_FIELD_NAMES as readonly string[]).includes(name)
 }
 
 const TRAVEL_PURPOSE_OPTIONS = (
   Object.entries(TRAVEL_PURPOSE_LABELS) as [TravelPurpose, string][]
-).map(([value, label]) => ({ value, label }));
+).map(([value, label]) => ({ value, label }))
 
-const MAX_APPLICANTS = 30;
+const MAX_APPLICANTS = 30
 
 /**
  * Inline Visa Consultation form (RHF + Zod, validated on blur and submit).
@@ -66,24 +66,24 @@ export function VisaConsultationForm({
   countrySlug,
   consultationFee,
 }: {
-  countryId: number;
-  countryName: string;
-  countrySlug: string;
-  consultationFee: string;
+  countryId: number
+  countryName: string
+  countrySlug: string
+  consultationFee: string
 }) {
-  const [submitError, setSubmitError] = React.useState<string | null>(null);
-  const [redirecting, setRedirecting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null)
+  const [redirecting, setRedirecting] = React.useState(false)
   // Guards double-clicks and double-submits while the Paystack handoff runs.
-  const submittedReference = React.useRef<string | null>(null);
-  const startedTracked = React.useRef(false);
+  const submittedReference = React.useRef<string | null>(null)
+  const startedTracked = React.useRef(false)
 
   // Local (device) date for the `min` attribute — UTC would be a day
   // behind West African time late at night and allow a past date.
   const today = React.useMemo(() => {
-    const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 10);
-  }, []);
+    const now = new Date()
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    return local.toISOString().slice(0, 10)
+  }, [])
 
   const {
     register,
@@ -105,45 +105,48 @@ export function VisaConsultationForm({
     },
     mode: "onTouched",
     shouldFocusError: true,
-  });
+  })
 
   const trackStarted = React.useCallback(() => {
-    if (startedTracked.current) return;
-    startedTracked.current = true;
+    if (startedTracked.current) return
+    startedTracked.current = true
     // Funnel "started" means submit intent, not mere focus — tabbing
     // through the form must not inflate the funnel.
-    track("visa_application_started", { slug: countrySlug });
-  }, [countrySlug]);
+    track("visa_application_started", { slug: countrySlug })
+  }, [countrySlug])
 
   const onSubmit = handleSubmit(async (data) => {
-    trackStarted();
-    if (submittedReference.current) return;
-    setSubmitError(null);
+    trackStarted()
+    if (submittedReference.current) return
+    setSubmitError(null)
     try {
-      const result = await submitVisaConsultation({ ...data, country_id: countryId });
-      submittedReference.current = result.reference;
+      const result = await submitVisaConsultation({
+        ...data,
+        country_id: countryId,
+      })
+      submittedReference.current = result.reference
       track("visa_payment_initiated", {
         slug: countrySlug,
         applicants: String(data.num_applicants ?? 1),
-      });
+      })
       // Paystack handoff is a full-page redirect (backend-owned checkout —
       // card details are never collected or stored here).
-      setRedirecting(true);
-      window.location.href = result.authorization_url;
+      setRedirecting(true)
+      window.location.href = result.authorization_url
     } catch (error) {
       // Map backend field errors onto the matching inputs (human copy only).
       if (error instanceof ApiError && error.fieldErrors) {
         for (const [field, messages] of Object.entries(error.fieldErrors)) {
           if (isConsultationFieldName(field) && messages.length > 0) {
-            setError(field, { type: "server", message: messages[0] });
+            setError(field, { type: "server", message: messages[0] })
           }
         }
       }
-      setSubmitError(getHumanErrorMessage(error));
+      setSubmitError(getHumanErrorMessage(error))
     }
-  });
+  })
 
-  const busy = isSubmitting || redirecting;
+  const busy = isSubmitting || redirecting
 
   return (
     <form
@@ -153,10 +156,14 @@ export function VisaConsultationForm({
       className="flex flex-col gap-4"
     >
       <div className="flex flex-col gap-1">
-        <h3 className="text-lg font-bold text-foreground">Start your consultation</h3>
+        <h3 className="text-lg font-bold text-foreground">
+          Start your consultation
+        </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
           Consultation fee{" "}
-          <span className="font-semibold text-foreground">{formatNaira(consultationFee)}</span>{" "}
+          <span className="font-semibold text-foreground">
+            {formatNaira(consultationFee)}
+          </span>{" "}
           · pay securely via Paystack, then a specialist takes it from there.
         </p>
       </div>
@@ -166,7 +173,12 @@ export function VisaConsultationForm({
           role="alert"
           className="flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-xs leading-relaxed text-foreground"
         >
-          <HugeiconsIcon icon={AlertCircleIcon} size={16} className="mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
+          <HugeiconsIcon
+            icon={AlertCircleIcon}
+            size={16}
+            className="mt-0.5 shrink-0 text-destructive"
+            aria-hidden="true"
+          />
           <span>{submitError}</span>
         </div>
       )}
@@ -194,7 +206,10 @@ export function VisaConsultationForm({
             aria-hidden="true"
           />
         </div>
-        <p id="visa-consultation-country-helper" className="text-xs text-muted-foreground">
+        <p
+          id="visa-consultation-country-helper"
+          className="text-xs text-muted-foreground"
+        >
           Locked to this country — open another country page to change it.
         </p>
       </div>
@@ -258,12 +273,16 @@ export function VisaConsultationForm({
         name="num_applicants"
         control={control}
         render={({ field, fieldState }) => {
-          const count = typeof field.value === "number" ? field.value : 1;
-          const decrease = () => field.onChange(Math.max(1, count - 1));
-          const increase = () => field.onChange(Math.min(MAX_APPLICANTS, count + 1));
+          const count = typeof field.value === "number" ? field.value : 1
+          const decrease = () => field.onChange(Math.max(1, count - 1))
+          const increase = () =>
+            field.onChange(Math.min(MAX_APPLICANTS, count + 1))
           return (
             <div className="w-full space-y-1.5">
-              <span id="visa-applicants-label" className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase">
+              <span
+                id="visa-applicants-label"
+                className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
+              >
                 Applicants
               </span>
               <div
@@ -278,9 +297,16 @@ export function VisaConsultationForm({
                   aria-label="Fewer applicants"
                   className="flex size-10 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <HugeiconsIcon icon={MinusSignIcon} size={16} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={MinusSignIcon}
+                    size={16}
+                    aria-hidden="true"
+                  />
                 </button>
-                <span aria-live="polite" className="font-variant-numeric text-sm font-bold tabular-nums text-foreground">
+                <span
+                  aria-live="polite"
+                  className="font-variant-numeric text-sm font-bold text-foreground tabular-nums"
+                >
                   {count} {count === 1 ? "applicant" : "applicants"}
                 </span>
                 <button
@@ -290,18 +316,25 @@ export function VisaConsultationForm({
                   aria-label="More applicants"
                   className="flex size-10 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <HugeiconsIcon icon={PlusSignIcon} size={16} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={PlusSignIcon}
+                    size={16}
+                    aria-hidden="true"
+                  />
                 </button>
               </div>
               {fieldState.error?.message ? (
-                <p className="text-xs font-medium text-destructive">{fieldState.error.message}</p>
+                <p className="text-xs font-medium text-destructive">
+                  {fieldState.error.message}
+                </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  One consultation covers up to {MAX_APPLICANTS} applicants travelling together.
+                  One consultation covers up to {MAX_APPLICANTS} applicants
+                  travelling together.
                 </p>
               )}
             </div>
-          );
+          )
         }}
       />
 
@@ -314,7 +347,12 @@ export function VisaConsultationForm({
         {...register("message")}
       />
 
-      <Button type="submit" isLoading={busy} disabled={busy} className="w-full touch-manipulation justify-center">
+      <Button
+        type="submit"
+        isLoading={busy}
+        disabled={busy}
+        className="w-full touch-manipulation justify-center"
+      >
         <span>
           {redirecting
             ? "Redirecting to secure payment…"
@@ -325,8 +363,11 @@ export function VisaConsultationForm({
       </Button>
       <p className="flex items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-muted-foreground">
         <HugeiconsIcon icon={Message01Icon} size={12} aria-hidden="true" />
-        <span>No account needed. Payment is handled by Paystack — we never see card details.</span>
+        <span>
+          No account needed. Payment is handled by Paystack — we never see card
+          details.
+        </span>
       </p>
     </form>
-  );
+  )
 }

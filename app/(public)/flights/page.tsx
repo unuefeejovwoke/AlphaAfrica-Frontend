@@ -1,7 +1,7 @@
-import * as React from "react";
-import Link from "next/link";
-import type { Metadata } from "next";
-import { FlightSearchPageClient } from "@/components/flights/flight-search-page-client";
+import * as React from "react"
+import Link from "next/link"
+import type { Metadata } from "next"
+import { FlightSearchPageClient } from "@/components/flights/flight-search-page-client"
 import {
   FLIGHTS_LANDING_DESCRIPTION,
   FLIGHTS_LANDING_TITLE,
@@ -10,7 +10,7 @@ import {
   getSiteUrl,
   hasFlightSearchParams,
   robotsForSearchParams,
-} from "@/lib/seo";
+} from "@/lib/seo"
 
 /**
  * Flights discoverability (Phase 3, ticket 10; PRD §18 + spec §61).
@@ -27,10 +27,10 @@ import {
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }): Promise<Metadata> {
-  const params = await searchParams;
-  const hasSearch = hasFlightSearchParams(params);
+  const params = await searchParams
+  const hasSearch = hasFlightSearchParams(params)
   return {
     metadataBase: new URL(getSiteUrl()),
     title: FLIGHTS_LANDING_TITLE,
@@ -54,13 +54,13 @@ export async function generateMetadata({
       ],
     },
     robots: robotsForSearchParams(hasSearch),
-  };
+  }
 }
 
 // The page itself is a static shell; search state lives in URL searchParams
 // and the heavy search is client-side behind dynamic import.
 export default function FlightsPage() {
-  const travelAction = flightTravelActionJsonLd();
+  const travelAction = flightTravelActionJsonLd()
   const webPage = {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -72,7 +72,7 @@ export default function FlightsPage() {
       name: "Alphaa Africa",
       url: getSiteUrl(),
     },
-  };
+  }
 
   return (
     <>
@@ -104,12 +104,18 @@ export default function FlightsPage() {
       >
         <ul className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-muted-foreground">
           <li>
-            <Link href="/destinations" className="hover:text-primary hover:underline">
+            <Link
+              href="/destinations"
+              className="hover:text-primary hover:underline"
+            >
               Explore destinations
             </Link>
           </li>
           <li>
-            <Link href="/packages" className="hover:text-primary hover:underline">
+            <Link
+              href="/packages"
+              className="hover:text-primary hover:underline"
+            >
               Browse holiday packages
             </Link>
           </li>
@@ -119,12 +125,15 @@ export default function FlightsPage() {
             </Link>
           </li>
           <li>
-            <Link href="/contact" className="hover:text-primary hover:underline">
+            <Link
+              href="/contact"
+              className="hover:text-primary hover:underline"
+            >
               Contact Alphaa
             </Link>
           </li>
         </ul>
       </nav>
     </>
-  );
+  )
 }

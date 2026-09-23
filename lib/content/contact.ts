@@ -1,4 +1,4 @@
-import { company, type ContentSource } from "./company.ts";
+import { company, type ContentSource } from "./company.ts"
 
 /**
  * Contact channels, hours, and emergency guidance (Phase 2).
@@ -6,32 +6,32 @@ import { company, type ContentSource } from "./company.ts";
  */
 
 export interface ContactChannel {
-  id: "whatsapp" | "phone" | "email" | "office";
-  label: string;
-  value: string;
-  href: string;
-  note: string;
+  id: "whatsapp" | "phone" | "email" | "office"
+  label: string
+  value: string
+  href: string
+  note: string
 }
 
 export interface ContactInfo {
-  source: ContentSource;
-  updatedAt: string;
-  channels: ContactChannel[];
+  source: ContentSource
+  updatedAt: string
+  channels: ContactChannel[]
   hours: {
-    label: string;
-    detail: string;
-    timezone: string;
-  };
+    label: string
+    detail: string
+    timezone: string
+  }
   emergency: {
-    title: string;
-    description: string;
-    phoneHref: string;
-    phoneDisplay: string;
-  };
+    title: string
+    description: string
+    phoneHref: string
+    phoneDisplay: string
+  }
   seo: {
-    title: string;
-    description: string;
-  };
+    title: string
+    description: string
+  }
 }
 
 export const contact: ContactInfo = {
@@ -43,16 +43,16 @@ export const contact: ContactInfo = {
       label: "WhatsApp",
       value: company.whatsapp.display,
       href: `https://wa.me/${company.whatsapp.number}?text=${encodeURIComponent(
-        "Hello Alphaa Africa! I need help planning my trip.",
+        "Hello Alphaa Africa! I need help with my travel plans."
       )}`,
-      note: "Fastest response — typical reply in under 5 minutes during desk hours.",
+      note: "Usually the fastest way to reach us during desk hours.",
     },
     {
       id: "phone",
       label: "Phone",
       value: company.phone.display,
       href: company.phone.href,
-      note: "Speak directly with a travel specialist at our Abuja desk.",
+      note: "Best for bookings in progress or travel-day issues.",
     },
     {
       id: "email",
@@ -63,16 +63,16 @@ export const contact: ContactInfo = {
     },
     {
       id: "office",
-      label: "Visit the Abuja office",
+      label: "Visit our office",
       value: company.office.address,
       href: `https://maps.google.com/maps?q=${encodeURIComponent(company.office.mapQuery)}`,
       note: "Open Monday through Saturday. Walk-ins are welcome.",
     },
   ],
   hours: {
-    label: "Abuja Desk: Monday – Saturday, 8:00 AM – 6:00 PM",
+    label: "Monday – Saturday, 8:00 AM – 6:00 PM (WAT)",
     detail:
-      "Messages sent outside desk hours are answered the next working morning. For urgent travel-day issues, call the desk line.",
+      "Messages sent outside desk hours are answered the next working morning. For urgent travel-day issues, call the phone line.",
     timezone: "Africa/Lagos (WAT, UTC+1)",
   },
   emergency: {
@@ -83,8 +83,8 @@ export const contact: ContactInfo = {
     phoneDisplay: company.phone.display,
   },
   seo: {
-    title: "Contact Alphaa Africa — Abuja Office, WhatsApp, Phone & Email",
+    title: "Contact Alphaa Africa — WhatsApp, Phone & Email",
     description:
-      "Reach Alphaa Africa travel specialists via WhatsApp, phone, email, or at our Central Business District office in Abuja.",
+      "Message on WhatsApp, call, or email Alphaa Africa. Get help with flights, hotels, holiday packages, visa applications, and car rentals — wherever you are.",
   },
-};
+}

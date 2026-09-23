@@ -1,19 +1,26 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { cn } from "@/lib/utils";
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
 export interface DatePickerProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
   "type"
 > {
-  label: string;
-  error?: string;
-  helperText?: string;
+  label: string
+  error?: string
+  helperText?: string
 }
 
-export function DatePicker({ label, error, helperText, id, className, ...props }: DatePickerProps) {
-  const inputId = id || React.useId();
+export function DatePicker({
+  label,
+  error,
+  helperText,
+  id,
+  className,
+  ...props
+}: DatePickerProps) {
+  const inputId = id || React.useId()
   return (
     <div className="w-full space-y-1.5">
       <label
@@ -26,7 +33,13 @@ export function DatePicker({ label, error, helperText, id, className, ...props }
         id={inputId}
         type="date"
         aria-invalid={!!error}
-        aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
+        aria-describedby={
+          error
+            ? `${inputId}-error`
+            : helperText
+              ? `${inputId}-helper`
+              : undefined
+        }
         className={cn(
           "flex h-10 w-full touch-manipulation rounded-xl border border-input bg-card px-3.5 py-2 text-sm text-foreground tabular-nums shadow-xs transition-colors",
           "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none",
@@ -37,7 +50,10 @@ export function DatePicker({ label, error, helperText, id, className, ...props }
         {...props}
       />
       {error ? (
-        <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">
+        <p
+          id={`${inputId}-error`}
+          className="text-xs font-medium text-destructive"
+        >
           {error}
         </p>
       ) : helperText ? (
@@ -46,5 +62,5 @@ export function DatePicker({ label, error, helperText, id, className, ...props }
         </p>
       ) : null}
     </div>
-  );
+  )
 }

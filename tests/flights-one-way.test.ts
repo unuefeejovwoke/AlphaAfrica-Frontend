@@ -1,5 +1,5 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import test from "node:test"
+import assert from "node:assert/strict"
 import {
   oneWayFlightSearchSchema,
   toFlightSearchRequest,
@@ -11,9 +11,9 @@ import {
   getRecentAirports,
   addRecentAirport,
   RECENT_AIRPORTS_KEY,
-} from "../lib/api/flights.ts";
-import { futureDateStringSchema } from "../lib/api/validation.ts";
-import { sanitizeProps } from "../lib/analytics.ts";
+} from "../lib/api/flights.ts"
+import { futureDateStringSchema } from "../lib/api/validation.ts"
+import { sanitizeProps } from "../lib/analytics.ts"
 
 // ---------------------------------------------------------------------------
 // Seam 1: Search validation — legs shape, origin!=destination, date guards, composition
@@ -21,9 +21,9 @@ import { sanitizeProps } from "../lib/analytics.ts";
 // ---------------------------------------------------------------------------
 
 test("One-way search validation: valid passes, origin==destination fails, past date fails, zero adults fails", () => {
-  const future = new Date(Date.now() + 86400000 * 14).toISOString().slice(0, 10);
-  const past = "2000-01-01";
-  const impossible = "2026-02-30";
+  const future = new Date(Date.now() + 86400000 * 14).toISOString().slice(0, 10)
+  const past = "2000-01-01"
+  const impossible = "2026-02-30"
 
   // Valid search should pass (trip_type locked one_way, cabin ECONOMY default, currency NGN)
   const valid = oneWayFlightSearchSchema.safeParse({
@@ -38,21 +38,21 @@ test("One-way search validation: valid passes, origin==destination fails, past d
     non_stop: false,
     max_stops: null,
     trip_type: "one_way",
-  });
-  assert.equal(valid.success, true, "Valid one-way search must pass validation");
+  })
+  assert.equal(valid.success, true, "Valid one-way search must pass validation")
   if (valid.success) {
-    assert.equal(valid.data.origin, "LOS");
-    assert.equal(valid.data.destination, "LHR");
-    assert.equal(valid.data.cabin, "ECONOMY");
-    assert.equal(valid.data.currency, "NGN");
-    assert.equal(valid.data.trip_type, "one_way");
+    assert.equal(valid.data.origin, "LOS")
+    assert.equal(valid.data.destination, "LHR")
+    assert.equal(valid.data.cabin, "ECONOMY")
+    assert.equal(valid.data.currency, "NGN")
+    assert.equal(valid.data.trip_type, "one_way")
     // Contract maps to legs correctly
-    const req = toFlightSearchRequest(valid.data);
-    assert.equal(req.trip_type, "one_way");
-    assert.equal(req.legs.length, 1);
-    assert.equal(req.legs[0].origin, "LOS");
-    assert.equal(req.legs[0].destination, "LHR");
-    assert.equal(req.legs[0].date, future);
+    const req = toFlightSearchRequest(valid.data)
+    assert.equal(req.trip_type, "one_way")
+    assert.equal(req.legs.length, 1)
+    assert.equal(req.legs[0].origin, "LOS")
+    assert.equal(req.legs[0].destination, "LHR")
+    assert.equal(req.legs[0].date, future)
   }
 
   // origin == destination must fail on destination path
@@ -63,12 +63,17 @@ test("One-way search validation: valid passes, origin==destination fails, past d
     adults: 1,
     children: 0,
     infants: 0,
-  });
-  assert.equal(same.success, false, "Same origin/destination must fail");
+  })
+  assert.equal(same.success, false, "Same origin/destination must fail")
   if (!same.success) {
-    const destIssue = same.error.issues.find((i) => i.path.join(".") === "destination");
-    assert.ok(destIssue, "Must have error on destination when origin==destination");
-    assert.match(destIssue!.message, /different/i);
+    const destIssue = same.error.issues.find(
+      (i) => i.path.join(".") === "destination"
+    )
+    assert.ok(
+      destIssue,
+      "Must have error on destination when origin==destination"
+    )
+    assert.match(destIssue!.message, /different/i)
   }
 
   // Past date must fail (futureDateStringSchema guard)
@@ -79,10 +84,13 @@ test("One-way search validation: valid passes, origin==destination fails, past d
     adults: 1,
     children: 0,
     infants: 0,
-  });
-  assert.equal(pastResult.success, false, "Past departure date must fail");
+  })
+  assert.equal(pastResult.success, false, "Past departure date must fail")
   if (!pastResult.success) {
-    assert.ok(pastResult.error.issues.some((i) => /past/i.test(i.message)), "Must report past date");
+    assert.ok(
+      pastResult.error.issues.some((i) => /past/i.test(i.message)),
+      "Must report past date"
+    )
   }
 
   // Impossible date must fail
@@ -93,8 +101,8 @@ test("One-way search validation: valid passes, origin==destination fails, past d
     adults: 1,
     children: 0,
     infants: 0,
-  });
-  assert.equal(impossibleResult.success, false, "Impossible date must fail");
+  })
+  assert.equal(impossibleResult.success, false, "Impossible date must fail")
 
   // Zero adults must fail (adults ≥1)
   const zeroAdults = oneWayFlightSearchSchema.safeParse({
@@ -104,8 +112,8 @@ test("One-way search validation: valid passes, origin==destination fails, past d
     adults: 0,
     children: 1,
     infants: 0,
-  });
-  assert.equal(zeroAdults.success, false, "Zero adults must fail");
+  })
+  assert.equal(zeroAdults.success, false, "Zero adults must fail")
 
   // Infants > adults must fail
   const infantsExceed = oneWayFlightSearchSchema.safeParse({
@@ -115,8 +123,12 @@ test("One-way search validation: valid passes, origin==destination fails, past d
     adults: 1,
     children: 0,
     infants: 2,
-  });
-  assert.equal(infantsExceed.success, false, "Infants exceeding adults must fail");
+  })
+  assert.equal(
+    infantsExceed.success,
+    false,
+    "Infants exceeding adults must fail"
+  )
 
   // Total >9 must fail
   const totalExceed = oneWayFlightSearchSchema.safeParse({
@@ -126,8 +138,8 @@ test("One-way search validation: valid passes, origin==destination fails, past d
     adults: 5,
     children: 5,
     infants: 0,
-  });
-  assert.equal(totalExceed.success, false, "Total travellers >9 must fail");
+  })
+  assert.equal(totalExceed.success, false, "Total travellers >9 must fail")
 
   // max_stops out of range must fail
   const badStops = oneWayFlightSearchSchema.safeParse({
@@ -138,9 +150,9 @@ test("One-way search validation: valid passes, origin==destination fails, past d
     children: 0,
     infants: 0,
     max_stops: 5,
-  });
-  assert.equal(badStops.success, false, "max_stops >3 must fail");
-});
+  })
+  assert.equal(badStops.success, false, "max_stops >3 must fail")
+})
 
 // ---------------------------------------------------------------------------
 // Seam 2: Autocomplete debounce/cache behavior
@@ -149,100 +161,158 @@ test("One-way search validation: valid passes, origin==destination fails, past d
 // ---------------------------------------------------------------------------
 
 test("Airport autocomplete: 2-char minimum, dedup, result cache in module-level Map, versioned recent searches", async () => {
-  __clearAirportCache();
+  __clearAirportCache()
   // Mock fetch for /api/flights/airports/
-  const originalFetch = globalThis.fetch;
-  let fetchCalls = 0;
+  const originalFetch = globalThis.fetch
+  let fetchCalls = 0
   const fakeAirports = [
-    { iata_code: "LOS", name: "Murtala Muhammed International Airport", city: "Lagos", country_name: "Nigeria", country_code: "NG" },
-    { iata_code: "LOV", name: "Monclova", city: "Monclova", country_name: "Mexico", country_code: "MX" },
-  ];
+    {
+      iata_code: "LOS",
+      name: "Murtala Muhammed International Airport",
+      city: "Lagos",
+      country_name: "Nigeria",
+      country_code: "NG",
+    },
+    {
+      iata_code: "LOV",
+      name: "Monclova",
+      city: "Monclova",
+      country_name: "Mexico",
+      country_code: "MX",
+    },
+  ]
 
   globalThis.fetch = (async (url: string) => {
-    fetchCalls++;
+    fetchCalls++
     // Verify base URL never leaks via direct assertion? We just handle the URL.
-    assert.ok(url.includes("/api/flights/airports/"), "Must call via centralized airports endpoint");
-    return new Response(JSON.stringify(fakeAirports), { status: 200, headers: { "Content-Type": "application/json" } });
-  }) as typeof fetch;
+    assert.ok(
+      url.includes("/api/flights/airports/"),
+      "Must call via centralized airports endpoint"
+    )
+    return new Response(JSON.stringify(fakeAirports), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })
+  }) as typeof fetch
 
   try {
     // 1) Below minimum — must short-circuit without fetch
-    const short = await searchAirports("L");
-    assert.deepEqual(short, [], "Single char must return empty without fetch");
-    assert.equal(fetchCalls, 0, "Must not fetch for <2 chars");
+    const short = await searchAirports("L")
+    assert.deepEqual(short, [], "Single char must return empty without fetch")
+    assert.equal(fetchCalls, 0, "Must not fetch for <2 chars")
 
     // 2) Valid query — first call fetches, second hits cache without new fetch
-    const first = await searchAirports("LO");
-    assert.equal(fetchCalls, 1, "First valid query must fetch");
-    assert.equal(first.length, 2);
-    assert.equal(first[0].iata_code, "LOS");
+    const first = await searchAirports("LO")
+    assert.equal(fetchCalls, 1, "First valid query must fetch")
+    assert.equal(first.length, 2)
+    assert.equal(first[0].iata_code, "LOS")
 
     // Verify Map cache was populated
-    assert.ok(airportResultCache.has("lo"), "Result must be cached in module-level Map");
-    assert.deepEqual(airportResultCache.get("lo"), fakeAirports);
+    assert.ok(
+      airportResultCache.has("lo"),
+      "Result must be cached in module-level Map"
+    )
+    assert.deepEqual(airportResultCache.get("lo"), fakeAirports)
 
-    const second = await searchAirports("LO");
-    assert.equal(fetchCalls, 1, "Second identical query must be served from cache (no new fetch)");
-    assert.deepEqual(second, fakeAirports);
+    const second = await searchAirports("LO")
+    assert.equal(
+      fetchCalls,
+      1,
+      "Second identical query must be served from cache (no new fetch)"
+    )
+    assert.deepEqual(second, fakeAirports)
 
     // 3) Deduplication — concurrent calls share the same pending promise (one fetch)
-    __clearAirportCache();
-    fetchCalls = 0;
+    __clearAirportCache()
+    fetchCalls = 0
     // Make fetch slower to ensure concurrency window
     globalThis.fetch = (async () => {
-      fetchCalls++;
-      await new Promise((r) => setTimeout(r, 20));
-      return new Response(JSON.stringify(fakeAirports), { status: 200, headers: { "Content-Type": "application/json" } });
-    }) as typeof fetch;
+      fetchCalls++
+      await new Promise((r) => setTimeout(r, 20))
+      return new Response(JSON.stringify(fakeAirports), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    }) as typeof fetch
 
-    const [a, b] = await Promise.all([searchAirports("LOS"), searchAirports("LOS")]);
-    assert.equal(fetchCalls, 1, "Concurrent duplicate queries must deduplicate to one fetch");
-    assert.deepEqual(a, fakeAirports);
-    assert.deepEqual(b, fakeAirports);
-    assert.equal(airportPendingRequests.size, 0, "Pending map must clear after resolution");
+    const [a, b] = await Promise.all([
+      searchAirports("LOS"),
+      searchAirports("LOS"),
+    ])
+    assert.equal(
+      fetchCalls,
+      1,
+      "Concurrent duplicate queries must deduplicate to one fetch"
+    )
+    assert.deepEqual(a, fakeAirports)
+    assert.deepEqual(b, fakeAirports)
+    assert.equal(
+      airportPendingRequests.size,
+      0,
+      "Pending map must clear after resolution"
+    )
 
     // 4) Different query — must fetch again (not dedup across keys)
-    const third = await searchAirports("LA");
-    assert.equal(fetchCalls, 2, "Different query must trigger a new fetch");
+    const third = await searchAirports("LA")
+    assert.equal(fetchCalls, 2, "Different query must trigger a new fetch")
 
     // 5) Recent searches: versioned key, max 5, dedup by IATA, most recent first
     // Mock localStorage for Node
-    const store = new Map<string, string>();
+    const store = new Map<string, string>()
     // Patch global window/localStorage shape
     // @ts-ignore
-    globalThis.window = globalThis.window || {};
+    globalThis.window = globalThis.window || {}
     // @ts-ignore
     globalThis.window.localStorage = {
       getItem: (k: string) => store.get(k) ?? null,
-      setItem: (k: string, v: string) => { store.set(k, v); },
-      removeItem: (k: string) => { store.delete(k); },
-    } as Storage;
+      setItem: (k: string, v: string) => {
+        store.set(k, v)
+      },
+      removeItem: (k: string) => {
+        store.delete(k)
+      },
+    } as Storage
     // Also ensure global localStorage for helpers that read from window.localStorage
-    store.clear();
+    store.clear()
     // Seed
     for (let i = 0; i < 7; i++) {
-      addRecentAirport({ iata_code: `T${i}0`, name: `Test ${i}`, city: `City${i}`, country_name: "Nigeria", country_code: "NG" });
+      addRecentAirport({
+        iata_code: `T${i}0`,
+        name: `Test ${i}`,
+        city: `City${i}`,
+        country_name: "Nigeria",
+        country_code: "NG",
+      })
     }
-    const recent = getRecentAirports();
-    assert.equal(recent.length, 5, "Recent searches must cap at 5");
-    assert.equal(recent[0].iata_code, "T60", "Most recent must be first");
+    const recent = getRecentAirports()
+    assert.equal(recent.length, 5, "Recent searches must cap at 5")
+    assert.equal(recent[0].iata_code, "T60", "Most recent must be first")
     // Re-adding existing moves it to front without duplication
-    addRecentAirport({ iata_code: "T60", name: "Test 6", city: "City6", country_name: "Nigeria", country_code: "NG" });
-    const recent2 = getRecentAirports();
-    assert.equal(recent2.length, 5);
-    assert.equal(recent2[0].iata_code, "T60");
+    addRecentAirport({
+      iata_code: "T60",
+      name: "Test 6",
+      city: "City6",
+      country_name: "Nigeria",
+      country_code: "NG",
+    })
+    const recent2 = getRecentAirports()
+    assert.equal(recent2.length, 5)
+    assert.equal(recent2[0].iata_code, "T60")
     // Key must be versioned
-    assert.ok(store.has(RECENT_AIRPORTS_KEY), "Must persist under versioned key");
-    assert.match(RECENT_AIRPORTS_KEY, /:v1$/, "Key must be versioned");
+    assert.ok(
+      store.has(RECENT_AIRPORTS_KEY),
+      "Must persist under versioned key"
+    )
+    assert.match(RECENT_AIRPORTS_KEY, /:v1$/, "Key must be versioned")
 
     // Clean up window mock
     // @ts-ignore
-    delete globalThis.window;
+    delete globalThis.window
   } finally {
-    globalThis.fetch = originalFetch;
-    __clearAirportCache();
+    globalThis.fetch = originalFetch
+    __clearAirportCache()
   }
-});
+})
 
 // ---------------------------------------------------------------------------
 // Seam 3: Results rendering — Flight Offer cards defensive normalization
@@ -269,7 +339,7 @@ test("Flight Offer rendering: normalize covers airline, departure, arrival, dura
       },
     ],
     cabin: "ECONOMY",
-  };
+  }
 
   // Flat fallback shape (e.g. mocked or simplified)
   const flatOffer = {
@@ -285,37 +355,49 @@ test("Flight Offer rendering: normalize covers airline, departure, arrival, dura
     destination: "ACC",
     cabin: "ECONOMY",
     baggage: "23kg checked",
-  };
+  }
 
   // Missing fields — defensive
   const sparseOffer = {
     id: "3",
     price: "—",
-  };
+  }
 
-  const d1 = normalizeFlightOffer(amadeusOffer as never, 0);
-  assert.equal(d1.airline, "BA", "Must extract airline from validatingAirlineCodes");
-  assert.equal(d1.origin, "LOS");
-  assert.equal(d1.destination, "LHR");
-  assert.equal(d1.airportsLabel, "LOS → LHR");
-  assert.equal(d1.cabin, "ECONOMY");
-  assert.equal(d1.stops, 0);
-  assert.equal(d1.stopsLabel, "Non-stop");
-  assert.match(d1.duration, /7h|PT/, "Must format ISO duration");
-  assert.equal(d1.currency, "NGN");
-  assert.equal(d1.price, "450000.00");
+  const d1 = normalizeFlightOffer(amadeusOffer as never, 0)
+  assert.equal(
+    d1.airline,
+    "BA",
+    "Must extract airline from validatingAirlineCodes"
+  )
+  assert.equal(d1.origin, "LOS")
+  assert.equal(d1.destination, "LHR")
+  assert.equal(d1.airportsLabel, "LOS → LHR")
+  assert.equal(d1.cabin, "ECONOMY")
+  assert.equal(d1.stops, 0)
+  assert.equal(d1.stopsLabel, "Non-stop")
+  assert.match(d1.duration, /7h|PT/, "Must format ISO duration")
+  assert.equal(d1.currency, "NGN")
+  assert.equal(d1.price, "450000.00")
 
-  const d2 = normalizeFlightOffer(flatOffer as never, 1);
-  assert.equal(d2.airline, "Arik Air");
-  assert.equal(d2.stopsLabel, "Non-stop");
-  assert.equal(d2.baggage, "23kg checked", "Must surface baggage where available");
-  assert.equal(d2.price, "380000.00");
-  assert.equal(d2.currency, "NGN");
+  const d2 = normalizeFlightOffer(flatOffer as never, 1)
+  assert.equal(d2.airline, "Arik Air")
+  assert.equal(d2.stopsLabel, "Non-stop")
+  assert.equal(
+    d2.baggage,
+    "23kg checked",
+    "Must surface baggage where available"
+  )
+  assert.equal(d2.price, "380000.00")
+  assert.equal(d2.currency, "NGN")
 
-  const d3 = normalizeFlightOffer(sparseOffer as never, 2);
-  assert.equal(d3.airline, "Airline", "Missing airline must fallback gracefully");
-  assert.equal(d3.price, "—", "Missing price must not crash");
-  assert.ok(d3.airportsLabel, "Must handle missing airports without throwing");
+  const d3 = normalizeFlightOffer(sparseOffer as never, 2)
+  assert.equal(
+    d3.airline,
+    "Airline",
+    "Missing airline must fallback gracefully"
+  )
+  assert.equal(d3.price, "—", "Missing price must not crash")
+  assert.ok(d3.airportsLabel, "Must handle missing airports without throwing")
 
   // Stops label for 1 stop
   const oneStop = normalizeFlightOffer(
@@ -326,24 +408,56 @@ test("Flight Offer rendering: normalize covers airline, departure, arrival, dura
       itineraries: [
         {
           segments: [
-            { departure: { iataCode: "LOS", at: "2026-10-10T08:00:00" }, arrival: { iataCode: "ACC", at: "2026-10-10T09:00:00" }, carrierCode: "AR" },
-            { departure: { iataCode: "ACC", at: "2026-10-10T11:00:00" }, arrival: { iataCode: "LHR", at: "2026-10-10T16:00:00" }, carrierCode: "AR" },
+            {
+              departure: { iataCode: "LOS", at: "2026-10-10T08:00:00" },
+              arrival: { iataCode: "ACC", at: "2026-10-10T09:00:00" },
+              carrierCode: "AR",
+            },
+            {
+              departure: { iataCode: "ACC", at: "2026-10-10T11:00:00" },
+              arrival: { iataCode: "LHR", at: "2026-10-10T16:00:00" },
+              carrierCode: "AR",
+            },
           ],
         },
       ],
     } as never,
-    3,
-  );
-  assert.equal(oneStop.stops, 1);
-  assert.equal(oneStop.stopsLabel, "1 stop");
+    3
+  )
+  assert.equal(oneStop.stops, 1)
+  assert.equal(oneStop.stopsLabel, "1 stop")
 
   // Ensure opaque blob is preserved on raw but not leaked into display price/label fields or analytics
-  const rawBlob = { id: "5", price: "100000", flight_offer: { blob: "SECRET_OPAQUE" } } as never;
-  const d5 = normalizeFlightOffer(rawBlob, 4);
-  assert.equal((d5.raw as Record<string, unknown>).flight_offer !== undefined, true, "Raw must retain opaque blob internally");
-  const displaySummary = { price: d5.price, currency: d5.currency, airline: d5.airline, airportsLabel: d5.airportsLabel };
-  assert.equal(JSON.stringify(displaySummary).includes("SECRET_OPAQUE"), false, "Display summary must not serialize opaque blob");
+  const rawBlob = {
+    id: "5",
+    price: "100000",
+    flight_offer: { blob: "SECRET_OPAQUE" },
+  } as never
+  const d5 = normalizeFlightOffer(rawBlob, 4)
+  assert.equal(
+    (d5.raw as Record<string, unknown>).flight_offer !== undefined,
+    true,
+    "Raw must retain opaque blob internally"
+  )
+  const displaySummary = {
+    price: d5.price,
+    currency: d5.currency,
+    airline: d5.airline,
+    airportsLabel: d5.airportsLabel,
+  }
+  assert.equal(
+    JSON.stringify(displaySummary).includes("SECRET_OPAQUE"),
+    false,
+    "Display summary must not serialize opaque blob"
+  )
   // Analytics sanitization must drop opaque keys if leaked into props
-  const polluted = sanitizeProps({ flight_offer: "SECRET_OPAQUE", price: "100000" } as unknown as never);
-  assert.equal("flight_offer" in polluted, false, "Analytics must strip opaque blob keys");
-});
+  const polluted = sanitizeProps({
+    flight_offer: "SECRET_OPAQUE",
+    price: "100000",
+  } as unknown as never)
+  assert.equal(
+    "flight_offer" in polluted,
+    false,
+    "Analytics must strip opaque blob keys"
+  )
+})

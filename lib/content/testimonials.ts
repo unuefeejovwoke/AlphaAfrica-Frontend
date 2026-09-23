@@ -1,4 +1,4 @@
-import type { ContentSource } from "./company.ts";
+import type { ContentSource } from "./company.ts"
 
 /**
  * Customer testimonials (Phase 2).
@@ -9,21 +9,21 @@ import type { ContentSource } from "./company.ts";
 
 export interface Testimonial {
   /** Keep quotes to ~3 lines so cards stay calm and scannable. */
-  quote: string;
-  name: string;
-  role: string;
-  company?: string;
-  source: ContentSource;
+  quote: string
+  name: string
+  role: string
+  company?: string
+  source: ContentSource
 }
 
 export interface TestimonialContent {
-  source: ContentSource;
-  updatedAt: string;
-  testimonials: Testimonial[];
+  source: ContentSource
+  updatedAt: string
+  testimonials: Testimonial[]
   seo: {
-    title: string;
-    description: string;
-  };
+    title: string
+    description: string
+  }
 }
 
 export const testimonials: TestimonialContent = {
@@ -35,4 +35,4 @@ export const testimonials: TestimonialContent = {
     description:
       "Verified reviews from Alphaa Africa customers will appear here once supplied by the business.",
   },
-};
+}

@@ -1,12 +1,15 @@
-import * as React from "react";
-import Link from "next/link";
-import type { Metadata } from "next";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Message01Icon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { HotelSearchPageClient } from "@/components/hotels/hotel-search-page-client";
-import { HotelResultsSkeleton } from "@/components/hotels/hotel-results-skeleton";
-import { getHotelSupportWhatsAppUrl, hasHotelSearchParams } from "@/lib/api/hotels";
+import * as React from "react"
+import Link from "next/link"
+import type { Metadata } from "next"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Message01Icon } from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { HotelSearchPageClient } from "@/components/hotels/hotel-search-page-client"
+import { HotelResultsSkeleton } from "@/components/hotels/hotel-results-skeleton"
+import {
+  getHotelSupportWhatsAppUrl,
+  hasHotelSearchParams,
+} from "@/lib/api/hotels"
 import {
   HOTELS_LANDING_DESCRIPTION,
   HOTELS_LANDING_TITLE,
@@ -14,7 +17,7 @@ import {
   getSiteUrl,
   hotelTravelActionJsonLd,
   robotsForSearchParams,
-} from "@/lib/seo";
+} from "@/lib/seo"
 
 /**
  * Hotels discoverability (Phase 4, ticket 01; PRD §18 + ADR-0005).
@@ -28,15 +31,15 @@ import {
  *   caching, since every query combination is request-time state (ADR-0005).
  * - Crawlable internal links render server-side so bots see them without JS.
  */
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"
 
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }): Promise<Metadata> {
-  const params = await searchParams;
-  const hasSearch = hasHotelSearchParams(params);
+  const params = await searchParams
+  const hasSearch = hasHotelSearchParams(params)
   return {
     metadataBase: new URL(getSiteUrl()),
     title: HOTELS_LANDING_TITLE,
@@ -58,15 +61,15 @@ export async function generateMetadata({
       ],
     },
     robots: robotsForSearchParams(hasSearch),
-  };
+  }
 }
 
 export default async function HotelsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  const hasSearch = hasHotelSearchParams(await searchParams);
+  const hasSearch = hasHotelSearchParams(await searchParams)
 
   return (
     <>
@@ -75,7 +78,9 @@ export default async function HotelsPage({
         <>
           <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(hotelTravelActionJsonLd()) }}
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(hotelTravelActionJsonLd()),
+            }}
           />
           <script
             type="application/ld+json"
@@ -106,8 +111,9 @@ export default async function HotelsPage({
             Find your stay with confidence
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Search by city or Hotel name, add optional stay dates and party, and compare from-prices per night in
-            Naira. Every search stays in the address bar so you can share it, refresh it, or come back to it. No
+            Search by city or Hotel name, add optional stay dates and party, and
+            compare from-prices per night in Naira. Every search stays in the
+            address bar so you can share it, refresh it, or come back to it. No
             account needed, and human help is one tap away.
           </p>
         </header>
@@ -124,29 +130,41 @@ export default async function HotelsPage({
       >
         <ul className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-muted-foreground">
           <li>
-            <Link href="/flights" className="hover:text-primary hover:underline">
+            <Link
+              href="/flights"
+              className="hover:text-primary hover:underline"
+            >
               Search flights
             </Link>
           </li>
           <li>
-            <Link href="/destinations" className="hover:text-primary hover:underline">
+            <Link
+              href="/destinations"
+              className="hover:text-primary hover:underline"
+            >
               Explore destinations
             </Link>
           </li>
           <li>
-            <Link href="/packages" className="hover:text-primary hover:underline">
+            <Link
+              href="/packages"
+              className="hover:text-primary hover:underline"
+            >
               Browse holiday packages
             </Link>
           </li>
           <li>
-            <Link href="/contact" className="hover:text-primary hover:underline">
+            <Link
+              href="/contact"
+              className="hover:text-primary hover:underline"
+            >
               Contact Alphaa
             </Link>
           </li>
         </ul>
       </nav>
     </>
-  );
+  )
 }
 
 /**
@@ -176,5 +194,5 @@ function HotelsPageFallback() {
       </div>
       <HotelResultsSkeleton />
     </div>
-  );
+  )
 }

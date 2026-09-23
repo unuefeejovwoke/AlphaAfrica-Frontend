@@ -1,5 +1,5 @@
-import { company } from "./content/company.ts";
-import type { FaqGroup } from "./content/faqs.ts";
+import { company } from "./content/company.ts"
+import type { FaqGroup } from "./content/faqs.ts"
 
 /**
  * Shared SEO helpers (Phase 2, PRD §18; Phase 3 ticket 10 flights).
@@ -10,42 +10,44 @@ import type { FaqGroup } from "./content/faqs.ts";
 /** Absolute site root from the environment with a production fallback. */
 export function getSiteUrl(): string {
   const fromEnv =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.SITE_URL?.trim() || "";
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.SITE_URL?.trim() ||
+    ""
   if (fromEnv.length > 0) {
-    return fromEnv.replace(/\/+$/, "");
+    return fromEnv.replace(/\/+$/, "")
   }
-  return "https://www.alphaaafrica.com";
+  return "https://www.alphaaafrica.com"
 }
 
 /** Absolute canonical URL for a page path such as `/about`. */
 export function canonicalUrl(path: string): string {
-  const normalized = path.startsWith("/") ? path : `/${path}`;
-  return `${getSiteUrl()}${normalized === "/" ? "/" : normalized}`;
+  const normalized = path.startsWith("/") ? path : `/${path}`
+  return `${getSiteUrl()}${normalized === "/" ? "/" : normalized}`
 }
 
 interface OrganizationJsonLd {
-  "@context": "https://schema.org";
-  "@type": "TravelAgency";
-  name: string;
-  legalName: string;
-  description: string;
-  url: string;
-  email: string;
-  telephone: string;
+  "@context": "https://schema.org"
+  "@type": "TravelAgency"
+  name: string
+  legalName: string
+  description: string
+  url: string
+  email: string
+  telephone: string
   address: {
-    "@type": "PostalAddress";
-    streetAddress: string;
-    addressLocality: string;
-    addressCountry: string;
-  };
-  sameAs: string[];
+    "@type": "PostalAddress"
+    streetAddress: string
+    addressLocality: string
+    addressCountry: string
+  }
+  sameAs: string[]
   contactPoint: {
-    "@type": "ContactPoint";
-    contactType: string;
-    telephone: string;
-    email: string;
-    availableLanguage: string[];
-  }[];
+    "@type": "ContactPoint"
+    contactType: string
+    telephone: string
+    email: string
+    availableLanguage: string[]
+  }[]
 }
 
 /** Organization graph for Home, About, and Contact. */
@@ -80,15 +82,15 @@ export function organizationJsonLd(): OrganizationJsonLd {
         availableLanguage: ["en"],
       },
     ],
-  };
+  }
 }
 
 interface WebsiteJsonLd {
-  "@context": "https://schema.org";
-  "@type": "WebSite";
-  name: string;
-  url: string;
-  description: string;
+  "@context": "https://schema.org"
+  "@type": "WebSite"
+  name: string
+  url: string
+  description: string
 }
 
 /** WebSite graph for Home. */
@@ -99,17 +101,17 @@ export function websiteJsonLd(): WebsiteJsonLd {
     name: company.brandName,
     url: getSiteUrl(),
     description: company.seo.description,
-  };
+  }
 }
 
 interface FaqPageJsonLd {
-  "@context": "https://schema.org";
-  "@type": "FAQPage";
+  "@context": "https://schema.org"
+  "@type": "FAQPage"
   mainEntity: {
-    "@type": "Question";
-    name: string;
-    acceptedAnswer: { "@type": "Answer"; text: string };
-  }[];
+    "@type": "Question"
+    name: string
+    acceptedAnswer: { "@type": "Answer"; text: string }
+  }[]
 }
 
 /** FAQPage graph mirroring every published question and answer. */
@@ -122,9 +124,9 @@ export function faqPageJsonLd(groups: FaqGroup[]): FaqPageJsonLd {
         "@type": "Question" as const,
         name: faq.question,
         acceptedAnswer: { "@type": "Answer" as const, text: faq.answer },
-      })),
+      }))
     ),
-  };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -137,10 +139,10 @@ export function faqPageJsonLd(groups: FaqGroup[]): FaqPageJsonLd {
 
 /** Stable, indexable flights landing metadata (single source for the route). */
 export const FLIGHTS_LANDING_TITLE =
-  "Search Flights — One-way, Round-trip & Multi-city | Alphaa Africa";
+  "Search Flights — One-way, Round-trip & Multi-city | Alphaa Africa"
 
 export const FLIGHTS_LANDING_DESCRIPTION =
-  "Search one-way, round-trip, and multi-city flights by airport, date, party and cabin. Airport autocomplete from IATA, city or name. Live fares in NGN, no account needed. Confirm the live fare before paying.";
+  "Search one-way, round-trip, and multi-city flights by airport, date, party and cabin. Airport autocomplete from IATA, city or name. Live fares in NGN, no account needed. Confirm the live fare before paying."
 
 /** Query keys that turn `/flights` into a dynamic, non-indexable result view. */
 const FLIGHT_SEARCH_PARAM_KEYS = [
@@ -152,7 +154,7 @@ const FLIGHT_SEARCH_PARAM_KEYS = [
   "adults",
   "children",
   "infants",
-] as const;
+] as const
 
 /**
  * True when the query carries search state. Pure seam: the flights page uses
@@ -160,19 +162,19 @@ const FLIGHT_SEARCH_PARAM_KEYS = [
  * the clean `/flights` entry stays indexable.
  */
 export function hasFlightSearchParams(
-  searchParams: Record<string, string | string[] | undefined>,
+  searchParams: Record<string, string | string[] | undefined>
 ): boolean {
   for (const key of FLIGHT_SEARCH_PARAM_KEYS) {
-    const value = searchParams[key];
+    const value = searchParams[key]
     if (Array.isArray(value) ? value.length > 0 && value[0] !== "" : value) {
       // Party-only defaults (?adults=1) from a fresh form mount carry no
       // route/date intent — require a route or date signal to count as a
       // dynamic result view.
-      if (key === "adults" || key === "children" || key === "infants") continue;
-      return true;
+      if (key === "adults" || key === "children" || key === "infants") continue
+      return true
     }
   }
-  return false;
+  return false
 }
 
 /**
@@ -181,10 +183,12 @@ export function hasFlightSearchParams(
  * between services.
  */
 export function robotsForSearchParams(hasSearch: boolean): {
-  index: boolean;
-  follow: boolean;
+  index: boolean
+  follow: boolean
 } {
-  return hasSearch ? { index: false, follow: false } : { index: true, follow: true };
+  return hasSearch
+    ? { index: false, follow: false }
+    : { index: true, follow: true }
 }
 
 /**
@@ -193,28 +197,28 @@ export function robotsForSearchParams(hasSearch: boolean): {
  * is identical.
  */
 interface TravelActionJsonLd {
-  "@context": "https://schema.org";
-  "@type": "TravelAction";
-  name: string;
-  description: string;
-  url: string;
+  "@context": "https://schema.org"
+  "@type": "TravelAction"
+  name: string
+  description: string
+  url: string
   agent: {
-    "@type": "TravelAgency";
-    name: string;
-    url: string;
-    telephone: string;
-    email: string;
-  };
+    "@type": "TravelAgency"
+    name: string
+    url: string
+    telephone: string
+    email: string
+  }
   object: {
-    "@type": string;
-    name: string;
-    url: string;
-  };
+    "@type": string
+    name: string
+    url: string
+  }
   result: {
-    "@type": "WebPage";
-    name: string;
-    url: string;
-  };
+    "@type": "WebPage"
+    name: string
+    url: string
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -227,10 +231,10 @@ interface TravelActionJsonLd {
 
 /** Stable, indexable hotel search landing metadata (single source for the route). */
 export const HOTELS_LANDING_TITLE =
-  "Search Hotels — City, Hotel Name, Dates & Party | Alphaa Africa";
+  "Search Hotels — City, Hotel Name, Dates & Party | Alphaa Africa"
 
 export const HOTELS_LANDING_DESCRIPTION =
-  "Search Hotels by city or Hotel name, add optional stay dates and party, and browse from-prices per night in Naira. No account needed, with human help one tap away.";
+  "Search Hotels by city or Hotel name, add optional stay dates and party, and browse from-prices per night in Naira. No account needed, with human help one tap away."
 
 /**
  * TravelAction graph for the stable `/hotels` entry (GEO/AI-SEO).
@@ -239,7 +243,7 @@ export const HOTELS_LANDING_DESCRIPTION =
  * structured data. Detail-level Hotel markup lands in ticket 03.
  */
 export function hotelTravelActionJsonLd(): TravelActionJsonLd {
-  const url = canonicalUrl("/hotels");
+  const url = canonicalUrl("/hotels")
   return {
     "@context": "https://schema.org",
     "@type": "TravelAction",
@@ -263,7 +267,7 @@ export function hotelTravelActionJsonLd(): TravelActionJsonLd {
       name: HOTELS_LANDING_TITLE,
       url,
     },
-  };
+  }
 }
 
 /**
@@ -272,7 +276,7 @@ export function hotelTravelActionJsonLd(): TravelActionJsonLd {
  * schedules — dynamic results are never embedded in structured data.
  */
 export function flightTravelActionJsonLd(): TravelActionJsonLd {
-  const url = canonicalUrl("/flights");
+  const url = canonicalUrl("/flights")
   return {
     "@context": "https://schema.org",
     "@type": "TravelAction",
@@ -296,5 +300,5 @@ export function flightTravelActionJsonLd(): TravelActionJsonLd {
       name: FLIGHTS_LANDING_TITLE,
       url,
     },
-  };
+  }
 }

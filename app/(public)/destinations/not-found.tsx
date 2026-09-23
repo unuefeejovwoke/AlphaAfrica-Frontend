@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 /** 404 for unknown destination slugs: diagnosis + recovery, no dead end. */
 export default function DestinationNotFound() {
@@ -24,5 +24,5 @@ export default function DestinationNotFound() {
         </Button>
       </div>
     </div>
-  );
+  )
 }

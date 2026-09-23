@@ -46,18 +46,21 @@ export const ANALYTICS_EVENTS = [
   "flight_payment_initiated",
   "flight_payment_completed",
   "flight_confirmation_viewed",
-] as const;
+] as const
 
-export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[number];
+export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[number]
 
-export type AnalyticsProps = Record<string, string | number | boolean | null | undefined>;
+export type AnalyticsProps = Record<
+  string,
+  string | number | boolean | null | undefined
+>
 
 /** Keys matching this pattern are PII/payment material and never leave the device. */
 const SENSITIVE_KEY_PATTERN =
-  /passport|payment|card|token|secret|password|email|phone|auth|reference|order|flight_offer|opaque|blob|pnr|booking/i;
+  /passport|payment|card|token|secret|password|email|phone|auth|reference|order|flight_offer|opaque|blob|pnr|booking/i
 
 function isKnownEvent(event: string): event is AnalyticsEvent {
-  return (ANALYTICS_EVENTS as readonly string[]).includes(event);
+  return (ANALYTICS_EVENTS as readonly string[]).includes(event)
 }
 
 /**
@@ -65,29 +68,29 @@ function isKnownEvent(event: string): event is AnalyticsEvent {
  * untouched — callers must still avoid putting raw PII in *values*.
  */
 export function sanitizeProps(props: AnalyticsProps = {}): AnalyticsProps {
-  const clean: AnalyticsProps = {};
+  const clean: AnalyticsProps = {}
   for (const [key, value] of Object.entries(props)) {
-    if (SENSITIVE_KEY_PATTERN.test(key)) continue;
-    clean[key] = value;
+    if (SENSITIVE_KEY_PATTERN.test(key)) continue
+    clean[key] = value
   }
-  return clean;
+  return clean
 }
 
 export interface TrackedEvent {
-  event: AnalyticsEvent;
-  props: AnalyticsProps;
+  event: AnalyticsEvent
+  props: AnalyticsProps
 }
 
 /** In-memory log of dispatched events (debugging; never persisted). */
-const eventLog: TrackedEvent[] = [];
+const eventLog: TrackedEvent[] = []
 
 export function getEventLog(): readonly TrackedEvent[] {
-  return eventLog;
+  return eventLog
 }
 
 declare global {
   interface Window {
-    dataLayer?: Record<string, unknown>[];
+    dataLayer?: Record<string, unknown>[]
   }
 }
 
@@ -97,12 +100,12 @@ declare global {
  */
 export function track(event: AnalyticsEvent, props: AnalyticsProps = {}): void {
   if (!isKnownEvent(event)) {
-    throw new Error(`Unknown analytics event: ${String(event)}`);
+    throw new Error(`Unknown analytics event: ${String(event)}`)
   }
-  const clean = sanitizeProps(props);
-  if (typeof window === "undefined") return;
-  eventLog.push({ event, props: clean });
+  const clean = sanitizeProps(props)
+  if (typeof window === "undefined") return
+  eventLog.push({ event, props: clean })
   if (Array.isArray(window.dataLayer)) {
-    window.dataLayer.push({ event, ...clean });
+    window.dataLayer.push({ event, ...clean })
   }
 }

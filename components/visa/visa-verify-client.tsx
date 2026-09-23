@@ -1,30 +1,43 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
+import * as React from "react"
+import Link from "next/link"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Message01Icon,
   Tick01Icon,
   AlertCircleIcon,
   Clock01Icon,
-} from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
-import { CardSkeleton } from "@/components/ui/skeleton";
-import { ViewTracker } from "@/components/analytics/view-tracker";
-import { verifyVisaPayment, type VisaApplication } from "@/lib/api/visa";
-import { getPaymentOrder, isOrderPaid, isVisaApplicationPaid, type PaymentOrder } from "@/lib/api/payments";
-import { getHumanErrorMessage, getPaymentSafetyCopy } from "@/lib/api/client";
-import { formatNaira } from "@/lib/format";
-import { getSupportWhatsAppUrl, getWhatsAppUrl } from "@/lib/content/company";
-import { track } from "@/lib/analytics";
-import { TrackLink } from "@/components/analytics/track-link";
+} from "@hugeicons/core-free-icons"
+import { Button } from "@/components/ui/button"
+import { CardSkeleton } from "@/components/ui/skeleton"
+import { ViewTracker } from "@/components/analytics/view-tracker"
+import { verifyVisaPayment, type VisaApplication } from "@/lib/api/visa"
+import {
+  getPaymentOrder,
+  isOrderPaid,
+  isVisaApplicationPaid,
+  type PaymentOrder,
+} from "@/lib/api/payments"
+import { getHumanErrorMessage, getPaymentSafetyCopy } from "@/lib/api/client"
+import { formatNaira } from "@/lib/format"
+import { getSupportWhatsAppUrl, getWhatsAppUrl } from "@/lib/content/company"
+import { track } from "@/lib/analytics"
+import { TrackLink } from "@/components/analytics/track-link"
 
 type VerifyState =
   | { kind: "verifying" }
-  | { kind: "verified"; application: VisaApplication; order: PaymentOrder | null }
-  | { kind: "unresolved"; application: VisaApplication; order: PaymentOrder | null }
-  | { kind: "failed"; message: string };
+  | {
+      kind: "verified"
+      application: VisaApplication
+      order: PaymentOrder | null
+    }
+  | {
+      kind: "unresolved"
+      application: VisaApplication
+      order: PaymentOrder | null
+    }
+  | { kind: "failed"; message: string }
 
 /**
  * Paystack return handler for Visa Consultations. A return from payment
@@ -33,69 +46,86 @@ type VerifyState =
  * welcome — verification needs only the reference.
  */
 export function VisaVerifyClient({ reference }: { reference: string }) {
-  const [state, setState] = React.useState<VerifyState>({ kind: "verifying" });
-  const [attempt, setAttempt] = React.useState(0);
+  const [state, setState] = React.useState<VerifyState>({ kind: "verifying" })
+  const [attempt, setAttempt] = React.useState(0)
 
   React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setState({ kind: "verifying" });
+    let cancelled = false
+    ;(async () => {
+      setState({ kind: "verifying" })
       try {
-        const application = await verifyVisaPayment(reference);
+        const application = await verifyVisaPayment(reference)
         // The visa verification is authoritative for the consultation, but
         // the universal order is the final word on money movement — fetch
         // it too, tolerating its absence.
-        let order: PaymentOrder | null = null;
+        let order: PaymentOrder | null = null
         try {
-          order = await getPaymentOrder(reference);
+          order = await getPaymentOrder(reference)
         } catch {
-          order = null;
+          order = null
         }
-        if (cancelled) return;
-        const paid = isOrderPaid(order?.status) || isVisaApplicationPaid(application.status);
+        if (cancelled) return
+        const paid =
+          isOrderPaid(order?.status) ||
+          isVisaApplicationPaid(application.status)
         if (paid) {
           track("visa_payment_completed", {
             applicants: String(application.num_applicants ?? 1),
-          });
-          setState({ kind: "verified", application, order });
+          })
+          setState({ kind: "verified", application, order })
         } else {
-          setState({ kind: "unresolved", application, order });
+          setState({ kind: "unresolved", application, order })
         }
       } catch (error) {
-        if (cancelled) return;
-        setState({ kind: "failed", message: getHumanErrorMessage(error) });
+        if (cancelled) return
+        setState({ kind: "failed", message: getHumanErrorMessage(error) })
       }
-    })();
+    })()
     return () => {
-      cancelled = true;
-    };
-  }, [reference, attempt]);
+      cancelled = true
+    }
+  }, [reference, attempt])
 
   if (state.kind === "verifying") {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6">
         <div className="flex flex-col items-center gap-3 text-center">
           <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <HugeiconsIcon icon={Clock01Icon} size={24} className="animate-pulse" aria-hidden="true" />
+            <HugeiconsIcon
+              icon={Clock01Icon}
+              size={24}
+              className="animate-pulse"
+              aria-hidden="true"
+            />
           </span>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
             We&apos;re confirming your payment.
           </h1>
-          <p className="max-w-md text-sm leading-relaxed text-muted-foreground" role="status" aria-live="polite">
-            Checking reference <span className="font-variant-numeric font-semibold tabular-nums">{reference}</span>{" "}
+          <p
+            className="max-w-md text-sm leading-relaxed text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            Checking reference{" "}
+            <span className="font-variant-numeric font-semibold tabular-nums">
+              {reference}
+            </span>{" "}
             with Paystack. Do not close this page yet.
           </p>
         </div>
         <CardSkeleton />
       </div>
-    );
+    )
   }
 
   if (state.kind === "verified") {
-    const { application } = state;
+    const { application } = state
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6">
-        <ViewTracker event="booking_confirmation_viewed" props={{ type: "visa" }} />
+        <ViewTracker
+          event="booking_confirmation_viewed"
+          props={{ type: "visa" }}
+        />
         <div
           role="status"
           aria-live="polite"
@@ -109,8 +139,9 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
               Payment verified — consultation received.
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              A specialist will contact you shortly about your {application.country_name} visa
-              consultation. Keep your reference safe.
+              A specialist will contact you shortly about your{" "}
+              {application.country_name} visa consultation. Keep your reference
+              safe.
             </p>
           </div>
           <dl className="grid grid-cols-1 gap-3 rounded-xl border border-emerald-200/70 bg-white/70 p-4 text-sm sm:grid-cols-3">
@@ -118,7 +149,7 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
               <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Reference
               </dt>
-              <dd className="font-variant-numeric font-bold break-all tabular-nums text-foreground">
+              <dd className="font-variant-numeric font-bold break-all text-foreground tabular-nums">
                 {application.reference}
               </dd>
             </div>
@@ -126,13 +157,17 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
               <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Status
               </dt>
-              <dd className="font-semibold text-foreground">{application.status}</dd>
+              <dd className="font-semibold text-foreground">
+                {application.status}
+              </dd>
             </div>
             <div className="flex flex-col gap-0.5">
               <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Fee paid
               </dt>
-              <dd className="font-semibold text-foreground">{formatNaira(application.consultation_fee)}</dd>
+              <dd className="font-semibold text-foreground">
+                {formatNaira(application.consultation_fee)}
+              </dd>
             </div>
           </dl>
           <div className="flex flex-col gap-2">
@@ -140,9 +175,12 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
               render={
                 <TrackLink
                   event="support_click"
-                  eventProps={{ context: "verified visa consultation", channel: "whatsapp" }}
+                  eventProps={{
+                    context: "verified visa consultation",
+                    channel: "whatsapp",
+                  }}
                   href={getWhatsAppUrl(
-                    `Hello Alphaa Africa! My ${application.country_name} visa consultation ${application.reference} is verified. Please guide me on next steps.`,
+                    `Hello Alphaa Africa! My ${application.country_name} visa consultation ${application.reference} is verified. Please guide me on next steps.`
                   )}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -150,19 +188,27 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
               }
               className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
             >
-              <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={Message01Icon}
+                size={18}
+                aria-hidden="true"
+              />
               <span>Continue on WhatsApp with this reference</span>
             </Button>
-            <Button render={<Link href="/visa" />} variant="outline" className="w-full justify-center">
+            <Button
+              render={<Link href="/visa" />}
+              variant="outline"
+              className="w-full justify-center"
+            >
               <span>Browse other visa countries</span>
             </Button>
           </div>
         </div>
       </div>
-    );
+    )
   }
 
-  const application = state.kind === "unresolved" ? state.application : null;
+  const application = state.kind === "unresolved" ? state.application : null
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6">
       <div
@@ -181,9 +227,11 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
               ? state.message
               : "We checked with Paystack and this payment is not complete yet. It may still be processing — wait a moment and check again."}
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{getPaymentSafetyCopy()}</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {getPaymentSafetyCopy()}
+          </p>
           {application && (
-            <p className="font-variant-numeric mt-1 text-xs tabular-nums text-muted-foreground">
+            <p className="font-variant-numeric mt-1 text-xs text-muted-foreground tabular-nums">
               Reference: {application.reference}
             </p>
           )}
@@ -201,11 +249,14 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
             render={
               <TrackLink
                 event="support_click"
-                eventProps={{ context: "unresolved visa payment", channel: "whatsapp" }}
+                eventProps={{
+                  context: "unresolved visa payment",
+                  channel: "whatsapp",
+                }}
                 href={getSupportWhatsAppUrl(
                   application
                     ? `visa consultation ${application.reference}`
-                    : `visa payment ${reference}`,
+                    : `visa payment ${reference}`
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -216,11 +267,15 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
             <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
             <span>Contact support on WhatsApp</span>
           </Button>
-          <Button render={<Link href="/visa" />} variant="ghost" className="w-full justify-center">
+          <Button
+            render={<Link href="/visa" />}
+            variant="ghost"
+            className="w-full justify-center"
+          >
             <span>Back to visa countries</span>
           </Button>
         </div>
       </div>
     </div>
-  );
+  )
 }

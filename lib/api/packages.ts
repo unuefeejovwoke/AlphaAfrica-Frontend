@@ -1,11 +1,16 @@
-import { z } from "zod";
-import { apiGet, apiPost, pickFeatured, type PaginatedResponse } from "./client.ts";
+import { z } from "zod"
+import {
+  apiGet,
+  apiPost,
+  pickFeatured,
+  type PaginatedResponse,
+} from "./client.ts"
 import {
   emailSchema,
   fullNameSchema,
   nigerianPhoneSchema,
   optionalFutureDateStringSchema,
-} from "./validation.ts";
+} from "./validation.ts"
 
 /**
  * Package types mirror `apidoc.yaml`: `PackageList`, `PackageDetail`,
@@ -27,15 +32,15 @@ export const packageListSchema = z.object({
   main_image: z.string(),
   inclusions_list: z.array(z.string()).optional().default([]),
   is_featured: z.boolean().optional(),
-});
+})
 
-export type PackageList = z.infer<typeof packageListSchema>;
+export type PackageList = z.infer<typeof packageListSchema>
 
 export const packageImageSchema = z.object({
   id: z.number().int(),
   image: z.string(),
   caption: z.string().optional().default(""),
-});
+})
 
 export const packageDetailSchema = z.object({
   id: z.number().int(),
@@ -53,10 +58,10 @@ export const packageDetailSchema = z.object({
   main_image: z.string(),
   images: z.array(packageImageSchema).optional().default([]),
   is_featured: z.boolean().optional(),
-});
+})
 
-export type PackageDetail = z.infer<typeof packageDetailSchema>;
-export type PaginatedPackages = PaginatedResponse<PackageList>;
+export type PackageDetail = z.infer<typeof packageDetailSchema>
+export type PaginatedPackages = PaginatedResponse<PackageList>
 
 /**
  * RHF-validated Enquiry payload (PRD §10 parity):
@@ -69,13 +74,26 @@ export const packageEnquirySchema = z.object({
   email: emailSchema,
   phone: nigerianPhoneSchema("Phone number"),
   preferred_date: optionalFutureDateStringSchema("Preferred date"),
-  num_adults: z.coerce.number().int().min(1, "At least 1 adult traveller is required").max(30),
-  num_children: z.coerce.number().int().min(0, "Children count cannot be negative").max(30),
-  message: z.string().trim().max(2000, "Message is too long").optional().default(""),
-});
+  num_adults: z.coerce
+    .number()
+    .int()
+    .min(1, "At least 1 adult traveller is required")
+    .max(30),
+  num_children: z.coerce
+    .number()
+    .int()
+    .min(0, "Children count cannot be negative")
+    .max(30),
+  message: z
+    .string()
+    .trim()
+    .max(2000, "Message is too long")
+    .optional()
+    .default(""),
+})
 
-export type PackageEnquiryInput = z.input<typeof packageEnquirySchema>;
-export type PackageEnquiryPayload = z.output<typeof packageEnquirySchema>;
+export type PackageEnquiryInput = z.input<typeof packageEnquirySchema>
+export type PackageEnquiryPayload = z.output<typeof packageEnquirySchema>
 
 export const packageEnquiryResultSchema = z.object({
   reference: z.string(),
@@ -89,19 +107,21 @@ export const packageEnquiryResultSchema = z.object({
   total_travelers: z.number().int(),
   status: z.string().optional().default("new"),
   created_at: z.string(),
-});
+})
 
-export type PackageEnquiryResult = z.infer<typeof packageEnquiryResultSchema>;
+export type PackageEnquiryResult = z.infer<typeof packageEnquiryResultSchema>
 
 export interface PackageFilters {
-  destination?: string;
-  featured?: boolean;
-  max_price?: number;
-  ordering?: string;
-  page?: number;
+  destination?: string
+  featured?: boolean
+  max_price?: number
+  ordering?: string
+  page?: number
 }
 
-export async function getPackages(filters: PackageFilters = {}): Promise<PaginatedPackages> {
+export async function getPackages(
+  filters: PackageFilters = {}
+): Promise<PaginatedPackages> {
   return apiGet<PaginatedPackages>("/api/packages/", {
     query: {
       destination: filters.destination,
@@ -111,14 +131,17 @@ export async function getPackages(filters: PackageFilters = {}): Promise<Paginat
       page: filters.page,
     },
     tags: ["packages"],
-  });
+  })
 }
 
 export async function getPackageDetail(slug: string): Promise<PackageDetail> {
-  const raw = await apiGet<unknown>(`/api/packages/${encodeURIComponent(slug)}/`, {
-    tags: ["packages", `package:${slug}`],
-  });
-  return packageDetailSchema.parse(raw);
+  const raw = await apiGet<unknown>(
+    `/api/packages/${encodeURIComponent(slug)}/`,
+    {
+      tags: ["packages", `package:${slug}`],
+    }
+  )
+  return packageDetailSchema.parse(raw)
 }
 
 /**
@@ -127,12 +150,12 @@ export async function getPackageDetail(slug: string): Promise<PackageDetail> {
  * so the section never renders an empty container while packages exist (§12).
  */
 export async function getFeaturedPackages(limit = 6): Promise<PackageList[]> {
-  const page = await getPackages({ featured: true });
+  const page = await getPackages({ featured: true })
   if (page.results.length > 0) {
-    return pickFeatured(page.results, limit);
+    return pickFeatured(page.results, limit)
   }
-  const fallback = await getPackages();
-  return pickFeatured(fallback.results, limit);
+  const fallback = await getPackages()
+  return pickFeatured(fallback.results, limit)
 }
 
 /**
@@ -142,12 +165,12 @@ export async function getFeaturedPackages(limit = 6): Promise<PackageList[]> {
  */
 export async function submitPackageEnquiry(
   slug: string,
-  input: PackageEnquiryInput,
+  input: PackageEnquiryInput
 ): Promise<PackageEnquiryResult> {
-  const payload = packageEnquirySchema.parse(input);
+  const payload = packageEnquirySchema.parse(input)
   const raw = await apiPost<unknown, Record<string, unknown>>(
     `/api/packages/${encodeURIComponent(slug)}/enquire/`,
-    payload as Record<string, unknown>,
-  );
-  return packageEnquiryResultSchema.parse(raw);
+    payload as Record<string, unknown>
+  )
+  return packageEnquiryResultSchema.parse(raw)
 }

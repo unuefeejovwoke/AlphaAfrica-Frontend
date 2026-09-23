@@ -1,5 +1,5 @@
-import type { MetadataRoute } from "next";
-import { getSiteUrl } from "@/lib/seo";
+import type { MetadataRoute } from "next"
+import { getSiteUrl } from "@/lib/seo"
 
 /**
  * Crawl budget (Phase 3, ticket 10; PRD §18 + spec §61).
@@ -10,7 +10,7 @@ import { getSiteUrl } from "@/lib/seo";
  *   so crawlers do not waste budget on them.
  */
 export default function robots(): MetadataRoute.Robots {
-  const siteUrl = getSiteUrl();
+  const siteUrl = getSiteUrl()
   return {
     rules: {
       userAgent: "*",
@@ -18,5 +18,5 @@ export default function robots(): MetadataRoute.Robots {
       disallow: ["/flights/confirm", "/flights/verify", "/checkout", "/api/"],
     },
     sitemap: `${siteUrl}/sitemap.xml`,
-  };
+  }
 }

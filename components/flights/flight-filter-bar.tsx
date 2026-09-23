@@ -1,10 +1,10 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
+import * as React from "react"
+import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { Cancel01Icon } from "@hugeicons/core-free-icons"
+import { cn } from "@/lib/utils"
 import {
   DEPARTURE_WINDOWS,
   FLIGHT_SORT_KEYS,
@@ -12,18 +12,18 @@ import {
   type DepartureWindow,
   type FlightFilters,
   type FlightSortKey,
-} from "@/lib/api/flight-filters";
-import type { AirlineOption } from "@/components/flights/use-filtered-offers";
+} from "@/lib/api/flight-filters"
+import type { AirlineOption } from "@/components/flights/use-filtered-offers"
 
 export interface FlightFilterBarProps {
-  filters: FlightFilters;
-  sort: FlightSortKey;
-  onFiltersChange: (patch: Partial<FlightFilters>) => void;
-  onSortChange: (sort: FlightSortKey) => void;
-  onReset: () => void;
-  airlineOptions: AirlineOption[];
-  visibleCount: number;
-  isFiltering: boolean;
+  filters: FlightFilters
+  sort: FlightSortKey
+  onFiltersChange: (patch: Partial<FlightFilters>) => void
+  onSortChange: (sort: FlightSortKey) => void
+  onReset: () => void
+  airlineOptions: AirlineOption[]
+  visibleCount: number
+  isFiltering: boolean
 }
 
 const PRICE_CEILINGS: { label: string; value: number | null }[] = [
@@ -31,27 +31,27 @@ const PRICE_CEILINGS: { label: string; value: number | null }[] = [
   { label: "Under ₦150k", value: 150_000 },
   { label: "Under ₦300k", value: 300_000 },
   { label: "Under ₦600k", value: 600_000 },
-];
+]
 
 const DURATION_CEILINGS: { label: string; value: number | null }[] = [
   { label: "Any duration", value: null },
   { label: "Under 2 hrs", value: 120 },
   { label: "Under 5 hrs", value: 300 },
   { label: "Under 10 hrs", value: 600 },
-];
+]
 
 const STOPS_OPTIONS: { label: string; value: 0 | 1 | 2 }[] = [
   { label: "Non-stop", value: 0 },
   { label: "1 stop", value: 1 },
   { label: "2+ stops", value: 2 },
-];
+]
 
 const DEPARTURE_LABELS: Record<DepartureWindow, string> = {
   morning: "Morning",
   afternoon: "Afternoon",
   evening: "Evening",
   night: "Night",
-};
+}
 
 const CABIN_OPTIONS: { label: string; value: string | null }[] = [
   { label: "Any cabin", value: null },
@@ -59,23 +59,23 @@ const CABIN_OPTIONS: { label: string; value: string | null }[] = [
   { label: "Premium economy", value: "PREMIUM_ECONOMY" },
   { label: "Business", value: "BUSINESS" },
   { label: "First", value: "FIRST" },
-];
+]
 
 const SORT_LABELS: Record<FlightSortKey, string> = {
   recommended: "Recommended",
   cheapest: "Cheapest",
   fastest: "Fastest",
   earliest: "Earliest",
-};
+}
 
 /** Toggle one value in a multi-select list; empty collapses to null (URL stays clean). */
 function toggleValue<T>(list: readonly T[] | null, value: T): T[] | null {
-  const current = list ?? [];
+  const current = list ?? []
   if (current.includes(value)) {
-    const next = current.filter((v) => v !== value);
-    return next.length > 0 ? next : null;
+    const next = current.filter((v) => v !== value)
+    return next.length > 0 ? next : null
   }
-  return [...current, value];
+  return [...current, value]
 }
 
 function chipClass(active: boolean, large?: boolean): string {
@@ -84,12 +84,12 @@ function chipClass(active: boolean, large?: boolean): string {
     large ? "min-h-12 px-5 text-sm" : "min-h-11 px-4 text-[13px]",
     active
       ? "border-primary bg-primary text-primary-foreground"
-      : "border-border bg-card text-foreground hover:bg-muted",
-  );
+      : "border-border bg-card text-foreground hover:bg-muted"
+  )
 }
 
 interface FilterGroupsProps extends FlightFilterBarProps {
-  large?: boolean;
+  large?: boolean
 }
 
 function FilterGroups({
@@ -102,8 +102,14 @@ function FilterGroups({
 }: FilterGroupsProps) {
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <div role="group" aria-label="Sort flights" className="flex min-w-0 flex-col gap-2">
-        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Sort</p>
+      <div
+        role="group"
+        aria-label="Sort flights"
+        className="flex min-w-0 flex-col gap-2"
+      >
+        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          Sort
+        </p>
         <div className="flex flex-wrap gap-2">
           {FLIGHT_SORT_KEYS.map((key) => (
             <button
@@ -119,8 +125,14 @@ function FilterGroups({
         </div>
       </div>
 
-      <div role="group" aria-label="Filter flights by maximum price" className="flex min-w-0 flex-col gap-2">
-        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Max price</p>
+      <div
+        role="group"
+        aria-label="Filter flights by maximum price"
+        className="flex min-w-0 flex-col gap-2"
+      >
+        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          Max price
+        </p>
         <div className="flex flex-wrap gap-2">
           {PRICE_CEILINGS.map((option) => (
             <button
@@ -136,8 +148,14 @@ function FilterGroups({
         </div>
       </div>
 
-      <div role="group" aria-label="Filter flights by maximum duration" className="flex min-w-0 flex-col gap-2">
-        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Max duration</p>
+      <div
+        role="group"
+        aria-label="Filter flights by maximum duration"
+        className="flex min-w-0 flex-col gap-2"
+      >
+        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          Max duration
+        </p>
         <div className="flex flex-wrap gap-2">
           {DURATION_CEILINGS.map((option) => (
             <button
@@ -145,7 +163,10 @@ function FilterGroups({
               type="button"
               aria-pressed={filters.maxDurationMin === option.value}
               onClick={() => onFiltersChange({ maxDurationMin: option.value })}
-              className={chipClass(filters.maxDurationMin === option.value, large)}
+              className={chipClass(
+                filters.maxDurationMin === option.value,
+                large
+              )}
             >
               <span>{option.label}</span>
             </button>
@@ -153,60 +174,91 @@ function FilterGroups({
         </div>
       </div>
 
-      <div role="group" aria-label="Filter flights by stops" className="flex min-w-0 flex-col gap-2">
-        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Stops</p>
+      <div
+        role="group"
+        aria-label="Filter flights by stops"
+        className="flex min-w-0 flex-col gap-2"
+      >
+        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          Stops
+        </p>
         <div className="flex flex-wrap gap-2">
           {STOPS_OPTIONS.map((option) => {
-            const active = filters.stops?.includes(option.value) ?? false;
+            const active = filters.stops?.includes(option.value) ?? false
             return (
               <button
                 key={option.value}
                 type="button"
                 aria-pressed={active}
-                onClick={() => onFiltersChange({ stops: toggleValue(filters.stops, option.value) })}
+                onClick={() =>
+                  onFiltersChange({
+                    stops: toggleValue(filters.stops, option.value),
+                  })
+                }
                 className={chipClass(active, large)}
               >
                 <span>{option.label}</span>
               </button>
-            );
+            )
           })}
         </div>
       </div>
 
-      <div role="group" aria-label="Filter flights by departure time" className="flex min-w-0 flex-col gap-2">
-        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Departure time</p>
+      <div
+        role="group"
+        aria-label="Filter flights by departure time"
+        className="flex min-w-0 flex-col gap-2"
+      >
+        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          Departure time
+        </p>
         <div className="flex flex-wrap gap-2">
           {DEPARTURE_WINDOWS.map((window) => {
-            const active = filters.departureWindows?.includes(window) ?? false;
+            const active = filters.departureWindows?.includes(window) ?? false
             return (
               <button
                 key={window}
                 type="button"
                 aria-pressed={active}
                 onClick={() =>
-                  onFiltersChange({ departureWindows: toggleValue(filters.departureWindows, window) })
+                  onFiltersChange({
+                    departureWindows: toggleValue(
+                      filters.departureWindows,
+                      window
+                    ),
+                  })
                 }
                 className={chipClass(active, large)}
               >
                 <span>{DEPARTURE_LABELS[window]}</span>
               </button>
-            );
+            )
           })}
         </div>
       </div>
 
       {airlineOptions.length > 0 ? (
-        <div role="group" aria-label="Filter flights by airline" className="flex min-w-0 flex-col gap-2">
-          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Airline</p>
+        <div
+          role="group"
+          aria-label="Filter flights by airline"
+          className="flex min-w-0 flex-col gap-2"
+        >
+          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Airline
+          </p>
           <div className="flex flex-wrap gap-2">
             {airlineOptions.map((option) => {
-              const active = filters.airlines?.includes(option.name) ?? false;
+              const active = filters.airlines?.includes(option.name) ?? false
               return (
                 <button
                   key={option.name}
                   type="button"
                   aria-pressed={active}
-                  onClick={() => onFiltersChange({ airlines: toggleValue(filters.airlines, option.name) })}
+                  onClick={() =>
+                    onFiltersChange({
+                      airlines: toggleValue(filters.airlines, option.name),
+                    })
+                  }
                   className={chipClass(active, large)}
                 >
                   <span>{option.name}</span>
@@ -214,20 +266,28 @@ function FilterGroups({
                     aria-label={`${option.count} ${option.count === 1 ? "flight" : "flights"}`}
                     className={cn(
                       "rounded-full px-1.5 text-xs font-bold tabular-nums",
-                      active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground",
+                      active
+                        ? "bg-primary-foreground/20"
+                        : "bg-muted text-muted-foreground"
                     )}
                   >
                     {option.count}
                   </span>
                 </button>
-              );
+              )
             })}
           </div>
         </div>
       ) : null}
 
-      <div role="group" aria-label="Filter flights by cabin" className="flex min-w-0 flex-col gap-2">
-        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Cabin</p>
+      <div
+        role="group"
+        aria-label="Filter flights by cabin"
+        className="flex min-w-0 flex-col gap-2"
+      >
+        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          Cabin
+        </p>
         <div className="flex flex-wrap gap-2">
           {CABIN_OPTIONS.map((option) => (
             <button
@@ -243,7 +303,7 @@ function FilterGroups({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 /**
@@ -252,10 +312,10 @@ function FilterGroups({
  * Mobile: bottom-sheet trigger with large tap targets and a sticky summary.
  */
 export function FlightFilterBar(props: FlightFilterBarProps) {
-  const { visibleCount, isFiltering, onReset } = props;
-  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const { visibleCount, isFiltering, onReset } = props
+  const [sheetOpen, setSheetOpen] = React.useState(false)
 
-  const activeGroups = countActiveFilterGroups(props.filters, props.sort);
+  const activeGroups = countActiveFilterGroups(props.filters, props.sort)
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -287,7 +347,7 @@ export function FlightFilterBar(props: FlightFilterBarProps) {
           {activeGroups > 0 ? (
             <span
               aria-label={`${activeGroups} refinements active`}
-              className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold tabular-nums text-primary-foreground"
+              className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground tabular-nums"
             >
               {activeGroups}
             </span>
@@ -316,14 +376,19 @@ export function FlightFilterBar(props: FlightFilterBarProps) {
                       Filter & sort flights
                     </DrawerPrimitive.Title>
                     <DrawerPrimitive.Description className="mt-1 text-sm break-words text-muted-foreground">
-                      Refinement applies instantly to every result on this screen.
+                      Refinement applies instantly to every result on this
+                      screen.
                     </DrawerPrimitive.Description>
                   </div>
                   <DrawerPrimitive.Close
                     aria-label="Close filters"
                     className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={18} aria-hidden="true" />
+                    <HugeiconsIcon
+                      icon={Cancel01Icon}
+                      size={18}
+                      aria-hidden="true"
+                    />
                   </DrawerPrimitive.Close>
                 </div>
                 <div className="mt-4 min-w-0">
@@ -336,7 +401,8 @@ export function FlightFilterBar(props: FlightFilterBarProps) {
                     className="inline-flex min-h-12 flex-1 touch-manipulation items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
                     <span>
-                      Show {visibleCount} {visibleCount === 1 ? "flight" : "flights"}
+                      Show {visibleCount}{" "}
+                      {visibleCount === 1 ? "flight" : "flights"}
                     </span>
                   </button>
                   {isFiltering ? (
@@ -355,5 +421,5 @@ export function FlightFilterBar(props: FlightFilterBarProps) {
         </DrawerPrimitive.Portal>
       </DrawerPrimitive.Root>
     </div>
-  );
+  )
 }

@@ -1,13 +1,13 @@
-import { z } from "zod";
-import { apiGet, apiPost } from "./client.ts";
-import { emailSchema } from "./validation.ts";
+import { z } from "zod"
+import { apiGet, apiPost } from "./client.ts"
+import { emailSchema } from "./validation.ts"
 import {
   genderSchema,
   travelerTypeSchema,
   type BookingCustomer,
   type BookingTravellerPayload,
   type TravellerComposition,
-} from "../schemas/travel.ts";
+} from "../schemas/travel.ts"
 
 /**
  * Pending Booking creation for ticket 07 (spec stories 21–24).
@@ -25,22 +25,24 @@ import {
 
 /** A stored Pending Booking creation, keyed by Confirmed Offer + party. */
 export interface PendingBookingRecord {
-  key: string;
-  reference: string;
-  authorization_url: string;
+  key: string
+  reference: string
+  authorization_url: string
 }
 
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") {
-    return JSON.stringify(value) ?? "null";
+    return JSON.stringify(value) ?? "null"
   }
   if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`
   }
-  const record = value as Record<string, unknown>;
-  const keys = Object.keys(record).sort();
-  const parts = keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`);
-  return `{${parts.join(",")}}`;
+  const record = value as Record<string, unknown>
+  const keys = Object.keys(record).sort()
+  const parts = keys.map(
+    (key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`
+  )
+  return `{${parts.join(",")}}`
 }
 
 /**
@@ -49,9 +51,9 @@ function stableStringify(value: unknown): string {
  */
 export function hashBookingKey(
   flightOffer: unknown,
-  party: TravellerComposition,
+  party: TravellerComposition
 ): string {
-  return stableStringify({ flight_offer: flightOffer, party });
+  return stableStringify({ flight_offer: flightOffer, party })
 }
 
 /**
@@ -60,20 +62,26 @@ export function hashBookingKey(
  */
 export function findReusableBooking(
   stored: PendingBookingRecord | null,
-  key: string,
+  key: string
 ): { reference: string; authorization_url: string } | null {
-  if (!stored || stored.key !== key) return null;
-  if (!stored.reference || !stored.authorization_url) return null;
-  return { reference: stored.reference, authorization_url: stored.authorization_url };
+  if (!stored || stored.key !== key) return null
+  if (!stored.reference || !stored.authorization_url) return null
+  return {
+    reference: stored.reference,
+    authorization_url: stored.authorization_url,
+  }
 }
 
-export const PENDING_BOOKING_SESSION_KEY = "alphaa:pending-flight-booking:v1";
+export const PENDING_BOOKING_SESSION_KEY = "alphaa:pending-flight-booking:v1"
 
 /** Persist the created Pending Booking so an identical retry reuses it. */
 export function savePendingBooking(record: PendingBookingRecord): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return
   try {
-    window.sessionStorage.setItem(PENDING_BOOKING_SESSION_KEY, JSON.stringify(record));
+    window.sessionStorage.setItem(
+      PENDING_BOOKING_SESSION_KEY,
+      JSON.stringify(record)
+    )
   } catch {
     // sessionStorage may throw in private mode — the creation still ran
   }
@@ -81,27 +89,27 @@ export function savePendingBooking(record: PendingBookingRecord): void {
 
 /** Read back the stored Pending Booking, or null when absent/corrupt. */
 export function readPendingBooking(): PendingBookingRecord | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return null
   try {
-    const raw = window.sessionStorage.getItem(PENDING_BOOKING_SESSION_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as unknown;
-    if (typeof parsed !== "object" || parsed === null) return null;
-    const record = parsed as Record<string, unknown>;
+    const raw = window.sessionStorage.getItem(PENDING_BOOKING_SESSION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as unknown
+    if (typeof parsed !== "object" || parsed === null) return null
+    const record = parsed as Record<string, unknown>
     if (
       typeof record.key !== "string" ||
       typeof record.reference !== "string" ||
       typeof record.authorization_url !== "string"
     ) {
-      return null;
+      return null
     }
     return {
       key: record.key,
       reference: record.reference,
       authorization_url: record.authorization_url,
-    };
+    }
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -109,7 +117,8 @@ export function readPendingBooking(): PendingBookingRecord | null {
 // Reference persistence seam (pure URL builder + guarded storage — tested)
 // ---------------------------------------------------------------------------
 
-export const PAYMENT_REFERENCE_SESSION_KEY = "alphaa:flight-payment-reference:v1";
+export const PAYMENT_REFERENCE_SESSION_KEY =
+  "alphaa:flight-payment-reference:v1"
 
 /**
  * Verify-route URL carrying the Payment Reference as a query param
@@ -117,14 +126,14 @@ export const PAYMENT_REFERENCE_SESSION_KEY = "alphaa:flight-payment-reference:v1
  * tokens, passports, payment data, or passwords.
  */
 export function buildFlightVerifyUrl(reference: string): string {
-  return `/flights/verify?reference=${encodeURIComponent(reference)}`;
+  return `/flights/verify?reference=${encodeURIComponent(reference)}`
 }
 
 /** Persist the Payment Reference so refresh, back, and new tabs survive. */
 export function savePaymentReference(reference: string): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return
   try {
-    window.sessionStorage.setItem(PAYMENT_REFERENCE_SESSION_KEY, reference);
+    window.sessionStorage.setItem(PAYMENT_REFERENCE_SESSION_KEY, reference)
   } catch {
     // sessionStorage may throw in private mode — the URL copy still works
   }
@@ -132,11 +141,11 @@ export function savePaymentReference(reference: string): void {
 
 /** Read back the persisted Payment Reference, or null when absent. */
 export function readPaymentReference(): string | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return null
   try {
-    return window.sessionStorage.getItem(PAYMENT_REFERENCE_SESSION_KEY);
+    return window.sessionStorage.getItem(PAYMENT_REFERENCE_SESSION_KEY)
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -157,7 +166,7 @@ export const flightBookingTravelerSchema = z.object({
   passport_number: z.string().trim().max(30).optional(),
   passport_expiry: z.string().trim().optional(),
   nationality: z.string().trim().max(2).optional(),
-});
+})
 
 export const flightBookingCreateRequestSchema = z.object({
   flight_offer: z.unknown(),
@@ -167,22 +176,26 @@ export const flightBookingCreateRequestSchema = z.object({
   // Optional for backend parity (apidoc requires only contact_email,
   // contact_name, flight_offer, travelers); our Customer always carries one.
   contact_phone: z.string().trim().max(20).optional(),
-});
+})
 
-export type FlightBookingCreateRequest = z.infer<typeof flightBookingCreateRequestSchema>;
+export type FlightBookingCreateRequest = z.infer<
+  typeof flightBookingCreateRequestSchema
+>
 
 /** Backend creates the Pending Booking and initializes Paystack (201). */
 export const flightBookingCreateResultSchema = z.object({
   reference: z.string().min(1),
   authorization_url: z.string().min(1),
-});
+})
 
-export type FlightBookingCreateResult = z.infer<typeof flightBookingCreateResultSchema>;
+export type FlightBookingCreateResult = z.infer<
+  typeof flightBookingCreateResultSchema
+>
 
 export interface CreateFlightBookingInput {
-  flight_offer: unknown;
-  travelers: BookingTravellerPayload[];
-  customer: BookingCustomer;
+  flight_offer: unknown
+  travelers: BookingTravellerPayload[]
+  customer: BookingCustomer
 }
 
 /**
@@ -191,7 +204,7 @@ export interface CreateFlightBookingInput {
  * the backend contract first; the response is parsed as untrusted input.
  */
 export async function createFlightBooking(
-  input: CreateFlightBookingInput,
+  input: CreateFlightBookingInput
 ): Promise<FlightBookingCreateResult> {
   const body = flightBookingCreateRequestSchema.parse({
     flight_offer: input.flight_offer,
@@ -199,12 +212,12 @@ export async function createFlightBooking(
     contact_name: input.customer.name,
     contact_email: input.customer.email,
     contact_phone: input.customer.phone,
-  });
+  })
   const raw = await apiPost<unknown, Record<string, unknown>>(
     "/api/flights/bookings/create/",
-    body as Record<string, unknown>,
-  );
-  return flightBookingCreateResultSchema.parse(raw);
+    body as Record<string, unknown>
+  )
+  return flightBookingCreateResultSchema.parse(raw)
 }
 
 // ---------------------------------------------------------------------------
@@ -218,16 +231,17 @@ export async function createFlightBooking(
  * anything unrecognized stays pending so the customer keeps checking instead
  * of assuming failure — a return from Paystack proves nothing by itself.
  */
-export type FlightVerificationOutcome = "paid" | "pending" | "failed" | "cancelled";
+export type FlightVerificationOutcome =
+  "paid" | "pending" | "failed" | "cancelled"
 
 export function resolveFlightVerificationState(booking: {
-  status?: string | null;
+  status?: string | null
 }): FlightVerificationOutcome {
-  const status = (booking.status ?? "").trim().toLowerCase();
-  if (status === "paid" || status === "confirmed") return "paid";
-  if (status === "cancelled") return "cancelled";
-  if (status === "failed") return "failed";
-  return "pending";
+  const status = (booking.status ?? "").trim().toLowerCase()
+  if (status === "paid" || status === "confirmed") return "paid"
+  if (status === "cancelled") return "cancelled"
+  if (status === "failed") return "failed"
+  return "pending"
 }
 
 /**
@@ -254,19 +268,21 @@ export const flightBookingSchema = z.object({
   status: z.string().optional().default("pending"),
   travelers: z.string().optional().default(""),
   flight_details: z.string().optional().default(""),
-});
+})
 
-export type FlightBooking = z.infer<typeof flightBookingSchema>;
+export type FlightBooking = z.infer<typeof flightBookingSchema>
 
 /**
  * Verify the Paystack payment for a reference and fetch the final Booking.
  * Never cached: verification must reflect the live payment state, not a
  * stale pending snapshot. Guest Booking — no login required.
  */
-export async function verifyFlightBooking(reference: string): Promise<FlightBooking> {
+export async function verifyFlightBooking(
+  reference: string
+): Promise<FlightBooking> {
   const raw = await apiGet<unknown>(
     `/api/flights/bookings/verify/${encodeURIComponent(reference)}/`,
-    { noStore: true },
-  );
-  return flightBookingSchema.parse(raw);
+    { noStore: true }
+  )
+  return flightBookingSchema.parse(raw)
 }

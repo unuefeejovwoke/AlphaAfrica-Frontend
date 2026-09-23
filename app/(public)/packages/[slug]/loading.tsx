@@ -1,4 +1,4 @@
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { CardSkeleton } from "@/components/ui/skeleton"
 
 /** Loading fallback for `/packages/[slug]`: hero + content skeletons. */
 export default function PackageDetailLoading() {
@@ -22,5 +22,5 @@ export default function PackageDetailLoading() {
       </div>
       <span className="sr-only">Loading package…</span>
     </div>
-  );
+  )
 }

@@ -1,9 +1,9 @@
-import Image from "next/image";
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { SparklesIcon } from "@hugeicons/core-free-icons";
-import { company, getSupportWhatsAppUrl } from "@/lib/content/company";
-import { cn } from "@/lib/utils";
+import Image from "next/image"
+import Link from "next/link"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { SparklesIcon } from "@hugeicons/core-free-icons"
+import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
+import { cn } from "@/lib/utils"
 
 /**
  * Reusable, agency-tier conversion CTA for Alphaa Africa.
@@ -11,15 +11,15 @@ import { cn } from "@/lib/utils";
  * and a single, focused action leading to the Contact Us page.
  */
 export interface TerminalCtaProps {
-  title: string;
-  description: string;
+  title: string
+  description: string
   /** Trip context prefilled for support routing if needed. */
-  context?: string;
-  primaryHref?: string;
-  primaryLabel?: string;
-  eyebrow?: string;
-  backgroundImage?: string;
-  className?: string;
+  context?: string
+  primaryHref?: string
+  primaryLabel?: string
+  eyebrow?: string
+  backgroundImage?: string
+  className?: string
 }
 
 export function TerminalCta({
@@ -33,16 +33,16 @@ export function TerminalCta({
   className,
 }: TerminalCtaProps) {
   // Retain company and WhatsApp context resolution for platform consistency (§22)
-  void company;
-  void getSupportWhatsAppUrl;
-  void context;
+  void company
+  void getSupportWhatsAppUrl
+  void context
 
   return (
     <section
       aria-labelledby="terminal-cta-heading"
       className={cn(
         "group relative w-full overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.25)]",
-        className,
+        className
       )}
     >
       {/* Background photographic depth + brand scrim */}
@@ -76,12 +76,12 @@ export function TerminalCta({
 
         <h2
           id="terminal-cta-heading"
-          className="mt-4 text-balance text-2xl font-extrabold tracking-tight text-white sm:text-3xl lg:text-4xl"
+          className="mt-4 text-2xl font-extrabold tracking-tight text-balance text-white sm:text-3xl lg:text-4xl"
         >
           {title}
         </h2>
 
-        <p className="mt-3.5 max-w-xl text-balance text-sm leading-relaxed text-white/85 sm:text-base">
+        <p className="mt-3.5 max-w-xl text-sm leading-relaxed text-balance text-white/85 sm:text-base">
           {description}
         </p>
 
@@ -95,5 +95,5 @@ export function TerminalCta({
         </div>
       </div>
     </section>
-  );
+  )
 }

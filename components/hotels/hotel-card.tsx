@@ -1,8 +1,12 @@
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Location01Icon, StarIcon, Tick01Icon } from "@hugeicons/core-free-icons";
-import type { HotelList } from "@/lib/api/hotels";
-import { toHotelCardDisplay } from "@/lib/api/hotels";
-import { CardCta, ListingCardShell } from "@/components/shared/listing-card";
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  Location01Icon,
+  StarIcon,
+  Tick01Icon,
+} from "@hugeicons/core-free-icons"
+import type { HotelList } from "@/lib/api/hotels"
+import { toHotelCardDisplay } from "@/lib/api/hotels"
+import { CardCta, ListingCardShell } from "@/components/shared/listing-card"
 
 /**
  * Hotel card (Phase 4, ticket 02).
@@ -18,19 +22,36 @@ import { CardCta, ListingCardShell } from "@/components/shared/listing-card";
  * honest fallback copy instead of broken UI.
  */
 export function HotelCard({ hotel }: { hotel: HotelList }) {
-  const display = toHotelCardDisplay(hotel);
+  const display = toHotelCardDisplay(hotel)
 
   return (
-    <ListingCardShell href={display.href} imageSrc={display.imageSrc} imageAlt={display.imageAlt}>
+    <ListingCardShell
+      href={display.href}
+      imageSrc={display.imageSrc}
+      imageAlt={display.imageAlt}
+    >
       <div className="flex items-start justify-between gap-2">
         <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold tracking-wider text-primary uppercase">
-          <HugeiconsIcon icon={Location01Icon} size={13} className="shrink-0" aria-hidden="true" />
+          <HugeiconsIcon
+            icon={Location01Icon}
+            size={13}
+            className="shrink-0"
+            aria-hidden="true"
+          />
           <span className="truncate">{display.placeLabel}</span>
         </span>
         {display.starLabel ? (
           <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-foreground">
-            <HugeiconsIcon icon={StarIcon} size={13} className="text-amber-500" aria-hidden="true" />
-            <span role="img" aria-label={`Rated ${hotel.star_rating} out of 5 stars`}>
+            <HugeiconsIcon
+              icon={StarIcon}
+              size={13}
+              className="text-amber-500"
+              aria-hidden="true"
+            />
+            <span
+              role="img"
+              aria-label={`Rated ${hotel.star_rating} out of 5 stars`}
+            >
               {display.starLabel}
             </span>
           </span>
@@ -49,7 +70,10 @@ export function HotelCard({ hotel }: { hotel: HotelList }) {
         <div>
           <ul className="mt-1 flex flex-col gap-1.5 pt-1">
             {display.keyAmenities.map((amenity) => (
-              <li key={amenity} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <li
+                key={amenity}
+                className="flex items-start gap-1.5 text-xs text-muted-foreground"
+              >
                 <HugeiconsIcon
                   icon={Tick01Icon}
                   size={14}
@@ -87,5 +111,5 @@ export function HotelCard({ hotel }: { hotel: HotelList }) {
         <CardCta label="View Hotel" />
       </div>
     </ListingCardShell>
-  );
+  )
 }

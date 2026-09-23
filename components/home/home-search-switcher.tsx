@@ -1,8 +1,8 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
+import * as React from "react"
+import Link from "next/link"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Airplane01Icon,
   Building01Icon,
@@ -10,17 +10,17 @@ import {
   Passport01Icon,
   Car01Icon,
   ArrowUpRight01Icon,
-} from "@hugeicons/core-free-icons";
-import { ComingSoonHatch } from "@/components/home/coming-soon-hatch";
-import { HomeFlightSearch } from "@/components/home/home-flight-search";
+} from "@hugeicons/core-free-icons"
+import { ComingSoonHatch } from "@/components/home/coming-soon-hatch"
+import { HomeFlightSearch } from "@/components/home/home-flight-search"
 
-type InteractiveTabId = "flights" | "hotels" | "cars";
+type InteractiveTabId = "flights" | "hotels" | "cars"
 
 interface TabItem {
-  id: string;
-  label: string;
-  icon: typeof Airplane01Icon;
-  href?: string;
+  id: string
+  label: string
+  icon: typeof Airplane01Icon
+  href?: string
 }
 
 const TABS: TabItem[] = [
@@ -29,9 +29,12 @@ const TABS: TabItem[] = [
   { id: "cars", label: "Car Rentals", icon: Car01Icon },
   { id: "packages", label: "Packages", icon: Luggage01Icon, href: "/packages" },
   { id: "visa", label: "Visa Assistance", icon: Passport01Icon, href: "/visa" },
-];
+]
 
-const COMING_SOON: Record<Exclude<InteractiveTabId, "flights">, { service: string; context: string; blurb: string }> = {
+const COMING_SOON: Record<
+  Exclude<InteractiveTabId, "flights">,
+  { service: string; context: string; blurb: string }
+> = {
   hotels: {
     service: "Hotel reservations",
     context: "hotel reservations",
@@ -44,7 +47,7 @@ const COMING_SOON: Record<Exclude<InteractiveTabId, "flights">, { service: strin
     blurb:
       "Self-service vehicle booking lands in Phase 5. Until then, share pickup, hours, and traveller count for an instant quote.",
   },
-};
+}
 
 /**
  * Interactive search switcher with Apple-style segmented tabs.
@@ -53,31 +56,33 @@ const COMING_SOON: Record<Exclude<InteractiveTabId, "flights">, { service: strin
  * Packages and Visa Assistance link directly to their dedicated pages.
  */
 export function HomeSearchSwitcher() {
-  const [activeTab, setActiveTab] = React.useState<InteractiveTabId>("flights");
-  const tabRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
+  const [activeTab, setActiveTab] = React.useState<InteractiveTabId>("flights")
+  const tabRefs = React.useRef<Record<string, HTMLButtonElement | null>>({})
 
   const interactiveTabs = React.useMemo(
     () => TABS.filter((t): t is TabItem & { id: InteractiveTabId } => !t.href),
     []
-  );
+  )
 
   const onKeyDown = (event: React.KeyboardEvent, id: InteractiveTabId) => {
-    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
-    event.preventDefault();
-    const ids = interactiveTabs.map((tab) => tab.id);
-    const index = ids.indexOf(id);
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return
+    event.preventDefault()
+    const ids = interactiveTabs.map((tab) => tab.id)
+    const index = ids.indexOf(id)
     const next =
-      event.key === "ArrowRight" ? ids[(index + 1) % ids.length] : ids[(index - 1 + ids.length) % ids.length];
-    setActiveTab(next);
-    tabRefs.current[next]?.focus();
-  };
+      event.key === "ArrowRight"
+        ? ids[(index + 1) % ids.length]
+        : ids[(index - 1 + ids.length) % ids.length]
+    setActiveTab(next)
+    tabRefs.current[next]?.focus()
+  }
 
   return (
-    <div className="rounded-3xl border border-border/80 bg-card/95 backdrop-blur-xl shadow-xl shadow-black/[0.04] p-4 sm:p-6 md:p-7 w-full">
+    <div className="w-full rounded-3xl border border-border/80 bg-card/95 p-4 shadow-xl shadow-black/[0.04] backdrop-blur-xl sm:p-6 md:p-7">
       <div
         role="tablist"
         aria-label="Travel services"
-        className="inline-flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-muted/70 dark:bg-muted/40 border border-border/50 max-w-full overflow-x-auto scrollbar-none"
+        className="inline-flex max-w-full scrollbar-none items-center gap-1 overflow-x-auto rounded-2xl border border-border/50 bg-muted/70 p-1 sm:gap-1.5 sm:p-1.5 dark:bg-muted/40"
       >
         {TABS.map((tab) => {
           if (tab.href) {
@@ -85,26 +90,31 @@ export function HomeSearchSwitcher() {
               <Link
                 key={tab.id}
                 href={tab.href}
-                className="group inline-flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-card/50 transition-all shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-card/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:px-4 sm:text-sm"
               >
-                <HugeiconsIcon icon={tab.icon} size={17} aria-hidden="true" className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <HugeiconsIcon
+                  icon={tab.icon}
+                  size={17}
+                  aria-hidden="true"
+                  className="shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
+                />
                 <span>{tab.label}</span>
                 <HugeiconsIcon
                   icon={ArrowUpRight01Icon}
                   size={13}
                   aria-hidden="true"
-                  className="opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0"
+                  className="shrink-0 opacity-50 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100"
                 />
               </Link>
-            );
+            )
           }
 
-          const isActive = activeTab === tab.id;
+          const isActive = activeTab === tab.id
           return (
             <button
               key={tab.id}
               ref={(node) => {
-                tabRefs.current[tab.id] = node;
+                tabRefs.current[tab.id] = node
               }}
               type="button"
               role="tab"
@@ -113,22 +123,28 @@ export function HomeSearchSwitcher() {
               aria-controls={`search-panel-${tab.id}`}
               tabIndex={isActive ? 0 : -1}
               onClick={() => setActiveTab(tab.id as InteractiveTabId)}
-              onKeyDown={(event) => onKeyDown(event, tab.id as InteractiveTabId)}
-              className={`inline-flex items-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-all shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              onKeyDown={(event) =>
+                onKeyDown(event, tab.id as InteractiveTabId)
+              }
+              className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:px-4 sm:text-sm ${
                 isActive
-                  ? "bg-card text-foreground font-semibold shadow-xs ring-1 ring-border/80"
-                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                  ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
+                  : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
               }`}
             >
               <HugeiconsIcon
                 icon={tab.icon}
                 size={17}
                 aria-hidden="true"
-                className={isActive ? "text-primary shrink-0" : "shrink-0 text-muted-foreground"}
+                className={
+                  isActive
+                    ? "shrink-0 text-primary"
+                    : "shrink-0 text-muted-foreground"
+                }
               />
               <span>{tab.label}</span>
             </button>
-          );
+          )
         })}
       </div>
 
@@ -150,5 +166,5 @@ export function HomeSearchSwitcher() {
         </div>
       </div>
     </div>
-  );
+  )
 }

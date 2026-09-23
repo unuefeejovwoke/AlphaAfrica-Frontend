@@ -1,20 +1,20 @@
-import * as React from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
+import * as React from "react"
+import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Airplane01Icon,
   Building01Icon,
   CreditCardIcon,
   SecurityCheckIcon,
   Tag01Icon,
-} from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
-import { getLoadingPreset, type LoadingPreset } from "@/lib/feedback-presets";
+} from "@hugeicons/core-free-icons"
+import { cn } from "@/lib/utils"
+import { getLoadingPreset, type LoadingPreset } from "@/lib/feedback-presets"
 
 export interface LoadingStateProps {
-  preset?: LoadingPreset;
-  title?: string;
-  description?: string;
-  className?: string;
+  preset?: LoadingPreset
+  title?: string
+  description?: string
+  className?: string
 }
 
 const presetIcons = {
@@ -23,7 +23,7 @@ const presetIcons = {
   price: Tag01Icon,
   payment: CreditCardIcon,
   general: SecurityCheckIcon,
-} as const;
+} as const
 
 export function LoadingState({
   preset = "general",
@@ -31,10 +31,10 @@ export function LoadingState({
   description,
   className,
 }: LoadingStateProps) {
-  const presetData = getLoadingPreset(preset);
-  const displayTitle = title || presetData.title;
-  const displayDescription = description || presetData.description;
-  const PresetIcon = presetIcons[preset] ?? presetIcons.general;
+  const presetData = getLoadingPreset(preset)
+  const displayTitle = title || presetData.title
+  const displayDescription = description || presetData.description
+  const PresetIcon = presetIcons[preset] ?? presetIcons.general
 
   return (
     <div
@@ -62,10 +62,12 @@ export function LoadingState({
         </div>
       </div>
 
-      <h3 className="min-w-0 text-base font-bold text-balance text-foreground">{displayTitle}</h3>
+      <h3 className="min-w-0 text-base font-bold text-balance text-foreground">
+        {displayTitle}
+      </h3>
       <p className="mt-1 max-w-sm min-w-0 text-xs leading-relaxed break-words text-muted-foreground">
         {displayDescription}
       </p>
     </div>
-  );
+  )
 }
