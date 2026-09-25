@@ -22,8 +22,11 @@ import {
   type FlightOfferDisplay,
   type FlightSearchPayload,
   type FlightTripContext,
+  buildCheckoutPartyQuery,
   fetchAirportByIata,
   getFlightSupportWhatsAppUrl,
+  readSelectedParty,
+  saveConfirmedOffer,
   saveSelectedOffer,
   saveSelectedParty,
   clearSelectedOffer,
@@ -40,8 +43,10 @@ import { track } from "@/lib/analytics"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import {
   isDomesticSearch,
+  type BookingBranch,
   type DomesticFlightCard,
   type DomesticSearchParams,
+  saveConfirmedDomesticCard,
   saveSelectedDomesticCard,
   clearSelectedDomesticCard,
   resolveBookingBranch,
@@ -50,6 +55,7 @@ import { FILTER_PARAM_KEYS, parseNairaAmount } from "@/lib/api/flight-filters"
 import { useDomesticStream } from "@/components/flights/use-domestic-stream"
 import { FlightJourneyHeader } from "@/components/flights/flight-journey-header"
 import { NearbyDatesBar } from "@/components/flights/nearby-dates-bar"
+import { FareConfirmDialog } from "@/components/flights/fare-confirm-dialog"
 
 // Heavy result component — dynamic import for bundle size (vercel: bundle-dynamic-imports)
 const FlightSearchResults = dynamic(
@@ -530,6 +536,40 @@ export function FlightSearchPageClient() {
     }
   }, [urlValues, doSearch, scrollToForm])
 
+  // Fare confirmation happens in a results-page modal (Wakanow-style): the
+  // selected offer is persisted first so refresh/back never lose it, then the
+  // dialog revalidates live fare and the parent owns the continue handoff.
+  const [pendingSelection, setPendingSelection] = React.useState<{
+    offer: FlightOffer
+    display: FlightOfferDisplay
+    branch: BookingBranch
+  } | null>(null)
+  const pendingSelectionRef = React.useRef(pendingSelection)
+  React.useEffect(() => {
+    pendingSelectionRef.current = pendingSelection
+  }, [pendingSelection])
+
+  const checkoutHref = React.useCallback(() => {
+    const party = readSelectedParty()
+    return party ? `/checkout?${buildCheckoutPartyQuery(party)}` : "/checkout"
+  }, [])
+
+  const handleFareContinue = React.useCallback(
+    (confirmedOffer: FlightOffer | null) => {
+      const selection = pendingSelectionRef.current
+      if (!selection) return
+      if (selection.branch === "domestic") {
+        saveConfirmedDomesticCard(selection.offer as DomesticFlightCard)
+        saveConfirmedOffer(selection.offer)
+      } else if (confirmedOffer) {
+        saveConfirmedOffer(confirmedOffer)
+      }
+      setPendingSelection(null)
+      router.push(checkoutHref())
+    },
+    [router, checkoutHref]
+  )
+
   const handleSelect = React.useCallback(
     (display: FlightOfferDisplay) => {
       // Party travels with the selection so Traveller entry opens the exact
@@ -549,44 +589,29 @@ export function FlightSearchPageClient() {
             ? values.infants
             : 0,
       }
-      // Domestic cards take an explicit domestic branch — never submit card
-      // fields as an opaque Amadeus blob. The fare-confirmation step reads
-      // the domestic session key first and skips Amadeus revalidation.
-      // Each branch clears the other so a back-then-reselect never shadows
-      // the fresh selection with a stale card.
-      const raw = display.raw as unknown
-      if (resolveBookingBranch(searchMode, raw) === "domestic") {
+      // Route-first branch resolution (both-Nigerian = domestic), persisted
+      // before the modal opens. Each branch clears the other so a
+      // back-then-reselect never shadows the fresh selection with a stale card.
+      const raw = display.raw
+      const branch = resolveBookingBranch(searchMode, raw)
+      if (branch === "domestic") {
         clearSelectedOffer()
-        saveSelectedDomesticCard(
-          (typeof raw === "object" && raw !== null
-            ? (raw as Record<string, unknown>)
-            : {}) as DomesticFlightCard
-        )
-        saveSelectedParty(party)
-        track("flight_selected", {
-          trip_type: lastTripTypeRef.current,
-          cabin: display.cabin,
-          route: "domestic",
-          leg_count: String(lastLegCountRef.current),
-        })
-        router.push("/flights/confirm")
-        return
+        saveSelectedDomesticCard(raw as DomesticFlightCard)
+      } else {
+        clearSelectedDomesticCard()
+        saveSelectedOffer(raw)
       }
-      // Keep the opaque blob in memory + sessionStorage backup, never in
-      // URL/analytics, then enter the dedicated fare-confirmation step
-      // (ticket 05) inside the distraction-free checkout shell.
-      clearSelectedDomesticCard()
-      saveSelectedOffer(display.raw)
       saveSelectedParty(party)
       track("flight_selected", {
         trip_type: lastTripTypeRef.current,
         cabin: display.cabin,
-        route: searchMode ?? "international",
+        route: branch,
         leg_count: String(lastLegCountRef.current),
       })
-      router.push("/flights/confirm")
+      // Open the fare-confirmation modal on the results page (no navigation).
+      setPendingSelection({ offer: raw, display, branch })
     },
-    [router, searchMode, urlValues]
+    [searchMode, urlValues]
   )
 
   const handleCancelDomestic = React.useCallback(() => {
@@ -983,6 +1008,18 @@ export function FlightSearchPageClient() {
           </div>
         </div>
       </section>
+
+      <FareConfirmDialog
+        open={pendingSelection !== null}
+        offer={pendingSelection?.offer ?? null}
+        display={pendingSelection?.display ?? null}
+        branch={pendingSelection?.branch ?? "international"}
+        trip={tripContext}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setPendingSelection(null)
+        }}
+        onContinue={handleFareContinue}
+      />
     </div>
   )
 }

@@ -198,3 +198,50 @@ test("Nearby dates calculation only produces current and future dates", () => {
     )
   }
 })
+
+test("Fare confirmation uses the results-page modal and retires the dedicated route", () => {
+  const pageClientPath = path.resolve(
+    process.cwd(),
+    "components/flights/flight-search-page-client.tsx"
+  )
+  const pageClient = fs.readFileSync(pageClientPath, "utf-8")
+  assert.match(
+    pageClient,
+    /FareConfirmDialog/,
+    "Results page must open the fare-confirmation modal"
+  )
+  assert.doesNotMatch(
+    pageClient,
+    /router\.push\("\/flights\/confirm"\)/,
+    "Selecting a flight must no longer navigate to a dedicated confirm page"
+  )
+
+  const dialogPath = path.resolve(
+    process.cwd(),
+    "components/flights/fare-confirm-dialog.tsx"
+  )
+  assert.ok(fs.existsSync(dialogPath), "fare-confirm-dialog.tsx must exist")
+  const dialog = fs.readFileSync(dialogPath, "utf-8")
+  assert.match(
+    dialog,
+    /extractOpaqueOfferBlob/,
+    "Dialog must send the opaque raw_offer blob, not the display card"
+  )
+  assert.match(dialog, /confirmFlightPrice/)
+  assert.match(
+    dialog,
+    /branch === "domestic"/,
+    "Dialog must take the domestic branch without Amadeus revalidation"
+  )
+
+  const confirmPagePath = path.resolve(
+    process.cwd(),
+    "app/(checkout)/flights/confirm/page.tsx"
+  )
+  const confirmPage = fs.readFileSync(confirmPagePath, "utf-8")
+  assert.match(
+    confirmPage,
+    /redirect\("\/flights"\)/,
+    "Retired confirm route must redirect to the flights experience"
+  )
+})

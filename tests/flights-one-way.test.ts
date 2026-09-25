@@ -4,6 +4,7 @@ import {
   oneWayFlightSearchSchema,
   toFlightSearchRequest,
   normalizeFlightOffer,
+  extractOpaqueOfferBlob,
   searchAirports,
   airportResultCache,
   airportPendingRequests,
@@ -598,4 +599,82 @@ test("normalize survives flat snake_case, wrapped, and nested backend shapes wit
     3
   )
   assert.equal(withBaggage.baggage, "2 × 23kg checked")
+})
+
+test("Live API clean card: offer_id, raw_offer, and snake_case segments normalize fully", () => {
+  const liveCard = normalizeFlightOffer(
+    {
+      offer_id: "1",
+      airline: "ROYAL AIR MAROC",
+      airline_code: "AT",
+      cabin: "ECONOMY",
+      itineraries: [
+        {
+          duration: "11h",
+          stops: 1,
+          segments: [
+            {
+              departure_airport: "LOS",
+              departure_time: "2026-10-20T06:50:00",
+              arrival_airport: "CMN",
+              arrival_time: "2026-10-20T11:25:00",
+              carrier_code: "AT",
+              carrier_name: "ROYAL AIR MAROC",
+              flight_number: "AT554",
+              duration: "5h 35m",
+            },
+            {
+              departure_airport: "CMN",
+              departure_time: "2026-10-20T13:40:00",
+              arrival_airport: "LHR",
+              arrival_time: "2026-10-20T16:50:00",
+              carrier_code: "AT",
+              flight_number: "AT800",
+              duration: "3h 10m",
+            },
+          ],
+        },
+      ],
+      price: "545127.45",
+      base_fare: "519169.00",
+      markup: "25958.45",
+      raw_offer: { id: "1", type: "flight-offer" },
+    } as never,
+    4
+  )
+
+  assert.equal(liveCard.id, "1", "Must read offer_id for stable card identity")
+  assert.equal(liveCard.departureAt, "06:50", "Must read departure_time")
+  assert.equal(liveCard.arrivalAt, "16:50", "Must read arrival_time")
+  assert.equal(liveCard.departureDate, "2026-10-20")
+  assert.equal(liveCard.origin, "LOS")
+  assert.equal(liveCard.destination, "LHR")
+  assert.equal(liveCard.stops, 1)
+  assert.equal(liveCard.price, "545127.45")
+  assert.equal(liveCard.arrivalDayOffset, 0)
+  assert.equal(liveCard.journeys[0].segments.length, 2)
+  assert.equal(liveCard.journeys[0].segments[1].flightNumber, "AT800")
+})
+
+test("Opaque offer blob: raw_offer wins over the display card; legacy flight_offer respected", () => {
+  const liveCard = {
+    offer_id: "1",
+    price: "545127.45",
+    raw_offer: { id: "1", type: "flight-offer" },
+  }
+  assert.equal(
+    extractOpaqueOfferBlob(liveCard),
+    liveCard.raw_offer,
+    "Pricing endpoint needs the Amadeus raw_offer, not the normalized card"
+  )
+
+  const legacyCard = { id: "2", flight_offer: { blob: true } }
+  assert.equal(extractOpaqueOfferBlob(legacyCard), legacyCard.flight_offer)
+
+  const domesticCard = { origin: "LOS", destination: "ABV", price: "100" }
+  assert.equal(
+    extractOpaqueOfferBlob(domesticCard),
+    domesticCard,
+    "Domestic cards carry no opaque blob — the card itself is the payload"
+  )
 })

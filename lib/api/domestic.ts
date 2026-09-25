@@ -438,6 +438,7 @@ export async function fetchDomesticBlocking(
   const raw = await apiGet<unknown>("/api/flights/local-search/", {
     query: toDomesticQuery(params),
     noStore: true,
+    sameOrigin: true,
     ...(options.signal ? { signal: options.signal } : {}),
   })
   if (Array.isArray(raw)) return raw as DomesticFlightCard[]
@@ -471,6 +472,8 @@ export const CONFIRMED_DOMESTIC_CARD_SESSION_KEY =
 export function isDomesticFlightCard(raw: unknown): boolean {
   if (typeof raw !== "object" || raw === null) return false
   const rec = raw as Record<string, unknown>
+  // Amadeus blobs in either casing always mean an international offer.
+  if (rec.raw_offer !== undefined && rec.raw_offer !== null) return false
   if (rec.flight_offer !== undefined && rec.flight_offer !== null) return false
   if (Array.isArray(rec.itineraries) && rec.itineraries.length > 0) return false
   if (
@@ -488,18 +491,71 @@ export function isDomesticFlightCard(raw: unknown): boolean {
 
 export type BookingBranch = "domestic" | "international"
 
+/** Origin/destination from a card's flat fields or its first/last segment. */
+function readCardRoute(
+  raw: unknown
+): { origin: string; destination: string } | null {
+  const record = asRecord(raw)
+  const directOrigin = pickString(
+    record.origin,
+    record.Origin,
+    record.departure_airport,
+    record.departureAirport
+  )
+  const directDestination = pickString(
+    record.destination,
+    record.Destination,
+    record.arrival_airport,
+    record.arrivalAirport
+  )
+  if (directOrigin && directDestination) {
+    return {
+      origin: directOrigin.toUpperCase(),
+      destination: directDestination.toUpperCase(),
+    }
+  }
+  const itineraries = Array.isArray(record.itineraries)
+    ? record.itineraries
+    : []
+  const firstItinerary = asRecord(itineraries[0])
+  const segments = Array.isArray(firstItinerary.segments)
+    ? (firstItinerary.segments as unknown[])
+    : []
+  if (segments.length === 0) return null
+  const first = asRecord(segments[0])
+  const last = asRecord(segments[segments.length - 1])
+  const origin =
+    pickString(first.departure_airport, first.departureAirport) ||
+    pickNodeValue(first.departure, ["iataCode", "iata_code", "code"])
+  const destination =
+    pickString(last.arrival_airport, last.arrivalAirport) ||
+    pickNodeValue(last.arrival, ["iataCode", "iata_code", "code"])
+  if (!origin || !destination) return null
+  return {
+    origin: origin.toUpperCase(),
+    destination: destination.toUpperCase(),
+  }
+}
+
 /**
  * Single booking-branch resolver shared by selection and fare confirmation.
- * The live search mode wins; otherwise the card shape decides — a domestic
- * shape always takes the domestic branch so card fields are never submitted
- * as an opaque Amadeus blob.
+ * The route decides first (same both-Nigerian rule the search uses), so a
+ * flat international card can never be mistaken for a Domestic Flight Card.
+ * The live search mode wins; shape inference is only the fallback when the
+ * route cannot be read at all.
  */
 export function resolveBookingBranch(
   searchMode: "domestic" | "international" | null,
   raw: unknown
 ): BookingBranch {
-  if (searchMode === "domestic" || isDomesticFlightCard(raw)) return "domestic"
-  return "international"
+  if (searchMode === "domestic") return "domestic"
+  const route = readCardRoute(raw)
+  if (route) {
+    return isDomesticSearch(route.origin, route.destination)
+      ? "domestic"
+      : "international"
+  }
+  return isDomesticFlightCard(raw) ? "domestic" : "international"
 }
 
 function writeDomesticCardToSession(

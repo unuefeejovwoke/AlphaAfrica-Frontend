@@ -86,23 +86,49 @@ export function getApiBaseUrl(): string {
   return "https://api.alphaaafrica.com"
 }
 
+function buildQueryString(
+  query?: Record<string, string | number | boolean | null | undefined>
+): string {
+  if (!query) return ""
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if (value === null || value === undefined || value === "") continue
+    params.append(key, String(value))
+  }
+  return params.toString()
+}
+
 export function buildApiUrl(
   path: string,
   query?: Record<string, string | number | boolean | null | undefined>
 ): string {
   const base = getApiBaseUrl()
   const normalizedPath = path.startsWith("/") ? path : `/${path}`
-  if (!query) return `${base}${normalizedPath}`
-
-  const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(query)) {
-    if (value === null || value === undefined || value === "") continue
-    params.append(key, String(value))
-  }
-  const suffix = params.toString()
+  const suffix = buildQueryString(query)
   return suffix.length > 0
     ? `${base}${normalizedPath}?${suffix}`
     : `${base}${normalizedPath}`
+}
+
+/**
+ * Browser requests for proxied endpoints stay same-origin (relative path) so
+ * local and deployed environments behave identically with no CORS. Server
+ * calls (RSC/ISR) always use the absolute backend URL.
+ */
+function buildRequestUrl(
+  path: string,
+  query:
+    Record<string, string | number | boolean | null | undefined> | undefined,
+  sameOrigin: boolean | undefined
+): string {
+  if (!sameOrigin || typeof window === "undefined") {
+    return buildApiUrl(path, query)
+  }
+  // Strip the trailing slash so Next route handlers match without a redirect
+  // (POST redirects would still carry the body, but a direct match is cleaner).
+  const normalizedPath = `/${path.replace(/^\/+/, "").replace(/\/+$/, "")}`
+  const suffix = buildQueryString(query)
+  return suffix.length > 0 ? `${normalizedPath}?${suffix}` : normalizedPath
 }
 
 function statusToCode(status: number | null): ApiErrorCode {
@@ -174,6 +200,11 @@ export interface ApiGetOptions {
   noStore?: boolean
   /** AbortSignal for request cancellation — stale responses never commit. */
   signal?: AbortSignal
+  /**
+   * Browser calls go through the same-origin Next proxy route instead of the
+   * backend host (no CORS, identical local/production behaviour).
+   */
+  sameOrigin?: boolean
 }
 
 /**
@@ -186,7 +217,7 @@ export async function apiGet<T>(
   path: string,
   options: ApiGetOptions = {}
 ): Promise<T> {
-  const url = buildApiUrl(path, options.query)
+  const url = buildRequestUrl(path, options.query, options.sameOrigin)
   let response: Response
   try {
     response = await fetch(
@@ -243,6 +274,11 @@ export interface ApiPostOptions {
   query?: Record<string, string | number | boolean | null | undefined>
   /** AbortSignal for request cancellation — stale responses never commit. */
   signal?: AbortSignal
+  /**
+   * Browser calls go through the same-origin Next proxy route instead of the
+   * backend host (no CORS, identical local/production behaviour).
+   */
+  sameOrigin?: boolean
 }
 
 /**
@@ -253,7 +289,7 @@ export async function apiPost<
   TResponse,
   TBody extends Record<string, unknown> | unknown,
 >(path: string, body: TBody, options: ApiPostOptions = {}): Promise<TResponse> {
-  const url = buildApiUrl(path, options.query)
+  const url = buildRequestUrl(path, options.query, options.sameOrigin)
   let response: Response
   try {
     response = await fetch(url, {

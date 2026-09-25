@@ -215,7 +215,8 @@ export async function createFlightBooking(
   })
   const raw = await apiPost<unknown, Record<string, unknown>>(
     "/api/flights/bookings/create/",
-    body as Record<string, unknown>
+    body as Record<string, unknown>,
+    { sameOrigin: true }
   )
   return flightBookingCreateResultSchema.parse(raw)
 }
@@ -282,7 +283,7 @@ export async function verifyFlightBooking(
 ): Promise<FlightBooking> {
   const raw = await apiGet<unknown>(
     `/api/flights/bookings/verify/${encodeURIComponent(reference)}/`,
-    { noStore: true }
+    { noStore: true, sameOrigin: true }
   )
   return flightBookingSchema.parse(raw)
 }

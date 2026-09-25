@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { AlertCircleIcon, LockIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import {
+  extractOpaqueOfferBlob,
   getFlightSupportWhatsAppUrl,
   normalizeFlightOffer,
   readConfirmedOffer,
@@ -133,7 +134,9 @@ export function CheckoutPaymentClient() {
     setPhase("creating")
     try {
       const result = await createFlightBooking({
-        flight_offer: booking.offer,
+        // The backend re-prices the Amadeus offer on create; send the opaque
+        // blob (`raw_offer`), never the normalized display card.
+        flight_offer: extractOpaqueOfferBlob(booking.offer),
         travelers: booking.draft.travellers,
         customer: booking.draft.customer,
       })

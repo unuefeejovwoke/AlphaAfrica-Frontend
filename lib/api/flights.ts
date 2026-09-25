@@ -136,6 +136,7 @@ export async function searchAirports(
       const raw = await apiGet<unknown>("/api/flights/airports/", {
         query: { q: trimmed },
         noStore: true,
+        sameOrigin: true,
         ...(options.signal ? { signal: options.signal } : {}),
       })
       // Backend returns array of airports
@@ -1069,7 +1070,14 @@ export function normalizeFlightOffer(
   const inner = asRecord(record.flight_offer)
   const read = (...keys: string[]) => readOfferField(record, inner, keys)
 
-  const id = pickString(record.id, inner.id) || `offer-${index}`
+  const id =
+    pickString(
+      record.offer_id,
+      record.offerId,
+      record.id,
+      inner.offer_id,
+      inner.id
+    ) || `offer-${index}`
   const firstCarrierCode = (source: Record<string, unknown>): string => {
     const codes =
       source.validatingAirlineCodes ?? source.validating_airline_codes
@@ -1252,7 +1260,10 @@ export async function searchFlights(
   const raw = await apiPost<unknown, typeof body>(
     "/api/flights/search/",
     body,
-    options.signal ? { signal: options.signal } : {}
+    {
+      sameOrigin: true,
+      ...(options.signal ? { signal: options.signal } : {}),
+    }
   )
   // Backend may return array or { results: [] } or { data: [] } / { offers: [] }.
   // A 200 with an error envelope must surface as an error (never silent empty).
@@ -1321,7 +1332,10 @@ function extractOfferKobo(
   if (typeof offer !== "object" || offer === null) return null
   const { amount } = extractPrice(offer)
   if (amount === "—") return null
-  const value = Number(amount)
+  // Backend amounts may arrive as "545127.45", "545,127.45", or "NGN 545127.45".
+  const cleaned = amount.replace(/^(NGN|₦)\s*/i, "").replace(/[₦,\s]/g, "")
+  if (!cleaned) return null
+  const value = Number(cleaned)
   if (!Number.isFinite(value) || value < 0) return null
   return Math.round(value * 100)
 }
@@ -1400,17 +1414,44 @@ function unwrapConfirmedOffer(raw: unknown): FlightOffer | null {
 }
 
 /**
- * Revalidate a selected Flight Offer against the live airline fare.
- * Sends the opaque blob via centralized `apiPost` (no-store). Throws a typed
- * `ApiError` on failure — callers map expiry via `isOfferExpiredError`.
+ * The opaque backend blob for revalidation and booking creation.
+ * The live API returns "clean cards" where the Amadeus offer rides under
+ * `raw_offer`; legacy/mocked shapes use `flight_offer`. Sending the whole
+ * normalized card to `/price/` or `/bookings/create/` fails, so always
+ * prefer the deepest blob and fall back to the card only when none exists
+ * (Domestic Flight Cards carry no opaque blob by definition).
  */
+export function extractOpaqueOfferBlob(offer: unknown): unknown {
+  const record = asRecord(offer)
+  for (const key of ["raw_offer", "flight_offer", "rawOffer"]) {
+    const value = record[key]
+    if (typeof value === "object" && value !== null) return value
+  }
+  return offer
+}
+
+/**
+ * Revalidate a selected Flight Offer against the live airline fare.
+ * Sends the opaque blob via centralized `apiPost` (no-store, same-origin
+ * proxy). Throws a typed `ApiError` on failure — callers map expiry via
+ * `isOfferExpiredError`.
+ */
+export interface ConfirmFlightPriceOptions {
+  signal?: AbortSignal
+}
+
 export async function confirmFlightPrice(
-  flightOfferBlob: unknown
+  flightOfferBlob: unknown,
+  options: ConfirmFlightPriceOptions = {}
 ): Promise<FlightOffer> {
   const raw = await apiPost<unknown, { flight_offer: unknown }>(
     "/api/flights/price/",
     {
       flight_offer: flightOfferBlob,
+    },
+    {
+      sameOrigin: true,
+      ...(options.signal ? { signal: options.signal } : {}),
     }
   )
   if (typeof raw === "object" && raw !== null) {

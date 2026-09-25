@@ -2,6 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import {
   isDomesticSearch,
+  resolveBookingBranch,
   shouldFallbackToBlocking,
 } from "../lib/api/domestic.ts"
 
@@ -98,4 +99,59 @@ test("SSE fallback: stream error/timeout falls back to blocking search; clean co
     false,
     "User abort / new search must not trigger fallback"
   )
+})
+
+test("Booking branch: the route decides before card shape — flat international cards never go domestic", () => {
+  // Live API "clean card": flat snake_case fields, no top-level origin, blob in raw_offer
+  const liveInternationalCard = {
+    offer_id: "1",
+    airline: "ROYAL AIR MAROC",
+    price: "545127.45",
+    itineraries: [
+      {
+        segments: [
+          {
+            departure_airport: "LOS",
+            departure_time: "2026-10-20T06:50:00",
+            arrival_airport: "LHR",
+            arrival_time: "2026-10-20T16:50:00",
+          },
+        ],
+      },
+    ],
+    raw_offer: { id: "1", type: "flight-offer" },
+  }
+  assert.equal(
+    resolveBookingBranch(null, liveInternationalCard),
+    "international",
+    "Live international card must take the Amadeus branch"
+  )
+
+  // Defensive flat card without itineraries: route still decides
+  assert.equal(
+    resolveBookingBranch(null, {
+      origin: "LOS",
+      destination: "LHR",
+      price: "100",
+    }),
+    "international",
+    "Flat international card must not be mistaken for domestic"
+  )
+  assert.equal(
+    resolveBookingBranch(null, {
+      origin: "LOS",
+      destination: "ABV",
+      price: "100",
+    }),
+    "domestic",
+    "Flat both-Nigerian card takes the domestic branch"
+  )
+
+  // Live search mode wins, and unknown shapes default to international
+  assert.equal(
+    resolveBookingBranch("domestic", { origin: "LOS", destination: "LHR" }),
+    "domestic"
+  )
+  assert.equal(resolveBookingBranch(null, { price: "100" }), "international")
+  assert.equal(resolveBookingBranch(null, null), "international")
 })

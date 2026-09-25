@@ -37,6 +37,7 @@ export async function getPaymentOrder(
     `/api/payments/order/${encodeURIComponent(reference)}/`,
     {
       noStore: true,
+      sameOrigin: true,
     }
   )
   return paymentOrderSchema.parse(raw)
