@@ -10,6 +10,7 @@ import {
   SecurityCheckIcon,
   Tick01Icon,
   InformationCircleIcon,
+  Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import { FlightSearchForm } from "@/components/flights/flight-search-form"
 import { FlightOfferSkeleton } from "@/components/flights/flight-offer-card"
@@ -21,8 +22,11 @@ import {
   type FlightOfferDisplay,
   type FlightSearchPayload,
   type FlightTripContext,
+  fetchAirportByIata,
   getFlightSupportWhatsAppUrl,
   saveSelectedOffer,
+  saveSelectedParty,
+  clearSelectedOffer,
   searchFlights,
 } from "@/lib/api/flights"
 import {
@@ -34,9 +38,11 @@ import {
 import { ApiError, getHumanErrorMessage } from "@/lib/api/client"
 import { track } from "@/lib/analytics"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
-import { isDomesticSearch, type DomesticSearchParams } from "@/lib/api/domestic"
-import { FILTER_PARAM_KEYS } from "@/lib/api/flight-filters"
+import { isDomesticSearch, type DomesticSearchParams, saveSelectedDomesticCard, clearSelectedDomesticCard, resolveBookingBranch } from "@/lib/api/domestic"
+import { FILTER_PARAM_KEYS, parseNairaAmount } from "@/lib/api/flight-filters"
 import { useDomesticStream } from "@/components/flights/use-domestic-stream"
+import { FlightJourneyHeader } from "@/components/flights/flight-journey-header"
+import { NearbyDatesBar } from "@/components/flights/nearby-dates-bar"
 
 // Heavy result component — dynamic import for bundle size (vercel: bundle-dynamic-imports)
 const FlightSearchResults = dynamic(
@@ -111,6 +117,92 @@ export function FlightSearchPageClient() {
     return stripped.toString()
   }, [paramsString])
 
+  // Shared-link hydration: light IATA airports enrich to full city + name
+  // via the airport lookup with graceful fallback to the bare code. Display
+  // only — validation still gates on IATA, so a failed lookup never blocks
+  // search. Run-guarded so a superseded URL never commits stale names.
+  const [hydratedOrigin, setHydratedOrigin] =
+    React.useState<Airport | null>(urlOrigin)
+  const [hydratedDest, setHydratedDest] =
+    React.useState<Airport | null>(urlDest)
+  const [hydratedLegs, setHydratedLegs] =
+    React.useState<{ origin: Airport | null; destination: Airport | null }[]>(
+      urlLegAirports
+    )
+  const enrichRunRef = React.useRef(0)
+  const enrichAbortRef = React.useRef<AbortController | null>(null)
+  const enrichKey = React.useMemo(() => {
+    const legs = (urlLegAirports ?? [])
+      .map((l) => `${l.origin?.iata_code ?? ""}:${l.destination?.iata_code ?? ""}`)
+      .join("|")
+    return `${urlOrigin?.iata_code ?? ""}:${urlDest?.iata_code ?? ""}:${legs}`
+  }, [urlOrigin?.iata_code, urlDest?.iata_code, urlLegAirports])
+
+  React.useEffect(() => {
+    // Reset to light immediately so a new URL never shows the old names.
+    setHydratedOrigin(urlOrigin)
+    setHydratedDest(urlDest)
+    setHydratedLegs(urlLegAirports)
+    enrichAbortRef.current?.abort()
+    const runId = enrichRunRef.current + 1
+    enrichRunRef.current = runId
+    const controller = new AbortController()
+    enrichAbortRef.current = controller
+    const { signal } = controller
+    const needsEnrich = (a: Airport | null) =>
+      a !== null && (!a.city || !a.name || a.name === a.iata_code)
+    const targets: { iata: string }[] = []
+    if (needsEnrich(urlOrigin) && urlOrigin) targets.push({ iata: urlOrigin.iata_code })
+    if (needsEnrich(urlDest) && urlDest) targets.push({ iata: urlDest.iata_code })
+    for (const leg of urlLegAirports ?? []) {
+      if (needsEnrich(leg.origin) && leg.origin) targets.push({ iata: leg.origin.iata_code })
+      if (needsEnrich(leg.destination) && leg.destination)
+        targets.push({ iata: leg.destination.iata_code })
+    }
+    if (targets.length === 0) return
+    void (async () => {
+      try {
+        const unique = [...new Set(targets.map((t) => t.iata))]
+        const resolved = await Promise.all(
+          unique.map(async (iata) => {
+            try {
+              const full = await fetchAirportByIata(iata, { signal })
+              return [iata, full] as const
+            } catch {
+              return [iata, null] as const
+            }
+          })
+        )
+        if (runId !== enrichRunRef.current || signal.aborted) return
+        const byIata = new Map(resolved)
+        if (urlOrigin && byIata.get(urlOrigin.iata_code)) {
+          setHydratedOrigin(byIata.get(urlOrigin.iata_code) ?? urlOrigin)
+        }
+        if (urlDest && byIata.get(urlDest.iata_code)) {
+          setHydratedDest(byIata.get(urlDest.iata_code) ?? urlDest)
+        }
+        if ((urlLegAirports ?? []).length > 0) {
+          setHydratedLegs(
+            (urlLegAirports ?? []).map((leg) => ({
+              origin:
+                (leg.origin && byIata.get(leg.origin.iata_code)) ?? leg.origin,
+              destination:
+                (leg.destination && byIata.get(leg.destination.iata_code)) ??
+                leg.destination,
+            }))
+          )
+        }
+      } catch {
+        // Graceful fallback — light IATA airports stay on screen.
+      }
+    })()
+    return () => {
+      controller.abort()
+    }
+    // Enrich only when the IATA identity changes — never on object identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrichKey])
+
   // Deferred URL values for non-urgent hydration (vercel: rerender-use-deferred-value)
   const deferredUrlValues = React.useDeferredValue(urlValues)
 
@@ -170,6 +262,43 @@ export function FlightSearchPageClient() {
   const domesticStart = domestic.start
   const domesticAbort = domestic.abort
 
+  // International request lifecycle: abort + run-guard so rapid re-search
+  // never lets an older response overwrite a newer one. Unmount cancels
+  // in-flight work via the cleanup below.
+  const searchRunRef = React.useRef(0)
+  const searchAbortRef = React.useRef<AbortController | null>(null)
+  React.useEffect(() => {
+    return () => {
+      searchRunRef.current += 1
+      searchAbortRef.current?.abort()
+      searchAbortRef.current = null
+      enrichAbortRef.current?.abort()
+    }
+  }, [])
+
+  // Collapsible form: after a search runs, the long form collapses into a
+  // sticky itinerary summary with an Edit action. Declared before doSearch
+  // so the search itself collapses the form.
+  const [formExpanded, setFormExpanded] = React.useState(true)
+  const formSectionRef = React.useRef<HTMLDivElement | null>(null)
+  // Ref-based scroll that honors reduced motion (never smooth-scrolls users
+  // who asked for less motion).
+  const scrollToForm = React.useCallback(() => {
+    requestAnimationFrame(() => {
+      const reduceMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      formSectionRef.current?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
+      })
+    })
+  }, [])
+  const expandForm = React.useCallback(() => {
+    setFormExpanded(true)
+    scrollToForm()
+  }, [scrollToForm])
+
   // Auto-search when hydration or URL popstate yields a valid search
   const lastAutoSearchKey = React.useRef<string | null>(null)
 
@@ -183,6 +312,9 @@ export function FlightSearchPageClient() {
             ? 2
             : 1
       setHasSearched(true)
+      // After a search runs, the full form collapses into the sticky
+      // itinerary summary; Edit re-expands it.
+      setFormExpanded(false)
 
       // Domestic streaming path: one-way / round-trip between two Nigerian
       // airports. Multi-city stays international (single-route SSE endpoint).
@@ -211,8 +343,14 @@ export function FlightSearchPageClient() {
             : null
 
       if (domesticParams) {
+        // Cancel any in-flight international request before switching modes.
+        searchRunRef.current += 1
+        searchAbortRef.current?.abort()
+        searchAbortRef.current = null
         setSearchMode("domestic")
         setError(null)
+        // Abandon the international spinner if a slow request was in flight.
+        setIsSearching(false)
         React.startTransition(() => {
           setOffers([])
         })
@@ -227,8 +365,14 @@ export function FlightSearchPageClient() {
       }
 
       // International legs path — abort any in-flight domestic stream so
-      // stale SSE chunks never commit after the mode switch.
+      // stale SSE chunks never commit after the mode switch, plus abort any
+      // prior international request so only the latest results stay on screen.
       domesticAbort()
+      searchAbortRef.current?.abort()
+      const runId = searchRunRef.current + 1
+      searchRunRef.current = runId
+      const controller = new AbortController()
+      searchAbortRef.current = controller
       setSearchMode("international")
       setIsSearching(true)
       setError(null)
@@ -238,13 +382,17 @@ export function FlightSearchPageClient() {
       })
       try {
         // One search request for the whole itinerary — never one fetch per leg.
+        // The bounded max_offers rides inside toFlightSearchRequest.
         track("flight_search_started", {
           trip_type: payload.trip_type,
           cabin: payload.cabin,
           route: "international",
           leg_count: String(lastLegCountRef.current),
         })
-        const data = await searchFlights(payload)
+        const data = await searchFlights(payload, {
+          signal: controller.signal,
+        })
+        if (runId !== searchRunRef.current || controller.signal.aborted) return
         setOffers(data)
         track("flight_search_completed", {
           trip_type: payload.trip_type,
@@ -253,6 +401,13 @@ export function FlightSearchPageClient() {
           leg_count: String(lastLegCountRef.current),
         })
       } catch (e) {
+        if (runId !== searchRunRef.current || controller.signal.aborted) return
+        if (
+          (e instanceof DOMException && e.name === "AbortError") ||
+          (e instanceof Error && e.name === "AbortError")
+        ) {
+          return
+        }
         const human = getHumanErrorMessage(e)
         setError(
           e instanceof ApiError
@@ -261,7 +416,9 @@ export function FlightSearchPageClient() {
         )
         setOffers([])
       } finally {
-        setIsSearching(false)
+        if (runId === searchRunRef.current && !controller.signal.aborted) {
+          setIsSearching(false)
+        }
       }
     },
     [domesticStart, domesticAbort]
@@ -350,18 +507,58 @@ export function FlightSearchPageClient() {
       void doSearch(parsed.data)
     } else {
       // No valid URL to retry — scroll to form
-      document
-        .getElementById("flight-search-form")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" })
+      scrollToForm()
     }
-  }, [urlValues, doSearch])
+  }, [urlValues, doSearch, scrollToForm])
 
   const handleSelect = React.useCallback(
     (display: FlightOfferDisplay) => {
+      // Party travels with the selection so Traveller entry opens the exact
+      // slot count — the opaque blob carries no party. Safe counts only.
+      const values = urlValues as Record<string, unknown>
+      const party = {
+        adults:
+          typeof values.adults === "number" && values.adults >= 1
+            ? values.adults
+            : 1,
+        children:
+          typeof values.children === "number" && values.children >= 0
+            ? values.children
+            : 0,
+        infants:
+          typeof values.infants === "number" && values.infants >= 0
+            ? values.infants
+            : 0,
+      }
+      // Domestic cards take an explicit domestic branch — never submit card
+      // fields as an opaque Amadeus blob. The fare-confirmation step reads
+      // the domestic session key first and skips Amadeus revalidation.
+      // Each branch clears the other so a back-then-reselect never shadows
+      // the fresh selection with a stale card.
+      const raw = display.raw as unknown
+      if (resolveBookingBranch(searchMode, raw) === "domestic") {
+        clearSelectedOffer()
+        saveSelectedDomesticCard(
+          (typeof raw === "object" && raw !== null
+            ? (raw as Record<string, unknown>)
+            : {}) as never
+        )
+        saveSelectedParty(party)
+        track("flight_selected", {
+          trip_type: lastTripTypeRef.current,
+          cabin: display.cabin,
+          route: "domestic",
+          leg_count: String(lastLegCountRef.current),
+        })
+        router.push("/flights/confirm")
+        return
+      }
       // Keep the opaque blob in memory + sessionStorage backup, never in
       // URL/analytics, then enter the dedicated fare-confirmation step
       // (ticket 05) inside the distraction-free checkout shell.
+      clearSelectedDomesticCard()
       saveSelectedOffer(display.raw)
+      saveSelectedParty(party)
       track("flight_selected", {
         trip_type: lastTripTypeRef.current,
         cabin: display.cabin,
@@ -370,68 +567,218 @@ export function FlightSearchPageClient() {
       })
       router.push("/flights/confirm")
     },
-    [router, searchMode]
+    [router, searchMode, urlValues]
   )
+
+  const handleCancelDomestic = React.useCallback(() => {
+    // Cancel stops streaming or fallback promptly; the run-guard drops any
+    // late commits so no stale cards appear after cancel.
+    domesticAbort()
+  }, [domesticAbort])
 
   const formBusy = isSearching || domestic.isStreaming || domestic.isFallingBack
 
-  return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      <header className="relative flex max-w-3xl flex-col gap-4">
-        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
-          <HugeiconsIcon icon={Airplane01Icon} size={15} aria-hidden="true" />
-          <span>Flights · One-way, round-trip & multi-city</span>
-        </div>
-        <h1 className="text-4xl font-extrabold tracking-tight text-balance text-foreground sm:text-5xl lg:text-6xl">
-          Search flights
-        </h1>
-        <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
-          Pick a trip type, choose airports with autocomplete, add future dates
-          and party, and compare live offers with airline, timing, stops,
-          duration, and total price in Naira. Flights within Nigeria stream in
-          as airlines respond and can take up to a minute. No account needed —
-          you&apos;ll confirm the live fare before paying.
-        </p>
-        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-medium text-muted-foreground">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card/90 px-3 py-1 shadow-xs">
-            <HugeiconsIcon
-              icon={SecurityCheckIcon}
-              size={14}
-              className="shrink-0 text-emerald-600"
-              aria-hidden="true"
-            />
-            <span>Paystack 256-bit Secured</span>
-          </div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card/90 px-3 py-1 shadow-xs">
-            <HugeiconsIcon
-              icon={Tick01Icon}
-              size={14}
-              className="shrink-0 text-primary"
-              aria-hidden="true"
-            />
-            <span>Live Airline Inventory</span>
-          </div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card/90 px-3 py-1 shadow-xs">
-            <HugeiconsIcon
-              icon={Tick01Icon}
-              size={14}
-              className="shrink-0 text-primary"
-              aria-hidden="true"
-            />
-            <span>Transparent Naira Pricing</span>
-          </div>
-        </div>
-      </header>
+  const summary = React.useMemo(() => {
+    const values = urlValues as Record<string, unknown>
+    const text = (value: unknown) =>
+      typeof value === "string" && value ? value : null
+    const trip = (values.trip_type as string) ?? "one_way"
+    const adults = typeof values.adults === "number" ? values.adults : 1
+    const children = typeof values.children === "number" ? values.children : 0
+    const infants = typeof values.infants === "number" ? values.infants : 0
+    const total = adults + children + infants
+    const partyLabel =
+      total === 1 && adults === 1
+        ? "1 adult"
+        : `${total} travellers (${adults}A${children ? ` ${children}C` : ""}${infants ? ` ${infants}I` : ""})`
+    const cabinLabel = text(values.cabin) ?? "ECONOMY"
+    if (trip === "multi_city" && Array.isArray(values.legs)) {
+      const legs = values.legs as Record<string, unknown>[]
+      const first = legs[0]
+      const last = legs[legs.length - 1]
+      const dates = [text(first?.date), text(last?.date)]
+        .filter(Boolean)
+        .join(" → ")
+      return {
+        route: `Multi-city · ${legs.length} legs`,
+        dates: dates || null,
+        party: partyLabel,
+        cabin: cabinLabel,
+      }
+    }
+    const origin = text(values.origin)
+    const destination = text(values.destination)
+    const departure = text(values.departureDate)
+    const ret = text(values.returnDate)
+    return {
+      route:
+        origin && destination
+          ? `${origin} → ${destination}${trip === "round_trip" ? " · Return" : ""}`
+          : null,
+      dates: [departure, trip === "round_trip" ? ret : null]
+        .filter(Boolean)
+        .join(" → ") || null,
+      party: partyLabel,
+      cabin: cabinLabel,
+    }
+  }, [urlValues])
 
-      <div id="flight-search-form">
-        <FlightSearchForm
-          defaultValues={deferredUrlValues}
-          defaultOriginAirport={urlOrigin}
-          defaultDestinationAirport={urlDest}
-          defaultLegAirports={urlLegAirports}
-          onSubmit={handleSubmit}
-          isSearching={formBusy}
-        />
+  const lowestPrice = React.useMemo(() => {
+    if (offers.length === 0 && domestic.cards.length === 0) return null
+    const allPrices: number[] = []
+    for (const o of offers) {
+      const raw = (o as Record<string, unknown>).price
+      if (typeof raw === "string" || typeof raw === "number") {
+        const val = parseNairaAmount(String(raw))
+        if (val) allPrices.push(val)
+      } else if (typeof raw === "object" && raw !== null) {
+        const total = (raw as Record<string, unknown>).total
+        if (typeof total === "string" || typeof total === "number") {
+          const val = parseNairaAmount(String(total))
+          if (val) allPrices.push(val)
+        }
+      }
+    }
+    for (const c of domestic.cards) {
+      if (c.price) {
+        const val = parseNairaAmount(String(c.price))
+        if (val) allPrices.push(val)
+      }
+    }
+    return allPrices.length > 0 ? Math.min(...allPrices) : null
+  }, [offers, domestic.cards])
+
+  const handleDateChange = React.useCallback(
+    (nextDate: string) => {
+      const currentValues = urlValues as Record<string, unknown>
+      const trip = (currentValues.trip_type as FlightTripType) || "one_way"
+      const parsed = parseFlightSearchPayload({
+        trip_type: trip,
+        origin: typeof currentValues.origin === "string" ? currentValues.origin : "",
+        destination: typeof currentValues.destination === "string" ? currentValues.destination : "",
+        departureDate: nextDate,
+        returnDate: typeof currentValues.returnDate === "string" ? currentValues.returnDate : undefined,
+        legs: Array.isArray(currentValues.legs) ? (currentValues.legs as never) : [],
+        adults: typeof currentValues.adults === "number" ? currentValues.adults : 1,
+        children: typeof currentValues.children === "number" ? currentValues.children : 0,
+        infants: typeof currentValues.infants === "number" ? currentValues.infants : 0,
+        cabin: typeof currentValues.cabin === "string" ? (currentValues.cabin as never) : "ECONOMY",
+        non_stop: typeof currentValues.non_stop === "boolean" ? currentValues.non_stop : false,
+        max_stops: typeof currentValues.max_stops === "number" ? currentValues.max_stops : null,
+      })
+      if (parsed.success) {
+        handleSubmit(parsed.data)
+      }
+    },
+    [urlValues, handleSubmit]
+  )
+
+  return (
+    <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
+      <FlightJourneyHeader current={hasSearched ? 2 : 1} />
+
+      <div id="flight-search-form" ref={formSectionRef} className="flex flex-col gap-3">
+        {hasSearched ? (
+          <>
+            {/* Sleek Route Summary Bar using website brand color (Brand Plum #571563, NO gradients) */}
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-secondary bg-secondary p-4 text-secondary-foreground shadow-xs">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-base font-black tracking-tight text-white sm:text-lg">
+                  {summary.route || "Flight Search"}
+                </span>
+                <span className="text-xs font-medium text-purple-100 sm:text-sm">
+                  {[summary.dates, summary.party, summary.cabin].filter(Boolean).join(" · ")}
+                </span>
+                {searchMode ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-[11px] font-bold text-white uppercase">
+                    <span
+                      aria-hidden="true"
+                      className={
+                        searchMode === "domestic"
+                          ? "size-1.5 animate-pulse rounded-full bg-emerald-400"
+                          : "size-1.5 rounded-full bg-sky-300"
+                      }
+                    />
+                    <span>
+                      {searchMode === "domestic"
+                        ? "Domestic · Live"
+                        : "International · Instant"}
+                    </span>
+                  </span>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormExpanded(!formExpanded)}
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 active:scale-[0.98] sm:text-sm"
+              >
+                {formExpanded ? (
+                  <>
+                    <HugeiconsIcon icon={Cancel01Icon} size={15} aria-hidden="true" />
+                    <span>Close</span>
+                  </>
+                ) : (
+                  <span>Modify</span>
+                )}
+              </button>
+            </div>
+
+            {/* In-place Modification Panel when user clicks Modify */}
+            {formExpanded ? (
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6">
+                <div className="mb-4 flex items-center justify-between border-b border-border/60 pb-3">
+                  <div>
+                    <h2 className="text-base font-bold text-foreground">
+                      Modify your flight search
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Update routes, travel dates, passenger party, or cabin class
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormExpanded(false)}
+                    aria-label="Close modification"
+                    className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+                  </button>
+                </div>
+                <FlightSearchForm
+                  defaultValues={deferredUrlValues}
+                  defaultOriginAirport={hydratedOrigin}
+                  defaultDestinationAirport={hydratedDest}
+                  defaultLegAirports={hydratedLegs}
+                  onSubmit={(payload) => {
+                    handleSubmit(payload)
+                    setFormExpanded(false)
+                  }}
+                  onCancel={() => setFormExpanded(false)}
+                  isSearching={formBusy}
+                />
+              </div>
+            ) : (
+              /* Nearby Dates Bar */
+              <NearbyDatesBar
+                currentDate={typeof urlValues.departureDate === "string" ? urlValues.departureDate : null}
+                lowestPrice={lowestPrice}
+                onSelectDate={handleDateChange}
+              />
+            )}
+          </>
+        ) : (
+          /* Initial search state (no search executed yet) */
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6">
+            <FlightSearchForm
+              defaultValues={deferredUrlValues}
+              defaultOriginAirport={hydratedOrigin}
+              defaultDestinationAirport={hydratedDest}
+              defaultLegAirports={hydratedLegs}
+              onSubmit={handleSubmit}
+              isSearching={formBusy}
+            />
+          </div>
+        )}
       </div>
 
       {/* Results */}
@@ -439,36 +786,9 @@ export function FlightSearchPageClient() {
         aria-labelledby="flight-results-heading"
         className="flex flex-col gap-4"
       >
-        <div className="flex items-center justify-between gap-3">
-          <h2
-            id="flight-results-heading"
-            className="text-lg font-bold text-foreground"
-          >
-            {searchMode === "domestic" ? "Domestic flights" : "Flight offers"}
-          </h2>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "choosing a flight",
-                  channel: "whatsapp",
-                }}
-                href={getFlightSupportWhatsAppUrl(
-                  "choosing a flight",
-                  tripContext
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            variant="ghost"
-            size="sm"
-          >
-            <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
-            <span>Talk to Alphaa</span>
-          </Button>
-        </div>
+        <h2 id="flight-results-heading" className="sr-only">
+          {searchMode === "domestic" ? "Domestic flights" : "Flight offers"}
+        </h2>
 
         {hasSearched ? (
           searchMode === "domestic" ? (
@@ -499,7 +819,9 @@ export function FlightSearchPageClient() {
                 didFallback={domestic.didFallback}
                 searchId={domestic.searchId}
                 error={domestic.error}
+                startedAt={domestic.startedAt}
                 onRetry={handleRetry}
+                onCancel={handleCancelDomestic}
                 onSelect={handleSelect}
                 trip={tripContext}
               />

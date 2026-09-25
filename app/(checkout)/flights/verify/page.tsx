@@ -1,6 +1,7 @@
 import * as React from "react"
 import type { Metadata } from "next"
 import { FlightVerifyClient } from "@/components/flights/flight-verify-client"
+import { FlightJourneyHeader } from "@/components/flights/flight-journey-header"
 import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 
 export const metadata: Metadata = {
@@ -38,8 +39,11 @@ function VerifyFallback() {
  */
 export default function FlightVerifyPage() {
   return (
-    <React.Suspense fallback={<VerifyFallback />}>
-      <FlightVerifyClient />
-    </React.Suspense>
+    <div className="mx-auto w-full max-w-2xl px-4 pt-6 sm:px-6">
+      <FlightJourneyHeader current={6} />
+      <React.Suspense fallback={<VerifyFallback />}>
+        <FlightVerifyClient />
+      </React.Suspense>
+    </div>
   )
 }

@@ -5,13 +5,18 @@ import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Cancel01Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+import { Select } from "@/components/ui/select"
 import {
   DEPARTURE_WINDOWS,
   FLIGHT_SORT_KEYS,
+  PRESET_DURATION_CEILINGS,
+  PRESET_PRICE_CEILINGS,
   countActiveFilterGroups,
   type DepartureWindow,
+  type DurationCeilingOption,
   type FlightFilters,
   type FlightSortKey,
+  type PriceCeilingOption,
 } from "@/lib/api/flight-filters"
 import type { AirlineOption } from "@/components/flights/use-filtered-offers"
 
@@ -23,22 +28,18 @@ export interface FlightFilterBarProps {
   onReset: () => void
   airlineOptions: AirlineOption[]
   visibleCount: number
+  totalCount: number
   isFiltering: boolean
+  /** Route mode pill: domestic live-streaming versus international instant. */
+  mode: "domestic" | "international" | null
+  /** True while results reconcile (deferred) — count reads "Updating…". */
+  isStale?: boolean
+  /** True while domestic cards still stream — count reads progressive copy. */
+  isStreaming?: boolean
+  /** Live ceilings derived from accumulated results; presets remain as shortcuts. */
+  priceCeilings?: PriceCeilingOption[]
+  durationCeilings?: DurationCeilingOption[]
 }
-
-const PRICE_CEILINGS: { label: string; value: number | null }[] = [
-  { label: "Any price", value: null },
-  { label: "Under ₦150k", value: 150_000 },
-  { label: "Under ₦300k", value: 300_000 },
-  { label: "Under ₦600k", value: 600_000 },
-]
-
-const DURATION_CEILINGS: { label: string; value: number | null }[] = [
-  { label: "Any duration", value: null },
-  { label: "Under 2 hrs", value: 120 },
-  { label: "Under 5 hrs", value: 300 },
-  { label: "Under 10 hrs", value: 600 },
-]
 
 const STOPS_OPTIONS: { label: string; value: 0 | 1 | 2 }[] = [
   { label: "Non-stop", value: 0 },
@@ -88,18 +89,30 @@ function chipClass(active: boolean, large?: boolean): string {
   )
 }
 
-interface FilterGroupsProps extends FlightFilterBarProps {
+interface FilterGroupsProps {
+  filters: FlightFilters
+  sort: FlightSortKey
+  onFiltersChange: (patch: Partial<FlightFilters>) => void
+  onSortChange: (sort: FlightSortKey) => void
+  airlineOptions: AirlineOption[]
+  priceCeilings?: PriceCeilingOption[]
+  durationCeilings?: DurationCeilingOption[]
   large?: boolean
 }
 
+/** Sheet filter + sort groups — mirrors the header sort so thumb users get both. */
 function FilterGroups({
   filters,
   sort,
   onFiltersChange,
   onSortChange,
   airlineOptions,
+  priceCeilings,
+  durationCeilings,
   large,
 }: FilterGroupsProps) {
+  const priceOptions = priceCeilings ?? [...PRESET_PRICE_CEILINGS]
+  const durationOptions = durationCeilings ?? [...PRESET_DURATION_CEILINGS]
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <div
@@ -134,9 +147,9 @@ function FilterGroups({
           Max price
         </p>
         <div className="flex flex-wrap gap-2">
-          {PRICE_CEILINGS.map((option) => (
+          {priceOptions.map((option) => (
             <button
-              key={option.label}
+              key={`${option.label}-${option.value ?? "any"}`}
               type="button"
               aria-pressed={filters.maxPriceNgn === option.value}
               onClick={() => onFiltersChange({ maxPriceNgn: option.value })}
@@ -157,9 +170,9 @@ function FilterGroups({
           Max duration
         </p>
         <div className="flex flex-wrap gap-2">
-          {DURATION_CEILINGS.map((option) => (
+          {durationOptions.map((option) => (
             <button
-              key={option.label}
+              key={`${option.label}-${option.value ?? "any"}`}
               type="button"
               aria-pressed={filters.maxDurationMin === option.value}
               onClick={() => onFiltersChange({ maxDurationMin: option.value })}
@@ -307,47 +320,96 @@ function FilterGroups({
 }
 
 /**
- * Live filter + sort controls (ticket 04, story 11).
- * Desktop: horizontal chip rows with airline count badges.
- * Mobile: bottom-sheet trigger with large tap targets and a sticky summary.
+ * Compact results header + single Filters entry (ticket 04).
+ * Mode pill, live count, sort control, and one Filters button with an
+ * active-count badge open a sheet on both desktop and mobile — no expanded
+ * filter wall remains.
  */
 export function FlightFilterBar(props: FlightFilterBarProps) {
-  const { visibleCount, isFiltering, onReset } = props
+  const {
+    filters,
+    sort,
+    onFiltersChange,
+    onSortChange,
+    onReset,
+    airlineOptions,
+    visibleCount,
+    totalCount,
+    isFiltering,
+    mode,
+    isStale,
+    isStreaming,
+    priceCeilings,
+    durationCeilings,
+  } = props
   const [sheetOpen, setSheetOpen] = React.useState(false)
 
-  const activeGroups = countActiveFilterGroups(props.filters, props.sort)
+  const activeGroups = countActiveFilterGroups(filters, sort)
+  const countLabel = isStreaming
+    ? `${visibleCount} ${visibleCount === 1 ? "flight" : "flights"} so far…`
+    : isStale
+      ? "Updating results…"
+      : isFiltering
+        ? `${visibleCount} of ${totalCount} ${totalCount === 1 ? "flight" : "flights"}`
+        : `${visibleCount} ${visibleCount === 1 ? "flight" : "flights"}`
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      {/* Desktop: horizontal filter chips with count badges */}
-      <div className="hidden min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4 md:flex">
-        <FilterGroups {...props} />
-        {isFiltering ? (
-          <div>
-            <button
-              type="button"
-              onClick={onReset}
-              className="inline-flex min-h-11 touch-manipulation items-center rounded-full px-4 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <span>Clear all filters</span>
-            </button>
-          </div>
+      <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-3">
+        {mode ? (
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-wide uppercase",
+              mode === "domestic"
+                ? "border-primary/30 bg-primary/10 text-primary"
+                : "border-border bg-muted text-muted-foreground"
+            )}
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                "size-1.5 rounded-full",
+                mode === "domestic"
+                  ? "animate-pulse bg-primary motion-reduce:animate-none"
+                  : "bg-muted-foreground"
+              )}
+            />
+            <span>
+              {mode === "domestic" ? "Domestic · Live" : "International · Instant"}
+            </span>
+          </span>
         ) : null}
-      </div>
-
-      {/* Mobile: bottom-sheet trigger with active-count badge */}
-      <div className="flex items-center gap-2 md:hidden">
+        <p
+          aria-live="polite"
+          className="font-variant-numeric min-w-0 flex-1 text-sm font-medium text-muted-foreground tabular-nums"
+        >
+          {countLabel}
+        </p>
+        <div className="w-36 shrink-0">
+          <Select
+            label="Sort flights"
+            hideLabel
+            options={FLIGHT_SORT_KEYS.map((key) => ({
+              value: key,
+              label: SORT_LABELS[key],
+            }))}
+            value={sort}
+            onValueChange={(next) =>
+              onSortChange(next as FlightSortKey)
+            }
+          />
+        </div>
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
           aria-haspopup="dialog"
-          className="inline-flex min-h-12 flex-1 touch-manipulation items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
-          <span>Filters & sort</span>
+          <span>Filters</span>
           {activeGroups > 0 ? (
             <span
               aria-label={`${activeGroups} refinements active`}
-              className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground tabular-nums"
+              className="font-variant-numeric flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground tabular-nums"
             >
               {activeGroups}
             </span>
@@ -357,14 +419,13 @@ export function FlightFilterBar(props: FlightFilterBarProps) {
           <button
             type="button"
             onClick={onReset}
-            className="inline-flex min-h-12 touch-manipulation items-center justify-center rounded-xl px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-xl px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             <span>Clear</span>
           </button>
         ) : null}
       </div>
 
-      {/* Mobile: bottom sheet with large tap targets + sticky summary */}
       <DrawerPrimitive.Root open={sheetOpen} onOpenChange={setSheetOpen}>
         <DrawerPrimitive.Portal>
           <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-4 md:items-center">
@@ -392,7 +453,16 @@ export function FlightFilterBar(props: FlightFilterBarProps) {
                   </DrawerPrimitive.Close>
                 </div>
                 <div className="mt-4 min-w-0">
-                  <FilterGroups {...props} large />
+                  <FilterGroups
+                    filters={filters}
+                    sort={sort}
+                    onFiltersChange={onFiltersChange}
+                    onSortChange={onSortChange}
+                    airlineOptions={airlineOptions}
+                    priceCeilings={priceCeilings}
+                    durationCeilings={durationCeilings}
+                    large
+                  />
                 </div>
                 <div className="sticky bottom-0 -mx-6 mt-6 flex items-center gap-2 border-t border-border bg-card px-6 pt-4 pb-1">
                   <button

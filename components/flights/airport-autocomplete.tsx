@@ -78,9 +78,22 @@ export function AirportAutocomplete({
     setRecent(getRecentAirports())
   }, [])
 
-  // Debounce: 300ms, 2-char minimum
-  const deferredQuery = React.useDeferredValue(query)
+  // Run-guard + cancellation: continuous typing ends with the final text's
+  // suggestions — stale responses never commit. The raw input is debounced
+  // (300ms); deferred values only keep list rendering low-priority.
   const debounceRef = React.useRef<number | null>(null)
+  const runIdRef = React.useRef(0)
+  const abortRef = React.useRef<AbortController | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current)
+      abortRef.current?.abort()
+      abortRef.current = null
+      // Invalidate any in-flight run so late responses never commit.
+      runIdRef.current += 1
+    }
+  }, [])
 
   const filteredResults = React.useMemo(() => {
     if (!excludeIata) return results
@@ -96,36 +109,51 @@ export function AirportAutocomplete({
   const listItems: Airport[] = showRecent ? recent : deferredResults
 
   // Single-flight: searchAirports owns cache + dedup (module-level Maps).
-  // The component only debounces and filters — no duplicated Map lookups.
+  // The component owns debounce, cancellation, and the run-guard — no
+  // duplicated Map lookups. Stale runs never commit their list.
   const fetchResults = React.useCallback(
-    async (q: string) => {
+    async (q: string, runId: number, signal: AbortSignal) => {
       const trimmed = q.trim()
       if (trimmed.length < AIRPORT_MIN_CHARS) {
+        if (runId !== runIdRef.current) return
         setResults([])
         setIsSearching(false)
         return
       }
       setIsSearching(true)
       try {
-        const data = await searchAirports(trimmed)
+        const data = await searchAirports(trimmed, { signal })
+        if (runId !== runIdRef.current || signal.aborted) return
         const needle = excludeIata?.toUpperCase()
         setResults(
           needle
             ? data.filter((a) => a.iata_code.toUpperCase() !== needle)
             : data
         )
+      } catch {
+        // Abort or superseded run — never commit, never surface.
+        // Network failures resolve to [] inside searchAirports; an abort
+        // throws and lands here so the spinner simply stops for the new run.
+        if (runId !== runIdRef.current || signal.aborted) return
+        setResults([])
       } finally {
-        setIsSearching(false)
+        if (runId === runIdRef.current && !signal.aborted) {
+          setIsSearching(false)
+        }
       }
     },
     [excludeIata]
   )
 
-  // Debounced effect (300ms per spec §53)
+  // Debounced effect (300ms per spec §53) over the RAW input — never over an
+  // already-deferred value, so the final keystroke always schedules its own
+  // fetch and earlier runs are cancelled before they can commit.
   React.useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current)
+    // Cancel the previous in-flight lookup before scheduling the next.
+    abortRef.current?.abort()
 
-    const q = deferredQuery
+    const q = query
     if (q.trim().length < AIRPORT_MIN_CHARS) {
       setIsSearching(false)
       setResults([])
@@ -133,17 +161,22 @@ export function AirportAutocomplete({
       return
     }
 
+    setIsSearching(true)
     debounceRef.current = window.setTimeout(() => {
+      const runId = runIdRef.current + 1
+      runIdRef.current = runId
+      const controller = new AbortController()
+      abortRef.current = controller
       // Use transition so typing stays high priority (vercel: rerender-transitions)
       React.startTransition(() => {
-        void fetchResults(q)
+        void fetchResults(q, runId, controller.signal)
       })
     }, 300)
 
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current)
     }
-  }, [deferredQuery, fetchResults])
+  }, [query, fetchResults])
 
   const handleInputChange = (next: string) => {
     setQuery(next)

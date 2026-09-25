@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — Room Type choice with capacity and price preview.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Single full-name field plus email plus phone with Nigerian and international formats accepted then normalized, validated on blur, on submit, and before payment creation with human-readable errors
 - [ ] Stay inputs (Room Type, check-in and check-out, rooms, guests) revalidated against the capacity rule and date rules before any payment step

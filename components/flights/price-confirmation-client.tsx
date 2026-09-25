@@ -13,23 +13,38 @@ import {
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import {
+  buildCheckoutPartyQuery,
   confirmFlightPrice,
   getFlightSupportWhatsAppUrl,
   isOfferExpiredError,
   normalizeFlightOffer,
   readSelectedOffer,
+  readSelectedParty,
   resolvePriceConfirmation,
   saveConfirmedOffer,
   type FlightOffer,
   type FlightTripContext,
   type PriceConfirmOutcome,
 } from "@/lib/api/flights"
+import {
+  normalizeDomesticCard,
+  readSelectedDomesticCard,
+  resolveBookingBranch,
+  saveConfirmedDomesticCard,
+  type DomesticFlightCard,
+} from "@/lib/api/domestic"
 import { formatNaira } from "@/lib/format"
 import { track } from "@/lib/analytics"
 import { TrackLink } from "@/components/analytics/track-link"
 
 type ConfirmPhase =
-  "loading" | "missing" | "confirmed" | "changed" | "expired" | "error"
+  | "loading"
+  | "missing"
+  | "confirmed"
+  | "changed"
+  | "expired"
+  | "error"
+  | "domestic"
 
 type ChangedOutcome = Extract<PriceConfirmOutcome, { status: "changed" }>
 
@@ -39,6 +54,10 @@ type ChangedOutcome = Extract<PriceConfirmOutcome, { status: "changed" }>
  * (state) with a sessionStorage backup, revalidates via centralized apiPost,
  * and renders one branch: same → traveller entry, changed → fare-diff consent,
  * expired → re-search + Talk to Alphaa. Never books silently.
+ *
+ * Domestic Flight Cards take an explicit domestic branch: no Amadeus-style
+ * revalidation is ever attempted on a card carrying no opaque blob — the
+ * card is confirmed as-is and continues to Traveller entry.
  */
 export function PriceConfirmationClient() {
   const router = useRouter()
@@ -46,11 +65,20 @@ export function PriceConfirmationClient() {
   const [selectedOffer, setSelectedOffer] = React.useState<FlightOffer | null>(
     null
   )
+  const [domesticCard, setDomesticCard] =
+    React.useState<DomesticFlightCard | null>(null)
   const [confirmedOffer, setConfirmedOffer] =
     React.useState<FlightOffer | null>(null)
   const [changedOutcome, setChangedOutcome] =
     React.useState<ChangedOutcome | null>(null)
   const [error, setError] = React.useState<unknown | null>(null)
+
+  // Party query forwarded to Traveller entry so the slot count matches the
+  // search even though the opaque blob carries no party. Safe counts only.
+  const checkoutHref = React.useCallback(() => {
+    const party = readSelectedParty()
+    return party ? `/checkout?${buildCheckoutPartyQuery(party)}` : "/checkout"
+  }, [])
 
   const runConfirmation = React.useCallback(
     async (selected: FlightOffer) => {
@@ -66,7 +94,7 @@ export function PriceConfirmationClient() {
           saveConfirmedOffer(revalidated)
           setConfirmedOffer(revalidated)
           setPhase("confirmed")
-          router.replace("/checkout")
+          router.replace(checkoutHref())
         } else if (outcome.status === "changed") {
           setConfirmedOffer(revalidated)
           setChangedOutcome(outcome)
@@ -87,18 +115,37 @@ export function PriceConfirmationClient() {
         }
       }
     },
-    [router]
+    [router, checkoutHref]
   )
 
   // Mount-only fetch: the opaque blob is client-side (sessionStorage), so the
   // server cannot revalidate. Guarded against StrictMode double-invoke.
+  // Domestic cards are checked first and never enter Amadeus revalidation.
   const didRun = React.useRef(false)
   React.useEffect(() => {
     if (didRun.current) return
     didRun.current = true
+    const domesticSelected = readSelectedDomesticCard()
+    if (domesticSelected) {
+      setDomesticCard(domesticSelected)
+      // Persist for travellers/payment without ever calling the price endpoint.
+      saveConfirmedDomesticCard(domesticSelected)
+      saveConfirmedOffer(domesticSelected as unknown as FlightOffer)
+      setPhase("domestic")
+      return
+    }
     const selected = readSelectedOffer()
     if (!selected) {
       setPhase("missing")
+      return
+    }
+    // Defensive: a domestic-shaped blob saved via the legacy key still takes
+    // the domestic branch — card fields are never submitted as an opaque blob.
+    if (resolveBookingBranch(null, selected) === "domestic") {
+      const card = selected as unknown as DomesticFlightCard
+      setDomesticCard(card)
+      saveConfirmedDomesticCard(card)
+      setPhase("domestic")
       return
     }
     setSelectedOffer(selected)
@@ -106,6 +153,10 @@ export function PriceConfirmationClient() {
   }, [runConfirmation])
 
   const handleRetry = React.useCallback(() => {
+    if (domesticCard) {
+      setPhase("domestic")
+      return
+    }
     const selected = selectedOffer ?? readSelectedOffer()
     if (!selected) {
       setPhase("missing")
@@ -116,13 +167,19 @@ export function PriceConfirmationClient() {
     setChangedOutcome(null)
     setPhase("loading")
     void runConfirmation(selected)
-  }, [selectedOffer, runConfirmation])
+  }, [selectedOffer, domesticCard, runConfirmation])
 
   const handleContinue = React.useCallback(() => {
+    if (domesticCard) {
+      saveConfirmedDomesticCard(domesticCard)
+      saveConfirmedOffer(domesticCard as unknown as FlightOffer)
+      router.push(checkoutHref())
+      return
+    }
     if (!confirmedOffer) return
     saveConfirmedOffer(confirmedOffer)
-    router.push("/checkout")
-  }, [confirmedOffer, router])
+    router.push(checkoutHref())
+  }, [confirmedOffer, domesticCard, router, checkoutHref])
 
   const handleBackToResults = React.useCallback(() => {
     router.back()
@@ -130,8 +187,13 @@ export function PriceConfirmationClient() {
 
   // Derived during render, not effects (vercel: rerender-derived-state).
   const selectedSummary = React.useMemo(
-    () => (selectedOffer ? normalizeFlightOffer(selectedOffer, 0) : null),
-    [selectedOffer]
+    () =>
+      domesticCard
+        ? normalizeDomesticCard(domesticCard, 0)
+        : selectedOffer
+          ? normalizeFlightOffer(selectedOffer, 0)
+          : null,
+    [domesticCard, selectedOffer]
   )
   // Trip context for support hatches — route from the selected offer.
   const tripContext = React.useMemo<FlightTripContext>(
@@ -173,8 +235,8 @@ export function PriceConfirmationClient() {
           </div>
         </div>
         <div aria-hidden="true" className="flex min-w-0 flex-col gap-3">
-          <div className="h-16 animate-pulse rounded-xl bg-muted" />
-          <div className="h-9 animate-pulse rounded-xl bg-muted" />
+          <div className="h-16 animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
+          <div className="h-9 animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
         </div>
         <p className="text-xs leading-relaxed text-muted-foreground">
           This usually takes a few seconds. No booking is made and no payment is
@@ -368,6 +430,94 @@ export function PriceConfirmationClient() {
         <p className="text-center text-xs text-muted-foreground">
           No booking was made and no payment was taken. Your selected flight is
           kept — retry, or talk to Alphaa for help.
+        </p>
+      </div>
+    )
+  } else if (phase === "domestic" && domesticCard && selectedSummary) {
+    const domesticSupportUrl = getFlightSupportWhatsAppUrl(
+      "a domestic flight I want to book",
+      { ...tripContext, amount: formatNaira(selectedSummary.price) }
+    )
+    content = (
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex min-w-0 flex-col gap-5 rounded-2xl border border-border bg-card p-6 shadow-xs sm:p-8"
+      >
+        <div className="flex min-w-0 flex-col gap-2">
+          <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            Domestic flight · Economy
+          </span>
+          <h1 className="text-2xl font-extrabold tracking-tight text-balance text-foreground">
+            Your domestic flight is ready
+          </h1>
+          <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+            {selectedSummary.airline} {selectedSummary.airportsLabel} ·{" "}
+            {selectedSummary.departureAt} → {selectedSummary.arrivalAt} ·{" "}
+            {selectedSummary.stopsLabel}. Domestic fares are confirmed
+            directly with the airline at booking — no separate revalidation
+            step is needed, and nothing has been booked or charged yet.
+          </p>
+        </div>
+        <dl className="grid min-w-0 grid-cols-1 gap-3 rounded-xl bg-muted/50 p-4 sm:grid-cols-2">
+          <div className="min-w-0">
+            <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+              Total fare
+            </dt>
+            <dd className="font-variant-numeric mt-1 text-base font-extrabold text-foreground tabular-nums">
+              {formatNaira(selectedSummary.price)} · {selectedSummary.currency}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+              Route
+            </dt>
+            <dd className="mt-1 text-base font-bold text-foreground">
+              {selectedSummary.airportsLabel}
+            </dd>
+          </div>
+        </dl>
+        <div className="sticky bottom-4 flex min-w-0 flex-col gap-2 rounded-2xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur sm:flex-row">
+          <Button
+            type="button"
+            size="lg"
+            onClick={handleContinue}
+            className="flex-1 justify-center"
+          >
+            <span>Continue to traveller details</span>
+          </Button>
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            onClick={handleBackToResults}
+            className="flex-1 justify-center"
+          >
+            <span>Back to results</span>
+          </Button>
+          <Button
+            size="lg"
+            variant="ghost"
+            className="flex-1 justify-center"
+            render={
+              <TrackLink
+                event="support_click"
+                eventProps={{
+                  context: "a domestic flight I want to book",
+                  channel: "whatsapp",
+                }}
+                href={domesticSupportUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              />
+            }
+          >
+            <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
+            <span>Ask Alphaa</span>
+          </Button>
+        </div>
+        <p className="text-center text-xs text-muted-foreground">
+          Prices are in Naira. Continuing takes you to traveller details.
         </p>
       </div>
     )

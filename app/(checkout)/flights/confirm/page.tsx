@@ -1,6 +1,7 @@
 import * as React from "react"
 import type { Metadata } from "next"
 import { PriceConfirmationClient } from "@/components/flights/price-confirmation-client"
+import { FlightJourneyHeader } from "@/components/flights/flight-journey-header"
 import { canonicalUrl } from "@/lib/seo"
 
 export const metadata: Metadata = {
@@ -20,18 +21,21 @@ export const metadata: Metadata = {
 // (vercel: server-serialization).
 export default function ConfirmFlightPage() {
   return (
-    <React.Suspense
-      fallback={
-        <div
-          role="status"
-          aria-live="polite"
-          className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6"
-        >
-          Confirming live fare… airlines are rechecking this price…
-        </div>
-      }
-    >
-      <PriceConfirmationClient />
-    </React.Suspense>
+    <div className="mx-auto w-full max-w-2xl px-4 pt-6 sm:px-6">
+      <FlightJourneyHeader current={3} />
+      <React.Suspense
+        fallback={
+          <div
+            role="status"
+            aria-live="polite"
+            className="px-4 py-10 sm:px-6"
+          >
+            Confirming live fare… airlines are rechecking this price…
+          </div>
+        }
+      >
+        <PriceConfirmationClient />
+      </React.Suspense>
+    </div>
   )
 }

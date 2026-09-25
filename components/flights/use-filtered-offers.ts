@@ -5,6 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   DEFAULT_FILTERS,
   DEFAULT_SORT,
+  deriveDurationCeilings,
+  derivePriceCeilings,
   filterOffers,
   hasActiveFilters,
   readFilterState,
@@ -113,6 +115,17 @@ export function useFilteredOffers(displays: FlightOfferDisplay[]) {
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
   }, [displays])
 
+  // Live ceilings derive from accumulated cards (including mid-stream
+  // arrivals) so long-haul fares stay refinable; presets remain as shortcuts.
+  const priceCeilings = React.useMemo(
+    () => derivePriceCeilings(displays),
+    [displays]
+  )
+  const durationCeilings = React.useMemo(
+    () => deriveDurationCeilings(displays),
+    [displays]
+  )
+
   // Non-urgent list updates stay in transitions (vercel: rerender-transitions).
   const updateFilters = React.useCallback((patch: Partial<FlightFilters>) => {
     React.startTransition(() => {
@@ -144,6 +157,8 @@ export function useFilteredOffers(displays: FlightOfferDisplay[]) {
     isFiltering: hasActiveFilters(filters),
     totalCount: displays.length,
     airlineOptions,
+    priceCeilings,
+    durationCeilings,
   }
 }
 

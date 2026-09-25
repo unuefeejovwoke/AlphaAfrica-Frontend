@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Hotel detail with gallery, rooms, and SEO.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Exactly one Room Type selectable per Hotel Booking via an accessible radio choice showing name, description, per-night price, per-room capacity, and room count
 - [ ] Capacity enforced as guests at most per-room capacity times rooms with inline guidance to add rooms or choose another Room Type; zero-capacity rows never block

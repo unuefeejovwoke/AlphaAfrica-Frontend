@@ -22,6 +22,7 @@ import {
   type HotelServerFilterValue,
 } from "@/components/hotels/hotel-filters"
 import { ApiError } from "@/lib/api/client"
+import { track } from "@/lib/analytics"
 import { formatNaira } from "@/lib/format"
 import {
   DEFAULT_HOTEL_GUESTS,
@@ -228,6 +229,14 @@ export function HotelSearchPageClient() {
 
   const handleSearch = React.useCallback(
     (query: HotelSearchQuery) => {
+      // Funnel: coarse search shape only — never destination text, dates,
+      // or anything personal (ticket 07).
+      track("hotel_search", {
+        has_destination: query.destination.trim().length > 0,
+        has_dates: query.check_in !== "" && query.check_out !== "",
+        guests: query.guests,
+        rooms: query.rooms,
+      })
       // The search form owns destination, dates, and party only — active
       // server filters survive a new search instead of being dropped.
       const merged: HotelSearchQuery = {
@@ -646,16 +655,41 @@ export function HotelSearchPageClient() {
         {resultsContent}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-6 text-xs leading-relaxed text-muted-foreground">
+      <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-6 text-xs leading-relaxed text-muted-foreground">
         <h3 className="text-sm font-semibold text-foreground">
           How hotel pricing works
         </h3>
-        <p className="mt-1">
+        <p>
           From-prices are per night in Naira and reflect the lowest Room Type at
           each Hotel. Your stay dates and party travel in the address bar, so
           you can share or revisit this search. The exact amount is confirmed
           before you pay.
         </p>
+        <div>
+          <Button
+            render={
+              <TrackLink
+                event="support_click"
+                eventProps={{
+                  context: "hotel pricing explainer",
+                  channel: "whatsapp",
+                }}
+                href={getHotelSupportWhatsAppUrl(
+                  "hotel prices for my stay",
+                  stayContext
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+              />
+            }
+            variant="ghost"
+            size="sm"
+            className="w-fit"
+          >
+            <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
+            <span>Ask Alphaa about prices</span>
+          </Button>
+        </div>
       </section>
     </div>
   )

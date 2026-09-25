@@ -29,6 +29,7 @@ function card(overrides: Partial<FlightOfferDisplay>): FlightOfferDisplay {
     baggage: null,
     price: "185000",
     currency: "NGN",
+    journeys: [],
     raw: {} as FlightOffer,
     ...overrides,
   }

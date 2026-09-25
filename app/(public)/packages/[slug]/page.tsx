@@ -7,17 +7,8 @@ import {
   Calendar01Icon,
   Tick01Icon,
   StarIcon,
-  Message01Icon,
-  ArrowRight01Icon,
-  SparklesIcon,
-  SecurityCheckIcon,
-  Passport01Icon,
-  HeadphonesIcon,
-  Call02Icon,
   InformationCircleIcon,
-  Luggage01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
 import { PackageEnquiryForm } from "@/components/packages/package-enquiry-form"
@@ -25,10 +16,9 @@ import { PackageGallery } from "@/components/packages/package-gallery"
 import {
   PackageShareButton,
   PackageMobileBar,
+  BookNowButton,
 } from "@/components/packages/package-detail-client"
 import { ViewTracker } from "@/components/analytics/view-tracker"
-import { TrackLink } from "@/components/analytics/track-link"
-import { TerminalCta } from "@/components/shared/terminal-cta"
 import { getPackages, getPackageDetail } from "@/lib/api/packages"
 import { ApiError } from "@/lib/api/client"
 import { formatNaira } from "@/lib/format"
@@ -38,7 +28,6 @@ import {
   packageDetailJsonLd,
   resolveListingImageUrl,
 } from "@/lib/listings"
-import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
 
 export const revalidate = 3600
 export const dynamicParams = true
@@ -50,8 +39,6 @@ export async function generateStaticParams(): Promise<DetailParams[]> {
     const page = await getPackages()
     return page.results.map((pkg) => ({ slug: pkg.slug }))
   } catch {
-    // Backend may be unreachable at build time; ISR + dynamicParams
-    // still renders new slugs on demand at runtime.
     return []
   }
 }
@@ -98,32 +85,27 @@ export async function generateMetadata({
 
 const PACKAGE_FAQS = [
   {
-    q: "Can I customize the itinerary or dates?",
-    a: "Yes! Every Alphaa Africa holiday is fully customizable. Once you submit an enquiry, our travel specialist will discuss your preferred travel dates, duration, hotel upgrades, and activity adjustments.",
+    q: "Can I customize the itinerary or travel dates?",
+    a: "Yes. Every holiday package is fully customizable. Once you submit an enquiry, our travel team will adjust dates, duration, hotel tiers, and activities to match your plans before finalizing.",
   },
   {
-    q: "Are flights included in the price?",
-    a: "The starting price covers the curated land package (accommodation, transfers, tours, and meals as noted). Our Abuja team can bundle international or domestic flights from Abuja or Lagos at competitive live airline rates.",
+    q: "Are flights included in the starting price?",
+    a: "The displayed starting price covers the curated land package (accommodation, transfers, tours, and meals as specified). We can easily bundle domestic or international flights at competitive airline rates upon request.",
   },
   {
-    q: "How does payment work?",
-    a: "Enquiring is 100% free with zero deposit. Once you and our specialist finalize your tailored itinerary, you will receive a transparent invoice and secure Paystack payment link in Naira.",
+    q: "When and how do I pay?",
+    a: "Submitting an enquiry is 100% free with zero deposit. Once you review and approve your tailored itinerary, you will receive a transparent invoice and secure Paystack payment link.",
   },
   {
     q: "Can you assist with visas for this destination?",
-    a: "Absolutely. Alphaa Africa offers comprehensive visa advisory and document preparation services for all our travel destinations.",
+    a: "Yes. Alphaa Africa provides complete visa advisory and application support for all our holiday destinations.",
   },
 ]
 
 /**
- * `/packages/[slug]` (RSC, ISR 3600): Elevated editorial luxury package detail page.
- * Cohesive with Homepage and Visa design systems:
- * - Editorial mosaic gallery with interactive fullscreen lightbox
- * - Luxury spec ribbon with key trip parameters
- * - Rich narrative overview & curated highlights cards
- * - Inclusions breakdown with Alphaa travel assurance
- * - Interactive Enquiry widget with steppers and quick prompts
- * - Mobile floating conversion bar
+ * `/packages/[slug]` (RSC, ISR 3600): Redesigned package detail page.
+ * Uses the site-wide max-w-7xl container matching header and footer.
+ * Clear editorial flow with hero, quick action bar, narrative, highlights, inclusions, and clean enquiry form at the bottom.
  */
 export default async function PackageDetailPage({
   params,
@@ -172,7 +154,7 @@ export default async function PackageDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* 1. Top Bar: Breadcrumb & Social Actions */}
+      {/* 1. Breadcrumb & Share Action */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4">
         <nav
           aria-label="Breadcrumb"
@@ -210,44 +192,15 @@ export default async function PackageDetailPage({
           </span>
         </nav>
 
-        <div className="flex items-center gap-2.5">
-          <PackageShareButton
-            title={pkg.title}
-            destinationName={pkg.destination_name}
-          />
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "package detail top bar",
-                  channel: "whatsapp",
-                }}
-                href={getSupportWhatsAppUrl(
-                  `the ${pkg.title} holiday package to ${pkg.destination_name}`
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            variant="outline"
-            size="xs"
-            className="h-8 gap-1.5 rounded-full px-3 text-xs"
-          >
-            <HugeiconsIcon
-              icon={Message01Icon}
-              size={14}
-              className="text-emerald-600"
-              aria-hidden="true"
-            />
-            <span>Ask Specialist</span>
-          </Button>
-        </div>
+        <PackageShareButton
+          title={pkg.title}
+          destinationName={pkg.destination_name}
+        />
       </div>
 
-      {/* 2. Package Title & Hero Section */}
+      {/* 2. Hero Header: Title, Tags & Photo Showcase */}
       <section aria-labelledby="package-title" className="flex flex-col gap-6">
-        <div className="flex max-w-4xl flex-col gap-3">
+        <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
             <Link
               href={`/destinations/${pkg.destination_slug}`}
@@ -291,7 +244,7 @@ export default async function PackageDetailPage({
           </h1>
 
           {pkg.summary && (
-            <p className="text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
+            <p className="max-w-3xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
               {pkg.summary}
             </p>
           )}
@@ -306,497 +259,197 @@ export default async function PackageDetailPage({
         />
       </section>
 
-      {/* 3. Luxury Spec Ribbon / Key Facts Strip */}
-      <section aria-label="Key trip specifications">
-        <div className="rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 dark:border-white/10 dark:bg-zinc-900/40">
-          <div className="grid grid-cols-2 gap-3 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:gap-4 sm:p-6 md:grid-cols-4 dark:border-white/[0.06]">
-            {/* Duration */}
-            <div className="flex items-start gap-3 p-2">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <HugeiconsIcon
-                  icon={Calendar01Icon}
-                  size={20}
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  Duration
-                </span>
-                <span className="font-variant-numeric text-sm font-bold text-foreground tabular-nums">
-                  {durationFormatted}
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  Customizable pace
-                </span>
-              </div>
+      {/* 3. Package Action Bar: Price & Immediate "Book Now" CTA */}
+      <section aria-label="Package booking actions">
+        <div className="flex flex-col items-start justify-between gap-6 rounded-3xl border border-border/80 bg-muted/30 p-6 sm:flex-row sm:items-center sm:p-8">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Starting Price
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+                {formatNaira(pkg.price)}
+              </span>
+              <span className="text-sm font-medium text-muted-foreground">
+                / person
+              </span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Zero upfront deposit · Fully customizable
+            </p>
+          </div>
 
-            {/* Destination */}
-            <div className="flex items-start gap-3 p-2">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <HugeiconsIcon
-                  icon={Location01Icon}
-                  size={20}
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  Destination
-                </span>
-                <span className="max-w-[140px] truncate text-sm font-bold text-foreground">
-                  {pkg.destination_name}
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  Curated itinerary
-                </span>
-              </div>
-            </div>
-
-            {/* Starting Price */}
-            <div className="flex items-start gap-3 p-2">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
-                <HugeiconsIcon icon={Tick01Icon} size={20} aria-hidden="true" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  Starting Price
-                </span>
-                <span className="text-sm font-bold text-foreground">
-                  {formatNaira(pkg.price)}
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  Per person · No hidden fees
-                </span>
-              </div>
-            </div>
-
-            {/* Assisted Service */}
-            <div className="flex items-start gap-3 p-2">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-                <HugeiconsIcon
-                  icon={Passport01Icon}
-                  size={20}
-                  aria-hidden="true"
-                />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  Service Level
-                </span>
-                <span className="text-sm font-bold text-foreground">
-                  Human-Guided
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  Abuja travel desk
-                </span>
-              </div>
-            </div>
+          <div className="flex w-full sm:w-auto">
+            <BookNowButton className="h-12 w-full justify-center px-8 text-base shadow-md shadow-primary/20 sm:w-auto" />
           </div>
         </div>
       </section>
 
-      {/* 4. Main Two-Column Layout */}
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_420px] lg:gap-14">
-        {/* Left Column: Itinerary Details, Inclusions, Highlights & FAQ */}
-        <div className="flex min-w-0 flex-col gap-12 sm:gap-14">
-          {/* About & Narrative Description */}
-          {pkg.description && (
-            <section
-              aria-labelledby="package-about-heading"
-              className="flex flex-col gap-4"
-            >
-              <div className="flex items-center gap-2">
-                <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <HugeiconsIcon
-                    icon={SparklesIcon}
-                    size={16}
-                    aria-hidden="true"
-                  />
-                </span>
-                <h2
-                  id="package-about-heading"
-                  className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-                >
-                  About this experience
-                </h2>
-              </div>
-
-              <div className="prose prose-zinc dark:prose-invert max-w-none space-y-4 text-sm leading-relaxed text-muted-foreground md:text-base">
-                {pkg.description.split(/\n{2,}/).map((paragraph, index) => (
-                  <p key={index} className="leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-
-              {/* Specialist Promise Callout */}
-              <div className="mt-2 flex flex-col items-start gap-4 rounded-2xl border border-border/80 bg-muted/30 p-5 sm:flex-row sm:p-6">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <HugeiconsIcon
-                    icon={HeadphonesIcon}
-                    size={22}
-                    aria-hidden="true"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <h3 className="text-sm font-bold text-foreground">
-                    Tailored around your lifestyle
-                  </h3>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Looking to adjust hotel tiers, extend your stay, or add a
-                    private excursion? Our Abuja travel advisors work directly
-                    with you to craft the perfect itinerary before any payment
-                    is made.
-                  </p>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Curated Highlights */}
-          {pkg.highlights_list.length > 0 && (
-            <section
-              aria-labelledby="package-highlights-heading"
-              className="flex flex-col gap-5"
-            >
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold tracking-wider text-primary uppercase">
-                  Memorable Moments
-                </span>
-                <h2
-                  id="package-highlights-heading"
-                  className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-                >
-                  Trip Highlights
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 sm:gap-4">
-                {pkg.highlights_list.map((highlight, index) => (
-                  <div
-                    key={highlight}
-                    className="group relative flex flex-col rounded-2xl border border-border/80 bg-muted/30 p-1 shadow-2xs transition-all hover:border-foreground/20 hover:shadow-xs"
-                  >
-                    <div className="flex flex-1 items-start gap-3 rounded-[calc(1rem-2px)] bg-card p-4">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 font-mono text-xs font-bold text-primary">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <p className="text-xs leading-relaxed font-medium text-foreground sm:text-sm">
-                        {highlight}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* What's Included & Alphaa Guarantees */}
-          {pkg.inclusions_list.length > 0 && (
-            <section
-              aria-labelledby="package-included-heading"
-              className="flex flex-col gap-6"
-            >
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-400">
-                  Comprehensive Inclusions
-                </span>
-                <h2
-                  id="package-included-heading"
-                  className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-                >
-                  What&apos;s Included
-                </h2>
-              </div>
-
-              <div className="rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 dark:border-white/10 dark:bg-zinc-900/40">
-                <div className="rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-7">
-                  <ul className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                    {pkg.inclusions_list.map((inclusion) => (
-                      <li
-                        key={inclusion}
-                        className="flex items-start gap-3 text-xs text-foreground sm:text-sm"
-                      >
-                        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
-                          <HugeiconsIcon
-                            icon={Tick01Icon}
-                            size={14}
-                            aria-hidden="true"
-                          />
-                        </span>
-                        <span className="leading-relaxed font-medium">
-                          {inclusion}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* Alphaa Peace of Mind Pack */}
-                  <div className="mt-6 flex flex-col gap-3 border-t border-border/70 pt-6">
-                    <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                      Complimentary Alphaa Africa Perks
-                    </span>
-                    <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground sm:grid-cols-3">
-                      <div className="flex items-center gap-2">
-                        <HugeiconsIcon
-                          icon={SecurityCheckIcon}
-                          size={16}
-                          className="shrink-0 text-primary"
-                        />
-                        <span>Airport Meet & Greet</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <HugeiconsIcon
-                          icon={HeadphonesIcon}
-                          size={16}
-                          className="shrink-0 text-primary"
-                        />
-                        <span>24/7 On-Trip Concierge</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <HugeiconsIcon
-                          icon={Passport01Icon}
-                          size={16}
-                          className="shrink-0 text-primary"
-                        />
-                        <span>Visa Application Guidance</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Why Book With Alphaa Africa (Brand Trust Bento) */}
+      {/* 4. Middle Content: Overview, Highlights, Inclusions & FAQ */}
+      <div className="flex flex-col gap-12 sm:gap-16">
+        {/* Narrative Description */}
+        {pkg.description && (
           <section
-            aria-labelledby="why-alphaa-heading"
+            aria-labelledby="package-about-heading"
+            className="flex flex-col gap-4"
+          >
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-bold tracking-wider text-primary uppercase">
+                The Experience
+              </span>
+              <h2
+                id="package-about-heading"
+                className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+              >
+                About this holiday
+              </h2>
+            </div>
+
+            <div className="prose prose-zinc dark:prose-invert max-w-none space-y-4 text-sm leading-relaxed text-muted-foreground md:text-base">
+              {pkg.description.split(/\n{2,}/).map((paragraph, index) => (
+                <p key={index} className="leading-relaxed">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Highlights */}
+        {pkg.highlights_list.length > 0 && (
+          <section
+            aria-labelledby="package-highlights-heading"
             className="flex flex-col gap-5"
           >
             <div className="flex flex-col gap-1">
               <span className="text-xs font-bold tracking-wider text-primary uppercase">
-                The Alphaa Guarantee
+                Highlights
               </span>
               <h2
-                id="why-alphaa-heading"
+                id="package-highlights-heading"
                 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
               >
-                Why book this journey with us?
+                What you&apos;ll experience
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {/* Card 1: Zero Deposit */}
-              <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <HugeiconsIcon
-                    icon={Tick01Icon}
-                    size={20}
-                    aria-hidden="true"
-                  />
-                </div>
-                <h3 className="text-base font-bold text-foreground">
-                  Zero Upfront Deposit
-                </h3>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Enquire and customize your itinerary completely free of
-                  charge. You only pay when you are 100% satisfied with the
-                  plan.
-                </p>
-              </div>
-
-              {/* Card 2: Real Travel Specialists */}
-              <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-                  <HugeiconsIcon
-                    icon={HeadphonesIcon}
-                    size={20}
-                    aria-hidden="true"
-                  />
-                </div>
-                <h3 className="text-base font-bold text-foreground">
-                  Abuja Travel Concierge
-                </h3>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Real human specialists in Abuja CBD dedicated to answering
-                  questions, managing flight changes, and ensuring seamless
-                  travel.
-                </p>
-              </div>
-
-              {/* Card 3: Handpicked Partners */}
-              <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
-                  <HugeiconsIcon icon={StarIcon} size={20} aria-hidden="true" />
-                </div>
-                <h3 className="text-base font-bold text-foreground">
-                  Handpicked Stays & Tours
-                </h3>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Every resort, vehicle, and excursion is vetted for comfort,
-                  safety, and authentic hospitality by experienced scouts.
-                </p>
-              </div>
-
-              {/* Card 4: End-to-End Assistance */}
-              <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <HugeiconsIcon
-                    icon={Luggage01Icon}
-                    size={20}
-                    aria-hidden="true"
-                  />
-                </div>
-                <h3 className="text-base font-bold text-foreground">
-                  End-to-End Coverage
-                </h3>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  From international flights to visa approvals and travel
-                  insurance, we orchestrate all elements under one unified
-                  booking.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Frequently Asked Questions */}
-          <section
-            aria-labelledby="package-faq-heading"
-            className="flex flex-col gap-5"
-          >
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                Helpful Details
-              </span>
-              <h2
-                id="package-faq-heading"
-                className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-              >
-                Frequently Asked Questions
-              </h2>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {PACKAGE_FAQS.map((faq) => (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {pkg.highlights_list.map((highlight, index) => (
                 <div
-                  key={faq.q}
-                  className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-card p-5 shadow-xs sm:p-6"
+                  key={highlight}
+                  className="flex items-start gap-3.5 rounded-2xl border border-border/80 bg-card p-5 shadow-2xs transition-colors hover:border-foreground/20"
                 >
-                  <h3 className="flex items-center gap-2 text-sm font-bold text-foreground sm:text-base">
-                    <HugeiconsIcon
-                      icon={InformationCircleIcon}
-                      size={16}
-                      className="shrink-0 text-primary"
-                      aria-hidden="true"
-                    />
-                    <span>{faq.q}</span>
-                  </h3>
-                  <p className="pl-6 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                    {faq.a}
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 font-mono text-xs font-bold text-primary">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <p className="text-sm leading-relaxed font-medium text-foreground">
+                    {highlight}
                   </p>
                 </div>
               ))}
             </div>
           </section>
-        </div>
+        )}
 
-        {/* Right Column: Sticky Enquiry Widget & Quick Contact */}
-        <aside aria-label="Book this package" className="min-w-0">
-          <div className="flex flex-col gap-5 lg:sticky lg:top-24">
-            {/* The Main Enquiry Form */}
-            <div id="enquiry" className="scroll-mt-24">
-              <PackageEnquiryForm
-                packageSlug={pkg.slug}
-                packageTitle={pkg.title}
-                destinationName={pkg.destination_name}
-                packagePrice={pkg.price}
-              />
+        {/* Inclusions */}
+        {pkg.inclusions_list.length > 0 && (
+          <section
+            aria-labelledby="package-included-heading"
+            className="flex flex-col gap-5"
+          >
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-400">
+                Transparent Inclusions
+              </span>
+              <h2
+                id="package-included-heading"
+                className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+              >
+                What&apos;s included
+              </h2>
             </div>
 
-            {/* Quick Contact Help Card */}
-            <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <HugeiconsIcon
-                    icon={Call02Icon}
-                    size={18}
-                    aria-hidden="true"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-foreground">
-                    Need immediate assistance?
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    Speak directly with our Abuja desk
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <Button
-                  render={
-                    <a
-                      href={company.phone.href}
-                      className="justify-center text-xs"
-                    />
-                  }
-                  variant="outline"
-                  size="sm"
-                >
-                  <HugeiconsIcon
-                    icon={Call02Icon}
-                    size={14}
-                    aria-hidden="true"
-                  />
-                  <span>Call Office</span>
-                </Button>
-                <Button
-                  render={
-                    <TrackLink
-                      event="support_click"
-                      eventProps={{
-                        context: "package detail sidebar",
-                        channel: "whatsapp",
-                      }}
-                      href={getSupportWhatsAppUrl(`package: ${pkg.title}`)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="justify-center text-xs"
-                    />
-                  }
-                  variant="outline"
-                  size="sm"
-                  className="border-emerald-300 text-emerald-700 hover:text-emerald-800 dark:border-emerald-800"
-                >
-                  <HugeiconsIcon
-                    icon={Message01Icon}
-                    size={14}
-                    className="text-emerald-600"
-                    aria-hidden="true"
-                  />
-                  <span>WhatsApp</span>
-                </Button>
-              </div>
-
-              <p className="border-t border-border/50 pt-1 text-center text-[11px] text-muted-foreground">
-                Office: Suite B4, Statement Hotel Building, CBD Abuja
-              </p>
+            <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-xs sm:p-8">
+              <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {pkg.inclusions_list.map((inclusion) => (
+                  <li
+                    key={inclusion}
+                    className="flex items-start gap-3 text-sm text-foreground"
+                  >
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                      <HugeiconsIcon
+                        icon={Tick01Icon}
+                        size={13}
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <span className="leading-relaxed font-medium">
+                      {inclusion}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
+          </section>
+        )}
+
+        {/* Frequently Asked Questions */}
+        <section
+          aria-labelledby="package-faq-heading"
+          className="flex flex-col gap-5"
+        >
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+              Good to Know
+            </span>
+            <h2
+              id="package-faq-heading"
+              className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+            >
+              Frequently asked questions
+            </h2>
           </div>
-        </aside>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {PACKAGE_FAQS.map((faq) => (
+              <div
+                key={faq.q}
+                className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-card p-5 shadow-2xs sm:p-6"
+              >
+                <h3 className="flex items-start gap-2 text-sm font-bold text-foreground sm:text-base">
+                  <HugeiconsIcon
+                    icon={InformationCircleIcon}
+                    size={18}
+                    className="mt-0.5 shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
+                  <span>{faq.q}</span>
+                </h3>
+                <p className="pl-6.5 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                  {faq.a}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
 
-      {/* 5. Terminal CTA */}
-      <TerminalCta
-        title="Need something completely bespoke?"
-        description="Different dates, more travellers, or another destination entirely? A specialist in Abuja will reshape this plan around you — or build a custom trip from scratch."
-        eyebrow="Bespoke Variations"
-        primaryHref="/contact"
-        primaryLabel="Contact Us"
-      />
+      {/* 5. Booking Section at the Bottom */}
+      <section
+        id="book-now"
+        aria-label="Book this package"
+        className="scroll-mt-20 pt-6"
+      >
+        <div id="enquiry" className="scroll-mt-20">
+          <PackageEnquiryForm
+            packageSlug={pkg.slug}
+            packageTitle={pkg.title}
+            destinationName={pkg.destination_name}
+            packagePrice={pkg.price}
+            durationFormatted={durationFormatted}
+          />
+        </div>
+      </section>
 
       {/* 6. Mobile Floating Action Bar */}
       <PackageMobileBar price={pkg.price} title={pkg.title} />

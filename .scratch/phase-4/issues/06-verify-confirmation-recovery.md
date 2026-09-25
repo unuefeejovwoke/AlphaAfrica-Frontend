@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 — Hotel Guest form with creation and Paystack redirect.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Reference-only verification with no caching that never assumes return means success, showing an explicit do-not-close verifying state
 - [ ] Confirmed state shows Hotel Booking reference, Hotel and Room Type names, check-in and check-out, nights, rooms, guests, per-night price, total amount, payment state, and next steps

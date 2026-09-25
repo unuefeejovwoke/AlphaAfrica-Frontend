@@ -23,6 +23,7 @@ export interface SelectProps {
   helperText?: string
   className?: string
   hideLabel?: boolean
+  disabled?: boolean
 }
 
 export function Select({
@@ -37,6 +38,7 @@ export function Select({
   helperText,
   className,
   hideLabel = false,
+  disabled = false,
 }: SelectProps) {
   const id = React.useId()
   const handleValueChange = (next: string | null) => {
@@ -58,6 +60,7 @@ export function Select({
         value={value}
         defaultValue={defaultValue}
         onValueChange={handleValueChange}
+        disabled={disabled}
       >
         <SelectPrimitive.Trigger
           id={id}
@@ -68,6 +71,7 @@ export function Select({
           className={cn(
             "flex h-10 w-full touch-manipulation items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-sm text-foreground shadow-xs transition-colors",
             "hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none",
+            "disabled:cursor-not-allowed disabled:opacity-50",
             error && "border-destructive"
           )}
         >

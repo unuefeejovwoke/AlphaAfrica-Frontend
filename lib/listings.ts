@@ -309,3 +309,97 @@ export function packageDetailJsonLd(input: PackageDetailJsonLdInput) {
     },
   }
 }
+
+export interface HotelDetailJsonLdInput {
+  name: string
+  slug: string
+  description?: string
+  city: string
+  address?: string
+  country?: string
+  star_rating?: number
+  main_image: string
+  latitude?: string | null
+  longitude?: string | null
+  starting_price: string
+  room_types: { name: string; price_per_night: string }[]
+}
+
+/**
+ * Hotel graph for `/hotels/[slug]` (GEO/AI-SEO): factual Hotel, place, Room
+ * Type, price, and amenity relationships only. Never fabricates reviews,
+ * ratings aggregates, partnerships, or certifications — only backend-carried
+ * facts (star rating, coordinates, Room Type prices) appear.
+ */
+export function hotelDetailJsonLd(input: HotelDetailJsonLdInput) {
+  const url = canonicalUrl(`/hotels/${input.slug}`)
+  const price = parsePriceAmount(input.starting_price)
+  const lat = input.latitude?.trim() ?? ""
+  const lng = input.longitude?.trim() ?? ""
+  const street = input.address?.trim() ?? ""
+  const country = input.country?.trim() ?? ""
+  return {
+    "@context": "https://schema.org",
+    "@type": "Hotel",
+    name: input.name,
+    description:
+      input.description && input.description.length > 0
+        ? input.description
+        : `${input.name} in ${input.city} — bookable with human help from Alphaa Africa.`,
+    image: resolveListingImageUrl(input.main_image),
+    url,
+    address: {
+      "@type": "PostalAddress",
+      ...(street.length > 0 ? { streetAddress: street } : {}),
+      addressLocality: input.city,
+      ...(country.length > 0 ? { addressCountry: country } : {}),
+    },
+    ...(lat.length > 0 && lng.length > 0
+      ? {
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: lat,
+            longitude: lng,
+          },
+        }
+      : {}),
+    ...(input.star_rating !== undefined && input.star_rating >= 1
+      ? {
+          starRating: {
+            "@type": "Rating",
+            ratingValue: input.star_rating,
+          },
+        }
+      : {}),
+    containsPlace: input.room_types.map((room) => {
+      const roomPrice = parsePriceAmount(room.price_per_night)
+      return {
+        "@type": "HotelRoom",
+        name: room.name,
+        url,
+        ...(roomPrice !== null
+          ? {
+              offers: {
+                "@type": "Offer",
+                price: String(roomPrice),
+                priceCurrency: "NGN",
+                availability: "https://schema.org/InStock",
+                url,
+              },
+            }
+          : {}),
+      }
+    }),
+    ...(price !== null
+      ? {
+          makesOffer: {
+            "@type": "Offer",
+            price: String(price),
+            priceCurrency: "NGN",
+            availability: "https://schema.org/InStock",
+            url,
+          },
+        }
+      : {}),
+  }
+}

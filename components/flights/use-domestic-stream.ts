@@ -23,6 +23,8 @@ export interface DomesticStreamState {
   didFallback: boolean
   searchId: string | null
   error: unknown | null
+  /** Wall-clock start of the current run — drives honest elapsed-time copy. */
+  startedAt: number | null
 }
 
 /**
@@ -30,10 +32,15 @@ export interface DomesticStreamState {
  *
  * - New `start` calls and unmount abort the prior stream; stale chunks never
  *   commit state (run-id + mounted guards).
- * - Terminal `done` event captures `search_id` for support references.
- * - Stream error/timeout automatically falls back to blocking local-search.
+ * - The search reference is captured early (any event carrying search_id)
+ *   and retained on completion for support tracing.
+ * - Stream error/timeout automatically falls back to blocking local-search;
+ *   clean completion or user abort never does.
  * - Card appends ride `startTransition` (vercel: rendering-usetransition-loading)
  *   so typing stays responsive while results reconcile.
+ * - Cancel (abort) during streaming or fallback stops work promptly: the
+ *   blocking fallback carries its own AbortController + signal, and late
+ *   commits are dropped by the run guard.
  */
 export function useDomesticStream() {
   const [state, setState] = React.useState<DomesticStreamState>({
@@ -44,6 +51,7 @@ export function useDomesticStream() {
     didFallback: false,
     searchId: null,
     error: null,
+    startedAt: null,
   })
 
   const abortRef = React.useRef<AbortController | null>(null)
@@ -82,6 +90,7 @@ export function useDomesticStream() {
       didFallback: false,
       searchId: null,
       error: null,
+      startedAt: Date.now(),
     })
 
     const fail = (error: unknown) => {
@@ -101,7 +110,9 @@ export function useDomesticStream() {
       const fallbackController = new AbortController()
       abortRef.current = fallbackController
       try {
-        const cards = await fetchDomesticBlocking(params)
+        const cards = await fetchDomesticBlocking(params, {
+          signal: fallbackController.signal,
+        })
         if (!mountedRef.current || runId !== runIdRef.current) return
         if (fallbackController.signal.aborted) return
         setState((prev) => ({
@@ -111,10 +122,21 @@ export function useDomesticStream() {
           isFallingBack: false,
           isComplete: true,
           didFallback: true,
+          // Empty fallback keeps the stream error for display, but retains
+          // any early search reference already captured.
           error: cards.length === 0 ? prev.error : null,
         }))
       } catch (fallbackError) {
         if (!mountedRef.current || runId !== runIdRef.current) return
+        if (
+          (fallbackError instanceof DOMException &&
+            fallbackError.name === "AbortError") ||
+          (fallbackError instanceof Error &&
+            fallbackError.name === "AbortError")
+        ) {
+          // User cancelled during fallback — stop quietly, no late commits.
+          return
+        }
         fail(
           fallbackError instanceof ApiError
             ? fallbackError
@@ -165,6 +187,18 @@ export function useDomesticStream() {
             buffer = buffer.slice(boundary + 2)
             const parsed = parseSseEventBlock(block)
             if (parsed) {
+              // Early reference: any event carrying a search id updates the
+              // visible ref immediately; the terminal done id wins finally.
+              if (parsed.searchId) {
+                const earlyId = parsed.searchId
+                if (mountedRef.current && runId === runIdRef.current) {
+                  setState((prev) =>
+                    prev.searchId === earlyId
+                      ? prev
+                      : { ...prev, searchId: earlyId }
+                  )
+                }
+              }
               if (parsed.event === DOMESTIC_SSE_DONE_EVENT) {
                 doneSeen = true
                 doneSearchId =
@@ -221,7 +255,8 @@ export function useDomesticStream() {
           isStreaming: false,
           isFallingBack: false,
           isComplete: true,
-          searchId: doneSearchId,
+          // Retain the early reference when the terminal event carries no id.
+          searchId: doneSearchId ?? prev.searchId,
           error: null,
         }))
         return

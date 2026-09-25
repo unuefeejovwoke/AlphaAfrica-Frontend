@@ -1,8 +1,13 @@
 import { z } from "zod"
-import { ApiError, apiGet, type PaginatedResponse } from "./client.ts"
+import { ApiError, apiGet, apiPost, type PaginatedResponse } from "./client.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
 import { resolveListingImageUrl } from "../listings.ts"
+import {
+  emailSchema,
+  fullNameSchema,
+  nigerianPhoneSchema,
+} from "./validation.ts"
 
 /**
  * Hotel domain — search foundation (Phase 4, ticket 01).
@@ -621,4 +626,662 @@ export function getHotelSupportWhatsAppUrl(
   const detail = stay ? describeHotelStay(stay) : ""
   const context = detail ? `${topic} (${detail})` : topic
   return getSupportWhatsAppUrl(context)
+}
+
+// ---------------------------------------------------------------------------
+// Hotel detail — ISR reads with display mapping (ticket 03).
+// Stable Hotel content uses timed revalidation (ADR-0005); search, creation,
+// and verification opt out of caching entirely. Location is display-only
+// place context with a map link only when coordinates exist — no radius or
+// geo-query behavior in v1.
+// ---------------------------------------------------------------------------
+
+/** One bookable room kind within a Hotel (apidoc RoomType). */
+export const roomTypeSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  description: z.string().optional().default(""),
+  price_per_night: z.string().optional().default("0.00"),
+  max_guests: z.number().int().min(0).optional().default(0),
+  total_rooms: z.number().int().min(0).optional().default(0),
+  image: z.string().optional().default(""),
+})
+
+export type RoomType = z.infer<typeof roomTypeSchema>
+
+export const hotelImageSchema = z.object({
+  id: z.number().int(),
+  image: z.string(),
+  caption: z.string().optional().default(""),
+})
+
+export type HotelImage = z.infer<typeof hotelImageSchema>
+
+const nullableDecimal = z
+  .union([z.string(), z.number(), z.null()])
+  .optional()
+  .transform((value) =>
+    value === undefined || value === null || String(value).trim() === ""
+      ? null
+      : String(value).trim()
+  )
+
+/** Full Hotel detail (apidoc HotelDetail). Sparse rows fall back so one
+ *  thin field can never fail the whole page. */
+export const hotelDetailSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().optional().default(""),
+  city: z.string(),
+  address: z.string().optional().default(""),
+  country: z.string().optional().default(""),
+  star_rating: z.number().int().min(0).max(5).optional().default(0),
+  main_image: z.string().optional().default(""),
+  amenities_list: z.array(z.string()).optional().default([]),
+  latitude: nullableDecimal,
+  longitude: nullableDecimal,
+  starting_price: z.string().optional().default("0.00"),
+  room_types: z.array(roomTypeSchema).optional().default([]),
+  images: z.array(hotelImageSchema).optional().default([]),
+})
+
+export type HotelDetail = z.infer<typeof hotelDetailSchema>
+
+/**
+ * Stable Hotel detail read for ISR pages (`revalidate 3600`,
+ * `dynamicParams true`). Timed revalidation keeps detail fast and indexable
+ * while picking up new slugs and price changes without redeploys (ADR-0005,
+ * ADR-0003). A shape violation throws a typed error instead of a partial page.
+ */
+export async function getHotelDetail(slug: string): Promise<HotelDetail> {
+  const raw = await apiGet<unknown>(
+    `/api/hotels/${encodeURIComponent(slug)}/`,
+    { tags: ["hotels", `hotel:${slug}`] }
+  )
+  const parsed = hotelDetailSchema.safeParse(raw)
+  if (!parsed.success) {
+    throw new ApiError("Invalid response from the hotel service.", {
+      status: 200,
+      code: "server",
+    })
+  }
+  return parsed.data
+}
+
+/**
+ * Best-effort slug list for `generateStaticParams` (first browse-all page,
+ * cached like any stable read). New slugs beyond page one still render on
+ * demand via open-ended fallback (`dynamicParams true`).
+ */
+export async function listHotelSlugs(): Promise<string[]> {
+  const raw = await apiGet<unknown>("/api/hotels/", {
+    query: { page: 1 },
+    tags: ["hotels"],
+  })
+  const parsed = paginatedHotelListSchema.safeParse(raw)
+  if (!parsed.success) return []
+  return parsed.data.results.map((hotel) => hotel.slug)
+}
+
+// ---------------------------------------------------------------------------
+// Detail display mapping — pure helpers (TDD seam, ticket 03).
+// ---------------------------------------------------------------------------
+
+export interface HotelGalleryImage {
+  src: string
+  alt: string
+  caption: string
+}
+
+export interface RoomTypeDisplay {
+  id: number
+  name: string
+  description: string
+  /** Locked per-night copy, e.g. "₦85,000 per night"; null falls back. */
+  priceLabel: string | null
+  /** Capacity guidance; zero-capacity rows never block (ticket 04 owns it). */
+  capacityLabel: string
+  imageSrc: string
+  imageAlt: string
+  maxGuests: number
+  totalRooms: number
+}
+
+export interface HotelDetailDisplay {
+  href: string
+  name: string
+  /** Display-only place context: "City, Country" or "City". */
+  placeLabel: string
+  /** Street address text, or null when the backend carries none. */
+  addressText: string | null
+  /** Exact-point map link; null without coordinates (never a guess). */
+  mapUrl: string | null
+  starLabel: string | null
+  description: string
+  amenities: string[]
+  gallery: HotelGalleryImage[]
+  rooms: RoomTypeDisplay[]
+  /** Locked from-price copy; null renders the booking-time caveat. */
+  fromPriceLabel: string | null
+}
+
+/**
+ * Locked per-night copy for a Room Type: "₦X per night". Null for missing,
+ * zero, or non-numeric prices so the row renders fallback copy instead of
+ * inventing a number (same contract as `formatHotelFromPrice`).
+ */
+export function formatRoomTypePrice(
+  pricePerNight: string | null | undefined
+): string | null {
+  if (pricePerNight === null || pricePerNight === undefined) return null
+  const trimmed = pricePerNight.replace(/,/g, "").trim()
+  if (trimmed.length === 0) return null
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
+  return `${formatNaira(trimmed)} per night`
+}
+
+/** Capacity guidance for a Room Type row. Zero capacity means unknown —
+ *  honest fallback copy, never a frontend block (ticket 04 enforces). */
+export function formatRoomTypeCapacity(room: RoomType): string {
+  if (room.max_guests <= 0) return "Capacity confirmed at booking"
+  const rooms =
+    room.total_rooms > 0
+      ? ` · ${room.total_rooms} ${room.total_rooms === 1 ? "room" : "rooms"}`
+      : ""
+  return `Sleeps ${room.max_guests} per room${rooms}`
+}
+
+/**
+ * Normalize a Hotel detail into everything the detail page needs to render.
+ * Gallery alt text always names the Hotel; uncaptioned photos fall back to a
+ * positional label so alt text is never empty. Location stays display-only
+ * place context with an exact-point map link only when coordinates exist.
+ */
+export function toHotelDetailDisplay(hotel: HotelDetail): HotelDetailDisplay {
+  const placeLabel =
+    hotel.country.trim().length > 0
+      ? `${hotel.city}, ${hotel.country}`
+      : hotel.city
+  const amenities = hotel.amenities_list
+    .map((a) => a.trim())
+    .filter((a) => a.length > 0)
+
+  const gallery: HotelGalleryImage[] =
+    hotel.images.length > 0
+      ? hotel.images.map((image, index) => ({
+          src: resolveListingImageUrl(image.image),
+          caption: image.caption.trim(),
+          alt:
+            image.caption.trim().length > 0
+              ? `${hotel.name} — ${image.caption.trim()}`
+              : `${hotel.name} — photo ${index + 1} of ${hotel.images.length}`,
+        }))
+      : [
+          {
+            src: resolveListingImageUrl(hotel.main_image),
+            caption: "",
+            alt: `${hotel.name} — ${placeLabel}`,
+          },
+        ]
+
+  const rooms: RoomTypeDisplay[] = hotel.room_types.map((room) => ({
+    id: room.id,
+    name: room.name,
+    description: room.description,
+    priceLabel: formatRoomTypePrice(room.price_per_night),
+    capacityLabel: formatRoomTypeCapacity(room),
+    imageSrc: resolveListingImageUrl(room.image),
+    imageAlt: `${room.name} at ${hotel.name}`,
+    maxGuests: room.max_guests,
+    totalRooms: room.total_rooms,
+  }))
+
+  const lat = hotel.latitude?.trim() ?? ""
+  const lng = hotel.longitude?.trim() ?? ""
+  const addressText = hotel.address.trim().length > 0 ? hotel.address.trim() : null
+
+  return {
+    href: `/hotels/${hotel.slug}`,
+    name: hotel.name,
+    placeLabel,
+    addressText,
+    mapUrl:
+      lat.length > 0 && lng.length > 0
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`
+        : null,
+    starLabel:
+      hotel.star_rating >= 1 ? `${hotel.star_rating}-star Hotel` : null,
+    description: hotel.description,
+    amenities,
+    gallery,
+    rooms,
+    fromPriceLabel: formatHotelFromPrice(hotel.starting_price),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Room Type choice — capacity rule, nights, and preview arithmetic (ticket 04).
+// Pure helpers (TDD seams): no fetch, no DOM. Exactly one Room Type per Hotel
+// Booking; guests at most per-room capacity times rooms; zero-capacity rows
+// are unknown and never block; Hotel room counts are informational only
+// with availability owned by the backend at creation time; the only
+// chargeable total is the backend-computed amount (ADR-0005).
+// ---------------------------------------------------------------------------
+
+export interface RoomCapacityInput {
+  /** Per-room guest capacity; 0 means unknown (never blocks). */
+  maxGuests: number
+  numGuests: number
+  numRooms: number
+}
+
+export type CapacityVerdict =
+  | { ok: true; capacity: number | null }
+  | { ok: false; capacity: number; shortBy: number; guidance: string }
+
+/**
+ * Capacity rule: guests ≤ per-room capacity × rooms. Zero-capacity rows pass
+ * through as unknown. Over-capacity verdicts carry inline guidance to add
+ * rooms or choose another Room Type.
+ */
+export function checkRoomCapacity(input: RoomCapacityInput): CapacityVerdict {
+  if (input.maxGuests <= 0) return { ok: true, capacity: null }
+  const capacity = input.maxGuests * input.numRooms
+  if (input.numGuests <= capacity) return { ok: true, capacity }
+  const shortBy = input.numGuests - capacity
+  const roomsNeeded = Math.ceil(input.numGuests / input.maxGuests)
+  const extraRooms = roomsNeeded - input.numRooms
+  const guestWord = capacity === 1 ? "guest" : "guests"
+  const roomWord = input.numRooms === 1 ? "room" : "rooms"
+  const extraWord = extraRooms === 1 ? "room" : "rooms"
+  return {
+    ok: false,
+    capacity,
+    shortBy,
+    guidance: `Only ${capacity} ${guestWord} fit in ${input.numRooms} ${roomWord} of this Room Type — add ${extraRooms} more ${extraWord} or choose a Room Type that sleeps more.`,
+  }
+}
+
+/**
+ * Whole nights between two YYYY-MM-DD dates, or null when the pair is not a
+ * real forward stay (same-day, backwards, impossible, or blank). Dates are
+ * optional upstream, so blanks are quiet nulls, not errors.
+ */
+export function calculateNights(
+  checkIn: string,
+  checkOut: string
+): number | null {
+  const start = parseCalendarDate(checkIn.trim())
+  const end = parseCalendarDate(checkOut.trim())
+  if (start === null || end === null) return null
+  const nights = Math.round(
+    (end.getTime() - start.getTime()) / 86_400_000
+  )
+  return nights >= 1 ? nights : null
+}
+
+export interface StayPreviewInput {
+  pricePerNight: string | null | undefined
+  nights: number | null | undefined
+  numRooms: number | null | undefined
+}
+
+/**
+ * Preview arithmetic: nights × per-night price × rooms in whole Naira.
+ * Display only — the charged total comes exclusively from backend creation
+ * and verification responses. Null whenever any input is unusable (a preview
+ * of ₦0 would lie).
+ */
+export function previewStayTotal(input: StayPreviewInput): number | null {
+  const nights = input.nights ?? 0
+  const rooms = input.numRooms ?? 0
+  if (!Number.isInteger(nights) || nights < 1) return null
+  if (!Number.isInteger(rooms) || rooms < 1) return null
+  const raw = (input.pricePerNight ?? "").replace(/,/g, "").trim()
+  if (raw.length === 0) return null
+  const price = Number(raw)
+  if (!Number.isFinite(price) || price <= 0) return null
+  return Math.round(price * nights * rooms)
+}
+
+// ---------------------------------------------------------------------------
+// Booking handoff — stay contract between detail choice and guest details.
+// One Room Type plus dates plus party travels in the URL (shareable, no PII,
+// no payment data); ticket 05 validates it strictly before any payment step.
+// ---------------------------------------------------------------------------
+
+export interface HotelBookingStay {
+  room_type_id: number
+  check_in: string
+  check_out: string
+  guests: number
+  rooms: number
+}
+
+export interface ParsedHotelBookingStay {
+  room_type_id?: number
+  check_in: string
+  check_out: string
+  guests?: number
+  rooms?: number
+}
+
+/** Serialize the chosen stay for the guest-details step (no leading `?`). */
+export function buildHotelBookingParams(stay: HotelBookingStay): string {
+  const params = new URLSearchParams()
+  params.set("room_type", String(stay.room_type_id))
+  if (stay.check_in.trim().length > 0) params.set("check_in", stay.check_in.trim())
+  if (stay.check_out.trim().length > 0)
+    params.set("check_out", stay.check_out.trim())
+  params.set("guests", String(stay.guests))
+  params.set("rooms", String(stay.rooms))
+  return params.toString()
+}
+
+/**
+ * Parse the booking handoff back into a stay. Lenient by design — invalid
+ * values are dropped and the receiving step surfaces guided errors instead
+ * of firing a request off a phantom Room Type.
+ */
+export function parseHotelBookingParams(
+  input: RawSearchParams
+): ParsedHotelBookingStay {
+  const roomRaw = firstString(input.room_type)?.trim() ?? ""
+  const roomId = /^\d+$/.test(roomRaw) && Number(roomRaw) >= 1 ? Number(roomRaw) : undefined
+  return {
+    room_type_id: roomId,
+    check_in: firstString(input.check_in)?.trim() ?? "",
+    check_out: firstString(input.check_out)?.trim() ?? "",
+    guests: parseBoundedInt(input.guests, 1, MAX_HOTEL_GUESTS),
+    rooms: parseBoundedInt(input.rooms, 1, MAX_HOTEL_ROOMS),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Hotel Guest form + creation with Paystack redirect (ticket 05).
+// Guest Booking with no account gate: one full name plus email plus
+// Nigerian/international phone (normalized before submission), validated on
+// blur plus on submit plus pre-payment. Creation is the quote (no
+// flight-style revalidation): the backend returns a Paystack authorization
+// URL plus a Payment Reference, and the guest continues there. The charged
+// total is backend-authoritative (ADR-0005).
+// ---------------------------------------------------------------------------
+
+/**
+ * Hotel Guest contact shape (CONTEXT.md: the single booking contact and stay
+ * representative). Reuses the shared validation primitives (ADR-0002): the
+ * phone transform normalizes Nigerian formats to `+234…` before submission.
+ */
+export const hotelGuestSchema = z.object({
+  guest_name: fullNameSchema,
+  guest_email: emailSchema,
+  guest_phone: nigerianPhoneSchema("Phone number"),
+})
+
+export type HotelGuestInput = z.input<typeof hotelGuestSchema>
+export type HotelGuest = z.output<typeof hotelGuestSchema>
+
+/** Backend contract for `POST /api/hotels/bookings/create/`. */
+export const hotelBookingCreateRequestSchema = z.object({
+  hotel_id: z.number().int().positive(),
+  room_type_id: z.number().int().positive(),
+  check_in: z.string().trim().min(1, "Add a check-in date"),
+  check_out: z.string().trim().min(1, "Add a check-out date"),
+  num_rooms: z.number().int().min(1).max(MAX_HOTEL_ROOMS),
+  num_guests: z.number().int().min(1).max(MAX_HOTEL_GUESTS),
+  guest_name: fullNameSchema,
+  guest_email: emailSchema,
+  guest_phone: nigerianPhoneSchema("Phone number"),
+})
+
+export type HotelBookingCreatePayload = z.infer<
+  typeof hotelBookingCreateRequestSchema
+>
+
+export interface BuildHotelBookingPayloadInput {
+  hotel_id: number
+  room_type_id: number
+  check_in: string
+  check_out: string
+  num_rooms: number
+  num_guests: number
+  guest_name: string
+  guest_email: string
+  guest_phone: string
+}
+
+/**
+ * Build the creation payload (TDD seam): full-name shape, email validity,
+ * and Nigerian phone normalization are enforced here as well as in the form,
+ * so responses stay treated as untrusted even after client validation.
+ */
+export function buildHotelBookingPayload(
+  input: BuildHotelBookingPayloadInput
+): HotelBookingCreatePayload {
+  return hotelBookingCreateRequestSchema.parse(input)
+}
+
+/** Creation result: Paystack handoff plus the Payment Reference. */
+export const hotelBookingCreateResultSchema = z.object({
+  reference: z.string().min(1),
+  authorization_url: z.string().min(1),
+})
+
+export type HotelBookingCreateResult = z.infer<
+  typeof hotelBookingCreateResultSchema
+>
+
+/**
+ * Create one Hotel Booking (Guest Booking — no login required). Validates
+ * the payload against the backend contract first; the response is parsed as
+ * untrusted input. Never cached.
+ */
+export async function createHotelBooking(
+  payload: HotelBookingCreatePayload
+): Promise<HotelBookingCreateResult> {
+  const raw = await apiPost<unknown, Record<string, unknown>>(
+    "/api/hotels/bookings/create/",
+    payload as Record<string, unknown>
+  )
+  return hotelBookingCreateResultSchema.parse(raw)
+}
+
+// ---------------------------------------------------------------------------
+// Single-flight creation guard (pure — tested). Retrying an identical stay
+// plus Hotel Guest reuses the stored pending reference instead of creating a
+// duplicate Hotel Booking; any change creates fresh.
+// ---------------------------------------------------------------------------
+
+/** A stored Hotel Booking creation, keyed by the full creation payload. */
+export interface PendingHotelBookingRecord {
+  key: string
+  reference: string
+  authorization_url: string
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value) ?? "null"
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`
+  }
+  const record = value as Record<string, unknown>
+  const keys = Object.keys(record).sort()
+  const parts = keys.map(
+    (key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`
+  )
+  return `{${parts.join(",")}}`
+}
+
+/** Identity of one creation attempt: the full payload, key-order normalized. */
+export function hashHotelBookingKey(
+  payload: HotelBookingCreatePayload
+): string {
+  return stableStringify(payload)
+}
+
+/**
+ * Reuse the stored pending reference when the retry matches the stored key,
+ * otherwise signal that a new creation is required. Never throws.
+ */
+export function findReusableHotelBooking(
+  stored: PendingHotelBookingRecord | null,
+  key: string
+): { reference: string; authorization_url: string } | null {
+  if (!stored || stored.key !== key) return null
+  if (!stored.reference || !stored.authorization_url) return null
+  return {
+    reference: stored.reference,
+    authorization_url: stored.authorization_url,
+  }
+}
+
+export const PENDING_HOTEL_BOOKING_SESSION_KEY =
+  "alphaa:pending-hotel-booking:v1"
+export const HOTEL_PAYMENT_REFERENCE_SESSION_KEY =
+  "alphaa:hotel-payment-reference:v1"
+
+/** Persist the created Hotel Booking so an identical retry reuses it. */
+export function savePendingHotelBooking(
+  record: PendingHotelBookingRecord
+): void {
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.setItem(
+      PENDING_HOTEL_BOOKING_SESSION_KEY,
+      JSON.stringify(record)
+    )
+  } catch {
+    // sessionStorage may throw in private mode — the creation still ran
+  }
+}
+
+/** Read back the stored Hotel Booking, or null when absent/corrupt. */
+export function readPendingHotelBooking(): PendingHotelBookingRecord | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.sessionStorage.getItem(
+      PENDING_HOTEL_BOOKING_SESSION_KEY
+    )
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as unknown
+    if (typeof parsed !== "object" || parsed === null) return null
+    const record = parsed as Record<string, unknown>
+    if (
+      typeof record.key !== "string" ||
+      typeof record.reference !== "string" ||
+      typeof record.authorization_url !== "string"
+    ) {
+      return null
+    }
+    return {
+      key: record.key,
+      reference: record.reference,
+      authorization_url: record.authorization_url,
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Persist the Payment Reference so refresh, back, and new tabs survive. */
+export function saveHotelPaymentReference(reference: string): void {
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.setItem(HOTEL_PAYMENT_REFERENCE_SESSION_KEY, reference)
+  } catch {
+    // sessionStorage may throw in private mode — the URL copy still works
+  }
+}
+
+/** Read back the persisted Payment Reference, or null when absent. */
+export function readHotelPaymentReference(): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    return window.sessionStorage.getItem(HOTEL_PAYMENT_REFERENCE_SESSION_KEY)
+  } catch {
+    return null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reference-only verification with confirmation and recovery (ticket 06).
+// A return from Paystack proves nothing by itself: the live Hotel Booking is
+// fetched without caching and only a verified `confirmed` status renders the
+// premium confirmation. Every other outcome keeps the Payment Reference with
+// payment-safety reassurance (ADR-0005).
+// ---------------------------------------------------------------------------
+
+/**
+ * Terminal verification outcome derived from a Hotel Booking status
+ * (apidoc Status8eeEnum: pending, confirmed, cancelled, failed).
+ * Unrecognized states stay pending so the guest keeps checking instead of
+ * assuming success — or assuming failure and paying twice.
+ */
+export type HotelVerificationOutcome =
+  | "confirmed"
+  | "pending"
+  | "cancelled"
+  | "failed"
+
+export function resolveHotelVerificationState(booking: {
+  status?: string | null
+}): HotelVerificationOutcome {
+  const status = (booking.status ?? "").trim().toLowerCase()
+  if (status === "confirmed") return "confirmed"
+  if (status === "cancelled") return "cancelled"
+  if (status === "failed") return "failed"
+  return "pending"
+}
+
+/**
+ * A verified Hotel Booking (apidoc HotelBooking). Permissive beyond
+ * `reference`: only the reference is required and renderers read the rest
+ * defensively. Amounts are backend-authoritative display strings — the
+ * charged total is whatever creation and verification returned.
+ */
+export const hotelBookingSchema = z.object({
+  reference: z.string(),
+  hotel_name: z.string().optional().default(""),
+  room_type_name: z.string().optional().default(""),
+  guest_name: z.string().optional().default(""),
+  guest_email: z.string().optional().default(""),
+  guest_phone: z.string().optional().default(""),
+  check_in: z.string().optional().default(""),
+  check_out: z.string().optional().default(""),
+  nights: z.number().int().nonnegative().optional().default(0),
+  num_rooms: z.number().int().nonnegative().optional().default(0),
+  num_guests: z.number().int().nonnegative().optional().default(0),
+  price_per_night: z.union([z.string(), z.number()]).optional().default(""),
+  total_amount: z.union([z.string(), z.number()]).optional().default(""),
+  status: z.string().optional().default("pending"),
+})
+
+export type HotelBooking = z.infer<typeof hotelBookingSchema>
+
+/**
+ * Verify the Paystack payment for a reference and fetch the final Hotel
+ * Booking. Never cached: verification must reflect the live payment state,
+ * not a stale pending snapshot. Guest Booking — no login required.
+ */
+export async function verifyHotelBooking(
+  reference: string
+): Promise<HotelBooking> {
+  const raw = await apiGet<unknown>(
+    `/api/hotels/bookings/verify/${encodeURIComponent(reference)}/`,
+    { noStore: true }
+  )
+  return hotelBookingSchema.parse(raw)
+}
+
+/**
+ * Confirmation-route URL carrying the Payment Reference as a query param
+ * (ADR-0005 contract). Only the reference travels in the URL — never names,
+ * emails, phones, tokens, or payment data.
+ */
+export function buildHotelConfirmationUrl(reference: string): string {
+  return `/hotels/confirmation?reference=${encodeURIComponent(reference)}`
 }

@@ -2,11 +2,7 @@
 
 import * as React from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  Share01Icon,
-  ArrowRight01Icon,
-  Tick01Icon,
-} from "@hugeicons/core-free-icons"
+import { Share01Icon, Tick01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { formatNaira } from "@/lib/format"
@@ -15,38 +11,27 @@ export function PackageShareButton({
   title,
   destinationName,
 }: {
-  title: string
-  destinationName: string
-}) {
+  title?: string
+  destinationName?: string
+} = {}) {
   const [copied, setCopied] = React.useState(false)
 
-  const handleShare = async () => {
+  const handleCopyLink = async () => {
     const url = typeof window !== "undefined" ? window.location.href : ""
-    const shareData = {
-      title: `${title} | Alphaa Africa`,
-      text: `Check out this holiday package to ${destinationName} on Alphaa Africa:`,
-      url,
-    }
-
-    if (
-      navigator.share &&
-      navigator.canShare &&
-      navigator.canShare(shareData)
-    ) {
-      try {
-        await navigator.share(shareData)
-        return
-      } catch {
-        // Fallback to clipboard copy if user dismissed or cancelled native share
-      }
-    }
-
     try {
-      await navigator.clipboard.writeText(url)
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url)
+      } else {
+        const textarea = document.createElement("textarea")
+        textarea.value = url
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand("copy")
+        document.body.removeChild(textarea)
+      }
       setCopied(true)
       toast.success("Link copied to clipboard", {
-        description:
-          "You can now paste and share this package with friends and family.",
+        description: "Package link has been copied to your clipboard.",
       })
       setTimeout(() => setCopied(false), 2500)
     } catch {
@@ -57,7 +42,7 @@ export function PackageShareButton({
   return (
     <button
       type="button"
-      onClick={handleShare}
+      onClick={handleCopyLink}
       aria-label="Share package"
       className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:border-primary/40 hover:text-primary active:scale-[0.98]"
     >
@@ -83,7 +68,6 @@ export function PackageMobileBar({
 
   React.useEffect(() => {
     const handleScroll = () => {
-      // Show when scrolled down past 350px
       if (window.scrollY > 350) {
         setVisible(true)
       } else {
@@ -96,7 +80,8 @@ export function PackageMobileBar({
   }, [])
 
   const scrollToEnquiry = () => {
-    const element = document.getElementById("enquiry")
+    const element =
+      document.getElementById("book-now") || document.getElementById("enquiry")
     if (element) {
       element.scrollIntoView({ behavior: "smooth" })
     }
@@ -125,12 +110,36 @@ export function PackageMobileBar({
         <Button
           onClick={scrollToEnquiry}
           size="sm"
-          className="shrink-0 gap-1.5 shadow-md"
+          className="shrink-0 shadow-md"
         >
-          <span>Enquire now</span>
-          <HugeiconsIcon icon={ArrowRight01Icon} size={14} aria-hidden="true" />
+          Book Now
         </Button>
       </div>
     </aside>
+  )
+}
+
+export function BookNowButton({
+  targetId = "book-now",
+  className,
+  children,
+}: {
+  targetId?: string
+  className?: string
+  children?: React.ReactNode
+}) {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    const element =
+      document.getElementById(targetId) || document.getElementById("enquiry")
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" })
+    }
+  }
+
+  return (
+    <Button onClick={handleClick} className={className} size="lg">
+      {children || <span>Book Now</span>}
+    </Button>
   )
 }

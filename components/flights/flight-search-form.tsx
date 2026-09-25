@@ -29,6 +29,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { TravellerStepper } from "@/components/ui/traveller-stepper"
 import { AirportAutocomplete } from "@/components/flights/airport-autocomplete"
 import { LegFields, type LegSelection } from "@/components/flights/leg-fields"
+import { isDomesticSearch } from "@/lib/api/domestic"
 import {
   type Airport,
   type Cabin,
@@ -50,6 +51,7 @@ export interface FlightSearchFormProps {
   defaultLegAirports?: { origin: Airport | null; destination: Airport | null }[]
   onSubmit: (values: FlightSearchPayload) => void
   isSearching?: boolean
+  onCancel?: () => void
 }
 
 const TRIP_TYPE_OPTIONS = [
@@ -94,6 +96,7 @@ export function FlightSearchForm({
   defaultLegAirports,
   onSubmit,
   isSearching,
+  onCancel,
 }: FlightSearchFormProps) {
   const [originAirport, setOriginAirport] = React.useState<Airport | null>(
     defaultOriginAirport
@@ -282,6 +285,19 @@ export function FlightSearchForm({
   const children = form.watch("children")
   const infants = form.watch("infants")
   const departureDateValue = form.watch("departureDate") ?? ""
+  const originValue = form.watch("origin") ?? ""
+  const destinationValue = form.watch("destination") ?? ""
+
+  // Both-Nigerian one-way/round-trip routes stream via QuickAir, which is
+  // Economy-only in v1: cabin and stop controls disable with explanation and
+  // the backend never receives fare classes it ignores (the domestic search
+  // params carry no cabin/non-stop/max-stops). Multi-city always uses the
+  // international path, so its controls stay enabled.
+  const isDomesticRoute =
+    tripType !== "multi_city" &&
+    originValue.trim().length === 3 &&
+    destinationValue.trim().length === 3 &&
+    isDomesticSearch(originValue.trim(), destinationValue.trim())
 
   const handleFormSubmit = form.handleSubmit((values) => {
     const trip = values.trip_type
@@ -664,53 +680,82 @@ export function FlightSearchForm({
           </div>
         )}
 
-        <div className="flex flex-col gap-4 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-4">
-            <Controller
-              name="non_stop"
-              control={form.control}
-              render={({ field }) => (
-                <Checkbox
-                  label="Non-stop only"
-                  checked={Boolean(field.value)}
-                  onCheckedChange={field.onChange}
-                />
-              )}
-            />
-            <div className="w-36">
+        {isDomesticRoute ? (
+          <p
+            role="note"
+            aria-live="polite"
+            className="rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-xs leading-relaxed text-foreground"
+          >
+            Domestic flights are Economy-only in v1 — cabin and stop controls
+            are disabled because the live domestic search ignores fare classes
+            it does not support.
+          </p>
+        ) : null}
+        {/* Advanced fare controls behind a disclosure — basic route, dates,
+            party, and the search action stay visible. Trip-type, leg editor,
+            and inline validation keep working inside. */}
+        <details className="group min-w-0 rounded-xl border border-border/60 px-3.5 py-2.5">
+          <summary className="flex min-h-11 cursor-pointer touch-manipulation list-none items-center justify-between gap-2 text-sm font-semibold text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+            <span>Advanced fare options</span>
+            <span className="text-xs font-medium text-muted-foreground">
+              Cabin · Stops
+            </span>
+          </summary>
+          <div className="flex flex-col gap-4 pt-3 sm:flex-row sm:items-start sm:gap-4">
+            <div className="flex min-w-0 flex-1 flex-wrap items-start gap-4">
               <Controller
-                name="max_stops"
+                name="non_stop"
                 control={form.control}
-                render={({ field, fieldState }) => (
-                  <Select
-                    label="Max stops"
-                    hideLabel
-                    options={[...MAX_STOPS_OPTIONS]}
-                    value={
-                      field.value === null || field.value === undefined
-                        ? ""
-                        : String(field.value)
+                render={({ field }) => (
+                  <Checkbox
+                    label="Non-stop only"
+                    checked={Boolean(field.value)}
+                    onCheckedChange={field.onChange}
+                    disabled={isDomesticRoute}
+                    helperText={
+                      isDomesticRoute
+                        ? "Domestic only shows non-stop options."
+                        : undefined
                     }
-                    onValueChange={(next) =>
-                      field.onChange(next === "" ? null : Number(next))
-                    }
-                    error={fieldState.error?.message}
-                    placeholder="Any stops"
                   />
                 )}
               />
+              <div className="w-36">
+                <Controller
+                  name="max_stops"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Select
+                      label="Max stops"
+                      options={[...MAX_STOPS_OPTIONS]}
+                      value={
+                        field.value === null || field.value === undefined
+                          ? ""
+                          : String(field.value)
+                      }
+                      onValueChange={(next) =>
+                        field.onChange(next === "" ? null : Number(next))
+                      }
+                      error={fieldState.error?.message}
+                      placeholder="Any stops"
+                      disabled={isDomesticRoute}
+                      helperText={
+                        isDomesticRoute
+                          ? "Fixed for domestic routes."
+                          : undefined
+                      }
+                    />
+                  )}
+                />
+              </div>
             </div>
-          </div>
-
-          <div className="flex shrink-0 flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-end">
-            <div className="w-full sm:w-36">
+            <div className="w-full sm:w-48">
               <Controller
                 name="cabin"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Select
                     label="Cabin"
-                    hideLabel
                     options={[...CABIN_OPTIONS]}
                     value={field.value}
                     onValueChange={(val) => {
@@ -718,23 +763,41 @@ export function FlightSearchForm({
                       form.clearErrors("cabin")
                     }}
                     error={fieldState.error?.message}
+                    disabled={isDomesticRoute}
+                    helperText={
+                      isDomesticRoute ? "Economy only." : undefined
+                    }
                   />
                 )}
               />
             </div>
-            <Button
-              type="submit"
-              size="lg"
-              isLoading={!!isSearching}
-              disabled={!!isSearching}
-              className="w-full justify-center px-6 font-semibold sm:w-auto"
-            >
-              <HugeiconsIcon icon={Search01Icon} size={18} aria-hidden="true" />
-              <span>
-                {isSearching ? "Searching flights…" : "Search flights"}
-              </span>
-            </Button>
           </div>
+        </details>
+
+        <div className="flex flex-col-reverse gap-2.5 border-t border-border/60 pt-4 sm:flex-row">
+          {onCancel ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={onCancel}
+              className="justify-center px-6 font-semibold"
+            >
+              <span>Cancel</span>
+            </Button>
+          ) : null}
+          <Button
+            type="submit"
+            size="lg"
+            isLoading={!!isSearching}
+            disabled={!!isSearching}
+            className="flex-1 justify-center px-6 font-semibold"
+          >
+            <HugeiconsIcon icon={Search01Icon} size={18} aria-hidden="true" />
+            <span>
+              {isSearching ? "Searching flights…" : "Search flights"}
+            </span>
+          </Button>
         </div>
 
         {form.formState.errors.root?.message ? (

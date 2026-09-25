@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Hotel search foundation with URL state.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Detail shows gallery with descriptive alt text, overview, display-only location with map link when coordinates exist, full amenities, Room Type list with per-night pricing, and a sticky booking panel
 - [ ] Stable Hotel content served with hourly revalidation and open-ended fallback for new slugs with a prices-confirmed-at-booking caveat

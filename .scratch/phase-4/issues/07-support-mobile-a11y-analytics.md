@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 — Verification with confirmation and recovery.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Talk to Alphaa and WhatsApp escape hatches on every major surface carrying stay context (Hotel, dates, rooms and guests, reference, amount) with no personal or payment data
 - [ ] Mobile-first pass: bottom-sheet filters, large tap targets, steppers, mobile-optimized date pickers, sticky summaries, and compressed readable cards

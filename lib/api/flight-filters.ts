@@ -26,6 +26,130 @@ export const FLIGHT_SORT_KEYS: readonly FlightSortKey[] = [
 /** Named departure windows in airport-local wall-clock hours. */
 export type DepartureWindow = "morning" | "afternoon" | "evening" | "night"
 
+/** Preset price ceilings stay as shortcuts; live maxima extend them for long-haul. */
+export interface PriceCeilingOption {
+  label: string
+  value: number | null
+}
+
+export const PRESET_PRICE_CEILINGS: readonly PriceCeilingOption[] = [
+  { label: "Any price", value: null },
+  { label: "Under ₦150k", value: 150_000 },
+  { label: "Under ₦300k", value: 300_000 },
+  { label: "Under ₦600k", value: 600_000 },
+]
+
+export interface DurationCeilingOption {
+  label: string
+  value: number | null
+}
+
+export const PRESET_DURATION_CEILINGS: readonly DurationCeilingOption[] = [
+  { label: "Any duration", value: null },
+  { label: "Under 2 hrs", value: 120 },
+  { label: "Under 5 hrs", value: 300 },
+  { label: "Under 10 hrs", value: 600 },
+]
+
+function formatNairaCeiling(value: number): string {
+  if (value >= 1_000_000) {
+    const m = value / 1_000_000
+    const text = Number.isInteger(m) ? String(m) : m.toFixed(1)
+    return `Under ₦${text}M`
+  }
+  return `Under ₦${Math.round(value / 1000)}k`
+}
+
+function formatDurationCeiling(minutes: number): string {
+  if (minutes < 60) return `Under ${minutes} min`
+  const hours = minutes / 60
+  const text = Number.isInteger(hours) ? String(hours) : hours.toFixed(1)
+  return `Under ${text} hrs`
+}
+
+/** Round a maximum up to a nice 1/2/5 × 10ⁿ step so ceilings read cleanly. */
+function roundUpNice(value: number): number {
+  if (value <= 0) return value
+  const magnitude = 10 ** Math.floor(Math.log10(value))
+  const normalized = value / magnitude
+  const step =
+    normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10
+  return step * magnitude
+}
+
+interface CeilingOption {
+  label: string
+  value: number | null
+}
+
+/**
+ * Shared ceiling derivation: scan the live maximum, keep presets when it fits
+ * domestic scale, otherwise extend with nice dynamic steps up to the rounded
+ * maximum. Unknown values never shrink the list.
+ */
+function deriveCeilings<T extends CeilingOption>(args: {
+  displays: FlightOfferDisplay[]
+  readValue: (display: FlightOfferDisplay) => number | null
+  presets: readonly T[]
+  presetMax: number
+  candidates: readonly number[]
+  formatLabel: (value: number) => string
+}): T[] {
+  const { displays, readValue, presets, presetMax, candidates, formatLabel } =
+    args
+  const out = [...presets]
+  let max: number | null = null
+  for (const display of displays) {
+    const value = readValue(display)
+    if (value !== null && (max === null || value > max)) max = value
+  }
+  if (max === null || max <= presetMax) return out
+  const roundedMax = roundUpNice(max)
+  for (const candidate of candidates) {
+    if (candidate < roundedMax) {
+      out.push({ label: formatLabel(candidate), value: candidate } as T)
+    }
+  }
+  out.push({ label: formatLabel(roundedMax), value: roundedMax } as T)
+  return out
+}
+
+/**
+ * Price ceilings derived from live results so international fares stay
+ * refinable. Existing preset labels remain as shortcuts; when the live
+ * maximum exceeds the domestic-scale presets, nice dynamic ceilings extend
+ * the list up to the rounded maximum. Unknown prices never shrink the list.
+ */
+export function derivePriceCeilings(
+  displays: FlightOfferDisplay[]
+): PriceCeilingOption[] {
+  return deriveCeilings({
+    displays,
+    readValue: (display) => parseNairaAmount(display.price),
+    presets: PRESET_PRICE_CEILINGS,
+    presetMax: 600_000,
+    candidates: [1_000_000, 1_500_000, 2_000_000, 3_000_000, 5_000_000],
+    formatLabel: formatNairaCeiling,
+  })
+}
+
+/**
+ * Duration ceilings derived from live results. Presets remain; longer
+ * itineraries (connections, long-haul) extend the list to the rounded max.
+ */
+export function deriveDurationCeilings(
+  displays: FlightOfferDisplay[]
+): DurationCeilingOption[] {
+  return deriveCeilings({
+    displays,
+    readValue: (display) => parseDurationMinutes(display.duration),
+    presets: PRESET_DURATION_CEILINGS,
+    presetMax: 600,
+    candidates: [720, 900, 1200, 1500, 1800, 2400],
+    formatLabel: formatDurationCeiling,
+  })
+}
+
 export const DEPARTURE_WINDOWS: readonly DepartureWindow[] = [
   "morning",
   "afternoon",

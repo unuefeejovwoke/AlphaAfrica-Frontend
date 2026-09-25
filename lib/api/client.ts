@@ -172,6 +172,8 @@ export interface ApiGetOptions {
    * a cached "pending" response must never mask a completed payment.
    */
   noStore?: boolean
+  /** AbortSignal for request cancellation — stale responses never commit. */
+  signal?: AbortSignal
 }
 
 /**
@@ -194,6 +196,7 @@ export async function apiGet<T>(
             method: "GET",
             headers: { Accept: "application/json" },
             cache: "no-store",
+            ...(options.signal ? { signal: options.signal } : {}),
           }
         : {
             method: "GET",
@@ -202,9 +205,18 @@ export async function apiGet<T>(
               revalidate: options.revalidate ?? API_REVALIDATE_SECONDS,
               ...(options.tags ? { tags: options.tags } : {}),
             },
+            ...(options.signal ? { signal: options.signal } : {}),
           }
     )
   } catch (error) {
+    // Abort must propagate so run-guards can ignore stale responses —
+    // never convert cancellation into a retryable network error.
+    if (
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError")
+    ) {
+      throw error
+    }
     throw new ApiError("Network request failed.", {
       status: null,
       code: "network",
@@ -229,6 +241,8 @@ export async function apiGet<T>(
 
 export interface ApiPostOptions {
   query?: Record<string, string | number | boolean | null | undefined>
+  /** AbortSignal for request cancellation — stale responses never commit. */
+  signal?: AbortSignal
 }
 
 /**
@@ -250,8 +264,15 @@ export async function apiPost<
       },
       cache: "no-store",
       body: JSON.stringify(body ?? {}),
+      ...(options.signal ? { signal: options.signal } : {}),
     })
   } catch (error) {
+    if (
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError")
+    ) {
+      throw error
+    }
     throw new ApiError("Network request failed.", {
       status: null,
       code: "network",

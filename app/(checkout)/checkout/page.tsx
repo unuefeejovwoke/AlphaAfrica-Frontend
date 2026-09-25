@@ -1,6 +1,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { CheckoutTravellersClient } from "@/components/flights/checkout-travellers-client"
+import { FlightJourneyHeader } from "@/components/flights/flight-journey-header"
 import { Skeleton } from "@/components/ui/skeleton"
 import { travellerCompositionSchema } from "@/lib/schemas/travel"
 
@@ -46,10 +47,10 @@ export default async function CheckoutPage({
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <div className="mx-auto flex max-w-2xl flex-col gap-4 text-center">
-        <span className="mx-auto w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          Step 1 of 3 · Traveller Details
-        </span>
+      <div className="mx-auto max-w-2xl">
+        <FlightJourneyHeader current={4} />
+      </div>
+      <div className="mx-auto mt-6 flex max-w-2xl flex-col gap-4 text-center">
         <h1 className="text-3xl font-extrabold tracking-tight text-balance text-foreground sm:text-4xl">
           Secure Guest Booking Checkout
         </h1>

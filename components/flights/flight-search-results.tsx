@@ -2,8 +2,14 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { AlertCircleIcon, Message01Icon } from "@hugeicons/core-free-icons"
+import {
+  AlertCircleIcon,
+  Message01Icon,
+  FilterIcon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import {
@@ -12,15 +18,27 @@ import {
   type FlightOffer,
   type FlightOfferDisplay,
   type FlightTripContext,
+  normalizeFlightOffer,
 } from "@/lib/api/flights"
-import { normalizeFlightOffer } from "@/lib/api/flights"
+import {
+  type FlightSortKey,
+  parseNairaAmount,
+  parseDurationMinutes,
+  parseDepartureMinutes,
+} from "@/lib/api/flight-filters"
+import { useComparisonBadges } from "@/components/flights/use-comparison-badges"
 import {
   FlightOfferCard,
   FlightOfferSkeleton,
 } from "@/components/flights/flight-offer-card"
-import { FlightFilterBar } from "@/components/flights/flight-filter-bar"
 import { TrackLink } from "@/components/analytics/track-link"
 import { useFilteredOffers } from "@/components/flights/use-filtered-offers"
+import { AirlineLogo } from "@/components/flights/airline-logo"
+import { AlphaaPrimeBanner } from "@/components/flights/alphaa-prime-banner"
+import { FlightSidebarFilters } from "@/components/flights/flight-sidebar-filters"
+import { BestDealsAirline } from "@/components/flights/best-deals-airline"
+import { formatNaira } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 export interface FlightSearchResultsProps {
   offers: FlightOffer[]
@@ -28,11 +46,9 @@ export interface FlightSearchResultsProps {
   error: unknown | null
   onRetry: () => void
   onSelect: (offer: FlightOfferDisplay) => void
-  /** Trip context (route, dates, party) for support hatches. */
   trip?: FlightTripContext
 }
 
-// Deferred rendering keeps input responsive while large lists reconcile
 export function FlightSearchResults({
   offers,
   isLoading,
@@ -41,19 +57,65 @@ export function FlightSearchResults({
   onSelect,
   trip,
 }: FlightSearchResultsProps) {
+  const [mobileDrawerOpen, setMobileDrawerOpen] = React.useState(false)
   const deferredOffers = React.useDeferredValue(offers)
 
-  // Normalize once — js-set-map-lookups: use Map for O(1) if filtering later
   const displays = React.useMemo(() => {
     return deferredOffers.map((offer, index) =>
       normalizeFlightOffer(offer, index)
     )
   }, [deferredOffers])
 
-  // Live client-side filter/sort over accumulated cards (ticket 04) — no refetch.
   const filtered = useFilteredOffers(displays)
+  const visibleCount = filtered.visible.length
 
-  // Loading: skeleton, never a blank container (spec story 8)
+  // Comparison badges
+  const badgeIds = useComparisonBadges(filtered.visible)
+
+  // Compute quickest metrics for the 3 quick-sort pills (Cheapest, Fastest, Earliest)
+  const sortMetrics = React.useMemo(() => {
+    let minPrice: number | null = null
+    let minDurationMins = Infinity
+    let minDurationLabel: string | null = null
+    let earliestMins = Infinity
+    let earliestLabel: string | null = null
+
+    for (const d of displays) {
+      const price = parseNairaAmount(d.price)
+      if (price !== null && (minPrice === null || price < minPrice)) {
+        minPrice = price
+      }
+
+      const durMins = parseDurationMinutes(d.duration)
+      if (durMins !== null && durMins < minDurationMins) {
+        minDurationMins = durMins
+        minDurationLabel = d.duration
+      }
+
+      const depMins = parseDepartureMinutes(d.departureAt)
+      if (depMins !== null && depMins < earliestMins) {
+        earliestMins = depMins
+        earliestLabel = d.departureAt
+      }
+    }
+
+    return {
+      cheapest: minPrice ? formatNaira(minPrice) : null,
+      fastest: minDurationLabel,
+      earliest: earliestLabel,
+    }
+  }, [displays])
+
+  // Count flights per airline for grouping
+  const airlineCounts = React.useMemo(() => {
+    const map = new Map<string, number>()
+    for (const d of filtered.visible) {
+      map.set(d.airline, (map.get(d.airline) ?? 0) + 1)
+    }
+    return map
+  }, [filtered.visible])
+
+  // Loading state
   if (isLoading) {
     return (
       <div
@@ -63,9 +125,9 @@ export function FlightSearchResults({
         className="flex flex-col gap-4"
       >
         <p className="text-sm font-medium text-muted-foreground">
-          Finding available flights — checking airlines…
+          Finding available flights — checking live airline reservation systems…
         </p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="flex flex-col gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <FlightOfferSkeleton key={i} />
           ))}
@@ -74,7 +136,7 @@ export function FlightSearchResults({
     )
   }
 
-  // Error: human copy + retry + Talk to Alphaa with trip context, never blank
+  // Error state
   if (error) {
     return (
       <div className="flex flex-col gap-4">
@@ -94,7 +156,7 @@ export function FlightSearchResults({
     )
   }
 
-  // Empty: human copy + Talk to Alphaa — role=status announces it (ticket 04).
+  // Empty state (no offers returned at all)
   if (displays.length === 0) {
     return (
       <div
@@ -144,136 +206,297 @@ export function FlightSearchResults({
     )
   }
 
-  // Success: filter bar + Flight Offer cards — ternary for conditional render (vercel: rendering-conditional-render)
-  const visibleCount = filtered.visible.length
-  const resultSummary = filtered.isStale
-    ? "Updating results…"
-    : filtered.isFiltering
-      ? `${visibleCount} of ${filtered.totalCount} ${filtered.totalCount === 1 ? "flight" : "flights"} match your filters`
-      : `${visibleCount} ${visibleCount === 1 ? "flight" : "flights"} found`
-
   return (
-    <div className="flex flex-col gap-4">
-      <FlightFilterBar
-        filters={filtered.filters}
-        sort={filtered.sort}
-        onFiltersChange={filtered.updateFilters}
-        onSortChange={filtered.changeSort}
-        onReset={filtered.resetFilters}
-        airlineOptions={filtered.airlineOptions}
-        visibleCount={visibleCount}
-        isFiltering={filtered.isFiltering}
-      />
+    <div className="w-full">
+      {/* Main 2-Column Responsive Layout: Left Sidebar (Desktop) + Right Content */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_1fr]">
+        {/* Left Column (Desktop Only): Alphaa Prime + Sidebar Filters */}
+        <aside className="hidden flex-col gap-5 lg:flex">
+          <AlphaaPrimeBanner trip={trip} />
+          <FlightSidebarFilters
+            filters={filtered.filters}
+            sort={filtered.sort}
+            onFiltersChange={filtered.updateFilters}
+            onReset={filtered.resetFilters}
+            airlineOptions={filtered.airlineOptions}
+            allOffers={displays}
+            priceCeilings={filtered.priceCeilings}
+          />
+        </aside>
 
-      <p
-        className="text-sm font-medium text-muted-foreground"
-        aria-live="polite"
-      >
-        {resultSummary}
-      </p>
+        {/* Right Column: Search summary, Quick Sort pills, Best deals matrix & Flight cards */}
+        <main className="flex min-w-0 flex-col gap-4">
+          {/* Top Bar for Results: Flight Count + Quick Sort Pills (Cheapest / Fastest / Earliest) + Mobile Filters Trigger */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card p-3 shadow-2xs sm:p-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-foreground sm:text-base">
+                {visibleCount} {visibleCount === 1 ? "flight" : "flights"} found
+              </span>
+              {filtered.isFiltering ? (
+                <span className="text-xs text-muted-foreground">
+                  (filtered from {filtered.totalCount})
+                </span>
+              ) : null}
+            </div>
 
-      {visibleCount === 0 ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs"
-        >
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-            <HugeiconsIcon
-              icon={AlertCircleIcon}
-              size={24}
-              aria-hidden="true"
-            />
-          </div>
-          <h3 className="text-base font-bold text-foreground">
-            No flights match your filters — try adjusting
-          </h3>
-          <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-            Loosen a filter or clear them to see every available flight. Nothing
-            was booked and no payment was taken.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={filtered.resetFilters}
-            >
-              <span>Clear filters</span>
-            </Button>
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "finding a flight for my route",
-                    channel: "whatsapp",
-                  }}
-                  href={getFlightSupportWhatsAppUrl(
-                    "finding a flight for my route",
-                    trip
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              size="sm"
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              <HugeiconsIcon
-                icon={Message01Icon}
-                size={16}
-                aria-hidden="true"
-              />
-              <span>Talk to Alphaa</span>
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="grid grid-cols-1 gap-4 md:grid-cols-2"
-          style={{ opacity: filtered.isStale ? 0.85 : 1 }}
-        >
-          {filtered.visible.map((display) => (
-            <FlightOfferCard
-              key={display.id}
-              offer={display}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
-        <p className="text-sm text-muted-foreground">Need help choosing?</p>
-        <div className="flex gap-2">
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "choosing a flight from these results",
-                  channel: "whatsapp",
-                }}
-                href={getFlightSupportWhatsAppUrl(
-                  "choosing a flight from these results",
-                  trip
+            {/* Quick Sorter Pills (Wakanow style: Cheapest / Fastest / Earliest) */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Cheapest */}
+              <button
+                type="button"
+                onClick={() => filtered.changeSort("cheapest")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.98]",
+                  filtered.sort === "cheapest"
+                    ? "bg-secondary text-secondary-foreground shadow-xs"
+                    : "border border-border bg-card text-foreground hover:bg-muted/60"
                 )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            variant="outline"
-            size="sm"
-          >
-            <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
-            <span>Talk to Alphaa</span>
-          </Button>
-          <Button render={<Link href="/flights" />} variant="ghost" size="sm">
-            <span>New search</span>
-          </Button>
-        </div>
+              >
+                <span>Cheapest</span>
+                {sortMetrics.cheapest ? (
+                  <span className="opacity-90 tabular-nums">
+                    {sortMetrics.cheapest}
+                  </span>
+                ) : null}
+              </button>
+
+              {/* Fastest */}
+              <button
+                type="button"
+                onClick={() => filtered.changeSort("fastest")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.98]",
+                  filtered.sort === "fastest"
+                    ? "bg-secondary text-secondary-foreground shadow-xs"
+                    : "border border-border bg-card text-foreground hover:bg-muted/60"
+                )}
+              >
+                <span>Fastest</span>
+                {sortMetrics.fastest ? (
+                  <span className="opacity-90 tabular-nums">
+                    {sortMetrics.fastest}
+                  </span>
+                ) : null}
+              </button>
+
+              {/* Earliest */}
+              <button
+                type="button"
+                onClick={() => filtered.changeSort("earliest")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.98]",
+                  filtered.sort === "earliest"
+                    ? "bg-secondary text-secondary-foreground shadow-xs"
+                    : "border border-border bg-card text-foreground hover:bg-muted/60"
+                )}
+              >
+                <span>Earliest</span>
+                {sortMetrics.earliest ? (
+                  <span className="opacity-90 tabular-nums">
+                    {sortMetrics.earliest}
+                  </span>
+                ) : null}
+              </button>
+
+              {/* Mobile Filter Button */}
+              <button
+                type="button"
+                onClick={() => setMobileDrawerOpen(true)}
+                className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-muted lg:hidden"
+              >
+                <HugeiconsIcon icon={FilterIcon} size={14} aria-hidden="true" />
+                <span>Filters</span>
+                {filtered.isFiltering ? (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                    !
+                  </span>
+                ) : null}
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Prime Banner (appears here on mobile matching screenshot 2) */}
+          <div className="lg:hidden">
+            <AlphaaPrimeBanner trip={trip} />
+          </div>
+
+          {/* Best Deals by Airline Matrix / Comparison */}
+          <BestDealsAirline
+            offers={displays}
+            origin={trip?.origin ?? displays[0]?.origin}
+            destination={trip?.destination ?? displays[0]?.destination}
+            selectedAirlines={filtered.filters.airlines}
+            onSelectAirline={(airline) => {
+              const current = filtered.filters.airlines ?? []
+              if (current.includes(airline)) {
+                filtered.updateFilters({
+                  airlines: current.filter((a) => a !== airline).length > 0
+                    ? current.filter((a) => a !== airline)
+                    : null,
+                })
+              } else {
+                filtered.updateFilters({ airlines: [airline] })
+              }
+            }}
+          />
+
+          {/* Visible Flight Cards Stack */}
+          {visibleCount === 0 ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs"
+            >
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <HugeiconsIcon
+                  icon={AlertCircleIcon}
+                  size={24}
+                  aria-hidden="true"
+                />
+              </div>
+              <h3 className="text-base font-bold text-foreground">
+                No flights match your filters
+              </h3>
+              <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
+                Try loosening your filters or resetting to see every available
+                flight.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={filtered.resetFilters}
+                >
+                  <span>Clear filters</span>
+                </Button>
+                <Button
+                  render={
+                    <TrackLink
+                      event="support_click"
+                      eventProps={{
+                        context: "finding a flight for my route",
+                        channel: "whatsapp",
+                      }}
+                      href={getFlightSupportWhatsAppUrl(
+                        "finding a flight for my route",
+                        trip
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  }
+                  size="sm"
+                  className="bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  <HugeiconsIcon
+                    icon={Message01Icon}
+                    size={16}
+                    aria-hidden="true"
+                  />
+                  <span>Talk to Alphaa</span>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="flex flex-col gap-4"
+              style={{ opacity: filtered.isStale ? 0.85 : 1 }}
+            >
+              {filtered.visible.map((display) => (
+                <FlightOfferCard
+                  key={display.id}
+                  offer={display}
+                  onSelect={onSelect}
+                  isCheapest={badgeIds.cheapest.has(display.id)}
+                  isFastest={badgeIds.fastest.has(display.id)}
+                  relatedFlightCount={airlineCounts.get(display.airline) ?? 0}
+                  onViewRelated={(airline) => {
+                    filtered.updateFilters({ airlines: [airline] })
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Need Help footer bar */}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Need assistance booking or comparing flight options?
+            </p>
+            <div className="flex gap-2">
+              <Button
+                render={
+                  <TrackLink
+                    event="support_click"
+                    eventProps={{
+                      context: "choosing a flight from these results",
+                      channel: "whatsapp",
+                    }}
+                    href={getFlightSupportWhatsAppUrl(
+                      "choosing a flight from these results",
+                      trip
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+                variant="outline"
+                size="sm"
+              >
+                <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
+                <span>Talk to Alphaa</span>
+              </Button>
+              <Button render={<Link href="/flights" />} variant="ghost" size="sm">
+                <span>New search</span>
+              </Button>
+            </div>
+          </div>
+        </main>
       </div>
+
+      {/* Mobile Filters Drawer */}
+      <DrawerPrimitive.Root open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
+        <DrawerPrimitive.Portal>
+          <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-4">
+            <DrawerPrimitive.Popup className="max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl border border-border bg-card p-5 text-foreground shadow-2xl">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <DrawerPrimitive.Title className="text-base font-bold text-foreground">
+                  Filters & Sorting
+                </DrawerPrimitive.Title>
+                <DrawerPrimitive.Close
+                  aria-label="Close filters"
+                  className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+                </DrawerPrimitive.Close>
+              </div>
+
+              <div className="mt-4">
+                <FlightSidebarFilters
+                  filters={filtered.filters}
+                  sort={filtered.sort}
+                  onFiltersChange={filtered.updateFilters}
+                  onReset={filtered.resetFilters}
+                  airlineOptions={filtered.airlineOptions}
+                  allOffers={displays}
+                  priceCeilings={filtered.priceCeilings}
+                />
+              </div>
+
+              <div className="sticky bottom-0 -mx-5 mt-5 border-t border-border bg-card px-5 pt-3">
+                <Button
+                  type="button"
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="w-full justify-center rounded-xl bg-primary font-bold text-primary-foreground"
+                >
+                  <span>Show {visibleCount} Flights</span>
+                </Button>
+              </div>
+            </DrawerPrimitive.Popup>
+          </DrawerPrimitive.Viewport>
+        </DrawerPrimitive.Portal>
+      </DrawerPrimitive.Root>
     </div>
   )
 }

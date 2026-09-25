@@ -183,7 +183,7 @@ export function FlightVerifyClient() {
             <HugeiconsIcon
               icon={Clock01Icon}
               size={24}
-              className="animate-pulse"
+              className="animate-pulse motion-reduce:animate-none"
               aria-hidden="true"
             />
           </span>

@@ -213,12 +213,13 @@ export function normalizeDomesticCard(
     card.departureAt || card.departure || card.departureTime || "—"
   const arrivalAt = card.arrivalAt || card.arrival || card.arrivalTime || "—"
   const stops = card.stops ?? 0
+  const duration = card.duration || "—"
   return {
     id,
     airline,
     departureAt,
     arrivalAt,
-    duration: card.duration || "—",
+    duration,
     stops,
     stopsLabel:
       stops === 0 ? "Non-stop" : `${stops} ${stops === 1 ? "stop" : "stops"}`,
@@ -232,6 +233,33 @@ export function normalizeDomesticCard(
     baggage: null,
     price: pickCardPrice(card),
     currency: "NGN",
+    journeys: [
+      {
+        index: 0,
+        duration,
+        stops,
+        stopsLabel:
+          stops === 0
+            ? "Non-stop"
+            : `${stops} ${stops === 1 ? "stop" : "stops"}`,
+        origin,
+        destination,
+        airportsLabel:
+          origin !== "—" && destination !== "—"
+            ? `${origin} → ${destination}`
+            : "—",
+        segments: [
+          {
+            departureAirport: origin,
+            arrivalAirport: destination,
+            departureAt,
+            arrivalAt,
+            carrierCode: airline,
+            ...(duration !== "—" ? { duration } : {}),
+          },
+        ],
+      },
+    ],
     raw: { ...(typeof raw === "object" && raw !== null ? raw : {}), id },
   }
 }
@@ -277,12 +305,17 @@ export function parseSseEventBlock(block: string): ParsedSseEvent | null {
   } catch {
     // Keep raw string — caller treats unparseable data as ignorable.
   }
-  // A done envelope may nest the id or carry it as a bare string.
+  // The search reference rides early: card events may already carry
+  // search_id/searchId, and the terminal done envelope may nest the id or
+  // carry it as a bare string. Capture whenever present so the UI shows the
+  // reference early and retains it on completion.
   const searchId =
-    event === DOMESTIC_SSE_DONE_EVENT
-      ? (extractSearchId(data) ??
-        (typeof data === "string" && data.trim() ? data.trim() : null))
-      : null
+    extractSearchId(data) ??
+    (event === DOMESTIC_SSE_DONE_EVENT &&
+    typeof data === "string" &&
+    data.trim()
+      ? data.trim()
+      : null)
   return { event, data, searchId }
 }
 
@@ -290,12 +323,18 @@ export function parseSseEventBlock(block: string): ParsedSseEvent | null {
 // Blocking fallback — GET /api/flights/local-search/ (30-60s, no-store)
 // ---------------------------------------------------------------------------
 
+export interface FetchDomesticBlockingOptions {
+  signal?: AbortSignal
+}
+
 export async function fetchDomesticBlocking(
-  params: DomesticSearchParams
+  params: DomesticSearchParams,
+  options: FetchDomesticBlockingOptions = {}
 ): Promise<DomesticFlightCard[]> {
   const raw = await apiGet<unknown>("/api/flights/local-search/", {
     query: toDomesticQuery(params),
     noStore: true,
+    ...(options.signal ? { signal: options.signal } : {}),
   })
   if (Array.isArray(raw)) return raw as DomesticFlightCard[]
   if (typeof raw === "object" && raw !== null) {
@@ -305,4 +344,119 @@ export async function fetchDomesticBlocking(
     }
   }
   return []
+}
+
+// ---------------------------------------------------------------------------
+// Domestic booking branch — session-backed handoff that never submits card
+// fields as an opaque Amadeus blob. Domestic Flight Cards carry no
+// `flight_offer`/`itineraries`/`validatingAirlineCodes`; the fare-confirmation
+// step takes this explicit branch and skips Amadeus revalidation entirely.
+// ---------------------------------------------------------------------------
+
+export const SELECTED_DOMESTIC_CARD_SESSION_KEY =
+  "alphaa:selected-domestic-card:v1"
+export const CONFIRMED_DOMESTIC_CARD_SESSION_KEY =
+  "alphaa:confirmed-domestic-card:v1"
+
+/**
+ * True when the raw selection looks like a Domestic Flight Card rather than
+ * an opaque Amadeus Flight Offer: no `flight_offer` blob, no `itineraries`,
+ * no `validatingAirlineCodes`. Defensive — unknown shapes default to false
+ * (Amadeus path) so a fare is never booked without revalidation by mistake.
+ */
+export function isDomesticFlightCard(raw: unknown): boolean {
+  if (typeof raw !== "object" || raw === null) return false
+  const rec = raw as Record<string, unknown>
+  if (rec.flight_offer !== undefined && rec.flight_offer !== null) return false
+  if (Array.isArray(rec.itineraries) && rec.itineraries.length > 0) return false
+  if (
+    Array.isArray(rec.validatingAirlineCodes) &&
+    rec.validatingAirlineCodes.length > 0
+  ) {
+    return false
+  }
+  // Domestic cards always carry an origin/destination pair in some casing.
+  const hasRoute =
+    (typeof rec.origin === "string" && typeof rec.destination === "string") ||
+    (typeof rec.Origin === "string" && typeof rec.Destination === "string")
+  return hasRoute
+}
+
+export type BookingBranch = "domestic" | "international"
+
+/**
+ * Single booking-branch resolver shared by selection and fare confirmation.
+ * The live search mode wins; otherwise the card shape decides — a domestic
+ * shape always takes the domestic branch so card fields are never submitted
+ * as an opaque Amadeus blob.
+ */
+export function resolveBookingBranch(
+  searchMode: "domestic" | "international" | null,
+  raw: unknown
+): BookingBranch {
+  if (searchMode === "domestic" || isDomesticFlightCard(raw)) return "domestic"
+  return "international"
+}
+
+function writeDomesticCardToSession(
+  key: string,
+  card: DomesticFlightCard
+): void {
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(card))
+  } catch {
+    // sessionStorage may throw in private mode — memory copy still works
+  }
+}
+
+function readDomesticCardFromSession(key: string): DomesticFlightCard | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.sessionStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as unknown
+    if (typeof parsed !== "object" || parsed === null) return null
+    return parsed as DomesticFlightCard
+  } catch {
+    return null
+  }
+}
+
+// In-memory handoff mirroring the Amadeus blob flow: the selecting page holds
+// the card while sessionStorage backs refresh and back navigation.
+let memorySelectedDomesticCard: DomesticFlightCard | null = null
+let memoryConfirmedDomesticCard: DomesticFlightCard | null = null
+
+/** Persist the selected Domestic Flight Card (memory caller + session backup). */
+export function saveSelectedDomesticCard(card: DomesticFlightCard): void {
+  memorySelectedDomesticCard = card
+  writeDomesticCardToSession(SELECTED_DOMESTIC_CARD_SESSION_KEY, card)
+}
+
+/** Read back the selected Domestic Flight Card, or null when absent/corrupt. */
+export function readSelectedDomesticCard(): DomesticFlightCard | null {
+  return memorySelectedDomesticCard ?? readDomesticCardFromSession(SELECTED_DOMESTIC_CARD_SESSION_KEY)
+}
+
+/** Drop the selected Domestic Flight Card from memory and session (branch switches). */
+export function clearSelectedDomesticCard(): void {
+  memorySelectedDomesticCard = null
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.removeItem(SELECTED_DOMESTIC_CARD_SESSION_KEY)
+  } catch {
+    // ignore — memory copy already cleared
+  }
+}
+
+/** Copy the confirmed Domestic Flight Card into session for travellers/payment. */
+export function saveConfirmedDomesticCard(card: DomesticFlightCard): void {
+  memoryConfirmedDomesticCard = card
+  writeDomesticCardToSession(CONFIRMED_DOMESTIC_CARD_SESSION_KEY, card)
+}
+
+/** Read back the confirmed Domestic Flight Card, or null when absent/corrupt. */
+export function readConfirmedDomesticCard(): DomesticFlightCard | null {
+  return memoryConfirmedDomesticCard ?? readDomesticCardFromSession(CONFIRMED_DOMESTIC_CARD_SESSION_KEY)
 }

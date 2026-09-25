@@ -100,13 +100,26 @@ export function clearRecentAirports(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Airport search: 2-char minimum, dedup, cache
-// Uses centralized apiGet (ISR noStore) so base URL stays hidden
+// Airport search: 2-char minimum, dedup, cache, cancellation + run-guard ready
+// Uses centralized apiGet (ISR noStore) so base URL stays hidden.
+// Cancellation: callers pass an AbortSignal; aborts propagate as AbortError
+// so run-guards can ignore stale responses. Cache/dedup stay signal-agnostic
+// — a shared in-flight promise is never cancelled by one consumer.
 // ---------------------------------------------------------------------------
 
-export async function searchAirports(query: string): Promise<Airport[]> {
+export interface SearchAirportsOptions {
+  signal?: AbortSignal
+}
+
+export async function searchAirports(
+  query: string,
+  options: SearchAirportsOptions = {}
+): Promise<Airport[]> {
   const trimmed = query.trim()
   if (trimmed.length < AIRPORT_MIN_CHARS) return []
+  if (options.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError")
+  }
 
   const key = trimmed.toLowerCase()
 
@@ -123,6 +136,7 @@ export async function searchAirports(query: string): Promise<Airport[]> {
       const raw = await apiGet<unknown>("/api/flights/airports/", {
         query: { q: trimmed },
         noStore: true,
+        ...(options.signal ? { signal: options.signal } : {}),
       })
       // Backend returns array of airports
       const parsed = z.array(airportSchema).safeParse(raw)
@@ -140,7 +154,14 @@ export async function searchAirports(query: string): Promise<Airport[]> {
       }
       airportResultCache.set(key, parsed.data)
       return parsed.data
-    } catch {
+    } catch (error) {
+      // Cancellation must propagate — never cache or swallow as empty.
+      if (
+        (error instanceof DOMException && error.name === "AbortError") ||
+        (error instanceof Error && error.name === "AbortError")
+      ) {
+        throw error
+      }
       return []
     } finally {
       airportPendingRequests.delete(key)
@@ -149,6 +170,44 @@ export async function searchAirports(query: string): Promise<Airport[]> {
 
   airportPendingRequests.set(key, promise)
   return promise
+}
+
+/**
+ * Resolve one IATA code to a full Airport (city + name) for shared-link and
+ * refresh hydration. Tries the module cache first, then a single lookup;
+ * returns null when the lookup fails so callers fall back to the bare code.
+ * Never throws.
+ */
+export async function fetchAirportByIata(
+  iata: string,
+  options: SearchAirportsOptions = {}
+): Promise<Airport | null> {
+  const code = iata.trim().toUpperCase()
+  if (!/^[A-Z]{3}$/.test(code)) return null
+  try {
+    // Cache scan first — avoids a fetch when the code was seen before.
+    for (const list of airportResultCache.values()) {
+      const hit = list.find((a) => a.iata_code.toUpperCase() === code)
+      if (hit) return hit
+    }
+    const results = await searchAirports(code, options)
+    const exact = results.find((a) => a.iata_code.toUpperCase() === code)
+    if (exact) return exact
+    // Fallback: prefix search may still carry the airport under another key.
+    for (const list of airportResultCache.values()) {
+      const hit = list.find((a) => a.iata_code.toUpperCase() === code)
+      if (hit) return hit
+    }
+    return null
+  } catch {
+    // Abort or network failure — caller keeps the light fallback.
+    if (
+      options.signal?.aborted
+    ) {
+      throw new DOMException("Aborted", "AbortError")
+    }
+    return null
+  }
 }
 
 // Helpers for tests / SSR to reset module state
@@ -407,7 +466,11 @@ export type FlightSearchPayload = z.output<typeof tripTypeSchema>
  * Convert a validated search of any trip type into the backend legs contract.
  * Backend expects `POST /api/flights/search/` with `{ trip_type, legs, adults, children, infants, ... }`
  * where every leg carries its own cabin (apidoc FlightSearchRequest).
+ * One request per itinerary — never one fetch per leg — with an explicit
+ * bounded `max_offers` so searches stay predictable (apidoc: 1–50, default 20).
  */
+export const FLIGHT_SEARCH_MAX_OFFERS = 20
+
 export function toFlightSearchRequest(payload: FlightSearchPayload) {
   const cabin = payload.cabin ?? "ECONOMY"
   const common = {
@@ -420,6 +483,7 @@ export function toFlightSearchRequest(payload: FlightSearchPayload) {
       ? { max_stops: payload.max_stops }
       : {}),
     cabin,
+    max_offers: FLIGHT_SEARCH_MAX_OFFERS,
   }
   switch (payload.trip_type) {
     case "round_trip":
@@ -611,6 +675,29 @@ export const flightOffersResponseSchema = z
       .transform((v) => v.results)
   )
 
+export interface FlightJourneySegment {
+  departureAirport: string
+  arrivalAirport: string
+  departureAt: string
+  arrivalAt: string
+  carrierCode: string
+  flightNumber?: string
+  duration?: string
+  cabin?: string
+}
+
+export interface FlightJourney {
+  /** 0-based position in the offer (outbound, return, leg N). */
+  index: number
+  duration: string
+  stops: number
+  stopsLabel: string
+  origin: string
+  destination: string
+  airportsLabel: string
+  segments: FlightJourneySegment[]
+}
+
 export interface FlightOfferDisplay {
   id: string
   airline: string
@@ -626,6 +713,8 @@ export interface FlightOfferDisplay {
   baggage: string | null
   price: string
   currency: string
+  /** Full journey timeline across ALL itineraries — never a single-leg summary alone. */
+  journeys: FlightJourney[]
   // Keep reference to raw offer for selection
   raw: FlightOffer
 }
@@ -701,6 +790,9 @@ function getSegmentEndpoints(segment: unknown): {
   departureAirport: string
   arrivalAirport: string
   cabin: string
+  carrierCode: string
+  flightNumber: string
+  duration: string
 } {
   const seg = segment as Record<string, unknown>
   const dep = seg.departure as Record<string, string> | undefined
@@ -711,7 +803,54 @@ function getSegmentEndpoints(segment: unknown): {
     departureAirport: (seg.departureAirport as string) ?? dep?.iataCode ?? "",
     arrivalAirport: (seg.arrivalAirport as string) ?? arr?.iataCode ?? "",
     cabin: (seg.cabin as string) ?? "",
+    carrierCode:
+      (seg.carrierCode as string) ?? (seg.carrier as string) ?? "",
+    flightNumber: (seg.flightNumber as string) ?? (seg.number as string) ?? "",
+    duration: (seg.duration as string) ?? "",
   }
+}
+
+/** Build the full journey timeline across every itinerary — defensive pass-through. */
+function buildJourneys(offer: FlightOffer): FlightJourney[] {
+  if (!Array.isArray(offer.itineraries) || offer.itineraries.length === 0) {
+    return []
+  }
+  return offer.itineraries.map((itin, index) => {
+    const segs = Array.isArray(itin.segments) ? itin.segments : []
+    const segments: FlightJourneySegment[] = segs.map((seg) => {
+      const e = getSegmentEndpoints(seg)
+      return {
+        departureAirport: e.departureAirport || "—",
+        arrivalAirport: e.arrivalAirport || "—",
+        departureAt: e.departureAt ? formatTime(e.departureAt) : "—",
+        arrivalAt: e.arrivalAt ? formatTime(e.arrivalAt) : "—",
+        carrierCode: e.carrierCode || "",
+        ...(e.flightNumber ? { flightNumber: e.flightNumber } : {}),
+        ...(e.duration ? { duration: formatDuration(e.duration) } : {}),
+        ...(e.cabin ? { cabin: e.cabin } : {}),
+      }
+    })
+    const first = segs.length > 0 ? getSegmentEndpoints(segs[0]) : null
+    const last =
+      segs.length > 0 ? getSegmentEndpoints(segs[segs.length - 1]) : null
+    const origin = first?.departureAirport || "—"
+    const destination = last?.arrivalAirport || "—"
+    const stops = segs.length > 0 ? segs.length - 1 : 0
+    return {
+      index,
+      duration: itin.duration ? formatDuration(itin.duration) : "—",
+      stops,
+      stopsLabel:
+        stops === 0 ? "Non-stop" : `${stops} ${stops === 1 ? "stop" : "stops"}`,
+      origin,
+      destination,
+      airportsLabel:
+        origin !== "—" && destination !== "—"
+          ? `${origin} → ${destination}`
+          : "—",
+      segments,
+    }
+  })
 }
 
 export function normalizeFlightOffer(
@@ -779,6 +918,7 @@ export function normalizeFlightOffer(
     baggage,
     price: amount,
     currency,
+    journeys: buildJourneys(offer),
     raw: offer,
   }
 }
@@ -787,13 +927,25 @@ export function normalizeFlightOffer(
 // International search via centralized apiPost (ticket 01).
 // Domestic auto-routing (both-Nigerian → QuickAir SSE proxy, ADR-0004) lands
 // in ticket 03 — this slice intentionally serves the Amadeus legs path only.
+// One request per itinerary with an explicit bounded max_offers; callers pass
+// an AbortSignal so superseding searches and unmount cancel in-flight work
+// and stale responses never overwrite fresh ones.
 // ---------------------------------------------------------------------------
 
+export interface SearchFlightsOptions {
+  signal?: AbortSignal
+}
+
 export async function searchFlights(
-  payload: FlightSearchPayload
+  payload: FlightSearchPayload,
+  options: SearchFlightsOptions = {}
 ): Promise<FlightOffer[]> {
   const body = toFlightSearchRequest(payload)
-  const raw = await apiPost<unknown, typeof body>("/api/flights/search/", body)
+  const raw = await apiPost<unknown, typeof body>(
+    "/api/flights/search/",
+    body,
+    options.signal ? { signal: options.signal } : {}
+  )
   // Backend may return array or { results: [] } or { data: [] } / { offers: [] }.
   // A 200 with an error envelope must surface as an error (never silent empty).
   if (Array.isArray(raw)) {
@@ -993,24 +1145,116 @@ function readOfferFromSession(key: string): FlightOffer | null {
   }
 }
 
+// In-memory handoff for the opaque blob: the selecting page holds the object
+// (memory caller) while sessionStorage backs refresh and back navigation.
+// Reads prefer memory, falling back to session — the blob never enters URLs
+// or analytics either way.
+let memorySelectedOffer: FlightOffer | null = null
+let memoryConfirmedOffer: FlightOffer | null = null
+
 /** Persist the selected Flight Offer blob (memory caller + sessionStorage backup). */
 export function saveSelectedOffer(offer: FlightOffer): void {
+  memorySelectedOffer = offer
   writeOfferToSession(SELECTED_OFFER_SESSION_KEY, offer)
 }
 
 /** Read back the selected Flight Offer blob, or null when absent/corrupt. */
 export function readSelectedOffer(): FlightOffer | null {
-  return readOfferFromSession(SELECTED_OFFER_SESSION_KEY)
+  return memorySelectedOffer ?? readOfferFromSession(SELECTED_OFFER_SESSION_KEY)
+}
+
+/** Drop the selected Flight Offer from memory and session (branch switches). */
+export function clearSelectedOffer(): void {
+  memorySelectedOffer = null
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.removeItem(SELECTED_OFFER_SESSION_KEY)
+  } catch {
+    // ignore — memory copy already cleared
+  }
 }
 
 /** Copy the Confirmed Offer into session for ticket 06 (traveller entry). */
 export function saveConfirmedOffer(offer: FlightOffer): void {
+  memoryConfirmedOffer = offer
   writeOfferToSession(CONFIRMED_OFFER_SESSION_KEY, offer)
 }
 
 /** Read back the Confirmed Offer, or null when absent/corrupt. */
 export function readConfirmedOffer(): FlightOffer | null {
-  return readOfferFromSession(CONFIRMED_OFFER_SESSION_KEY)
+  return memoryConfirmedOffer ?? readOfferFromSession(CONFIRMED_OFFER_SESSION_KEY)
+}
+
+export const SELECTED_PARTY_SESSION_KEY = "alphaa:selected-flight-party:v1"
+
+export interface SelectedFlightParty {
+  adults: number
+  children: number
+  infants: number
+}
+
+let memorySelectedParty: SelectedFlightParty | null = null
+
+/**
+ * Persist the search-step party alongside the selected offer so Traveller
+ * entry opens the exact slot count (adults/children/infants) even though
+ * the opaque blob carries no party. Safe primitives only — never PII.
+ */
+export function saveSelectedParty(party: SelectedFlightParty): void {
+  memorySelectedParty = { ...party }
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.setItem(
+      SELECTED_PARTY_SESSION_KEY,
+      JSON.stringify(party)
+    )
+  } catch {
+    // sessionStorage may throw in private mode — memory copy still works
+  }
+}
+
+/** Read back the selected party, or null when absent/corrupt. */
+export function readSelectedParty(): SelectedFlightParty | null {
+  if (memorySelectedParty) return { ...memorySelectedParty }
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.sessionStorage.getItem(SELECTED_PARTY_SESSION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as unknown
+    if (typeof parsed !== "object" || parsed === null) return null
+    const rec = parsed as Record<string, unknown>
+    const adults = rec.adults
+    const children = rec.children
+    const infants = rec.infants
+    if (
+      typeof adults !== "number" ||
+      !Number.isInteger(adults) ||
+      adults < 1 ||
+      adults > 9 ||
+      typeof children !== "number" ||
+      !Number.isInteger(children) ||
+      children < 0 ||
+      children > 9 ||
+      typeof infants !== "number" ||
+      !Number.isInteger(infants) ||
+      infants < 0 ||
+      infants > 9
+    ) {
+      return null
+    }
+    return { adults, children, infants }
+  } catch {
+    return null
+  }
+}
+
+/** Build the traveller-entry query carrying only safe party counts. */
+export function buildCheckoutPartyQuery(party: SelectedFlightParty): string {
+  const params = new URLSearchParams()
+  params.set("adults", String(party.adults))
+  params.set("children", String(party.children))
+  params.set("infants", String(party.infants))
+  return params.toString()
 }
 
 export const TRAVELLERS_DRAFT_SESSION_KEY = "alphaa:travellers-draft:v1"

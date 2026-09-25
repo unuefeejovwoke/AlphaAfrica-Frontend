@@ -13,6 +13,15 @@
  * - flight_confirmation_viewed { type } (`booking_confirmation_viewed` kept as legacy alias)
  * - support_click { context, channel }
  *
+ * Hotel funnel (Phase 4, ticket 07 — all props coarse, never PII):
+ * - hotel_search { has_destination, has_dates, guests, rooms }
+ * - hotel_viewed { city, stars }
+ * - hotel_booking_started { nights, rooms, guests }
+ * - hotel_payment_initiated { currency, nights }
+ * - hotel_payment_completed { type }
+ * - hotel_confirmation_viewed { type, outcome }
+ * - support_click { context, channel }
+ *
  * - Events are an allowlist: `track()` throws on unknown names so a typo
  *   fails loudly in development instead of silently dropping data.
  * - Props are sanitized: any key resembling passport, payment, card, token,
@@ -46,6 +55,12 @@ export const ANALYTICS_EVENTS = [
   "flight_payment_initiated",
   "flight_payment_completed",
   "flight_confirmation_viewed",
+  "hotel_search",
+  "hotel_viewed",
+  "hotel_booking_started",
+  "hotel_payment_initiated",
+  "hotel_payment_completed",
+  "hotel_confirmation_viewed",
 ] as const
 
 export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[number]
@@ -57,7 +72,7 @@ export type AnalyticsProps = Record<
 
 /** Keys matching this pattern are PII/payment material and never leave the device. */
 const SENSITIVE_KEY_PATTERN =
-  /passport|payment|card|token|secret|password|email|phone|auth|reference|order|flight_offer|opaque|blob|pnr|booking/i
+  /passport|payment|card|token|secret|password|email|phone|auth|reference|order|flight_offer|opaque|blob|pnr|booking|amount|price|total/i
 
 function isKnownEvent(event: string): event is AnalyticsEvent {
   return (ANALYTICS_EVENTS as readonly string[]).includes(event)

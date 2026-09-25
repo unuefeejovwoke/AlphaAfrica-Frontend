@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { CardSkeleton } from "@/components/ui/skeleton"
 import { HomeSearchSwitcher } from "@/components/home/home-search-switcher"
 import { FeaturedPackages } from "@/components/home/featured-packages"
+import { HomeTestimonials } from "@/components/home/home-testimonials"
 import { HomeFaq } from "@/components/home/home-faq"
 import { TerminalCta } from "@/components/shared/terminal-cta"
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
@@ -360,6 +361,9 @@ export default function HomePage() {
           <FeaturedPackages />
         </React.Suspense>
       </section>
+
+      {/* Verified Customer Testimonials Slider */}
+      <HomeTestimonials />
 
       {/* Terminal Support Hatch */}
       <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">

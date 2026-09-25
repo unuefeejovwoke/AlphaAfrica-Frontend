@@ -2,8 +2,14 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { AlertCircleIcon, Message01Icon } from "@hugeicons/core-free-icons"
+import {
+  AlertCircleIcon,
+  Message01Icon,
+  FilterIcon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import {
@@ -16,12 +22,23 @@ import {
   type FlightTripContext,
 } from "@/lib/api/flights"
 import {
+  type FlightSortKey,
+  parseNairaAmount,
+  parseDurationMinutes,
+  parseDepartureMinutes,
+} from "@/lib/api/flight-filters"
+import { useComparisonBadges } from "@/components/flights/use-comparison-badges"
+import {
   FlightOfferCard,
   FlightOfferSkeleton,
 } from "@/components/flights/flight-offer-card"
-import { FlightFilterBar } from "@/components/flights/flight-filter-bar"
 import { TrackLink } from "@/components/analytics/track-link"
 import { useFilteredOffers } from "@/components/flights/use-filtered-offers"
+import { AlphaaPrimeBanner } from "@/components/flights/alphaa-prime-banner"
+import { FlightSidebarFilters } from "@/components/flights/flight-sidebar-filters"
+import { BestDealsAirline } from "@/components/flights/best-deals-airline"
+import { formatNaira } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 export interface DomesticStreamResultsProps {
   cards: DomesticFlightCard[]
@@ -31,21 +48,28 @@ export interface DomesticStreamResultsProps {
   didFallback: boolean
   searchId: string | null
   error: unknown | null
+  startedAt: number | null
   onRetry: () => void
+  onCancel: () => void
   onSelect: (offer: FlightOfferDisplay) => void
-  /** Trip context (route, dates, party) for support hatches. */
   trip?: FlightTripContext
 }
 
-/**
- * Progressive domestic results — cards render as airlines respond inside a
- * Suspense boundary (parent), with honest progress copy (story 6), a
- * terminal completion state retaining search_id (story 7), and human
- * error copy with retry + Talk to Alphaa (story 8).
- *
- * - Deferred card rendering keeps input responsive (vercel: rerender-use-deferred-value)
- * - Ternary conditional renders (vercel: rendering-conditional-render)
- */
+function useElapsedSeconds(
+  startedAt: number | null,
+  active: boolean
+): number | null {
+  const [now, setNow] = React.useState(() => Date.now())
+  React.useEffect(() => {
+    if (!active || startedAt === null) return
+    setNow(Date.now())
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [active, startedAt])
+  if (startedAt === null) return null
+  return Math.max(0, Math.floor((now - startedAt) / 1000))
+}
+
 export function DomesticStreamResults({
   cards,
   isStreaming,
@@ -54,10 +78,13 @@ export function DomesticStreamResults({
   didFallback,
   searchId,
   error,
+  startedAt,
   onRetry,
+  onCancel,
   onSelect,
   trip,
 }: DomesticStreamResultsProps) {
+  const [mobileDrawerOpen, setMobileDrawerOpen] = React.useState(false)
   const deferredCards = React.useDeferredValue(cards)
 
   const displays = React.useMemo(
@@ -66,11 +93,10 @@ export function DomesticStreamResults({
     [deferredCards]
   )
 
-  // Live client-side filter/sort over accumulated cards (ticket 04) — cards
-  // arriving mid-stream flow through automatically, no refetch.
   const filtered = useFilteredOffers(displays)
+  const visibleCount = filtered.visible.length
+  const badgeIds = useComparisonBadges(filtered.visible)
 
-  // Trip context plus the search ref so specialists can trace the stream.
   const tripWithRef: FlightTripContext = {
     ...trip,
     reference: searchId ? `search ref ${searchId}` : trip?.reference,
@@ -80,10 +106,59 @@ export function DomesticStreamResults({
     tripWithRef
   )
 
-  // Streaming with nothing yet — skeleton, never blank (story 6).
+  const streamingActive = isStreaming || isFallingBack
+  const elapsedSec = useElapsedSeconds(startedAt, streamingActive)
+  const elapsedLabel = elapsedSec === null ? null : `${elapsedSec}s elapsed`
+  const progressCopy = isFallingBack
+    ? "Streaming was slow — loading full domestic results…"
+    : displays.length > 0
+      ? `${displays.length} ${displays.length === 1 ? "flight" : "flights"} so far… airlines still checking…`
+      : "Finding domestic flights… live airline checks underway…"
+
+  // Quick-sort metrics
+  const sortMetrics = React.useMemo(() => {
+    let minPrice: number | null = null
+    let minDurationMins = Infinity
+    let minDurationLabel: string | null = null
+    let earliestMins = Infinity
+    let earliestLabel: string | null = null
+
+    for (const d of displays) {
+      const price = parseNairaAmount(d.price)
+      if (price !== null && (minPrice === null || price < minPrice)) {
+        minPrice = price
+      }
+      const durMins = parseDurationMinutes(d.duration)
+      if (durMins !== null && durMins < minDurationMins) {
+        minDurationMins = durMins
+        minDurationLabel = d.duration
+      }
+      const depMins = parseDepartureMinutes(d.departureAt)
+      if (depMins !== null && depMins < earliestMins) {
+        earliestMins = depMins
+        earliestLabel = d.departureAt
+      }
+    }
+    return {
+      cheapest: minPrice ? formatNaira(minPrice) : null,
+      fastest: minDurationLabel,
+      earliest: earliestLabel,
+    }
+  }, [displays])
+
+  // Count flights per airline for grouping
+  const airlineCounts = React.useMemo(() => {
+    const map = new Map<string, number>()
+    for (const d of filtered.visible) {
+      map.set(d.airline, (map.get(d.airline) ?? 0) + 1)
+    }
+    return map
+  }, [filtered.visible])
+
+  // Initial streaming with no cards yet
   if (
     (isStreaming && displays.length === 0 && !isFallingBack) ||
-    isFallingBack
+    (isFallingBack && displays.length === 0)
   ) {
     return (
       <div
@@ -92,12 +167,23 @@ export function DomesticStreamResults({
         aria-busy="true"
         className="flex flex-col gap-4"
       >
-        <p className="text-sm font-medium text-muted-foreground">
-          {isFallingBack
-            ? "Streaming was slow — loading the full results…"
-            : "Finding available flights… airlines being checked…"}
-        </p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card p-4">
+          <p className="text-sm font-medium text-muted-foreground">
+            {progressCopy}
+            {elapsedLabel ? ` · ${elapsedLabel}` : null}
+          </p>
+          <div className="flex items-center gap-2">
+            {searchId ? (
+              <p className="font-variant-numeric text-xs font-medium text-muted-foreground tabular-nums">
+                Search ref: {searchId}
+              </p>
+            ) : null}
+            <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+              <span>Cancel search</span>
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <FlightOfferSkeleton key={i} />
           ))}
@@ -106,7 +192,7 @@ export function DomesticStreamResults({
     )
   }
 
-  // Error only when the blocking fallback also failed — human copy + recovery.
+  // Error state
   if (error && !isStreaming && !isFallingBack && displays.length === 0) {
     return (
       <div className="flex flex-col gap-4">
@@ -126,7 +212,7 @@ export function DomesticStreamResults({
     )
   }
 
-  // Empty after a clean completion — human copy + Talk to Alphaa, announced.
+  // Complete but empty
   if (isComplete && !isStreaming && displays.length === 0) {
     return (
       <div
@@ -170,172 +256,287 @@ export function DomesticStreamResults({
             <span>Talk to Alphaa</span>
           </Button>
         </div>
-        {searchId ? (
-          <p className="font-variant-numeric text-xs font-medium text-muted-foreground tabular-nums">
-            Search ref: {searchId}
-          </p>
-        ) : null}
       </div>
     )
   }
 
-  // Progressive / complete list — ternary, never && (vercel guideline).
-  const visibleCount = filtered.visible.length
-  const resultSummary = isStreaming
-    ? `${visibleCount} ${visibleCount === 1 ? "flight" : "flights"} so far… airlines still being checked…`
-    : filtered.isStale
-      ? "Updating results…"
-      : filtered.isFiltering
-        ? `${visibleCount} of ${filtered.totalCount} ${filtered.totalCount === 1 ? "flight" : "flights"} match your filters`
-        : `${visibleCount} ${visibleCount === 1 ? "flight" : "flights"} found${didFallback ? " · full results loaded" : ""}`
-
   return (
-    <div className="flex flex-col gap-4">
-      <FlightFilterBar
-        filters={filtered.filters}
-        sort={filtered.sort}
-        onFiltersChange={filtered.updateFilters}
-        onSortChange={filtered.changeSort}
-        onReset={filtered.resetFilters}
-        airlineOptions={filtered.airlineOptions}
-        visibleCount={visibleCount}
-        isFiltering={filtered.isFiltering}
-      />
+    <div className="w-full">
+      {/* 2-Column Responsive Layout */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_1fr]">
+        {/* Left Column (Desktop Only): Alphaa Prime + Sidebar Filters */}
+        <aside className="hidden flex-col gap-5 lg:flex">
+          <AlphaaPrimeBanner trip={trip} />
+          <FlightSidebarFilters
+            filters={filtered.filters}
+            sort={filtered.sort}
+            onFiltersChange={filtered.updateFilters}
+            onReset={filtered.resetFilters}
+            airlineOptions={filtered.airlineOptions}
+            allOffers={displays}
+            priceCeilings={filtered.priceCeilings}
+          />
+        </aside>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p
-          className="text-sm font-medium text-muted-foreground"
-          aria-live="polite"
-        >
-          {resultSummary}
-        </p>
-        {searchId ? (
-          <p className="font-variant-numeric text-xs font-medium text-muted-foreground tabular-nums">
-            Search ref: {searchId}
-          </p>
-        ) : null}
+        {/* Right Column */}
+        <main className="flex min-w-0 flex-col gap-4">
+          {/* Top Bar for Results */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card p-3 shadow-2xs sm:p-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-foreground sm:text-base">
+                {visibleCount} {visibleCount === 1 ? "flight" : "flights"} found
+              </span>
+              {streamingActive ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+                  <span className="size-1.5 animate-pulse rounded-full bg-primary" />
+                  Streaming live
+                </span>
+              ) : null}
+            </div>
+
+            {/* Quick Sorter Pills */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => filtered.changeSort("cheapest")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.98]",
+                  filtered.sort === "cheapest"
+                    ? "bg-secondary text-secondary-foreground shadow-xs"
+                    : "border border-border bg-card text-foreground hover:bg-muted/60"
+                )}
+              >
+                <span>Cheapest</span>
+                {sortMetrics.cheapest ? (
+                  <span className="opacity-90 tabular-nums">
+                    {sortMetrics.cheapest}
+                  </span>
+                ) : null}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => filtered.changeSort("fastest")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.98]",
+                  filtered.sort === "fastest"
+                    ? "bg-secondary text-secondary-foreground shadow-xs"
+                    : "border border-border bg-card text-foreground hover:bg-muted/60"
+                )}
+              >
+                <span>Fastest</span>
+                {sortMetrics.fastest ? (
+                  <span className="opacity-90 tabular-nums">
+                    {sortMetrics.fastest}
+                  </span>
+                ) : null}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => filtered.changeSort("earliest")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.98]",
+                  filtered.sort === "earliest"
+                    ? "bg-secondary text-secondary-foreground shadow-xs"
+                    : "border border-border bg-card text-foreground hover:bg-muted/60"
+                )}
+              >
+                <span>Earliest</span>
+                {sortMetrics.earliest ? (
+                  <span className="opacity-90 tabular-nums">
+                    {sortMetrics.earliest}
+                  </span>
+                ) : null}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMobileDrawerOpen(true)}
+                className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-muted lg:hidden"
+              >
+                <HugeiconsIcon icon={FilterIcon} size={14} aria-hidden="true" />
+                <span>Filters</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Streaming status details */}
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+            <p aria-live="polite">
+              {isStreaming
+                ? `Airlines still responding… ${elapsedLabel || ""}`
+                : isComplete
+                  ? "Live domestic search completed."
+                  : ""}
+            </p>
+            {searchId ? (
+              <p className="font-mono text-[11px] tabular-nums">Ref: {searchId}</p>
+            ) : null}
+          </div>
+
+          {/* Mobile Prime Banner */}
+          <div className="lg:hidden">
+            <AlphaaPrimeBanner trip={trip} />
+          </div>
+
+          {/* Best Deals by Airline */}
+          <BestDealsAirline
+            offers={displays}
+            origin={trip?.origin ?? displays[0]?.origin}
+            destination={trip?.destination ?? displays[0]?.destination}
+            selectedAirlines={filtered.filters.airlines}
+            onSelectAirline={(airline) => {
+              const current = filtered.filters.airlines ?? []
+              if (current.includes(airline)) {
+                filtered.updateFilters({
+                  airlines: current.filter((a) => a !== airline).length > 0
+                    ? current.filter((a) => a !== airline)
+                    : null,
+                })
+              } else {
+                filtered.updateFilters({ airlines: [airline] })
+              }
+            }}
+          />
+
+          {/* Cards Stack */}
+          {visibleCount === 0 && filtered.isFiltering && !isStreaming ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs"
+            >
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <HugeiconsIcon
+                  icon={AlertCircleIcon}
+                  size={24}
+                  aria-hidden="true"
+                />
+              </div>
+              <h3 className="text-base font-bold text-foreground">
+                No domestic flights match your filters
+              </h3>
+              <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
+                Clear or adjust filters to view all available flights.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={filtered.resetFilters}
+              >
+                <span>Clear filters</span>
+              </Button>
+            </div>
+          ) : (
+            <div
+              className="flex flex-col gap-4"
+              style={{ opacity: filtered.isStale ? 0.85 : 1 }}
+            >
+              {filtered.visible.map((display) => (
+                <FlightOfferCard
+                  key={display.id}
+                  offer={display}
+                  onSelect={onSelect}
+                  isCheapest={badgeIds.cheapest.has(display.id)}
+                  isFastest={badgeIds.fastest.has(display.id)}
+                  relatedFlightCount={airlineCounts.get(display.airline) ?? 0}
+                  onViewRelated={(airline) => {
+                    filtered.updateFilters({ airlines: [airline] })
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {isStreaming ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex flex-col gap-4"
+            >
+              {Array.from({ length: 2 }).map((_, i) => (
+                <FlightOfferSkeleton key={`streaming-${i}`} />
+              ))}
+            </div>
+          ) : null}
+
+          {/* Help footer */}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Need assistance booking or verifying domestic fares?
+            </p>
+            <div className="flex gap-2">
+              <Button
+                render={
+                  <TrackLink
+                    event="support_click"
+                    eventProps={{
+                      context: "a domestic flight search",
+                      channel: "whatsapp",
+                    }}
+                    href={supportUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+                variant="outline"
+                size="sm"
+              >
+                <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
+                <span>Talk to Alphaa</span>
+              </Button>
+              <Button render={<Link href="/flights" />} variant="ghost" size="sm">
+                <span>New search</span>
+              </Button>
+            </div>
+          </div>
+        </main>
       </div>
 
-      {visibleCount === 0 && filtered.isFiltering && !isStreaming ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs"
-        >
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-            <HugeiconsIcon
-              icon={AlertCircleIcon}
-              size={24}
-              aria-hidden="true"
-            />
-          </div>
-          <h3 className="text-base font-bold text-foreground">
-            No flights match your filters — try adjusting
-          </h3>
-          <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-            Loosen a filter or clear them to see every available flight. Nothing
-            was booked and no payment was taken.
-            {searchId ? ` Keep ref ${searchId} when you contact support.` : ""}
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={filtered.resetFilters}
-            >
-              <span>Clear filters</span>
-            </Button>
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "a domestic flight search",
-                    channel: "whatsapp",
-                  }}
-                  href={supportUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              size="sm"
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              <HugeiconsIcon
-                icon={Message01Icon}
-                size={16}
-                aria-hidden="true"
-              />
-              <span>Talk to Alphaa</span>
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="grid grid-cols-1 gap-4 md:grid-cols-2"
-          style={{ opacity: filtered.isStale ? 0.85 : 1 }}
-        >
-          {filtered.visible.map((display) => (
-            <FlightOfferCard
-              key={display.id}
-              offer={display}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-      )}
+      {/* Mobile Drawer */}
+      <DrawerPrimitive.Root open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
+        <DrawerPrimitive.Portal>
+          <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-4">
+            <DrawerPrimitive.Popup className="max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl border border-border bg-card p-5 text-foreground shadow-2xl">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <DrawerPrimitive.Title className="text-base font-bold text-foreground">
+                  Filters & Sorting
+                </DrawerPrimitive.Title>
+                <DrawerPrimitive.Close
+                  aria-label="Close filters"
+                  className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+                </DrawerPrimitive.Close>
+              </div>
 
-      {isStreaming ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="grid grid-cols-1 gap-4 md:grid-cols-2"
-        >
-          {Array.from({ length: 2 }).map((_, i) => (
-            <FlightOfferSkeleton key={`streaming-${i}`} />
-          ))}
-        </div>
-      ) : null}
-
-      {isComplete ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
-          <p className="text-sm text-muted-foreground">
-            {searchId
-              ? `Search complete · Ref ${searchId} — keep it for support.`
-              : "Search complete."}{" "}
-            Need help choosing?
-          </p>
-          <div className="flex gap-2">
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "a domestic flight search",
-                    channel: "whatsapp",
-                  }}
-                  href={supportUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+              <div className="mt-4">
+                <FlightSidebarFilters
+                  filters={filtered.filters}
+                  sort={filtered.sort}
+                  onFiltersChange={filtered.updateFilters}
+                  onReset={filtered.resetFilters}
+                  airlineOptions={filtered.airlineOptions}
+                  allOffers={displays}
+                  priceCeilings={filtered.priceCeilings}
                 />
-              }
-              variant="outline"
-              size="sm"
-            >
-              <HugeiconsIcon
-                icon={Message01Icon}
-                size={14}
-                aria-hidden="true"
-              />
-              <span>Talk to Alphaa</span>
-            </Button>
-            <Button render={<Link href="/flights" />} variant="ghost" size="sm">
-              <span>New search</span>
-            </Button>
-          </div>
-        </div>
-      ) : null}
+              </div>
+
+              <div className="sticky bottom-0 -mx-5 mt-5 border-t border-border bg-card px-5 pt-3">
+                <Button
+                  type="button"
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="w-full justify-center rounded-xl bg-primary font-bold text-primary-foreground"
+                >
+                  <span>Show {visibleCount} Flights</span>
+                </Button>
+              </div>
+            </DrawerPrimitive.Popup>
+          </DrawerPrimitive.Viewport>
+        </DrawerPrimitive.Portal>
+      </DrawerPrimitive.Root>
     </div>
   )
 }
