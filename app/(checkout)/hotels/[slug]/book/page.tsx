@@ -118,11 +118,7 @@ function InvalidStay({
         </Button>
         <Button
           render={
-            <a
-              href={supportHref}
-              target="_blank"
-              rel="noopener noreferrer"
-            />
+            <a href={supportHref} target="_blank" rel="noopener noreferrer" />
           }
           variant="outline"
           size="sm"
@@ -167,7 +163,9 @@ export default async function HotelBookPage({
 
   const room =
     stay.room_type_id !== undefined
-      ? (hotel.room_types.find((candidate) => candidate.id === stay.room_type_id) ?? null)
+      ? (hotel.room_types.find(
+          (candidate) => candidate.id === stay.room_type_id
+        ) ?? null)
       : null
   if (!room) {
     return (
@@ -212,7 +210,14 @@ export default async function HotelBookPage({
     numRooms: roomsCount,
   })
   if (!verdict.ok) {
-    return <InvalidStay slug={slug} stay={stay} title="That party doesn't fit this Room Type." message={verdict.guidance} />
+    return (
+      <InvalidStay
+        slug={slug}
+        stay={stay}
+        title="That party doesn't fit this Room Type."
+        message={verdict.guidance}
+      />
+    )
   }
 
   const nights = calculateNights(stay.check_in, stay.check_out)
@@ -237,7 +242,12 @@ export default async function HotelBookPage({
         </header>
 
         <HotelGuestForm
-          hotel={{ id: hotel.id, slug: hotel.slug, name: hotel.name, city: hotel.city }}
+          hotel={{
+            id: hotel.id,
+            slug: hotel.slug,
+            name: hotel.name,
+            city: hotel.city,
+          }}
           room={room}
           stay={{
             check_in: stay.check_in,
@@ -245,12 +255,16 @@ export default async function HotelBookPage({
             guests,
             rooms: roomsCount,
           }}
-          backHref={buildHotelBackHref(slug, {
-            check_in: stay.check_in,
-            check_out: stay.check_out,
-            guests,
-            rooms: roomsCount,
-          }, room.id)}
+          backHref={buildHotelBackHref(
+            slug,
+            {
+              check_in: stay.check_in,
+              check_out: stay.check_out,
+              guests,
+              rooms: roomsCount,
+            },
+            room.id
+          )}
         />
       </div>
 

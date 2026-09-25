@@ -24,10 +24,7 @@ import {
 } from "@/lib/api/hotels"
 import { getHumanErrorMessage, getPaymentSafetyCopy } from "@/lib/api/client"
 import { formatNaira } from "@/lib/format"
-import {
-  getSupportWhatsAppUrl,
-  getWhatsAppUrl,
-} from "@/lib/content/company"
+import { getSupportWhatsAppUrl, getWhatsAppUrl } from "@/lib/content/company"
 
 type ConfirmationState =
   | { kind: "verifying" }
@@ -73,7 +70,10 @@ export function HotelConfirmationClient() {
           viewedRef.current = booking.reference
           track("hotel_confirmation_viewed", { type: "hotel", outcome })
         }
-        if (outcome === "confirmed" && confirmedRef.current !== booking.reference) {
+        if (
+          outcome === "confirmed" &&
+          confirmedRef.current !== booking.reference
+        ) {
           confirmedRef.current = booking.reference
           track("hotel_payment_completed", { type: "hotel" })
         }
@@ -95,7 +95,11 @@ export function HotelConfirmationClient() {
           className="flex flex-col gap-4 rounded-2xl border border-destructive/25 bg-card p-6 sm:p-8"
         >
           <span className="flex size-11 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-            <HugeiconsIcon icon={AlertCircleIcon} size={22} aria-hidden="true" />
+            <HugeiconsIcon
+              icon={AlertCircleIcon}
+              size={22}
+              aria-hidden="true"
+            />
           </span>
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -136,7 +140,11 @@ export function HotelConfirmationClient() {
               }
               className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
             >
-              <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={Message01Icon}
+                size={18}
+                aria-hidden="true"
+              />
               <span>Contact support on WhatsApp</span>
             </Button>
             <Button
@@ -193,7 +201,11 @@ export function HotelConfirmationClient() {
           className="flex flex-col gap-4 rounded-2xl border border-destructive/25 bg-card p-6 sm:p-8"
         >
           <span className="flex size-11 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-            <HugeiconsIcon icon={AlertCircleIcon} size={22} aria-hidden="true" />
+            <HugeiconsIcon
+              icon={AlertCircleIcon}
+              size={22}
+              aria-hidden="true"
+            />
           </span>
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -226,14 +238,20 @@ export function HotelConfirmationClient() {
                     context: "unresolved hotel payment",
                     channel: "whatsapp",
                   }}
-                  href={getSupportWhatsAppUrl(`hotel stay booking ${reference}`)}
+                  href={getSupportWhatsAppUrl(
+                    `hotel stay booking ${reference}`
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                 />
               }
               className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
             >
-              <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={Message01Icon}
+                size={18}
+                aria-hidden="true"
+              />
               <span>Contact support on WhatsApp</span>
             </Button>
           </div>
@@ -354,10 +372,10 @@ export function HotelConfirmationClient() {
               What happens next
             </p>
             <ol className="flex list-decimal flex-col gap-1 pl-5 leading-relaxed text-muted-foreground">
+              <li>Keep your Hotel Booking reference safe for check-in.</li>
               <li>
-                Keep your Hotel Booking reference safe for check-in.
+                Arrive with the contact details you entered as Hotel Guest.
               </li>
-              <li>Arrive with the contact details you entered as Hotel Guest.</li>
               <li>
                 If anything changes, message us on WhatsApp with your reference.
               </li>
@@ -402,7 +420,11 @@ export function HotelConfirmationClient() {
               }
               className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
             >
-              <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={Message01Icon}
+                size={18}
+                aria-hidden="true"
+              />
               <span>Share on WhatsApp with this reference</span>
             </Button>
             <Button

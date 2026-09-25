@@ -1,4 +1,4 @@
-import { company, type ContentSource } from "./company.ts"
+import { company, getWhatsAppUrl, type ContentSource } from "./company.ts"
 
 /**
  * Contact channels, hours, and emergency guidance (Phase 2).
@@ -36,15 +36,13 @@ export interface ContactInfo {
 
 export const contact: ContactInfo = {
   source: "draft",
-  updatedAt: "2026-09-21",
+  updatedAt: "2026-09-25",
   channels: [
     {
       id: "whatsapp",
       label: "WhatsApp",
       value: company.whatsapp.display,
-      href: `https://wa.me/${company.whatsapp.number}?text=${encodeURIComponent(
-        "Hello Alphaa Africa! I need help with my travel plans."
-      )}`,
+      href: getWhatsAppUrl(company.whatsapp.prefills.manual),
       note: "Usually the fastest way to reach us during desk hours.",
     },
     {

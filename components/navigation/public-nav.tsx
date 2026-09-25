@@ -15,13 +15,25 @@ import {
   CustomerService01Icon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
+import { UnderConstructionBadge } from "@/components/shared/under-construction-badge"
 import { cn } from "@/lib/utils"
 
-const SERVICES = [
+type ServiceItem = {
+  title: string
+  href: string
+  description: string
+  image: string
+  span: string
+  sizes: string
+  /** Renders the card as a disabled, non-linkable surface. */
+  comingSoon?: boolean
+}
+
+const SERVICES: ServiceItem[] = [
   {
     title: "Flights",
     href: "/flights",
-                    description: "Compare live fares and book in minutes — no account needed.",
+    description: "Compare live fares and book in minutes — no account needed.",
     image:
       "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=800&q=80",
     span: "col-span-2",
@@ -35,6 +47,7 @@ const SERVICES = [
       "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
+    comingSoon: true,
   },
   {
     title: "Destinations",
@@ -49,7 +62,8 @@ const SERVICES = [
   {
     title: "Visa Assistance",
     href: "/visa",
-    description: "Unsure about your visa? A specialist reviews your documents and guides you.",
+    description:
+      "Unsure about your visa? A specialist reviews your documents and guides you.",
     image:
       "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
     span: "col-span-1",
@@ -63,6 +77,7 @@ const SERVICES = [
       "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
+    comingSoon: true,
   },
   {
     title: "Packages",
@@ -242,37 +257,75 @@ export function PublicNav() {
           >
             <div className="w-full rounded-2xl border border-border/80 bg-card p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)]">
               <div className="grid grid-cols-4 gap-3.5">
-                {SERVICES.map((service) => (
-                  <Link
-                    key={service.href}
-                    href={service.href}
-                    onClick={() => setMegaMenuOpen(false)}
-                    className={cn(
-                      "group/card relative flex h-[190px] flex-col justify-end overflow-hidden rounded-xl border border-border/40 p-4 transition-all duration-300 hover:border-primary/50 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                      service.span
-                    )}
-                  >
-                    <Image
-                      src={service.image}
-                      alt={service.title}
-                      fill
-                      sizes={service.sizes}
-                      className="object-cover transition-transform duration-500 ease-out group-hover/card:scale-105"
-                    />
+                {SERVICES.map((service) => {
+                  const isDisabled = Boolean(service.comingSoon)
 
-                    <div className="absolute inset-0 bg-black/40 transition-colors duration-300 group-hover/card:bg-black/30" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                  const cardBody = (
+                    <>
+                      <Image
+                        src={service.image}
+                        alt={service.title}
+                        fill
+                        sizes={service.sizes}
+                        className={cn(
+                          "object-cover transition-transform duration-500 ease-out",
+                          isDisabled
+                            ? "opacity-70"
+                            : "group-hover/card:scale-105"
+                        )}
+                      />
 
-                    <div className="relative z-10">
-                      <h3 className="text-base font-bold tracking-tight text-white">
-                        {service.title}
-                      </h3>
-                      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/80">
-                        {service.description}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
+                      <div
+                        className={cn(
+                          "absolute inset-0 bg-black/40",
+                          !isDisabled &&
+                            "transition-colors duration-300 group-hover/card:bg-black/30"
+                        )}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+                      <div className="relative z-10">
+                        <h3 className="text-base font-bold tracking-tight text-white">
+                          {service.title}
+                        </h3>
+                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/80">
+                          {service.description}
+                        </p>
+                        {isDisabled && (
+                          <UnderConstructionBadge className="mt-2" />
+                        )}
+                      </div>
+                    </>
+                  )
+
+                  if (isDisabled) {
+                    return (
+                      <div
+                        key={service.href}
+                        className={cn(
+                          "relative flex h-[190px] cursor-not-allowed flex-col justify-end overflow-hidden rounded-xl border border-dashed border-border/60 p-4",
+                          service.span
+                        )}
+                      >
+                        {cardBody}
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <Link
+                      key={service.href}
+                      href={service.href}
+                      onClick={() => setMegaMenuOpen(false)}
+                      className={cn(
+                        "group/card relative flex h-[190px] flex-col justify-end overflow-hidden rounded-xl border border-border/40 p-4 transition-all duration-300 hover:border-primary/50 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                        service.span
+                      )}
+                    >
+                      {cardBody}
+                    </Link>
+                  )
+                })}
               </div>
 
               <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-xs text-muted-foreground">
@@ -344,29 +397,54 @@ export function PublicNav() {
 
                 {mobileServicesOpen && (
                   <div className="grid grid-cols-2 gap-2 py-1">
-                    {SERVICES.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="group relative flex h-24 flex-col justify-end overflow-hidden rounded-xl border border-border/50 p-2.5 transition-transform active:scale-[0.98]"
-                      >
-                        <Image
-                          src={item.image}
-                          alt={item.title}
-                          fill
-                          sizes="180px"
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/45" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
-                        <div className="relative z-10">
-                          <span className="text-xs leading-tight font-bold text-white">
-                            {item.title}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
+                    {SERVICES.map((item) => {
+                      const isDisabled = Boolean(item.comingSoon)
+
+                      const cardBody = (
+                        <>
+                          <Image
+                            src={item.image}
+                            alt={item.title}
+                            fill
+                            sizes="180px"
+                            className={cn(
+                              "object-cover",
+                              isDisabled && "opacity-70"
+                            )}
+                          />
+                          <div className="absolute inset-0 bg-black/45" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
+                          <div className="relative z-10 flex flex-col items-start gap-1">
+                            <span className="text-xs leading-tight font-bold text-white">
+                              {item.title}
+                            </span>
+                            {isDisabled && <UnderConstructionBadge />}
+                          </div>
+                        </>
+                      )
+
+                      if (isDisabled) {
+                        return (
+                          <div
+                            key={item.href}
+                            className="relative flex h-24 cursor-not-allowed flex-col justify-end overflow-hidden rounded-xl border border-dashed border-border/60 p-2.5"
+                          >
+                            {cardBody}
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="group relative flex h-24 flex-col justify-end overflow-hidden rounded-xl border border-border/50 p-2.5 transition-transform active:scale-[0.98]"
+                        >
+                          {cardBody}
+                        </Link>
+                      )
+                    })}
                   </div>
                 )}
 

@@ -3,8 +3,9 @@
 import * as React from "react"
 import Script from "next/script"
 
-const GTM_ID = (process.env.NEXT_PUBLIC_GTM_ID ?? "").trim()
-const GA_ID = (process.env.NEXT_PUBLIC_GA_ID ?? "").trim()
+import { analyticsIds } from "@/lib/env"
+
+const { gtmId: GTM_ID, gaId: GA_ID } = analyticsIds()
 
 /**
  * Deferred third-party measurement (Phase 3, ticket 10).

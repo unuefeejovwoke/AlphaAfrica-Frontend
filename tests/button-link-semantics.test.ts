@@ -119,7 +119,11 @@ test("ButtonLink is imported from the shared button module where used", () => {
   for (const file of collectTsxFiles()) {
     const source = fs.readFileSync(file, "utf8")
     if (!/<ButtonLink(?=[\s/>])/.test(source)) continue
-    if (/import\s*\{[^}]*\bButtonLink\b[^}]*\}\s*from\s*["']@\/components\/ui\/button["']/.test(source)) {
+    if (
+      /import\s*\{[^}]*\bButtonLink\b[^}]*\}\s*from\s*["']@\/components\/ui\/button["']/.test(
+        source
+      )
+    ) {
       continue
     }
     missing.push(path.relative(process.cwd(), file))

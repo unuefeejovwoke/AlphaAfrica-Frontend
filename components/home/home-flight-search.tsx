@@ -649,9 +649,7 @@ export function HomeFlightSearch() {
           ) : null}
 
           <div className="flex flex-col-reverse gap-4 pt-1 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-center text-xs leading-relaxed text-muted-foreground sm:text-left">
-
-            </p>
+            <p className="text-center text-xs leading-relaxed text-muted-foreground sm:text-left"></p>
 
             <div className="flex shrink-0 flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-end">
               <Controller

@@ -82,17 +82,18 @@ export function HomeFaq() {
                 size={13}
                 className="shrink-0"
               />
-              <span>Before you ask</span>
+              <span>Help &amp; Information</span>
             </span>
             <h2
               id="home-faq-heading"
               className="text-3xl leading-[1.15] font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl"
             >
-              Frequently asked questions
+              Frequently Asked Questions
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
-              How booking, payment, and visa support actually work — in plain
-              terms.
+              Everything you need to know about booking domestic &amp;
+              international flights, payments, and travel guidelines with
+              Alphaa.Africa.
             </p>
           </div>
 

@@ -3,69 +3,56 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 
-test("Checkout shell stays distraction-free with brand, progress, security, and emergency help", () => {
+test("Checkout shares the public shell so the interface never switches mid-booking", () => {
   const layoutPath = path.resolve(process.cwd(), "app/(checkout)/layout.tsx")
   assert.ok(fs.existsSync(layoutPath), "app/(checkout)/layout.tsx must exist")
   const content = fs.readFileSync(layoutPath, "utf-8")
 
   assert.match(
     content,
-    /Secure Checkout/i,
-    "Checkout header must show brand emblem"
-  )
-  assert.match(
-    content,
-    /Booking progress/i,
-    "Checkout must expose a progress indicator"
-  )
-  assert.match(
-    content,
-    /Traveller Details/i,
-    "Progress must name checkout steps"
-  )
-  assert.match(content, /aria-current/, "Current step must use aria-current")
-  assert.match(
-    content,
-    /Paystack/i,
-    "Checkout must reassure with payment security badge"
-  )
-  assert.match(content, /tel:/, "Checkout must offer an emergency phone link")
-  assert.match(
-    content,
-    /lib\/content\/company|company\.phone/,
-    "Checkout emergency phone must read from lib/content/company.ts (no hardcoded numbers)"
+    /SiteShell/,
+    "Checkout must render the shared site shell"
   )
   assert.doesNotMatch(
     content,
-    /tel:\+2348000000000/,
-    "Checkout must not hardcode the emergency phone number"
+    /CHECKOUT_STEPS|Traveller Details/i,
+    "Checkout must not hardcode a second progress nav"
   )
-  assert.match(content, /Skip to checkout/, "Checkout must provide a skip link")
 
-  assert.doesNotMatch(
-    content,
-    /PublicNav/,
-    "Checkout must strip public navigation"
+  const shellPath = path.resolve(
+    process.cwd(),
+    "components/navigation/site-shell.tsx"
   )
-  assert.doesNotMatch(
-    content,
-    /PublicFooter/,
-    "Checkout must strip marketing footer"
+  assert.ok(
+    fs.existsSync(shellPath),
+    "components/navigation/site-shell.tsx must exist"
   )
-  assert.doesNotMatch(
-    content,
+  const shell = fs.readFileSync(shellPath, "utf-8")
+  assert.match(shell, /PublicNav/, "Shell must render the public navigation")
+  assert.match(shell, /PublicFooter/, "Shell must render the public footer")
+  assert.match(
+    shell,
     /AssistedSupportWidget/,
-    "Checkout must stay distraction-free"
+    "Shell must keep Talk to Alphaa one tap away"
   )
-  assert.doesNotMatch(
-    content,
-    /\/flights/,
-    "Checkout must not link to marketing services"
+  assert.match(shell, /Skip to main content/, "Shell must provide a skip link")
+})
+
+test("Retired payment route redirects to the one-page checkout", () => {
+  const paymentPath = path.resolve(
+    process.cwd(),
+    "app/(checkout)/checkout/payment/page.tsx"
   )
-  assert.doesNotMatch(
+  assert.ok(
+    fs.existsSync(paymentPath),
+    "app/(checkout)/checkout/payment/page.tsx must exist for old links"
+  )
+  const content = fs.readFileSync(paymentPath, "utf-8")
+
+  assert.match(
     content,
-    /\/hotels/,
-    "Checkout must not link to marketing services"
+    /redirect\(["']\/checkout["']\)/,
+    "Old payment links must land on the live checkout"
   )
 })
 

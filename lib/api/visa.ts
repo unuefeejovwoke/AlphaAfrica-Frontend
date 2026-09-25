@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { apiGet, apiPost, type PaginatedResponse } from "./client.ts"
+import { ApiError, apiGet, apiPost, type PaginatedResponse } from "./client.ts"
 import {
   emailSchema,
   fullNameSchema,
@@ -113,19 +113,59 @@ export const visaApplicationSchema = z.object({
 export type VisaApplication = z.infer<typeof visaApplicationSchema>
 
 /**
- * Backend creates the consultation and initializes Paystack, returning an
- * authorization URL plus a reference (apidoc: "returns authorization_url
- * and reference"). Shape is intentionally permissive beyond those two
- * required fields.
+ * Normalized create result consumed by the consultation form. The live
+ * endpoint answers with an envelope (`{ application, payment }`) while the
+ * apidoc only documents a flat `{ reference, authorization_url }`; both
+ * shapes normalize to this contract.
  */
 export const visaConsultationResultSchema = z.object({
-  reference: z.string(),
-  authorization_url: z.string(),
+  reference: z.string().min(1),
+  authorization_url: z.string().min(1),
 })
 
 export type VisaConsultationResult = z.infer<
   typeof visaConsultationResultSchema
 >
+
+/** Either live shape: flat (apidoc) or the `{ application, payment }` envelope. */
+const visaConsultationEnvelopeSchema = z
+  .object({
+    reference: z.string().optional(),
+    authorization_url: z.string().optional(),
+    application: z
+      .object({
+        reference: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+    payment: z
+      .object({
+        reference: z.string().optional(),
+        authorization_url: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough()
+
+/**
+ * Normalize either create response shape into the consultation contract.
+ * Returns null when no usable reference plus checkout link exists — the form
+ * then surfaces an error instead of redirecting to a broken URL.
+ */
+export function normalizeVisaConsultationResult(
+  raw: unknown
+): VisaConsultationResult | null {
+  const parsed = visaConsultationEnvelopeSchema.safeParse(raw)
+  if (!parsed.success) return null
+  const { application, payment } = parsed.data
+  const reference =
+    payment?.reference ?? application?.reference ?? parsed.data.reference
+  const authorization_url =
+    payment?.authorization_url ?? parsed.data.authorization_url
+  if (!reference || !authorization_url) return null
+  return { reference, authorization_url }
+}
 
 export async function getVisaCountries(params?: {
   page?: number
@@ -161,7 +201,14 @@ export async function submitVisaConsultation(
     "/api/visa/apply/",
     payload as Record<string, unknown>
   )
-  return visaConsultationResultSchema.parse(raw)
+  const normalized = normalizeVisaConsultationResult(raw)
+  if (!normalized) {
+    throw new ApiError("Invalid response from the travel service.", {
+      status: 201,
+      code: "server",
+    })
+  }
+  return normalized
 }
 
 export async function verifyVisaPayment(

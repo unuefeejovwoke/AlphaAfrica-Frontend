@@ -54,6 +54,12 @@ Every feature must be built with:
 - **Add UI Component**: `pnpm dlx shadcn@latest add <component>`
 - **Lint**: `pnpm lint` (Note: currently fails on ESLint 10 / eslint-plugin-react incompatibility; rely on `pnpm typecheck` and `pnpm build` for verification).
 
+## Environment
+- Local config lives in gitignored `.env.local`; the tracked `.env.example` documents every key. Never commit real values.
+- Keys: `NEXT_PUBLIC_API_BASE_URL` + server-only `API_BASE_URL` (backend host); `NEXT_PUBLIC_SITE_URL` + server-only `SITE_URL` (canonical root); optional `NEXT_PUBLIC_GTM_ID` / `NEXT_PUBLIC_GA_ID` (blank disables analytics).
+- New app code must read env through `lib/env.ts` (warn-with-fallback validation), never `process.env` directly.
+- `NEXT_PUBLIC_*` is inlined at build time (rebuild after changing); server-only keys are runtime. Production values live in the Vercel dashboard, not in repo files.
+
 ## Architectural & Stack Conventions
 - **Package Manager**: `pnpm` only (`pnpm-lock.yaml`). Never use `npm` or `yarn`.
 - **Next.js 16 & React 19**:

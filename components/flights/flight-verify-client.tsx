@@ -9,17 +9,22 @@ import {
   Tick01Icon,
   AlertCircleIcon,
   Clock01Icon,
+  PrinterIcon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { CardSkeleton } from "@/components/ui/skeleton"
 import { ViewTracker } from "@/components/analytics/view-tracker"
+import { FlightETicket } from "@/components/flights/flight-e-ticket"
 import {
   buildFlightVerifyUrl,
+  clearBookingSession,
   readPaymentReference,
   resolveFlightVerificationState,
   verifyFlightBooking,
   type FlightBooking,
 } from "@/lib/api/flight-bookings"
+import { clearFlightCheckoutSession } from "@/lib/api/flights"
+import { clearSelectedDomesticCard } from "@/lib/api/domestic"
 import {
   getPaymentOrder,
   isOrderPaid,
@@ -29,7 +34,7 @@ import { getHumanErrorMessage, getPaymentSafetyCopy } from "@/lib/api/client"
 import { track } from "@/lib/analytics"
 import { formatNaira } from "@/lib/format"
 import { pluralize } from "@/lib/schemas/travel"
-import { getSupportWhatsAppUrl, getWhatsAppUrl } from "@/lib/content/company"
+import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { TrackLink } from "@/components/analytics/track-link"
 
 type VerifyState =
@@ -93,6 +98,15 @@ export function FlightVerifyClient() {
         if (paid && paymentCompletedRef.current !== booking.reference) {
           paymentCompletedRef.current = booking.reference
           track("flight_payment_completed", { type: "flight" })
+        }
+        if (paid) {
+          // Payment is final: drop every session-backed checkout input so
+          // back/forward can never re-enter checkout with a completed trip.
+          // The verify page keeps rendering from its fetched booking, and the
+          // reference stays in the URL for refreshes.
+          clearFlightCheckoutSession()
+          clearSelectedDomesticCard()
+          clearBookingSession()
         }
       } catch (error) {
         if (cancelled) return
@@ -280,14 +294,8 @@ export function FlightVerifyClient() {
     isOrderPaid(order?.status)
 
   if (paid) {
-    const pnr = booking.pnr?.trim() || null
-    const travellerSummary = formatTravellerSummary(booking)
-    const paymentState =
-      bookingStatus === "confirmed"
-        ? "Confirmed · PNR issued"
-        : "Paid · finalizing your booking"
     return (
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6">
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5 py-4 sm:gap-6 sm:py-8 print:max-w-2xl print:px-0 print:py-6">
         <ViewTracker
           event="booking_confirmation_viewed"
           props={{ type: "flight" }}
@@ -296,151 +304,107 @@ export function FlightVerifyClient() {
           event="flight_confirmation_viewed"
           props={{ type: "flight" }}
         />
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 sm:p-8"
-        >
-          <span className="flex size-11 items-center justify-center rounded-xl bg-emerald-600 text-white">
-            <HugeiconsIcon icon={Tick01Icon} size={22} aria-hidden="true" />
+
+        {/* Verification Status Header (matches official e-ticket layout) */}
+        <div className="flex flex-col items-center gap-1.5 text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-0.5 text-[10px] font-black tracking-wider text-emerald-600 uppercase sm:text-[11px] dark:text-emerald-400">
+            <span className="size-1.5 animate-pulse rounded-full bg-emerald-500 motion-reduce:animate-none" />
+            PAYMENT VERIFIED
           </span>
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-              Payment verified — you&apos;re flying.
-            </h1>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {booking.origin} to {booking.destination}, confirmed. Keep your
-              Booking reference{pnr ? " and PNR" : ""} safe — you&apos;ll need
-              {pnr ? " them" : " it"} at check-in.
-            </p>
+
+          <h1 className="text-lg font-black tracking-tight text-secondary uppercase sm:text-2xl dark:text-foreground">
+            BOOKING CONFIRMED!
+          </h1>
+
+          <p className="max-w-sm px-2 text-xs leading-normal font-normal text-muted-foreground sm:max-w-md sm:text-sm">
+            Your transaction has been processed and your official travel
+            document issued below.
+          </p>
+        </div>
+
+        {/* The Official E-Ticket Card */}
+        <FlightETicket booking={booking} order={order} />
+
+        {/* Payment & Receipt Summary Strip */}
+        <div className="flex w-full flex-col gap-2 rounded-xl border border-border/80 bg-card p-3 text-xs text-muted-foreground shadow-xs sm:flex-row sm:items-center sm:justify-between sm:rounded-2xl sm:p-4 print:hidden">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-foreground">Total Paid:</span>
+            <span className="font-variant-numeric text-sm font-extrabold text-foreground tabular-nums">
+              {formatNaira(String(booking.total_amount))}{" "}
+              {booking.currency || "NGN"}
+            </span>
+            <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+              Verified
+            </span>
           </div>
-          <dl className="grid grid-cols-1 gap-3 rounded-xl border border-emerald-200/70 bg-white/70 p-4 text-sm sm:grid-cols-2">
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Booking reference
-              </dt>
-              <dd className="font-variant-numeric font-bold break-all text-foreground tabular-nums">
+          <div className="flex items-center gap-1.5">
+            <span>Reference:</span>
+            <span className="font-mono font-bold break-all text-foreground select-all">
+              {booking.reference}
+            </span>
+          </div>
+        </div>
+
+        {/* Action Controls (Print, Book Another) */}
+        <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-center print:hidden">
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => window.print()}
+            className="w-full justify-center gap-2 font-bold shadow-sm transition-all hover:shadow-md sm:flex-1"
+          >
+            <HugeiconsIcon icon={PrinterIcon} size={18} aria-hidden="true" />
+            <span>Print / Save E-Ticket (PDF)</span>
+          </Button>
+
+          <Button
+            render={<Link href="/flights" />}
+            variant="outline"
+            size="lg"
+            className="w-full justify-center px-6 font-semibold sm:w-auto"
+          >
+            <span>Book another flight</span>
+          </Button>
+        </div>
+
+        {/* Travel Advisory & Next Steps */}
+        <div className="w-full rounded-xl border border-border/80 bg-muted/20 p-4 text-left text-xs sm:rounded-2xl sm:p-5 sm:text-sm print:hidden">
+          <p className="mb-2 text-[10px] font-black tracking-wider text-muted-foreground uppercase">
+            WHAT HAPPENS NEXT
+          </p>
+          <ol className="flex list-decimal flex-col gap-1.5 pl-4 text-xs leading-relaxed text-muted-foreground sm:pl-5">
+            <li>
+              Save or print this electronic ticket document. Keep your Booking
+              Reference{" "}
+              <span className="font-mono font-bold text-foreground">
                 {booking.reference}
-              </dd>
-            </div>
-            {pnr ? (
-              <div className="flex flex-col gap-0.5">
-                <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  PNR
-                </dt>
-                <dd className="font-variant-numeric font-bold break-all text-foreground tabular-nums">
-                  {pnr}
-                </dd>
-              </div>
-            ) : null}
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Route
-              </dt>
-              <dd className="font-semibold text-foreground">
-                {booking.origin} → {booking.destination}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Dates
-              </dt>
-              <dd className="font-semibold text-foreground">
-                <time dateTime={booking.departure_date}>
-                  {booking.departure_date}
-                </time>
-                {booking.return_date ? (
-                  <>
-                    {" → "}
-                    <time dateTime={booking.return_date}>
-                      {booking.return_date}
-                    </time>
-                  </>
-                ) : null}
-              </dd>
-            </div>
-            {travellerSummary ? (
-              <div className="flex flex-col gap-0.5">
-                <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  Travellers
-                </dt>
-                <dd className="font-semibold text-foreground">
-                  {travellerSummary}
-                </dd>
-              </div>
-            ) : null}
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Amount paid
-              </dt>
-              <dd className="font-semibold text-foreground">
-                {formatNaira(String(booking.total_amount))} ·{" "}
-                {booking.currency || "NGN"}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-0.5 sm:col-span-2">
-              <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Payment state
-              </dt>
-              <dd className="font-semibold text-foreground">{paymentState}</dd>
-            </div>
-          </dl>
-          <div className="flex flex-col gap-1.5 rounded-xl border border-emerald-200/70 bg-white/70 p-4 text-sm">
-            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-              What happens next
-            </p>
-            <ol className="flex list-decimal flex-col gap-1 pl-5 leading-relaxed text-muted-foreground">
-              <li>
-                Keep your Booking reference{pnr ? " and PNR" : ""} safe for
-                check-in.
-              </li>
-              <li>Travel with the documents you entered for each traveller.</li>
-              <li>
-                If anything changes, message us on WhatsApp with your reference.
-              </li>
-            </ol>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Button
-              type="button"
-              onClick={() => window.print()}
-              variant="outline"
-              className="w-full justify-center"
-            >
-              <span>Print / save confirmation</span>
-            </Button>{" "}
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "verified flight booking",
-                    channel: "whatsapp",
-                  }}
-                  href={getWhatsAppUrl(
-                    `Hello Alphaa Africa! My flight booking ${booking.reference} (${booking.origin} → ${booking.destination}) is verified. Please guide me on next steps.`
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              <HugeiconsIcon
-                icon={Message01Icon}
-                size={18}
-                aria-hidden="true"
-              />
-              <span>Share on WhatsApp with this reference</span>
-            </Button>
-            <Button
-              render={<Link href="/flights" />}
-              variant="ghost"
-              className="w-full justify-center"
-            >
-              <span>Search more flights</span>
-            </Button>
-          </div>
+              </span>
+              {booking.pnr ? (
+                <>
+                  {" "}
+                  and PNR{" "}
+                  <span className="font-mono font-bold text-foreground">
+                    {booking.pnr}
+                  </span>
+                </>
+              ) : (
+                ""
+              )}{" "}
+              safe for airport check-in.
+            </li>
+            <li>
+              Arrive at the airport terminal at least 2 to 3 hours prior to
+              departure for international routes (1 hour for domestic flights).
+            </li>
+            <li>
+              Present your original valid passport / national ID at the airline
+              desk to collect your physical boarding passes and baggage tags.
+            </li>
+            <li>
+              If you require flight changes, additional baggage, or special
+              assistance, message our 24/7 concierge desk on WhatsApp anytime.
+            </li>
+          </ol>
         </div>
       </div>
     )

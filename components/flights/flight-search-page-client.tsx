@@ -46,7 +46,6 @@ import {
   type BookingBranch,
   type DomesticFlightCard,
   type DomesticSearchParams,
-  saveConfirmedDomesticCard,
   saveSelectedDomesticCard,
   clearSelectedDomesticCard,
   resolveBookingBranch,
@@ -559,7 +558,6 @@ export function FlightSearchPageClient() {
       const selection = pendingSelectionRef.current
       if (!selection) return
       if (selection.branch === "domestic") {
-        saveConfirmedDomesticCard(selection.offer as DomesticFlightCard)
         saveConfirmedOffer(selection.offer)
       } else if (confirmedOffer) {
         saveConfirmedOffer(confirmedOffer)

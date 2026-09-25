@@ -128,9 +128,7 @@ test("Hotel detail display: place context is display-only with a map link", () =
   // No coordinates: no map link (map pins only exact points), but the
   // street address still renders as display-only text.
   const noCoords = toHotelDetailDisplay(
-    hotelDetailSchema.parse(
-      makeDetail({ latitude: null, longitude: null })
-    )
+    hotelDetailSchema.parse(makeDetail({ latitude: null, longitude: null }))
   )
   assert.equal(noCoords.mapUrl, null)
   assert.equal(
@@ -155,10 +153,7 @@ test("Room Type per-night copy is locked; unusable prices fall back", () => {
   const display = toHotelDetailDisplay(parsed)
   assert.equal(display.rooms.length, 1)
   assert.equal(display.rooms[0]?.priceLabel, "₦85,000 per night")
-  assert.equal(
-    display.rooms[0]?.capacityLabel,
-    "Sleeps 2 per room · 40 rooms"
-  )
+  assert.equal(display.rooms[0]?.capacityLabel, "Sleeps 2 per room · 40 rooms")
   assert.equal(display.fromPriceLabel, "from ₦85,000 per night")
 
   // Zero-capacity data row: display carries it, choice never blocks (04).

@@ -278,8 +278,21 @@ test("FAQs cover all PRD §8.12 groups with draft entries", () => {
   )
   for (const group of faqs.groups) {
     assert.ok(group.faqs.length >= 2, `${group.id} must have draft entries`)
+    assert.ok(
+      group.faqs.some((faq) => faq.source === "draft"),
+      `${group.id} must keep at least one draft entry for owner review`
+    )
     for (const faq of group.faqs) {
-      assert.equal(faq.source, "draft", "FAQ entries stay draft until verified")
+      assert.ok(
+        faq.source === "draft" || faq.source === "verified",
+        `${faq.id} must declare a valid source`
+      )
+      if (faq.source === "verified") {
+        assert.ok(
+          faq.id.startsWith("flights-"),
+          `${faq.id} is a published alphaaafrica.com entry and belongs to the flights group`
+        )
+      }
     }
   }
 })
@@ -290,9 +303,26 @@ test("Testimonials and stats data contracts", () => {
     "Testimonials must be an array"
   )
   for (const item of testimonials.testimonials) {
-    assert.ok(item.quote && item.name && item.role, "Testimonial fields present")
+    assert.ok(
+      item.quote && item.name && item.role,
+      "Testimonial fields present"
+    )
   }
-  assert.equal(stats.stats.length, 0, "No invented statistics")
+  // PRD: never invent statistics — every figure must be one the business
+  // actually publishes (verified against alphaaafrica.com).
+  assert.ok(stats.stats.length > 0, "Published figures must be listed")
+  assert.ok(stats.stats.length <= 5, "Keep the list to the published handful")
+  for (const stat of stats.stats) {
+    assert.ok(
+      stat.value && stat.label,
+      `${stat.id} must have a value and label`
+    )
+    assert.equal(
+      stat.source,
+      "verified",
+      `${stat.id} must be a published figure, not an estimate`
+    )
+  }
 })
 
 test("No hardcoded support numbers outside lib/content/company.ts", () => {
@@ -306,7 +336,7 @@ test("No hardcoded support numbers outside lib/content/company.ts", () => {
       } else if (/\.tsx?$/.test(entry.name)) {
         const content = fs.readFileSync(full, "utf-8")
         if (
-          /2348000000000|234 800 000 0000|support@alphaaafrica\.com/.test(
+          /2348000000000|234 800 000 0000|2347066851051|234 706 685 1051|support@alphaaafrica\.com/.test(
             content
           )
         ) {
@@ -329,7 +359,6 @@ test("No hardcoded support numbers outside lib/content/company.ts", () => {
     "components/support/assisted-support-widget.tsx",
     "components/feedback/error-state.tsx",
     "components/navigation/public-footer.tsx",
-    "app/(checkout)/layout.tsx",
     "app/(public)/page.tsx",
     "app/(public)/foundation/page.tsx",
   ]

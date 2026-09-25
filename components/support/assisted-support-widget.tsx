@@ -54,9 +54,16 @@ export function AssistedSupportWidget() {
   const whatsappUrl = getSupportWhatsAppUrl(serviceContext)
   const supportPhoneHref = `tel:${company.phone.e164}`
   const supportEmailHref = getEmailHref(`Assistance with ${serviceContext}`)
+  // Checkout's full-bleed Pay bar owns the viewport bottom; float above it.
+  const onCheckout = pathname.startsWith("/checkout")
 
   return (
-    <div className="fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6">
+    <div
+      className={cn(
+        "fixed right-4 z-50 sm:right-6",
+        onCheckout ? "bottom-24 sm:bottom-24" : "bottom-4 sm:bottom-6"
+      )}
+    >
       {!isOpen && (
         <button
           type="button"

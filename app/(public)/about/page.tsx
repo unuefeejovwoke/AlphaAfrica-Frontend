@@ -234,8 +234,8 @@ export default function AboutPage() {
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
             {company.promise} Every booking page carries a support escape hatch:
-            WhatsApp, phone, or email — {contact.hours.label}.
-            If you ever feel stuck, a real person picks up the journey with you.
+            WhatsApp, phone, or email — {contact.hours.label}. If you ever feel
+            stuck, a real person picks up the journey with you.
           </p>
         </div>
       </section>

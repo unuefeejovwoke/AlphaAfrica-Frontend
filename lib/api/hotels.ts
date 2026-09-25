@@ -840,7 +840,8 @@ export function toHotelDetailDisplay(hotel: HotelDetail): HotelDetailDisplay {
 
   const lat = hotel.latitude?.trim() ?? ""
   const lng = hotel.longitude?.trim() ?? ""
-  const addressText = hotel.address.trim().length > 0 ? hotel.address.trim() : null
+  const addressText =
+    hotel.address.trim().length > 0 ? hotel.address.trim() : null
 
   return {
     href: `/hotels/${hotel.slug}`,
@@ -916,9 +917,7 @@ export function calculateNights(
   const start = parseCalendarDate(checkIn.trim())
   const end = parseCalendarDate(checkOut.trim())
   if (start === null || end === null) return null
-  const nights = Math.round(
-    (end.getTime() - start.getTime()) / 86_400_000
-  )
+  const nights = Math.round((end.getTime() - start.getTime()) / 86_400_000)
   return nights >= 1 ? nights : null
 }
 
@@ -972,7 +971,8 @@ export interface ParsedHotelBookingStay {
 export function buildHotelBookingParams(stay: HotelBookingStay): string {
   const params = new URLSearchParams()
   params.set("room_type", String(stay.room_type_id))
-  if (stay.check_in.trim().length > 0) params.set("check_in", stay.check_in.trim())
+  if (stay.check_in.trim().length > 0)
+    params.set("check_in", stay.check_in.trim())
   if (stay.check_out.trim().length > 0)
     params.set("check_out", stay.check_out.trim())
   params.set("guests", String(stay.guests))
@@ -989,7 +989,8 @@ export function parseHotelBookingParams(
   input: RawSearchParams
 ): ParsedHotelBookingStay {
   const roomRaw = firstString(input.room_type)?.trim() ?? ""
-  const roomId = /^\d+$/.test(roomRaw) && Number(roomRaw) >= 1 ? Number(roomRaw) : undefined
+  const roomId =
+    /^\d+$/.test(roomRaw) && Number(roomRaw) >= 1 ? Number(roomRaw) : undefined
   return {
     room_type_id: roomId,
     check_in: firstString(input.check_in)?.trim() ?? "",
@@ -1163,9 +1164,7 @@ export function savePendingHotelBooking(
 export function readPendingHotelBooking(): PendingHotelBookingRecord | null {
   if (typeof window === "undefined") return null
   try {
-    const raw = window.sessionStorage.getItem(
-      PENDING_HOTEL_BOOKING_SESSION_KEY
-    )
+    const raw = window.sessionStorage.getItem(PENDING_HOTEL_BOOKING_SESSION_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as unknown
     if (typeof parsed !== "object" || parsed === null) return null
@@ -1191,7 +1190,10 @@ export function readPendingHotelBooking(): PendingHotelBookingRecord | null {
 export function saveHotelPaymentReference(reference: string): void {
   if (typeof window === "undefined") return
   try {
-    window.sessionStorage.setItem(HOTEL_PAYMENT_REFERENCE_SESSION_KEY, reference)
+    window.sessionStorage.setItem(
+      HOTEL_PAYMENT_REFERENCE_SESSION_KEY,
+      reference
+    )
   } catch {
     // sessionStorage may throw in private mode — the URL copy still works
   }
@@ -1222,10 +1224,7 @@ export function readHotelPaymentReference(): string | null {
  * assuming success — or assuming failure and paying twice.
  */
 export type HotelVerificationOutcome =
-  | "confirmed"
-  | "pending"
-  | "cancelled"
-  | "failed"
+  "confirmed" | "pending" | "cancelled" | "failed"
 
 export function resolveHotelVerificationState(booking: {
   status?: string | null

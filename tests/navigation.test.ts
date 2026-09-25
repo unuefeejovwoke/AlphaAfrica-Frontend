@@ -35,3 +35,43 @@ test("Public Footer component provides Abuja office details and WhatsApp contact
   assert.match(content, /Abuja/i, "Footer must mention Abuja headquarters")
   assert.match(content, /WhatsApp/i, "Footer must link to WhatsApp support")
 })
+
+test("Hotels and Car Rentals are flagged under construction, never linked from chrome", () => {
+  const surfaces = [
+    "components/navigation/public-nav.tsx",
+    "components/navigation/public-footer.tsx",
+  ]
+
+  for (const relative of surfaces) {
+    const content = fs.readFileSync(
+      path.resolve(process.cwd(), relative),
+      "utf-8"
+    )
+
+    assert.doesNotMatch(
+      content,
+      /href=["']\/hotels["']/,
+      `${relative} must not link to /hotels until the page is production-ready`
+    )
+    assert.doesNotMatch(
+      content,
+      /href=["']\/car-rentals["']/,
+      `${relative} must not link to /car-rentals until the page is production-ready`
+    )
+  }
+
+  const nav = fs.readFileSync(
+    path.resolve(process.cwd(), "components/navigation/public-nav.tsx"),
+    "utf-8"
+  )
+  assert.match(
+    nav,
+    /UnderConstructionBadge/,
+    "Nav must carry the under-construction tag"
+  )
+  assert.equal(
+    (nav.match(/comingSoon: true/g) ?? []).length,
+    2,
+    "Hotels and Car Rentals must both be marked comingSoon in SERVICES"
+  )
+})

@@ -764,9 +764,7 @@ export function FlightSearchForm({
                     }}
                     error={fieldState.error?.message}
                     disabled={isDomesticRoute}
-                    helperText={
-                      isDomesticRoute ? "Economy only." : undefined
-                    }
+                    helperText={isDomesticRoute ? "Economy only." : undefined}
                   />
                 )}
               />
@@ -794,9 +792,7 @@ export function FlightSearchForm({
             className="flex-1 justify-center px-6 font-semibold"
           >
             <HugeiconsIcon icon={Search01Icon} size={18} aria-hidden="true" />
-            <span>
-              {isSearching ? "Searching flights…" : "Search flights"}
-            </span>
+            <span>{isSearching ? "Searching flights…" : "Search flights"}</span>
           </Button>
         </div>
 

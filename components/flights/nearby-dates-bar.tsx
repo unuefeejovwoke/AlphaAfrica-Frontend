@@ -2,7 +2,11 @@
 
 import * as React from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon, ArrowRight01Icon, Calendar01Icon } from "@hugeicons/core-free-icons"
+import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  Calendar01Icon,
+} from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { formatNaira } from "@/lib/format"
 
@@ -44,7 +48,10 @@ function diffDays(d1: string, d2: string): number {
   }
 }
 
-function formatDateTab(dateStr: string, todayStr: string): { dayName: string; monthDay: string } {
+function formatDateTab(
+  dateStr: string,
+  todayStr: string
+): { dayName: string; monthDay: string } {
   try {
     const [y, m, d] = parseYMD(dateStr)
     const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0))
@@ -78,7 +85,8 @@ export function NearbyDatesBar({
   const todayStr = React.useMemo(() => getTodayStr(), [])
 
   // Never allow base date to be before today
-  const baseDate = currentDate && currentDate >= todayStr ? currentDate : todayStr
+  const baseDate =
+    currentDate && currentDate >= todayStr ? currentDate : todayStr
 
   // Calculate days difference from today to baseDate
   const daysFromToday = React.useMemo(() => {
@@ -128,8 +136,8 @@ export function NearbyDatesBar({
         className={cn(
           "flex size-9 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors",
           canGoPrev
-            ? "hover:bg-muted hover:text-foreground active:scale-95 cursor-pointer"
-            : "opacity-35 cursor-not-allowed pointer-events-none"
+            ? "cursor-pointer hover:bg-muted hover:text-foreground active:scale-95"
+            : "pointer-events-none cursor-not-allowed opacity-35"
         )}
       >
         <HugeiconsIcon icon={ArrowLeft01Icon} size={16} aria-hidden="true" />
@@ -150,7 +158,7 @@ export function NearbyDatesBar({
               className={cn(
                 "flex min-w-[90px] shrink-0 flex-col items-center justify-center rounded-xl px-3 py-1.5 text-center transition-all sm:min-w-[110px]",
                 tab.isSelected
-                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                  ? "bg-primary font-bold text-primary-foreground shadow-xs"
                   : "border border-border/60 bg-muted/30 text-foreground hover:bg-muted"
               )}
             >
@@ -160,7 +168,9 @@ export function NearbyDatesBar({
               <span
                 className={cn(
                   "text-xs font-extrabold tabular-nums",
-                  tab.isSelected ? "text-primary-foreground" : "text-muted-foreground"
+                  tab.isSelected
+                    ? "text-primary-foreground"
+                    : "text-muted-foreground"
                 )}
               >
                 {tab.price ? formatNaira(tab.price) : "View"}
@@ -174,7 +184,7 @@ export function NearbyDatesBar({
         type="button"
         onClick={() => setOffset((prev) => prev + 3)}
         aria-label="Next dates"
-        className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95 cursor-pointer"
+        className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
       >
         <HugeiconsIcon icon={ArrowRight01Icon} size={16} aria-hidden="true" />
       </button>

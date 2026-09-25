@@ -1,13 +1,16 @@
 /**
  * Centralized API client for the Alphaa Africa platform (Phase 2).
  *
- * - Base URL comes from the environment (`NEXT_PUBLIC_API_BASE_URL`).
+ * - Base URL comes from the environment via `lib/env.ts`
+ *   (`NEXT_PUBLIC_API_BASE_URL`, server-only `API_BASE_URL` override).
  * - Server GET helpers use ISR (`next: { revalidate: 3600 }`) per ADR-0003.
  * - Client POST helpers opt out of caching (`cache: "no-store"`).
  * - All failures throw a typed {@link ApiError}; use
  *   {@link getHumanErrorMessage} to render customer-safe copy (PRD §10, §20).
  *   Never render raw backend errors to customers.
  */
+
+import { apiBaseUrl } from "../env.ts"
 
 export const API_REVALIDATE_SECONDS = 3600
 
@@ -72,18 +75,11 @@ export class ApiError extends Error {
 }
 
 /**
- * Resolve the backend base URL from the environment.
- * Trailing slashes are stripped so path joins stay predictable.
+ * Resolve the backend base URL from the environment (see `lib/env.ts`).
+ * Kept as the public accessor so existing import sites stay unchanged.
  */
 export function getApiBaseUrl(): string {
-  const fromEnv =
-    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
-    process.env.API_BASE_URL?.trim() ||
-    ""
-  if (fromEnv.length > 0) {
-    return fromEnv.replace(/\/+$/, "")
-  }
-  return "https://api.alphaaafrica.com"
+  return apiBaseUrl()
 }
 
 function buildQueryString(

@@ -5,6 +5,7 @@ import {
   resolveBookingBranch,
   shouldFallbackToBlocking,
 } from "../lib/api/domestic.ts"
+import { extractOpaqueOfferBlob } from "../lib/api/flights.ts"
 
 // ---------------------------------------------------------------------------
 // Ticket 03 TDD seams (pre-agreed, vertical slices):
@@ -154,4 +155,29 @@ test("Booking branch: the route decides before card shape — flat international
   )
   assert.equal(resolveBookingBranch(null, { price: "100" }), "international")
   assert.equal(resolveBookingBranch(null, null), "international")
+})
+
+test("Domestic create payload: no opaque blob, the QuickAir card itself is sent", () => {
+  // Documented current contract (apidoc does not yet specify a domestic create
+  // shape): Domestic Flight Cards carry no `raw_offer`/`flight_offer`, so the
+  // fallback sends the card itself as `flight_offer`.
+  const card = {
+    id: "dom-1",
+    airline: "Air Peace",
+    origin: "LOS",
+    destination: "ABV",
+    total_amount: "85000.00",
+  }
+  assert.equal(
+    extractOpaqueOfferBlob(card),
+    card,
+    "Domestic cards must fall back to the card itself"
+  )
+
+  const wrapped = { ...card, raw_offer: { id: "amadeus-1" } }
+  assert.equal(
+    extractOpaqueOfferBlob(wrapped),
+    wrapped.raw_offer,
+    "International cards must keep sending the deepest opaque blob"
+  )
 })

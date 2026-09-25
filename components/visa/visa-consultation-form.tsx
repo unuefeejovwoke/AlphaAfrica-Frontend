@@ -24,6 +24,7 @@ import {
 } from "@/lib/api/visa"
 import { ApiError, getHumanErrorMessage } from "@/lib/api/client"
 import { formatNaira } from "@/lib/format"
+import { notifyPaymentFailed } from "@/lib/toast"
 import { track } from "@/lib/analytics"
 
 const CONSULTATION_FIELD_NAMES = [
@@ -142,24 +143,23 @@ export function VisaConsultationForm({
           }
         }
       }
-      setSubmitError(getHumanErrorMessage(error))
+      const message = getHumanErrorMessage(error)
+      setSubmitError(message)
+      // The inline alert sits at the top of the card; the toast guarantees
+      // the guest sees the failure wherever they are on the page.
+      notifyPaymentFailed(message)
     }
   })
 
   const busy = isSubmitting || redirecting
 
   return (
-    <form
-      noValidate
-      onSubmit={onSubmit}
-      aria-label={`Start a visa consultation for ${countryName}`}
-      className="flex flex-col gap-4"
-    >
-      <div className="flex flex-col gap-1">
-        <h3 className="text-lg font-bold text-foreground">
+    <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-3xl border border-border/80 bg-card p-6 shadow-sm sm:p-10">
+      <div className="mb-6 flex flex-col gap-1 sm:mb-8">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Start your consultation
-        </h3>
-        <p className="text-xs leading-relaxed text-muted-foreground">
+        </h2>
+        <p className="text-sm text-muted-foreground">
           Consultation fee{" "}
           <span className="font-semibold text-foreground">
             {formatNaira(consultationFee)}
@@ -171,7 +171,7 @@ export function VisaConsultationForm({
       {submitError && (
         <div
           role="alert"
-          className="flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-xs leading-relaxed text-foreground"
+          className="mb-6 flex items-start gap-2.5 rounded-2xl border border-destructive/25 bg-destructive/5 p-4 text-xs leading-relaxed text-foreground"
         >
           <HugeiconsIcon
             icon={AlertCircleIcon}
@@ -183,191 +183,231 @@ export function VisaConsultationForm({
         </div>
       )}
 
-      <div className="w-full space-y-1.5">
-        <label
-          htmlFor="visa-consultation-country"
-          className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
-        >
-          Country
-        </label>
-        <div className="relative">
-          <input
-            id="visa-consultation-country"
+      <form
+        noValidate
+        onSubmit={onSubmit}
+        aria-label={`Start a visa consultation for ${countryName}`}
+        className="flex flex-col gap-5"
+      >
+        <div className="w-full space-y-1.5">
+          <label
+            htmlFor="visa-consultation-country"
+            className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
+          >
+            Country
+          </label>
+          <div className="relative">
+            <input
+              id="visa-consultation-country"
+              type="text"
+              readOnly
+              value={countryName}
+              aria-describedby="visa-consultation-country-helper"
+              className="flex h-10 w-full rounded-xl border border-input bg-muted/40 px-3.5 py-2 pr-10 text-sm font-semibold text-foreground shadow-xs focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+            />
+            <HugeiconsIcon
+              icon={LockIcon}
+              size={16}
+              className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </div>
+          <p
+            id="visa-consultation-country-helper"
+            className="text-xs text-muted-foreground"
+          >
+            Locked to this country — open another country page to change it.
+          </p>
+        </div>
+
+        {/* Row 1: Name and Email */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input
+            label="Full name"
             type="text"
-            readOnly
-            value={countryName}
-            aria-describedby="visa-consultation-country-helper"
-            className="flex h-10 w-full rounded-xl border border-input bg-muted/40 px-3.5 py-2 pr-10 text-sm font-semibold text-foreground shadow-xs focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+            autoComplete="name"
+            placeholder="Adaeze Obi"
+            error={errors.full_name?.message}
+            {...register("full_name")}
           />
-          <HugeiconsIcon
-            icon={LockIcon}
-            size={16}
-            className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
+          <Input
+            label="Email address"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            spellCheck={false}
+            placeholder="you@example.com"
+            error={errors.email?.message}
+            {...register("email")}
           />
         </div>
-        <p
-          id="visa-consultation-country-helper"
-          className="text-xs text-muted-foreground"
-        >
-          Locked to this country — open another country page to change it.
-        </p>
-      </div>
 
-      <Input
-        label="Full name"
-        type="text"
-        autoComplete="name"
-        placeholder="Adaeze Obi"
-        error={errors.full_name?.message}
-        {...register("full_name")}
-      />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
-          label="Email address"
-          type="email"
-          autoComplete="email"
-          inputMode="email"
-          spellCheck={false}
-          placeholder="you@example.com"
-          error={errors.email?.message}
-          {...register("email")}
-        />
-        <Input
-          label="Phone / WhatsApp"
-          type="tel"
-          autoComplete="tel"
-          inputMode="tel"
-          spellCheck={false}
-          placeholder="0803 123 4567"
-          helperText="Nigerian or international formats accepted."
-          error={errors.phone?.message}
-          {...register("phone")}
-        />
-      </div>
-
-      <Controller
-        name="travel_purpose"
-        control={control}
-        render={({ field, fieldState }) => (
-          <Select
-            label="Travel purpose"
-            options={TRAVEL_PURPOSE_OPTIONS}
-            value={field.value}
-            onValueChange={field.onChange}
-            error={fieldState.error?.message}
-            helperText="Choose the reason for this trip."
+        {/* Row 2: Phone & Preferred date */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input
+            label="Phone / WhatsApp"
+            type="tel"
+            autoComplete="tel"
+            inputMode="tel"
+            spellCheck={false}
+            placeholder="0803 123 4567"
+            helperText="Nigerian or international formats accepted."
+            error={errors.phone?.message}
+            {...register("phone")}
           />
-        )}
-      />
+          <Input
+            label="Preferred date (optional)"
+            type="date"
+            min={today}
+            error={errors.preferred_date?.message}
+            {...register("preferred_date")}
+          />
+        </div>
 
-      <Input
-        label="Preferred date (optional)"
-        type="date"
-        min={today}
-        error={errors.preferred_date?.message}
-        {...register("preferred_date")}
-      />
+        <Controller
+          name="travel_purpose"
+          control={control}
+          render={({ field, fieldState }) => (
+            <Select
+              label="Travel purpose"
+              options={TRAVEL_PURPOSE_OPTIONS}
+              value={field.value}
+              onValueChange={field.onChange}
+              error={fieldState.error?.message}
+              helperText="Choose the reason for this trip."
+            />
+          )}
+        />
 
-      <Controller
-        name="num_applicants"
-        control={control}
-        render={({ field, fieldState }) => {
-          const count = typeof field.value === "number" ? field.value : 1
-          const decrease = () => field.onChange(Math.max(1, count - 1))
-          const increase = () =>
-            field.onChange(Math.min(MAX_APPLICANTS, count + 1))
-          return (
-            <div className="w-full space-y-1.5">
-              <span
-                id="visa-applicants-label"
-                className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
-              >
-                Applicants
-              </span>
-              <div
-                role="group"
-                aria-labelledby="visa-applicants-label"
-                className="flex touch-manipulation items-center justify-between rounded-xl border border-input bg-card px-3.5 py-2 shadow-xs"
-              >
-                <button
-                  type="button"
-                  onClick={decrease}
-                  disabled={count <= 1 || busy}
-                  aria-label="Fewer applicants"
-                  className="flex size-10 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <HugeiconsIcon
-                    icon={MinusSignIcon}
-                    size={16}
-                    aria-hidden="true"
-                  />
-                </button>
+        {/* Travellers counter */}
+        <Controller
+          name="num_applicants"
+          control={control}
+          render={({ field, fieldState }) => {
+            const count = typeof field.value === "number" ? field.value : 1
+            const decrease = () => field.onChange(Math.max(1, count - 1))
+            const increase = () =>
+              field.onChange(Math.min(MAX_APPLICANTS, count + 1))
+            return (
+              <div className="w-full space-y-2">
                 <span
-                  aria-live="polite"
-                  className="font-variant-numeric text-sm font-bold text-foreground tabular-nums"
+                  id="visa-applicants-label"
+                  className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
                 >
-                  {count} {count === 1 ? "applicant" : "applicants"}
+                  Applicants
                 </span>
-                <button
-                  type="button"
-                  onClick={increase}
-                  disabled={count >= MAX_APPLICANTS || busy}
-                  aria-label="More applicants"
-                  className="flex size-10 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                <div
+                  role="group"
+                  aria-labelledby="visa-applicants-label"
+                  className="flex touch-manipulation items-center justify-between rounded-xl border border-input bg-card p-2.5 px-3.5 shadow-2xs"
                 >
-                  <HugeiconsIcon
-                    icon={PlusSignIcon}
-                    size={16}
-                    aria-hidden="true"
-                  />
-                </button>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold text-foreground">
+                      Travellers
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Up to {MAX_APPLICANTS} per consultation
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={decrease}
+                      disabled={count <= 1 || busy}
+                      aria-label="Fewer applicants"
+                      className="flex size-7 items-center justify-center rounded-lg border border-border bg-muted/60 text-foreground transition-all hover:bg-muted active:scale-95 disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      <HugeiconsIcon
+                        icon={MinusSignIcon}
+                        size={13}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    <span
+                      aria-live="polite"
+                      className="w-5 text-center font-mono text-sm font-bold text-foreground"
+                    >
+                      {count}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={increase}
+                      disabled={count >= MAX_APPLICANTS || busy}
+                      aria-label="More applicants"
+                      className="flex size-7 items-center justify-center rounded-lg border border-border bg-muted/60 text-foreground transition-all hover:bg-muted active:scale-95 disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      <HugeiconsIcon
+                        icon={PlusSignIcon}
+                        size={13}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </div>
+                </div>
+                {fieldState.error?.message ? (
+                  <p className="text-xs font-medium text-destructive">
+                    {fieldState.error.message}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    One consultation covers everyone travelling together.
+                  </p>
+                )}
               </div>
-              {fieldState.error?.message ? (
-                <p className="text-xs font-medium text-destructive">
-                  {fieldState.error.message}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  One consultation covers up to {MAX_APPLICANTS} applicants
-                  travelling together.
-                </p>
-              )}
-            </div>
-          )
-        }}
-      />
+            )
+          }}
+        />
 
-      <Textarea
-        label="Message (optional)"
-        autoComplete="off"
-        placeholder="Studying in September, one applicant, need document guidance…"
-        helperText="Travel dates, party details, and worries help us reply faster."
-        error={errors.message?.message}
-        {...register("message")}
-      />
+        {/* Row 4: Special requests */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="visa-consultation-message"
+              className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
+            >
+              Notes or special requests (optional)
+            </label>
+            <span className="text-[10px] text-muted-foreground">
+              Custom preferences
+            </span>
+          </div>
+          <Textarea
+            id="visa-consultation-message"
+            autoComplete="off"
+            placeholder="Studying in September, one applicant, need document guidance…"
+            error={errors.message?.message}
+            className="min-h-[80px] text-sm"
+            {...register("message")}
+          />
+          <p className="text-xs text-muted-foreground">
+            Travel dates, party details, and worries help us reply faster.
+          </p>
+        </div>
 
-      <Button
-        type="submit"
-        isLoading={busy}
-        disabled={busy}
-        className="w-full touch-manipulation justify-center"
-      >
-        <span>
-          {redirecting
-            ? "Redirecting to secure payment…"
-            : isSubmitting
-              ? "Starting consultation…"
-              : `Pay ${formatNaira(consultationFee)} & continue`}
-        </span>
-      </Button>
-      <p className="flex items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-muted-foreground">
-        <HugeiconsIcon icon={Message01Icon} size={12} aria-hidden="true" />
-        <span>
-          No account needed. Payment is handled by Paystack — we never see card
-          details.
-        </span>
-      </p>
-    </form>
+        {/* Submit Action */}
+        <div className="pt-2">
+          <Button
+            type="submit"
+            isLoading={busy}
+            disabled={busy}
+            size="lg"
+            className="h-12 w-full touch-manipulation justify-center text-sm font-bold shadow-md shadow-primary/20"
+          >
+            {redirecting
+              ? "Redirecting to secure payment…"
+              : isSubmitting
+                ? "Starting consultation…"
+                : `Pay ${formatNaira(consultationFee)} & continue`}
+          </Button>
+        </div>
+        <p className="flex items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-muted-foreground">
+          <HugeiconsIcon icon={Message01Icon} size={12} aria-hidden="true" />
+          <span>
+            No account needed. Payment is handled by Paystack — we never see
+            card details.
+          </span>
+        </p>
+      </form>
+    </div>
   )
 }

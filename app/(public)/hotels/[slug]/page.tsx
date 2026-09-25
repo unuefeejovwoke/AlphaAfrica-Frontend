@@ -88,8 +88,12 @@ export async function generateMetadata({
         type: "website",
         images: [
           {
-            url: display.gallery[0]?.src ?? `${getSiteUrl()}/android-chrome-512x512.png`,
-            alt: display.gallery[0]?.alt ?? `${hotel.name} — ${display.placeLabel}`,
+            url:
+              display.gallery[0]?.src ??
+              `${getSiteUrl()}/android-chrome-512x512.png`,
+            alt:
+              display.gallery[0]?.alt ??
+              `${hotel.name} — ${display.placeLabel}`,
           },
         ],
       },
@@ -127,12 +131,12 @@ export default async function HotelDetailPage({
         />
         <div className="flex flex-wrap items-center justify-center gap-3">
           <RetryButton label="Retry loading Hotel" />
-          <Button
-            render={<Link href="/hotels" />}
-            variant="ghost"
-            size="sm"
-          >
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={14} aria-hidden="true" />
+          <Button render={<Link href="/hotels" />} variant="ghost" size="sm">
+            <HugeiconsIcon
+              icon={ArrowLeft01Icon}
+              size={14}
+              aria-hidden="true"
+            />
             <span>Back to Hotel search</span>
           </Button>
         </div>
@@ -212,7 +216,11 @@ export default async function HotelDetailPage({
         <div className="flex max-w-4xl flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              <HugeiconsIcon icon={Location01Icon} size={14} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={Location01Icon}
+                size={14}
+                aria-hidden="true"
+              />
               <span>{display.placeLabel}</span>
             </span>
             {display.starLabel ? (
@@ -277,8 +285,8 @@ export default async function HotelDetailPage({
             ) : (
               <p className="text-sm leading-relaxed text-muted-foreground">
                 Details for this Hotel are being updated. Talk to Alphaa and a
-                specialist will describe the Hotel, its Room Types, and
-                current per-night prices before you pay anything.
+                specialist will describe the Hotel, its Room Types, and current
+                per-night prices before you pay anything.
               </p>
             )}
           </section>
@@ -376,7 +384,6 @@ export default async function HotelDetailPage({
               </p>
             )}
           </section>
-
         </HotelBookingFlow>
       </React.Suspense>
 

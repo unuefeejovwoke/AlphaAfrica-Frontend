@@ -14,6 +14,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
   InformationCircleIcon,
+  LockIcon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,8 +40,22 @@ import {
 export interface TravellerDetailsFormProps {
   party: TravellerComposition
   isInternational: boolean
-  onSubmit: (payload: BookingTravellersPayload) => void
+  /**
+   * Validated submit — awaited by the form, so `isSubmitting` stays true while
+   * the parent creates the Pending Booking and hands off to Paystack.
+   */
+  onSubmit: (payload: BookingTravellersPayload) => void | Promise<void>
   isSubmitting?: boolean
+  /**
+   * Prefill from a restored Travellers draft (refresh / back from Paystack).
+   * Must match `party`; callers pass null when it does not.
+   */
+  initialValues?: TravellerFormValues | null
+  /** Primary action copy. Defaults to the traveller-details wording. */
+  submitLabel?: string
+  submittingLabel?: string
+  /** Optional trust/disclosure line rendered inside the sticky action bar. */
+  stickyNotice?: React.ReactNode
   /** Trip context (route, dates, party) for the support hatch. */
   trip?: FlightTripContext
 }
@@ -149,6 +164,10 @@ export function TravellerDetailsForm({
   isInternational,
   onSubmit,
   isSubmitting,
+  initialValues,
+  submitLabel = "Save traveller details",
+  submittingLabel = "Saving details…",
+  stickyNotice,
   trip,
 }: TravellerDetailsFormProps) {
   // Factory schema memoized on primitives so resolver identity stays stable.
@@ -157,12 +176,13 @@ export function TravellerDetailsForm({
     [party.adults, party.children, party.infants, isInternational]
   )
   const defaultValues = React.useMemo<TravellerFormValues>(
-    () => ({
-      travellers: createTravellerSlots(party),
-      contactIsFirstTraveller: true,
-      customer: { name: "", email: "", phone: "" },
-    }),
-    [party.adults, party.children, party.infants]
+    () =>
+      initialValues ?? {
+        travellers: createTravellerSlots(party),
+        contactIsFirstTraveller: true,
+        customer: { name: "", email: "", phone: "" },
+      },
+    [initialValues, party.adults, party.children, party.infants]
   )
 
   const form = useForm<TravellerFormValues>({
@@ -189,8 +209,8 @@ export function TravellerDetailsForm({
   const arrayError = getTravellersArrayError(errors)
   const customerErrors = errors.customer
 
-  const handleFormSubmit = form.handleSubmit((values) => {
-    onSubmit(buildBookingTravellersPayload(values))
+  const handleFormSubmit = form.handleSubmit(async (values) => {
+    await onSubmit(buildBookingTravellersPayload(values))
   })
 
   const contactSummary =
@@ -421,7 +441,9 @@ export function TravellerDetailsForm({
         )}
       </div>
 
-      <div className="sticky bottom-4 rounded-2xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur">
+      {/* Full-bleed action bar attached to the card — the normal floating
+          checkout CTA. The support widget is offset above it on checkout. */}
+      <div className="sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border bg-card p-3 sm:-mx-6 sm:-mb-6 sm:rounded-b-2xl sm:px-6 sm:pb-4">
         <Button
           type="submit"
           size="lg"
@@ -429,10 +451,14 @@ export function TravellerDetailsForm({
           disabled={!!isSubmitting}
           className="w-full justify-center"
         >
-          <span>
-            {isSubmitting ? "Saving details…" : "Save traveller details"}
-          </span>
+          <HugeiconsIcon icon={LockIcon} size={16} aria-hidden="true" />
+          <span>{isSubmitting ? submittingLabel : submitLabel}</span>
         </Button>
+        {stickyNotice ? (
+          <div className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
+            {stickyNotice}
+          </div>
+        ) : null}
       </div>
 
       <p className="text-center text-xs leading-relaxed text-muted-foreground">

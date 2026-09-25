@@ -1,8 +1,12 @@
 import type { ContentSource } from "./company.ts"
 
 /**
- * Grouped FAQs per PRD §8.12. All entries are `source: "draft"` for the
- * owner to verify and replace — no unverified claim is presented as fact.
+ * Grouped FAQs per PRD §8.12.
+ *
+ * Entries are `source: "draft"` until the owner signs off — no unverified
+ * claim is presented as fact. The `flights` group also carries the ten
+ * questions published on alphaaafrica.com, copied verbatim and marked
+ * `source: "verified"` because they are already live.
  */
 
 export type FaqGroupId =
@@ -45,9 +49,15 @@ function draft(id: string, question: string, answer: string): Faq {
   return { id, question, answer, source: "draft" }
 }
 
+/** Copied verbatim from a published FAQ page — never edited or invented. */
+function verified(id: string, question: string, answer: string): Faq {
+  return { id, question, answer, source: "verified" }
+}
+
 export const faqs: FaqContent = {
+  // Mixed: the `flights` group holds published entries, the rest are draft.
   source: "draft",
-  updatedAt: "2026-09-21",
+  updatedAt: "2026-09-25",
   groups: [
     {
       id: "flights",
@@ -68,6 +78,57 @@ export const faqs: FaqContent = {
           "flights-pnr",
           "When do I get my ticket or PNR?",
           "Your airline booking reference (PNR) is created only after payment succeeds. It appears on your confirmation screen and receipt — keep it for check-in."
+        ),
+        // The ten questions below are published verbatim on alphaaafrica.com.
+        verified(
+          "flights-cheap-flight",
+          "How can I book a cheap flight in Nigeria?",
+          "You can book a cheap flight in Nigeria by searching for flights online and comparing prices from different airlines using travel websites like Alphaa.Africa Travels & Tours to compare prices and find the best deals. Once you’ve found the cheapest flight, book it online. Double-check all of the information before confirming your booking. Pay for the flight using a credit card or other secure payment method. As soon as your payment clears, you’ll get a confirmation email containing your flight details. Keep this email in a safe place. Print out your ticket or boarding pass and bring it with you to the airport."
+        ),
+        verified(
+          "flights-best-site",
+          "Which site is best for flight booking?",
+          "The best site for domestic and international flight booking depends on your needs, budget, and preferences. The most popular flight booking site to use is without a doubt, Alphaa.Africa Travels & Tours. We are available 24/7 to provide travellers with convenient access to local and international flights, competitive fares, hotel reservations, tour packages, airport transfers and visa assistance, making us a one-stop travel solution for your journey."
+        ),
+        verified(
+          "flights-nin",
+          "Can I use my NIN to book a flight?",
+          "Yes, you can use your NIN to book a domestic flight. However, some airlines may require additional identification documents like your international passport especially for international trips to verify your identity. Check with the airline you are traveling with for more information."
+        ),
+        verified(
+          "flights-cheapest-day",
+          "What is the cheapest day to buy plane tickets?",
+          `There isn't a specific "cheapest day" to buy plane tickets. The best way to get the most affordable prices is to book well in advance especially during the week and regularly check the Alphaa.Africa Travels & Tours site for deals.`
+        ),
+        verified(
+          "flights-usa-price",
+          "How much is a ticket from Nigeria to the USA?",
+          "The cost of a ticket from Nigeria to the USA depends on various factors, including the type of ticket, time of year, airline, and trip length. Therefore, there is no single answer to this question."
+        ),
+        verified(
+          "flights-cheapest-deals",
+          "Where and how can I get the cheapest flights?",
+          "Alphaa.Africa Travels & Tours is the best place to find the cheapest flights. Visit our platform or speak with our seasoned travel agents who are always ready to help you find the best available flight deals based on your destination, budget and travel dates."
+        ),
+        verified(
+          "flights-local-airline",
+          "Which local flight is best in Nigeria?",
+          "The best local flight in Nigeria depends on your destination, travel dates, preferred airline, budget and other travel preferences. Alphaa.Africa Travels & Tours gives you access to available domestic flight options and helps you choose the most suitable flight for your journey. You can book a flight with Alphaa.Africa Travels & Tours to access some of the best deals in the country."
+        ),
+        verified(
+          "flights-no-passport",
+          "Can I book a flight within Nigeria without a passport?",
+          "Yes, you can book a flight within Nigeria without a passport, provided you have other valid forms of identification such as a driver's license, National ID card, or Voter's card. Booking without any valid identification is not possible."
+        ),
+        verified(
+          "flights-lagos-abuja-price",
+          "How much is a flight from Lagos to Abuja?",
+          "The cost of a ticket from Lagos to Abuja depends on the type of ticket, time of year, airline, and other factors. Typically, the price ranges from N80,000 to N150,000 for a one-way flight. For the latest available fares, check Alphaa.Africa Travels & Tours for current flight options."
+        ),
+        verified(
+          "flights-abuja-passport",
+          "Can I travel to Abuja without a passport?",
+          "Yes, you can travel to Abuja without a passport as long as you provide other valid forms of identification such as a driver's license, National ID card, or Voter's card. Booking without any valid identification is not possible."
         ),
       ],
     },

@@ -1,12 +1,12 @@
 import { z } from "zod"
-import { apiGet, apiPost } from "./client.ts"
+import { ApiError, apiGet, apiPost } from "./client.ts"
 import { emailSchema } from "./validation.ts"
+import { moneyToKobo, resolveMoneyChange, type MoneyChange } from "../money.ts"
 import {
   genderSchema,
   travelerTypeSchema,
   type BookingCustomer,
   type BookingTravellerPayload,
-  type TravellerComposition,
 } from "../schemas/travel.ts"
 
 /**
@@ -14,9 +14,8 @@ import {
  *
  * A guest with a Confirmed Offer plus validated Travellers creates a Pending
  * Booking exactly once, then hands off to Paystack. Retrying an identical
- * Confirmed Offer plus party reuses the stored pending reference instead of
- * creating a duplicate (spec: "reuses a pending reference for identical
- * Confirmed Offer plus party retries").
+ * Confirmed Offer plus the same Traveller details and contact reuses the
+ * stored pending reference instead of creating a duplicate.
  */
 
 // ---------------------------------------------------------------------------
@@ -47,13 +46,18 @@ function stableStringify(value: unknown): string {
 
 /**
  * Identity of one booking attempt: the opaque Confirmed Offer blob plus the
- * search-step party. Key order is normalized so retries hash identically.
+ * validated Traveller details and paying contact. Including the travellers is
+ * the safety property that matters — an edited name, passport, or contact must
+ * never silently reuse a Pending Booking created for different people, because
+ * the airline order is built from the booking's stored travellers. Key order
+ * is normalized so unchanged retries hash identically.
  */
 export function hashBookingKey(
   flightOffer: unknown,
-  party: TravellerComposition
+  travelers: readonly BookingTravellerPayload[],
+  customer: BookingCustomer
 ): string {
-  return stableStringify({ flight_offer: flightOffer, party })
+  return stableStringify({ flight_offer: flightOffer, travelers, customer })
 }
 
 /**
@@ -149,6 +153,21 @@ export function readPaymentReference(): string | null {
   }
 }
 
+/**
+ * Drop the stored Pending Booking and Payment Reference once a payment is
+ * verified as paid. Back/forward can then never re-enter checkout with a
+ * completed trip; the verify page keeps rendering from its fetched booking.
+ */
+export function clearBookingSession(): void {
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.removeItem(PENDING_BOOKING_SESSION_KEY)
+    window.sessionStorage.removeItem(PAYMENT_REFERENCE_SESSION_KEY)
+  } catch {
+    // sessionStorage may throw in private mode — nothing to clear, nothing to do
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Creation — mirrors apidoc.yaml FlightBookingCreateRequest + visa.ts shape
 // ---------------------------------------------------------------------------
@@ -182,15 +201,119 @@ export type FlightBookingCreateRequest = z.infer<
   typeof flightBookingCreateRequestSchema
 >
 
-/** Backend creates the Pending Booking and initializes Paystack (201). */
+/**
+ * Normalized create result consumed by checkout. The live endpoint answers
+ * with an envelope (`{ booking, payment }`) while the apidoc only documents a
+ * flat `{ reference, authorization_url }`; both shapes normalize to this
+ * contract. The final re-priced total is carried whenever the backend returns
+ * one, so checkout can hold the Paystack redirect behind a changed-fare
+ * consent instead of sending the guest to an amount they never approved.
+ */
 export const flightBookingCreateResultSchema = z.object({
   reference: z.string().min(1),
   authorization_url: z.string().min(1),
+  total_amount: z.union([z.string(), z.number()]).optional(),
+  amount: z.union([z.string(), z.number()]).optional(),
+  currency: z.string().optional(),
 })
 
 export type FlightBookingCreateResult = z.infer<
   typeof flightBookingCreateResultSchema
 >
+
+/** Either live shape: flat (apidoc) or the `{ booking, payment }` envelope. */
+const flightBookingCreateEnvelopeSchema = z
+  .object({
+    reference: z.string().optional(),
+    authorization_url: z.string().optional(),
+    total_amount: z.union([z.string(), z.number()]).optional(),
+    amount: z.union([z.string(), z.number()]).optional(),
+    currency: z.string().optional(),
+    booking: z
+      .object({
+        reference: z.string().optional(),
+        total_amount: z.union([z.string(), z.number()]).optional(),
+        currency: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+    payment: z
+      .object({
+        reference: z.string().optional(),
+        authorization_url: z.string().optional(),
+        amount: z.union([z.string(), z.number()]).optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough()
+
+/**
+ * Normalize either create response shape into the checkout contract. Returns
+ * null when no usable reference plus checkout link exists — checkout then
+ * surfaces an error instead of redirecting to a broken URL.
+ */
+export function normalizeFlightBookingCreateResult(
+  raw: unknown
+): FlightBookingCreateResult | null {
+  const parsed = flightBookingCreateEnvelopeSchema.safeParse(raw)
+  if (!parsed.success) return null
+  const { booking, payment } = parsed.data
+  const reference =
+    payment?.reference ?? parsed.data.reference ?? booking?.reference
+  const authorization_url =
+    payment?.authorization_url ?? parsed.data.authorization_url
+  if (!reference || !authorization_url) return null
+  // The payment block owns the amount actually sent to Paystack; fall back to
+  // the booking total and then the flat shape's fields.
+  const total_amount =
+    payment?.amount ??
+    booking?.total_amount ??
+    parsed.data.total_amount ??
+    parsed.data.amount
+  const currency = booking?.currency ?? parsed.data.currency
+  return {
+    reference,
+    authorization_url,
+    ...(total_amount !== undefined ? { total_amount } : null),
+    ...(currency !== undefined ? { currency } : null),
+  }
+}
+
+/**
+ * Compare the fare the guest approved on checkout with the amount the create
+ * call actually re-priced and sent to Paystack.
+ *
+ * `unknown` means the backend did not return an amount, so checkout proceeds
+ * to Paystack with the disclosure copy. `changed` must block the redirect and
+ * ask for explicit consent — a fare never changes silently.
+ */
+export type CreatePriceReview =
+  | { status: "unknown" }
+  | { status: "same" }
+  | ({ status: "changed" } & MoneyChange)
+
+export function resolveCreatePriceReview(input: {
+  confirmedTotal: string | null | undefined
+  result: FlightBookingCreateResult
+}): CreatePriceReview {
+  const rawCreateTotal = input.result.total_amount ?? input.result.amount
+  const confirmedKobo =
+    input.confirmedTotal === null || input.confirmedTotal === undefined
+      ? null
+      : moneyToKobo(input.confirmedTotal)
+  const createKobo =
+    rawCreateTotal === undefined ? null : moneyToKobo(rawCreateTotal)
+  if (confirmedKobo === null || createKobo === null) {
+    return { status: "unknown" }
+  }
+  if (confirmedKobo === createKobo) return { status: "same" }
+  // The currency is NGN-only in v1 (ADR-0004); a backend echo never changes it.
+  return {
+    status: "changed",
+    ...resolveMoneyChange(confirmedKobo, createKobo),
+  }
+}
 
 export interface CreateFlightBookingInput {
   flight_offer: unknown
@@ -218,7 +341,16 @@ export async function createFlightBooking(
     body as Record<string, unknown>,
     { sameOrigin: true }
   )
-  return flightBookingCreateResultSchema.parse(raw)
+  const normalized = normalizeFlightBookingCreateResult(raw)
+  if (!normalized) {
+    // The booking may exist server-side, but without a checkout link there is
+    // nothing to redirect to; never send the guest to a broken URL.
+    throw new ApiError(
+      "The payment service did not return a checkout link. No booking was made and no payment was taken.",
+      { status: 200, code: "server" }
+    )
+  }
+  return normalized
 }
 
 // ---------------------------------------------------------------------------
@@ -248,10 +380,11 @@ export function resolveFlightVerificationState(booking: {
 /**
  * A verified flight Booking (apidoc FlightBooking). Permissive beyond
  * `reference`: only the reference is required and renderers read the rest
- * defensively. `travelers` and `flight_details` arrive as opaque strings and
- * are never rendered raw — the summary uses party counts only. The PNR is
- * present only after successful payment verification creates the airline
- * order, so renderers must show it only when non-empty.
+ * defensively. `travelers` and `flight_details` arrive as structured JSON —
+ * the live API returns arrays/objects even though the apidoc types them as
+ * strings — and are never rendered raw (the summary uses party counts only).
+ * The PNR is present only after successful payment verification creates the
+ * airline order, so renderers must show it only when non-empty.
  */
 export const flightBookingSchema = z.object({
   reference: z.string(),
@@ -267,8 +400,8 @@ export const flightBookingSchema = z.object({
   total_amount: z.union([z.string(), z.number()]).optional().default(""),
   currency: z.string().optional().default("NGN"),
   status: z.string().optional().default("pending"),
-  travelers: z.string().optional().default(""),
-  flight_details: z.string().optional().default(""),
+  travelers: z.unknown().optional(),
+  flight_details: z.unknown().optional(),
 })
 
 export type FlightBooking = z.infer<typeof flightBookingSchema>

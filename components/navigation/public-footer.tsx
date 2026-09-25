@@ -7,11 +7,11 @@ import {
   Mail01Icon,
   Message01Icon,
   InstagramIcon,
-  NewTwitterIcon,
   Facebook02Icon,
   TiktokIcon,
+  WhatsappIcon,
 } from "@hugeicons/core-free-icons"
-import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
+import { company, getWhatsAppUrl } from "@/lib/content/company"
 
 export function PublicFooter() {
   const currentYear = new Date().getFullYear()
@@ -37,7 +37,6 @@ export function PublicFooter() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-
             <Link
               href="/contact"
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -74,6 +73,22 @@ export function PublicFooter() {
 
             {/* Direct Contact Links */}
             <div className="mt-1 flex flex-col gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon
+                  icon={WhatsappIcon}
+                  size={14}
+                  className="shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+                <a
+                  href={getWhatsAppUrl(company.whatsapp.prefills.services)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-colors hover:text-foreground"
+                >
+                  {company.whatsapp.display}
+                </a>
+              </div>
               <div className="flex items-center gap-2">
                 <HugeiconsIcon
                   icon={Call02Icon}
@@ -123,19 +138,6 @@ export function PublicFooter() {
                 />
               </a>
               <a
-                href={company.socials.x}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="X (formerly Twitter)"
-                className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
-              >
-                <HugeiconsIcon
-                  icon={NewTwitterIcon}
-                  size={15}
-                  aria-hidden="true"
-                />
-              </a>
-              <a
                 href={company.socials.facebook}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -175,12 +177,9 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/hotels"
-                  className="text-foreground/80 transition-colors hover:text-primary"
-                >
+                <span className="cursor-not-allowed text-muted-foreground/70">
                   Hotels
-                </Link>
+                </span>
               </li>
               <li>
                 <Link
@@ -199,12 +198,9 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/car-rentals"
-                  className="text-foreground/80 transition-colors hover:text-primary"
-                >
+                <span className="cursor-not-allowed text-muted-foreground/70">
                   Car Rentals
-                </Link>
+                </span>
               </li>
             </ul>
           </div>

@@ -460,8 +460,6 @@ export async function fetchDomesticBlocking(
 
 export const SELECTED_DOMESTIC_CARD_SESSION_KEY =
   "alphaa:selected-domestic-card:v1"
-export const CONFIRMED_DOMESTIC_CARD_SESSION_KEY =
-  "alphaa:confirmed-domestic-card:v1"
 
 /**
  * True when the raw selection looks like a Domestic Flight Card rather than
@@ -586,7 +584,6 @@ function readDomesticCardFromSession(key: string): DomesticFlightCard | null {
 // In-memory handoff mirroring the Amadeus blob flow: the selecting page holds
 // the card while sessionStorage backs refresh and back navigation.
 let memorySelectedDomesticCard: DomesticFlightCard | null = null
-let memoryConfirmedDomesticCard: DomesticFlightCard | null = null
 
 /** Persist the selected Domestic Flight Card (memory caller + session backup). */
 export function saveSelectedDomesticCard(card: DomesticFlightCard): void {
@@ -611,18 +608,4 @@ export function clearSelectedDomesticCard(): void {
   } catch {
     // ignore — memory copy already cleared
   }
-}
-
-/** Copy the confirmed Domestic Flight Card into session for travellers/payment. */
-export function saveConfirmedDomesticCard(card: DomesticFlightCard): void {
-  memoryConfirmedDomesticCard = card
-  writeDomesticCardToSession(CONFIRMED_DOMESTIC_CARD_SESSION_KEY, card)
-}
-
-/** Read back the confirmed Domestic Flight Card, or null when absent/corrupt. */
-export function readConfirmedDomesticCard(): DomesticFlightCard | null {
-  return (
-    memoryConfirmedDomesticCard ??
-    readDomesticCardFromSession(CONFIRMED_DOMESTIC_CARD_SESSION_KEY)
-  )
 }

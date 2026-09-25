@@ -27,10 +27,13 @@ function futureDate(daysAhead: number): string {
 
 test("Capacity rule: exact fit passes, over-capacity guides, multi-room scales", () => {
   // Exact fit: 2 guests in a 2-cap room passes.
-  assert.deepEqual(checkRoomCapacity({ maxGuests: 2, numGuests: 2, numRooms: 1 }), {
-    ok: true,
-    capacity: 2,
-  })
+  assert.deepEqual(
+    checkRoomCapacity({ maxGuests: 2, numGuests: 2, numRooms: 1 }),
+    {
+      ok: true,
+      capacity: 2,
+    }
+  )
 
   // Over-capacity: 5 guests, cap 2, 2 rooms (capacity 4) fails with guidance.
   const over = checkRoomCapacity({ maxGuests: 2, numGuests: 5, numRooms: 2 })
@@ -45,10 +48,13 @@ test("Capacity rule: exact fit passes, over-capacity guides, multi-room scales",
   }
 
   // Multi-room scaling: the same party fits in 3 rooms.
-  assert.deepEqual(checkRoomCapacity({ maxGuests: 2, numGuests: 5, numRooms: 3 }), {
-    ok: true,
-    capacity: 6,
-  })
+  assert.deepEqual(
+    checkRoomCapacity({ maxGuests: 2, numGuests: 5, numRooms: 3 }),
+    {
+      ok: true,
+      capacity: 6,
+    }
+  )
 })
 
 test("Capacity rule: zero-capacity data rows never block booking", () => {

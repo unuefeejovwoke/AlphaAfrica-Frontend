@@ -2,13 +2,13 @@ import type { ContentSource } from "./company.ts"
 
 /**
  * Customer testimonials (Phase 2).
- * Per PRD §8.1 ("Do not fabricate testimonials"), the list stays empty
- * until the owner supplies verified quotes. The type is defined now so
- * Phase 7 can render without refactoring.
+ * Quotes are reproduced verbatim from the reviews published on
+ * alphaaafrica.com — never paraphrased and never invented. The `role` field
+ * carries each review's headline, which is how the live site labels it.
  */
 
 export interface Testimonial {
-  /** Keep quotes to ~3 lines so cards stay calm and scannable. */
+  /** Published review copy, kept exactly as the customer wrote it. */
   quote: string
   name: string
   role: string
@@ -34,48 +34,42 @@ export const testimonials: TestimonialContent = {
   testimonials: [
     {
       quote:
-        "Alphaa handled our family holiday to Zanzibar from start to finish. From the beach resort in Nungwi to the airport transfers, everything ran on time without a single frantic phone call.",
-      name: "Dr. Folashade Adebayo",
-      role: "Consultant Physician",
-      location: "Lagos",
-      trip: "Zanzibar Family Holiday",
-      source: "verified",
-    },
-    {
-      quote:
-        "When my airline announced a six-hour delay in Lagos, Alphaa messaged me with an alternate connection before I even left for the airport. That saved my entire trip to London.",
-      name: "Emeka Nwosu",
-      role: "Tech Lead",
-      company: "Fintech Startup",
-      location: "Lagos",
-      trip: "Lagos – Kigali – London",
-      source: "verified",
-    },
-    {
-      quote:
-        "For corporate travel out of Abuja, transparent Naira pricing and instant invoices are non-negotiable. Alphaa delivers every time with zero hidden charges at checkout.",
-      name: "Amina Bello-Garba",
-      role: "Operations Director",
+        "From booking our flights to arranging our hotel and airport pickup, Alphaa Africa handled everything perfectly. Their team kept us informed every step of the way, making our trip completely stress-free. I highly recommend them to anyone looking for dependable travel services.",
+      name: "Kyrian Obaigbena",
+      role: "A Truly Stress-Free Travel Experience",
       location: "Abuja",
-      trip: "Abuja – Nairobi Executive Retreat",
       source: "verified",
     },
     {
       quote:
-        "Visa applications are stressful enough. Having an expert review my UK visitor documentation line by line gave me genuine peace of mind before my appointment.",
-      name: "Tunde Olatunji",
-      role: "Brand Strategist",
-      location: "Ibadan",
-      trip: "UK Visitor Visa Guidance",
+        "I've used several travel agencies over the years, but Alphaa Africa stands out for their professionalism and prompt service. They found us the best flight options within our budget and assisted with every detail of our travel plans.",
+      name: "Mary Ifeoluwa",
+      role: "Professional and Reliable",
+      location: "Lagos",
       source: "verified",
     },
     {
       quote:
-        "I fly between Port Harcourt, Lagos, and Abuja weekly. Alphaa makes comparing domestic flights effortless, and payment goes through the first time without card errors.",
-      name: "Chidinma Eze",
-      role: "Supply Chain Manager",
+        "What impressed me most was their responsiveness. Whenever I had a question about my visa application or travel itinerary, their team was available to help. Their customer service is exceptional.",
+      name: "Esther Mouka",
+      role: "Exceptional Customer Support",
       location: "Port Harcourt",
-      trip: "Domestic Frequent Flyer",
+      source: "verified",
+    },
+    {
+      quote:
+        "Managing business travel for our executives used to be stressful until we partnered with Alphaa Africa. Their efficiency, attention to detail, and timely communication have made them our trusted travel management partner.",
+      name: "Corporate Client",
+      role: "Our Corporate Travel Partner",
+      trip: "Enterprise Partner",
+      source: "verified",
+    },
+    {
+      quote:
+        "Our family vacation was planned flawlessly. From hotel reservations to airport transfers, everything went exactly as promised. Thank you, Alphaa Africa, for making our holiday memorable.",
+      name: "Mr Michael Okpale & Family",
+      role: "Highly Recommended",
+      trip: "Verified Family Traveler",
       source: "verified",
     },
   ],

@@ -1,54 +1,61 @@
 import * as React from "react"
 import Link from "next/link"
-import { CheckoutTravellersClient } from "@/components/flights/checkout-travellers-client"
+import {
+  CheckoutClient,
+  CheckoutSkeleton,
+} from "@/components/flights/checkout-client"
 import { FlightJourneyHeader } from "@/components/flights/flight-journey-header"
-import { Skeleton } from "@/components/ui/skeleton"
-import { travellerCompositionSchema } from "@/lib/schemas/travel"
+import {
+  travellerCompositionSchema,
+  type TravellerComposition,
+} from "@/lib/schemas/travel"
 
-function parseCount(
-  value: string | string[] | undefined,
-  fallback: number
-): number {
+function readCount(value: string | string[] | undefined): number | null {
   const first = Array.isArray(value) ? value[0] : value
-  if (first === undefined) return fallback
+  if (first === undefined || first.trim() === "") return null
   const parsed = Number(first)
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null
 }
 
-function FormFallback() {
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      aria-label="Loading traveller form"
-      className="mx-auto flex w-full max-w-2xl flex-col gap-4"
-    >
-      <Skeleton className="h-64 w-full rounded-2xl" />
-      <Skeleton className="h-40 w-full rounded-2xl" />
-    </div>
-  )
+/**
+ * Party from the search-step URL, or null when it is absent/invalid so the
+ * client falls back to the session party (retired /checkout/payment redirects
+ * and direct visits carry no query).
+ */
+function parseUrlParty(params: {
+  [key: string]: string | string[] | undefined
+}): TravellerComposition | null {
+  const adults = readCount(params.adults)
+  const children = readCount(params.children)
+  const infants = readCount(params.infants)
+  if (adults === null || children === null || infants === null) return null
+  const parsed = travellerCompositionSchema.safeParse({
+    adults,
+    children,
+    infants,
+  })
+  return parsed.success ? parsed.data : null
 }
 
+/**
+ * `/checkout` — one-page checkout: Traveller + contact details, persistent
+ * Trip and price summary, and the Paystack handoff behind a single Pay action
+ * (PRD §8.3, revised flow). Fare confirmation already happened on the results
+ * page, so no booking data is serialized server-side: the Confirmed Offer and
+ * Travellers draft stay in session storage (vercel: server-serialization).
+ */
 export default async function CheckoutPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const params = await searchParams
-  const candidate = {
-    adults: parseCount(params.adults, 1),
-    children: parseCount(params.children, 0),
-    infants: parseCount(params.infants, 0),
-  }
-  const parsed = travellerCompositionSchema.safeParse(candidate)
-  const party = parsed.success
-    ? parsed.data
-    : { adults: 1, children: 0, infants: 0 }
+  const urlParty = parseUrlParty(params)
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-2xl">
-        <FlightJourneyHeader current={4} />
+        <FlightJourneyHeader current={3} />
       </div>
       <div className="mx-auto mt-6 flex max-w-2xl flex-col gap-4 text-center">
         <h1 className="text-3xl font-extrabold tracking-tight text-balance text-foreground sm:text-4xl">
@@ -73,8 +80,8 @@ export default async function CheckoutPage({
         </div>
       </div>
       <div className="mt-8">
-        <React.Suspense fallback={<FormFallback />}>
-          <CheckoutTravellersClient party={party} />
+        <React.Suspense fallback={<CheckoutSkeleton />}>
+          <CheckoutClient urlParty={urlParty} />
         </React.Suspense>
       </div>
     </section>

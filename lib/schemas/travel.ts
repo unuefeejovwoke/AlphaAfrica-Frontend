@@ -235,6 +235,11 @@ export function pluralize(count: number, singular: string): string {
   return `${count} ${singular}${count === 1 ? "" : "s"}`
 }
 
+/** Party counts summed — shared by checkout progress and summaries. */
+export function totalTravellers(party: TravellerComposition): number {
+  return party.adults + party.children + party.infants
+}
+
 /**
  * Guided traveller-entry schema. Composition is enforced from the travellers
  * array itself (total ≤ 9, infants ≤ adults — same copy as the search step)
@@ -485,4 +490,59 @@ export function createTravellerSlots(
   for (let i = 0; i < party.children; i += 1) push("CHILD")
   for (let i = 0; i < party.infants; i += 1) push("HELD_INFANT")
   return slots
+}
+
+/**
+ * Rebuild form defaults from a saved Travellers draft so a refresh, or a
+ * return from Paystack, restores exactly what the guest typed. Returns null
+ * when the draft no longer matches the expected party composition — callers
+ * then start from empty slots rather than guessing.
+ */
+export function draftToTravellerFormValues(
+  party: TravellerComposition,
+  draft: BookingTravellersPayload
+): TravellerFormValues | null {
+  const travellers = draft.travellers
+  let adults = 0
+  let children = 0
+  let infants = 0
+  for (const traveller of travellers) {
+    if (traveller.traveler_type === "ADULT") adults += 1
+    else if (traveller.traveler_type === "CHILD") children += 1
+    else infants += 1
+  }
+  if (
+    travellers.length !== party.adults + party.children + party.infants ||
+    adults !== party.adults ||
+    children !== party.children ||
+    infants !== party.infants
+  ) {
+    return null
+  }
+
+  const first = travellers[0]
+  const contactFromFirst = first ? deriveCustomerFromTraveller(first) : null
+  const contactIsFirstTraveller = contactFromFirst
+    ? contactFromFirst.name === draft.customer.name &&
+      contactFromFirst.email === draft.customer.email &&
+      contactFromFirst.phone === draft.customer.phone
+    : true
+
+  return {
+    travellers: travellers.map((traveller) => ({
+      first_name: traveller.first_name,
+      last_name: traveller.last_name,
+      date_of_birth: traveller.date_of_birth,
+      gender: traveller.gender,
+      email: traveller.email,
+      phone_country_code: traveller.phone_country_code,
+      phone: traveller.phone,
+      traveler_type: traveller.traveler_type,
+      passport_number: traveller.passport_number ?? "",
+      passport_expiry: traveller.passport_expiry ?? "",
+      nationality: traveller.nationality ?? "",
+    })),
+    contactIsFirstTraveller,
+    customer: { ...draft.customer },
+  }
 }

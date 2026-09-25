@@ -8,11 +8,7 @@ import assert from "node:assert/strict"
 // emails, phones, references, and payment material must never reach the
 // pipeline — the sanitizer drops those keys before dispatch.
 
-import {
-  ANALYTICS_EVENTS,
-  sanitizeProps,
-  track,
-} from "../lib/analytics.ts"
+import { ANALYTICS_EVENTS, sanitizeProps, track } from "../lib/analytics.ts"
 
 test("Analytics allowlist covers the hotel funnel events", () => {
   for (const event of [

@@ -29,10 +29,7 @@ export function HotelGallery({
   if (!active) return null
 
   return (
-    <section
-      aria-label={`${hotelName} photos`}
-      className="flex flex-col gap-3"
-    >
+    <section aria-label={`${hotelName} photos`} className="flex flex-col gap-3">
       <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-muted shadow-xs sm:rounded-3xl">
         <img
           key={active.src}

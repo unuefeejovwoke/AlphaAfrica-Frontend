@@ -47,7 +47,10 @@ type Phase = "idle" | "creating" | "redirecting" | "failed"
 
 /** Backend field names that map onto Hotel Guest inputs; stay-level fields
  *  surface as the form-level alert with a way back instead. */
-const GUEST_FIELD_MAP: Record<string, "guest_name" | "guest_email" | "guest_phone"> = {
+const GUEST_FIELD_MAP: Record<
+  string,
+  "guest_name" | "guest_email" | "guest_phone"
+> = {
   guest_name: "guest_name",
   guest_email: "guest_email",
   guest_phone: "guest_phone",
@@ -239,9 +242,7 @@ export function HotelGuestForm({
         </p>
         {redirectUrl ? (
           <Button
-            render={
-              <a href={redirectUrl} className="justify-center" />
-            }
+            render={<a href={redirectUrl} className="justify-center" />}
             size="lg"
             className="w-full justify-center"
           >
@@ -260,9 +261,7 @@ export function HotelGuestForm({
       className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
     >
       <div className="flex flex-col gap-1">
-        <h2 className="text-base font-bold text-foreground">
-          Who is staying?
-        </h2>
+        <h2 className="text-base font-bold text-foreground">Who is staying?</h2>
         <p className="text-xs leading-relaxed text-muted-foreground">
           One Hotel Guest per Hotel Booking — the contact and stay
           representative. No account needed.
@@ -343,11 +342,7 @@ export function HotelGuestForm({
         </Button>
         <Button
           render={
-            <a
-              href={supportHref}
-              target="_blank"
-              rel="noopener noreferrer"
-            />
+            <a href={supportHref} target="_blank" rel="noopener noreferrer" />
           }
           variant="ghost"
           size="sm"
@@ -366,7 +361,11 @@ export function HotelGuestForm({
 }
 
 /** Stay handoff back to the Hotel detail, preserving the choice. */
-export function buildHotelBackHref(slug: string, stay: HotelGuestStay, roomTypeId: number): string {
+export function buildHotelBackHref(
+  slug: string,
+  stay: HotelGuestStay,
+  roomTypeId: number
+): string {
   return `/hotels/${slug}?${buildHotelBookingParams({
     room_type_id: roomTypeId,
     check_in: stay.check_in,

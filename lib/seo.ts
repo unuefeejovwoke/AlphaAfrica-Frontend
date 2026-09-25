@@ -1,5 +1,6 @@
 import { company } from "./content/company.ts"
 import type { FaqGroup } from "./content/faqs.ts"
+import { siteUrl } from "./env.ts"
 
 /**
  * Shared SEO helpers (Phase 2, PRD §18; Phase 3 ticket 10 flights).
@@ -7,16 +8,9 @@ import type { FaqGroup } from "./content/faqs.ts"
  * every public route emits consistent crawlable metadata.
  */
 
-/** Absolute site root from the environment with a production fallback. */
+/** Absolute site root from the environment (see `lib/env.ts`). */
 export function getSiteUrl(): string {
-  const fromEnv =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    process.env.SITE_URL?.trim() ||
-    ""
-  if (fromEnv.length > 0) {
-    return fromEnv.replace(/\/+$/, "")
-  }
-  return "https://www.alphaaafrica.com"
+  return siteUrl()
 }
 
 /** Absolute canonical URL for a page path such as `/about`. */
@@ -69,7 +63,6 @@ export function organizationJsonLd(): OrganizationJsonLd {
     },
     sameAs: [
       company.socials.instagram,
-      company.socials.x,
       company.socials.facebook,
       company.socials.tiktok,
     ],

@@ -34,7 +34,7 @@ test("Assisted Support Widget provides WhatsApp contextual URL generation and mu
   )
   assert.doesNotMatch(
     content,
-    /2348000000000/,
+    /2348000000000|2347066851051/,
     "Widget must not hardcode the support number"
   )
 })

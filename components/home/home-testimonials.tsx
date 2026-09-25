@@ -9,6 +9,7 @@ import {
   SparklesIcon,
 } from "@hugeicons/core-free-icons"
 import { getTestimonials } from "@/lib/content/testimonials"
+import { stats } from "@/lib/content/stats"
 import { cn } from "@/lib/utils"
 
 function getInitials(name: string): string {
@@ -23,6 +24,9 @@ function getInitials(name: string): string {
 export function HomeTestimonials() {
   // ponytail: native CSS scroll-snap slider with auto-advancing interval; upgrade to virtualized carousel if testimonial count exceeds 15.
   const testimonials = React.useMemo(() => getTestimonials(), [])
+  // Published Trustpilot figures — single source of truth lives in stats.ts.
+  const rating = stats.stats.find((stat) => stat.id === "trustpilot")?.value
+  const reviewCount = stats.stats.find((stat) => stat.id === "reviews")?.value
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const [activeIndex, setActiveIndex] = React.useState(0)
   const [isPaused, setIsPaused] = React.useState(false)
@@ -144,32 +148,57 @@ export function HomeTestimonials() {
             id="home-testimonials-heading"
             className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl"
           >
-            What our customers are saying
+            Read reviews, ride with confidence.
           </h2>
-          <p className="max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
-            Honest reviews from travellers who trust us with their flights,
-            holiday packages, and visa guidance.
-          </p>
+          {reviewCount && (
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+              Based on {reviewCount} verified reviews.
+            </p>
+          )}
         </div>
 
-        {/* Desktop slider controls */}
-        <div className="hidden items-center gap-2 sm:flex">
-          <button
-            type="button"
-            onClick={() => scroll("prev")}
-            aria-label="Previous testimonial"
-            className="inline-flex size-10 items-center justify-center rounded-full border border-border/80 bg-background text-foreground shadow-xs transition-all duration-200 hover:bg-muted active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={18} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={() => scroll("next")}
-            aria-label="Next testimonial"
-            className="inline-flex size-10 items-center justify-center rounded-full border border-border/80 bg-background text-foreground shadow-xs transition-all duration-200 hover:bg-muted active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            <HugeiconsIcon icon={ArrowRight01Icon} size={18} aria-hidden="true" />
-          </button>
+        {/* Desktop rating + slider controls */}
+        <div className="hidden items-center gap-3 sm:flex">
+          {rating && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/60 px-3 py-2 text-sm font-semibold text-foreground shadow-xs">
+              <HugeiconsIcon
+                icon={StarIcon}
+                size={15}
+                className="fill-amber-400 text-amber-400"
+                aria-hidden="true"
+              />
+              <span>{rating}</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                Trustpilot
+              </span>
+            </span>
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => scroll("prev")}
+              aria-label="Previous testimonial"
+              className="inline-flex size-10 items-center justify-center rounded-full border border-border/80 bg-background text-foreground shadow-xs transition-all duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95"
+            >
+              <HugeiconsIcon
+                icon={ArrowLeft01Icon}
+                size={18}
+                aria-hidden="true"
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => scroll("next")}
+              aria-label="Next testimonial"
+              className="inline-flex size-10 items-center justify-center rounded-full border border-border/80 bg-background text-foreground shadow-xs transition-all duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95"
+            >
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={18}
+                aria-hidden="true"
+              />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -180,8 +209,8 @@ export function HomeTestimonials() {
         tabIndex={0}
         role="region"
         aria-roledescription="carousel"
-        aria-label="Customer Testimonials"
-        className="flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+        aria-label="What our customers are saying"
+        className="flex snap-x snap-mandatory [scrollbar-width:none] gap-5 overflow-x-auto scroll-smooth pt-1 pb-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none [&::-webkit-scrollbar]:hidden"
       >
         {testimonials.map((item, index) => (
           <div
@@ -228,7 +257,7 @@ export function HomeTestimonials() {
                 <div className="flex items-center gap-3 border-t border-border/60 pt-4">
                   <div
                     aria-hidden="true"
-                    className="flex size-10 shrink-0 select-none items-center justify-center rounded-full bg-secondary/10 text-xs font-bold text-secondary dark:bg-secondary/25 dark:text-white"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-xs font-bold text-secondary select-none dark:bg-secondary/25 dark:text-white"
                   >
                     {getInitials(item.name)}
                   </div>
@@ -250,7 +279,11 @@ export function HomeTestimonials() {
 
       {/* Pagination indicators and mobile navigation */}
       <div className="mt-4 flex items-center justify-between sm:justify-center">
-        <div className="flex items-center gap-1.5" role="tablist" aria-label="Slides">
+        <div
+          className="flex items-center gap-1.5"
+          role="tablist"
+          aria-label="Slides"
+        >
           {testimonials.map((_, i) => (
             <button
               key={i}
@@ -275,17 +308,25 @@ export function HomeTestimonials() {
             type="button"
             onClick={() => scroll("prev")}
             aria-label="Previous testimonial"
-            className="inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-background text-foreground shadow-xs transition-all duration-200 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-background text-foreground shadow-xs transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95"
           >
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={16} aria-hidden="true" />
+            <HugeiconsIcon
+              icon={ArrowLeft01Icon}
+              size={16}
+              aria-hidden="true"
+            />
           </button>
           <button
             type="button"
             onClick={() => scroll("next")}
             aria-label="Next testimonial"
-            className="inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-background text-foreground shadow-xs transition-all duration-200 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="inline-flex size-9 items-center justify-center rounded-full border border-border/80 bg-background text-foreground shadow-xs transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95"
           >
-            <HugeiconsIcon icon={ArrowRight01Icon} size={16} aria-hidden="true" />
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              size={16}
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>

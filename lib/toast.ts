@@ -1,4 +1,5 @@
 import { toast } from "sonner"
+import { getPaymentSafetyCopy } from "@/lib/api/client"
 
 export function notifyEnquirySent(destination?: string) {
   toast.success("Enquiry sent", {
@@ -24,6 +25,18 @@ export function notifyBookingActionFailed(retry?: () => void) {
           onClick: retry,
         }
       : undefined,
+  })
+}
+
+/**
+ * Payment-attempt failure that must not hide at the top of a long form.
+ * Carries the specific human message plus the payment-safety reassurance and
+ * stays up long enough to read.
+ */
+export function notifyPaymentFailed(message: string) {
+  toast.error("Your booking was not created", {
+    description: `${message} ${getPaymentSafetyCopy()}`,
+    duration: 10_000,
   })
 }
 

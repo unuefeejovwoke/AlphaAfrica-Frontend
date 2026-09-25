@@ -35,11 +35,18 @@ export interface CompanyInfo {
     /** Digits only, no `+`, for `wa.me/<number>`. */
     number: string
     display: string
+    /** Production prefill messages, copied verbatim from alphaaafrica.com. */
+    prefills: {
+      /** Hero / "book manually" call to action. */
+      manual: string
+      /** Footer and floating chat call to action. */
+      services: string
+    }
   }
   email: string
   socials: {
+    /** X/Twitter is intentionally absent — no published handle exists. */
     instagram: string
-    x: string
     facebook: string
     tiktok: string
   }
@@ -47,8 +54,10 @@ export interface CompanyInfo {
 }
 
 export const company: CompanyInfo = {
+  // WhatsApp and socials are production values taken from alphaaafrica.com;
+  // phone, email, and office are still placeholders awaiting owner sign-off.
   source: "draft",
-  updatedAt: "2026-09-21",
+  updatedAt: "2026-09-25",
   legalName: "Alphaa Africa Limited",
   brandName: "Alphaa Africa",
   positioning:
@@ -63,26 +72,34 @@ export const company: CompanyInfo = {
     coordinates: { lat: 9.0579, lng: 7.4951 },
   },
   phone: {
+    // Draft placeholder: production publishes no phone number (WhatsApp only).
     display: "+234 800 000 0000",
     e164: "+2348000000000",
     href: "tel:+2348000000000",
     secondaryDisplay: "+234 9 292 0000",
   },
   whatsapp: {
-    number: "2348000000000",
-    display: "+234 800 000 0000",
+    number: "2347066851051",
+    display: "+234 706 685 1051",
+    prefills: {
+      manual: "Hello Alphaa.Africa,\nI'd like to book a trip manually!",
+      services:
+        "Hello Alphaa.Africa,\nI'd like to book: 1. Flight 2. Hotel 3. Visa Assistance 4. Airport Transfer",
+    },
   },
+  // Draft placeholder: production publishes no email address (WhatsApp only).
   email: "support@alphaaafrica.com",
   socials: {
-    instagram: "https://instagram.com/alphaaafrica",
-    x: "https://x.com/alphaaafrica",
-    facebook: "https://facebook.com/alphaaafrica",
-    tiktok: "https://tiktok.com/@alphaaafrica",
+    instagram:
+      "https://www.instagram.com/alphaa_africatravelandtours?igsh=dnNqY2wwbWc0b21l",
+    facebook: "https://www.facebook.com/share/1Hba4rkBpC/",
+    tiktok: "https://vm.tiktok.com/ZS9MgLjPaqucr-eZPfO/",
   },
   seo: {
-    title: "Alphaa Africa — Book Flights, Hotels & Holidays, or Get Visa Help",
+    title:
+      "Get the Cheapest and Best flights, Hotels and Tours anywhere in the world with Alphaa Africa",
     description:
-      "Book flights, hotels, and car rentals yourself — or get human help with holiday packages and visa applications. Clear prices, real support, no account needed to start.",
+      "Get the cheapest and best flight deals, luxury hotel bookings, curated holiday tours, and visa assistance anywhere in the world with Alphaa Africa.",
   },
 }
 

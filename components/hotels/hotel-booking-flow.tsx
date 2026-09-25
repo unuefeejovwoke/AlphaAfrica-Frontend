@@ -91,7 +91,9 @@ export function HotelBookingFlow({
     }
   }, [searchParams, rooms])
 
-  const [roomTypeId, setRoomTypeId] = React.useState<number | null>(hint.roomTypeId)
+  const [roomTypeId, setRoomTypeId] = React.useState<number | null>(
+    hint.roomTypeId
+  )
   const [checkIn, setCheckIn] = React.useState(hint.checkIn)
   const [checkOut, setCheckOut] = React.useState(hint.checkOut)
   const [guests, setGuests] = React.useState(hint.guests)
@@ -135,8 +137,7 @@ export function HotelBookingFlow({
         : null,
     [room, guests, roomsCount]
   )
-  const capacityGuidance =
-    verdict && !verdict.ok ? verdict.guidance : null
+  const capacityGuidance = verdict && !verdict.ok ? verdict.guidance : null
 
   const preview = React.useMemo(
     () =>
@@ -151,8 +152,7 @@ export function HotelBookingFlow({
   )
   const roomPriceLabel = room ? formatRoomTypePrice(room.price_per_night) : null
 
-  const canContinue =
-    room !== null && datesValid && (verdict?.ok ?? false)
+  const canContinue = room !== null && datesValid && (verdict?.ok ?? false)
 
   const stayContext = React.useMemo<HotelStayContext>(
     () => ({
@@ -187,7 +187,17 @@ export function HotelBookingFlow({
         rooms: roomsCount,
       })}`
     )
-  }, [canContinue, room, nights, hotel.slug, checkIn, checkOut, guests, roomsCount, router])
+  }, [
+    canContinue,
+    room,
+    nights,
+    hotel.slug,
+    checkIn,
+    checkOut,
+    guests,
+    roomsCount,
+    router,
+  ])
 
   const nightWord = nights === 1 ? "night" : "nights"
   const roomWord = roomsCount === 1 ? "room" : "rooms"
@@ -226,9 +236,9 @@ export function HotelBookingFlow({
           ) : (
             <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs sm:p-6">
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Room Types for this Hotel are being updated. Talk to Alphaa
-                and a specialist will confirm availability and per-night
-                prices for your dates.
+                Room Types for this Hotel are being updated. Talk to Alphaa and
+                a specialist will confirm availability and per-night prices for
+                your dates.
               </p>
               <div>
                 <Button
@@ -271,14 +281,18 @@ export function HotelBookingFlow({
               min={today}
               value={checkIn}
               onChange={(event) => setCheckIn(event.target.value)}
-              error={checkIn.trim() !== "" ? dateError ?? undefined : undefined}
+              error={
+                checkIn.trim() !== "" ? (dateError ?? undefined) : undefined
+              }
             />
             <DatePicker
               label="Check-out"
               min={checkIn || today}
               value={checkOut}
               onChange={(event) => setCheckOut(event.target.value)}
-              error={checkOut.trim() !== "" ? dateError ?? undefined : undefined}
+              error={
+                checkOut.trim() !== "" ? (dateError ?? undefined) : undefined
+              }
             />
           </div>
 
@@ -349,7 +363,11 @@ export function HotelBookingFlow({
             className="w-full justify-center"
           >
             <span>Continue with this stay</span>
-            <HugeiconsIcon icon={ArrowRight01Icon} size={16} aria-hidden="true" />
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              size={16}
+              aria-hidden="true"
+            />
           </Button>
 
           <Button

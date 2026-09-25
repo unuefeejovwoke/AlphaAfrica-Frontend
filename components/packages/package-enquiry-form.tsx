@@ -186,10 +186,15 @@ export function PackageEnquiryForm({
               Enquiry Received
             </h3>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Thank you, <span className="font-semibold text-foreground">{result.full_name}</span>.
-              We&apos;ve received your request for{" "}
-              <span className="font-semibold text-foreground">{result.package_title}</span>.
-              Our team will contact you within 24 hours to confirm details.
+              Thank you,{" "}
+              <span className="font-semibold text-foreground">
+                {result.full_name}
+              </span>
+              . We&apos;ve received your request for{" "}
+              <span className="font-semibold text-foreground">
+                {result.package_title}
+              </span>
+              . Our team will contact you within 24 hours to confirm details.
             </p>
           </div>
 
@@ -212,7 +217,9 @@ export function PackageEnquiryForm({
               <HugeiconsIcon
                 icon={copiedRef ? Tick01Icon : Copy01Icon}
                 size={14}
-                className={copiedRef ? "text-emerald-600" : "text-muted-foreground"}
+                className={
+                  copiedRef ? "text-emerald-600" : "text-muted-foreground"
+                }
                 aria-hidden="true"
               />
               <span>{copiedRef ? "Copied" : "Copy"}</span>
@@ -263,7 +270,8 @@ export function PackageEnquiryForm({
           Book this package
         </h2>
         <p className="text-sm text-muted-foreground">
-          Enter your travel details below and our team will get back to you within 24 hours.
+          Enter your travel details below and our team will get back to you
+          within 24 hours.
         </p>
       </div>
 
@@ -356,7 +364,9 @@ export function PackageEnquiryForm({
               >
                 Departure date (optional)
               </label>
-              <span className="text-[10px] text-muted-foreground">Flexible is fine</span>
+              <span className="text-[10px] text-muted-foreground">
+                Flexible is fine
+              </span>
             </div>
             <Input
               id="enquiry_preferred_date"
@@ -377,8 +387,12 @@ export function PackageEnquiryForm({
             {/* Adults */}
             <div className="flex items-center justify-between rounded-xl border border-input bg-card p-2.5 px-3.5 shadow-2xs">
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-foreground">Adults</span>
-                <span className="text-[10px] text-muted-foreground">Age 12+</span>
+                <span className="text-xs font-semibold text-foreground">
+                  Adults
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Age 12+
+                </span>
               </div>
               <div className="flex items-center gap-2.5">
                 <button
@@ -388,7 +402,11 @@ export function PackageEnquiryForm({
                   aria-label="Decrease adult travellers"
                   className="flex size-7 items-center justify-center rounded-lg border border-border bg-muted/60 text-foreground transition-all hover:bg-muted active:scale-95 disabled:pointer-events-none disabled:opacity-40"
                 >
-                  <HugeiconsIcon icon={MinusSignIcon} size={13} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={MinusSignIcon}
+                    size={13}
+                    aria-hidden="true"
+                  />
                 </button>
                 <span className="w-5 text-center font-mono text-sm font-bold text-foreground">
                   {numAdults}
@@ -400,7 +418,11 @@ export function PackageEnquiryForm({
                   aria-label="Increase adult travellers"
                   className="flex size-7 items-center justify-center rounded-lg border border-border bg-muted/60 text-foreground transition-all hover:bg-muted active:scale-95 disabled:pointer-events-none disabled:opacity-40"
                 >
-                  <HugeiconsIcon icon={PlusSignIcon} size={13} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={PlusSignIcon}
+                    size={13}
+                    aria-hidden="true"
+                  />
                 </button>
               </div>
             </div>
@@ -408,8 +430,12 @@ export function PackageEnquiryForm({
             {/* Children */}
             <div className="flex items-center justify-between rounded-xl border border-input bg-card p-2.5 px-3.5 shadow-2xs">
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-foreground">Children</span>
-                <span className="text-[10px] text-muted-foreground">Age 0–11</span>
+                <span className="text-xs font-semibold text-foreground">
+                  Children
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Age 0–11
+                </span>
               </div>
               <div className="flex items-center gap-2.5">
                 <button
@@ -419,7 +445,11 @@ export function PackageEnquiryForm({
                   aria-label="Decrease child travellers"
                   className="flex size-7 items-center justify-center rounded-lg border border-border bg-muted/60 text-foreground transition-all hover:bg-muted active:scale-95 disabled:pointer-events-none disabled:opacity-40"
                 >
-                  <HugeiconsIcon icon={MinusSignIcon} size={13} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={MinusSignIcon}
+                    size={13}
+                    aria-hidden="true"
+                  />
                 </button>
                 <span className="w-5 text-center font-mono text-sm font-bold text-foreground">
                   {numChildren}
@@ -431,17 +461,25 @@ export function PackageEnquiryForm({
                   aria-label="Increase child travellers"
                   className="flex size-7 items-center justify-center rounded-lg border border-border bg-muted/60 text-foreground transition-all hover:bg-muted active:scale-95 disabled:pointer-events-none disabled:opacity-40"
                 >
-                  <HugeiconsIcon icon={PlusSignIcon} size={13} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={PlusSignIcon}
+                    size={13}
+                    aria-hidden="true"
+                  />
                 </button>
               </div>
             </div>
           </div>
 
           {errors.num_adults && (
-            <p className="text-xs font-medium text-destructive">{errors.num_adults.message}</p>
+            <p className="text-xs font-medium text-destructive">
+              {errors.num_adults.message}
+            </p>
           )}
           {errors.num_children && (
-            <p className="text-xs font-medium text-destructive">{errors.num_children.message}</p>
+            <p className="text-xs font-medium text-destructive">
+              {errors.num_children.message}
+            </p>
           )}
         </div>
 
@@ -466,7 +504,9 @@ export function PackageEnquiryForm({
             >
               Notes or special requests (optional)
             </label>
-            <span className="text-[10px] text-muted-foreground">Custom preferences</span>
+            <span className="text-[10px] text-muted-foreground">
+              Custom preferences
+            </span>
           </div>
           <Textarea
             id="enquiry_message"

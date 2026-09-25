@@ -5,7 +5,6 @@ import {
   Airplane01Icon,
   Search01Icon,
   Tick01Icon,
-  UserIcon,
   Ticket01Icon,
   Wallet01Icon,
 } from "@hugeicons/core-free-icons"
@@ -14,25 +13,25 @@ import { cn } from "@/lib/utils"
 export const FLIGHT_JOURNEY_STEPS = [
   { key: "search", label: "Search", icon: Search01Icon },
   { key: "compare", label: "Compare", icon: Airplane01Icon },
-  { key: "confirm", label: "Confirm fare", icon: Tick01Icon },
-  { key: "travellers", label: "Travellers", icon: UserIcon },
-  { key: "pay", label: "Pay", icon: Wallet01Icon },
-  { key: "booking", label: "Booking", icon: Ticket01Icon },
+  { key: "checkout", label: "Checkout", icon: Wallet01Icon },
+  { key: "confirmed", label: "Confirmed", icon: Ticket01Icon },
 ] as const
 
 export type FlightJourneyStepKey = (typeof FLIGHT_JOURNEY_STEPS)[number]["key"]
 
 export interface FlightJourneyHeaderProps {
-  /** 1-based current step (1=Search … 6=Booking). */
-  current: 1 | 2 | 3 | 4 | 5 | 6
+  /** 1-based current step (1=Search … 4=Confirmed). */
+  current: 1 | 2 | 3 | 4
   className?: string
 }
 
 /**
- * Six-step flights journey header (Search, Compare, Confirm fare,
- * Travellers, Pay, Booking). Ordered list with `aria-current="step"` so
- * screen readers announce progress; decorative icons hidden; compact and
- * horizontally scrollable on small screens; sticky-safe (no overlay).
+ * Four-step flights journey header (Search, Compare, Checkout, Confirmed).
+ * Fare confirmation happens in the results-page modal as part of Compare →
+ * Checkout, so it is not a separate step. Ordered list with
+ * `aria-current="step"` so screen readers announce progress; decorative icons
+ * hidden; compact and horizontally scrollable on small screens; sticky-safe
+ * (no overlay).
  */
 export function FlightJourneyHeader({
   current,
@@ -86,10 +85,10 @@ export function FlightJourneyHeader({
                 </span>
                 <span className="sr-only">
                   {isCurrent
-                    ? ` (current step, step ${stepNumber} of 6)`
+                    ? ` (current step, step ${stepNumber} of 4)`
                     : isDone
-                      ? ` (completed, step ${stepNumber} of 6)`
-                      : ` (step ${stepNumber} of 6)`}
+                      ? ` (completed, step ${stepNumber} of 4)`
+                      : ` (step ${stepNumber} of 4)`}
                 </span>
               </div>
               {index < FLIGHT_JOURNEY_STEPS.length - 1 ? (
@@ -106,7 +105,7 @@ export function FlightJourneyHeader({
         })}
       </ol>
       <p aria-live="polite" className="sr-only">
-        Step {current} of 6: {FLIGHT_JOURNEY_STEPS[current - 1].label}
+        Step {current} of 4: {FLIGHT_JOURNEY_STEPS[current - 1].label}
       </p>
     </nav>
   )

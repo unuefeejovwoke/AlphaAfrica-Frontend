@@ -2,11 +2,15 @@ import { z } from "zod"
 import { ApiError, apiGet, apiPost } from "./client.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { futureDateStringSchema } from "./validation.ts"
+import { moneyToKobo, koboToMoneyString, resolveMoneyChange } from "../money.ts"
 import {
   travellerCompositionSchema,
   travellerPartyBaseSchema,
 } from "../schemas/travel.ts"
-import type { BookingTravellersPayload } from "../schemas/travel.ts"
+import type {
+  BookingTravellersPayload,
+  TravellerComposition,
+} from "../schemas/travel.ts"
 
 /**
  * Flight domain — one-way international search (Phase 3, ticket 01).
@@ -1332,16 +1336,7 @@ function extractOfferKobo(
   if (typeof offer !== "object" || offer === null) return null
   const { amount } = extractPrice(offer)
   if (amount === "—") return null
-  // Backend amounts may arrive as "545127.45", "545,127.45", or "NGN 545127.45".
-  const cleaned = amount.replace(/^(NGN|₦)\s*/i, "").replace(/[₦,\s]/g, "")
-  if (!cleaned) return null
-  const value = Number(cleaned)
-  if (!Number.isFinite(value) || value < 0) return null
-  return Math.round(value * 100)
-}
-
-function koboToMoneyString(kobo: number): string {
-  return (kobo / 100).toFixed(2)
+  return moneyToKobo(amount)
 }
 
 /**
@@ -1364,14 +1359,9 @@ export function resolvePriceConfirmation(
       currency: CURRENCY,
     }
   }
-  const diffKobo = revalidatedKobo - selectedKobo
   return {
     status: "changed",
-    previousTotal: koboToMoneyString(selectedKobo),
-    newTotal: koboToMoneyString(revalidatedKobo),
-    difference: koboToMoneyString(Math.abs(diffKobo)),
-    increased: diffKobo > 0,
-    currency: CURRENCY,
+    ...resolveMoneyChange(selectedKobo, revalidatedKobo, CURRENCY),
   }
 }
 
@@ -1539,13 +1529,25 @@ export function readConfirmedOffer(): FlightOffer | null {
   )
 }
 
+/** Drop the Confirmed Offer from memory and session (checkout teardown). */
+export function clearConfirmedOffer(): void {
+  memoryConfirmedOffer = null
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.removeItem(CONFIRMED_OFFER_SESSION_KEY)
+  } catch {
+    // ignore — memory copy already cleared
+  }
+}
+
 export const SELECTED_PARTY_SESSION_KEY = "alphaa:selected-flight-party:v1"
 
-export interface SelectedFlightParty {
-  adults: number
-  children: number
-  infants: number
-}
+/**
+ * Search-step party persisted alongside the selection. Aliased to the shared
+ * composition type so the session handoff and the traveller form can never
+ * drift apart.
+ */
+export type SelectedFlightParty = TravellerComposition
 
 let memorySelectedParty: SelectedFlightParty | null = null
 
@@ -1611,6 +1613,17 @@ export function buildCheckoutPartyQuery(party: SelectedFlightParty): string {
   return params.toString()
 }
 
+/** Drop the selected party from memory and session (checkout teardown). */
+export function clearSelectedParty(): void {
+  memorySelectedParty = null
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.removeItem(SELECTED_PARTY_SESSION_KEY)
+  } catch {
+    // ignore — memory copy already cleared
+  }
+}
+
 export const TRAVELLERS_DRAFT_SESSION_KEY = "alphaa:travellers-draft:v1"
 
 /** Persist the validated Traveller + Customer draft for ticket 07 (payment). */
@@ -1638,6 +1651,29 @@ export function readTravellersDraft(): BookingTravellersPayload | null {
   } catch {
     return null
   }
+}
+
+/** Drop the Travellers draft from session (cleared or completed checkout). */
+export function clearTravellersDraft(): void {
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.removeItem(TRAVELLERS_DRAFT_SESSION_KEY)
+  } catch {
+    // ignore — nothing left to clear
+  }
+}
+
+/**
+ * Drop every session-backed checkout input: the selected and Confirmed Offer
+ * blobs, the selected party, and the Travellers draft. Called after a verified
+ * payment so back/forward can never re-enter checkout with a completed trip.
+ * Pending Booking + Payment Reference clearing lives beside their writers.
+ */
+export function clearFlightCheckoutSession(): void {
+  clearSelectedOffer()
+  clearConfirmedOffer()
+  clearSelectedParty()
+  clearTravellersDraft()
 }
 
 // ---------------------------------------------------------------------------

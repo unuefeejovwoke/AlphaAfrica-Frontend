@@ -17,15 +17,24 @@ import {
 } from "../lib/api/hotels.ts"
 
 test("Verification states: confirmed, pending, cancelled, failed — unknown stays pending", () => {
-  assert.equal(resolveHotelVerificationState({ status: "confirmed" }), "confirmed")
+  assert.equal(
+    resolveHotelVerificationState({ status: "confirmed" }),
+    "confirmed"
+  )
   assert.equal(resolveHotelVerificationState({ status: "pending" }), "pending")
-  assert.equal(resolveHotelVerificationState({ status: "cancelled" }), "cancelled")
+  assert.equal(
+    resolveHotelVerificationState({ status: "cancelled" }),
+    "cancelled"
+  )
   assert.equal(resolveHotelVerificationState({ status: "failed" }), "failed")
   // A return from Paystack proves nothing: unrecognized states keep the
   // guest checking instead of assuming success or failure.
   assert.equal(resolveHotelVerificationState({ status: "weird" }), "pending")
   assert.equal(resolveHotelVerificationState({}), "pending")
-  assert.equal(resolveHotelVerificationState({ status: " CONFIRMED " }), "confirmed")
+  assert.equal(
+    resolveHotelVerificationState({ status: " CONFIRMED " }),
+    "confirmed"
+  )
 })
 
 test("Verified Hotel Booking carries reference, stay, amounts, and payment state", () => {

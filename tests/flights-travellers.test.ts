@@ -2,7 +2,9 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import {
   createTravellerFormSchema,
+  draftToTravellerFormValues,
   getTravellerAgeWarnings,
+  type BookingTravellersPayload,
   type TravellerFormTraveller,
 } from "../lib/schemas/travel.ts"
 
@@ -209,4 +211,74 @@ test("Traveller composition: infants above adults fails, total above nine fails"
   // The exact expected party passes the composition gate.
   const exact = schema.safeParse({ ...base, travellers: [validAdult()] })
   assert.equal(exact.success, true, "Exact expected party must pass")
+})
+
+test("Travellers draft restores form defaults only when it matches the party", () => {
+  const party = { adults: 1, children: 1, infants: 0 }
+  const payload: BookingTravellersPayload = {
+    travellers: [
+      {
+        first_name: "Ada",
+        last_name: "Obi",
+        date_of_birth: "1990-01-01",
+        gender: "FEMALE",
+        email: "ada@example.com",
+        phone_country_code: "234",
+        phone: "+2348031234567",
+        traveler_type: "ADULT",
+      },
+      {
+        first_name: "Chidi",
+        last_name: "Obi",
+        date_of_birth: "2015-06-01",
+        gender: "MALE",
+        email: "chidi@example.com",
+        phone_country_code: "234",
+        phone: "+2348031234568",
+        traveler_type: "CHILD",
+      },
+    ],
+    customer: {
+      name: "Ada Obi",
+      email: "ada@example.com",
+      phone: "+2348031234567",
+    },
+  }
+
+  const values = draftToTravellerFormValues(party, payload)
+  assert.ok(values, "A matching draft must restore form values")
+  assert.equal(values.travellers.length, 2, "Slots keep the draft party")
+  assert.equal(
+    values.contactIsFirstTraveller,
+    true,
+    "Derived contact marks the copy checkbox"
+  )
+  assert.equal(values.travellers[0].phone, "+2348031234567")
+  assert.equal(
+    values.travellers[0].passport_number,
+    "",
+    "Missing passport fields restore as empty inputs"
+  )
+
+  assert.equal(
+    draftToTravellerFormValues({ adults: 2, children: 0, infants: 0 }, payload),
+    null,
+    "A draft that no longer matches the party must never prefill"
+  )
+
+  const separateCustomer = draftToTravellerFormValues(party, {
+    ...payload,
+    customer: {
+      name: "Ngozi Eze",
+      email: "ngozi@example.com",
+      phone: "+2348090000000",
+    },
+  })
+  assert.ok(separateCustomer, "A differing contact still restores")
+  assert.equal(
+    separateCustomer.contactIsFirstTraveller,
+    false,
+    "A separate paying contact unchecks the copy box"
+  )
+  assert.equal(separateCustomer.customer.name, "Ngozi Eze")
 })
