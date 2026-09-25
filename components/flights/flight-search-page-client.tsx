@@ -38,7 +38,14 @@ import {
 import { ApiError, getHumanErrorMessage } from "@/lib/api/client"
 import { track } from "@/lib/analytics"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
-import { isDomesticSearch, type DomesticSearchParams, saveSelectedDomesticCard, clearSelectedDomesticCard, resolveBookingBranch } from "@/lib/api/domestic"
+import {
+  isDomesticSearch,
+  type DomesticFlightCard,
+  type DomesticSearchParams,
+  saveSelectedDomesticCard,
+  clearSelectedDomesticCard,
+  resolveBookingBranch,
+} from "@/lib/api/domestic"
 import { FILTER_PARAM_KEYS, parseNairaAmount } from "@/lib/api/flight-filters"
 import { useDomesticStream } from "@/components/flights/use-domestic-stream"
 import { FlightJourneyHeader } from "@/components/flights/flight-journey-header"
@@ -121,10 +128,12 @@ export function FlightSearchPageClient() {
   // via the airport lookup with graceful fallback to the bare code. Display
   // only — validation still gates on IATA, so a failed lookup never blocks
   // search. Run-guarded so a superseded URL never commits stale names.
-  const [hydratedOrigin, setHydratedOrigin] =
-    React.useState<Airport | null>(urlOrigin)
-  const [hydratedDest, setHydratedDest] =
-    React.useState<Airport | null>(urlDest)
+  const [hydratedOrigin, setHydratedOrigin] = React.useState<Airport | null>(
+    urlOrigin
+  )
+  const [hydratedDest, setHydratedDest] = React.useState<Airport | null>(
+    urlDest
+  )
   const [hydratedLegs, setHydratedLegs] =
     React.useState<{ origin: Airport | null; destination: Airport | null }[]>(
       urlLegAirports
@@ -133,7 +142,9 @@ export function FlightSearchPageClient() {
   const enrichAbortRef = React.useRef<AbortController | null>(null)
   const enrichKey = React.useMemo(() => {
     const legs = (urlLegAirports ?? [])
-      .map((l) => `${l.origin?.iata_code ?? ""}:${l.destination?.iata_code ?? ""}`)
+      .map(
+        (l) => `${l.origin?.iata_code ?? ""}:${l.destination?.iata_code ?? ""}`
+      )
       .join("|")
     return `${urlOrigin?.iata_code ?? ""}:${urlDest?.iata_code ?? ""}:${legs}`
   }, [urlOrigin?.iata_code, urlDest?.iata_code, urlLegAirports])
@@ -152,10 +163,13 @@ export function FlightSearchPageClient() {
     const needsEnrich = (a: Airport | null) =>
       a !== null && (!a.city || !a.name || a.name === a.iata_code)
     const targets: { iata: string }[] = []
-    if (needsEnrich(urlOrigin) && urlOrigin) targets.push({ iata: urlOrigin.iata_code })
-    if (needsEnrich(urlDest) && urlDest) targets.push({ iata: urlDest.iata_code })
+    if (needsEnrich(urlOrigin) && urlOrigin)
+      targets.push({ iata: urlOrigin.iata_code })
+    if (needsEnrich(urlDest) && urlDest)
+      targets.push({ iata: urlDest.iata_code })
     for (const leg of urlLegAirports ?? []) {
-      if (needsEnrich(leg.origin) && leg.origin) targets.push({ iata: leg.origin.iata_code })
+      if (needsEnrich(leg.origin) && leg.origin)
+        targets.push({ iata: leg.origin.iata_code })
       if (needsEnrich(leg.destination) && leg.destination)
         targets.push({ iata: leg.destination.iata_code })
     }
@@ -233,7 +247,9 @@ export function FlightSearchPageClient() {
   }, [urlValues])
 
   const [offers, setOffers] = React.useState<FlightOffer[]>([])
-  const [isSearching, setIsSearching] = React.useState(false)
+  // A valid shared/search URL means the auto-search effect is about to run —
+  // start in loading so the empty state never flashes before results arrive.
+  const [isSearching, setIsSearching] = React.useState(hasValidUrlSearch)
   const [error, setError] = React.useState<unknown | null>(null)
   const [hasSearched, setHasSearched] = React.useState(hasValidUrlSearch)
   const lastTripTypeRef = React.useRef<FlightTripType>("one_way")
@@ -479,10 +495,13 @@ export function FlightSearchPageClient() {
       // Preserve search state in URL for back/refresh/share
       const nextQuery = buildFlightSearchQuery(payload)
       const currentQuery = searchParams.toString()
+      // This submit runs the search below; mark the resulting URL needle as
+      // handled so the auto-search effect never fires a second request for
+      // the same search once the navigation lands (double-search race).
+      lastAutoSearchKey.current = nextQuery
       if (nextQuery !== currentQuery) {
         router.push(`?${nextQuery}`, { scroll: false })
       }
-      // Always run search even if URL unchanged (supports retry without navigation)
       void doSearch(payload)
     },
     [router, searchParams, doSearch]
@@ -541,7 +560,7 @@ export function FlightSearchPageClient() {
         saveSelectedDomesticCard(
           (typeof raw === "object" && raw !== null
             ? (raw as Record<string, unknown>)
-            : {}) as never
+            : {}) as DomesticFlightCard
         )
         saveSelectedParty(party)
         track("flight_selected", {
@@ -615,9 +634,10 @@ export function FlightSearchPageClient() {
         origin && destination
           ? `${origin} → ${destination}${trip === "round_trip" ? " · Return" : ""}`
           : null,
-      dates: [departure, trip === "round_trip" ? ret : null]
-        .filter(Boolean)
-        .join(" → ") || null,
+      dates:
+        [departure, trip === "round_trip" ? ret : null]
+          .filter(Boolean)
+          .join(" → ") || null,
       party: partyLabel,
       cabin: cabinLabel,
     }
@@ -654,17 +674,38 @@ export function FlightSearchPageClient() {
       const trip = (currentValues.trip_type as FlightTripType) || "one_way"
       const parsed = parseFlightSearchPayload({
         trip_type: trip,
-        origin: typeof currentValues.origin === "string" ? currentValues.origin : "",
-        destination: typeof currentValues.destination === "string" ? currentValues.destination : "",
+        origin:
+          typeof currentValues.origin === "string" ? currentValues.origin : "",
+        destination:
+          typeof currentValues.destination === "string"
+            ? currentValues.destination
+            : "",
         departureDate: nextDate,
-        returnDate: typeof currentValues.returnDate === "string" ? currentValues.returnDate : undefined,
-        legs: Array.isArray(currentValues.legs) ? (currentValues.legs as never) : [],
-        adults: typeof currentValues.adults === "number" ? currentValues.adults : 1,
-        children: typeof currentValues.children === "number" ? currentValues.children : 0,
-        infants: typeof currentValues.infants === "number" ? currentValues.infants : 0,
-        cabin: typeof currentValues.cabin === "string" ? (currentValues.cabin as never) : "ECONOMY",
-        non_stop: typeof currentValues.non_stop === "boolean" ? currentValues.non_stop : false,
-        max_stops: typeof currentValues.max_stops === "number" ? currentValues.max_stops : null,
+        returnDate:
+          typeof currentValues.returnDate === "string"
+            ? currentValues.returnDate
+            : undefined,
+        legs: Array.isArray(currentValues.legs) ? currentValues.legs : [],
+        adults:
+          typeof currentValues.adults === "number" ? currentValues.adults : 1,
+        children:
+          typeof currentValues.children === "number"
+            ? currentValues.children
+            : 0,
+        infants:
+          typeof currentValues.infants === "number" ? currentValues.infants : 0,
+        cabin:
+          typeof currentValues.cabin === "string"
+            ? currentValues.cabin
+            : "ECONOMY",
+        non_stop:
+          typeof currentValues.non_stop === "boolean"
+            ? currentValues.non_stop
+            : false,
+        max_stops:
+          typeof currentValues.max_stops === "number"
+            ? currentValues.max_stops
+            : null,
       })
       if (parsed.success) {
         handleSubmit(parsed.data)
@@ -677,7 +718,11 @@ export function FlightSearchPageClient() {
     <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
       <FlightJourneyHeader current={hasSearched ? 2 : 1} />
 
-      <div id="flight-search-form" ref={formSectionRef} className="flex flex-col gap-3">
+      <div
+        id="flight-search-form"
+        ref={formSectionRef}
+        className="flex flex-col gap-3"
+      >
         {hasSearched ? (
           <>
             {/* Sleek Route Summary Bar using website brand color (Brand Plum #571563, NO gradients) */}
@@ -687,7 +732,9 @@ export function FlightSearchPageClient() {
                   {summary.route || "Flight Search"}
                 </span>
                 <span className="text-xs font-medium text-purple-100 sm:text-sm">
-                  {[summary.dates, summary.party, summary.cabin].filter(Boolean).join(" · ")}
+                  {[summary.dates, summary.party, summary.cabin]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
                 {searchMode ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-[11px] font-bold text-white uppercase">
@@ -714,7 +761,11 @@ export function FlightSearchPageClient() {
               >
                 {formExpanded ? (
                   <>
-                    <HugeiconsIcon icon={Cancel01Icon} size={15} aria-hidden="true" />
+                    <HugeiconsIcon
+                      icon={Cancel01Icon}
+                      size={15}
+                      aria-hidden="true"
+                    />
                     <span>Close</span>
                   </>
                 ) : (
@@ -732,7 +783,8 @@ export function FlightSearchPageClient() {
                       Modify your flight search
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Update routes, travel dates, passenger party, or cabin class
+                      Update routes, travel dates, traveller party, or cabin
+                      class
                     </p>
                   </div>
                   <button
@@ -741,7 +793,11 @@ export function FlightSearchPageClient() {
                     aria-label="Close modification"
                     className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95"
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+                    <HugeiconsIcon
+                      icon={Cancel01Icon}
+                      size={16}
+                      aria-hidden="true"
+                    />
                   </button>
                 </div>
                 <FlightSearchForm
@@ -760,7 +816,11 @@ export function FlightSearchPageClient() {
             ) : (
               /* Nearby Dates Bar */
               <NearbyDatesBar
-                currentDate={typeof urlValues.departureDate === "string" ? urlValues.departureDate : null}
+                currentDate={
+                  typeof urlValues.departureDate === "string"
+                    ? urlValues.departureDate
+                    : null
+                }
                 lowestPrice={lowestPrice}
                 onSelectDate={handleDateChange}
               />
@@ -817,6 +877,7 @@ export function FlightSearchPageClient() {
                 isFallingBack={domestic.isFallingBack}
                 isComplete={domestic.isComplete}
                 didFallback={domestic.didFallback}
+                isCancelled={domestic.isCancelled}
                 searchId={domestic.searchId}
                 error={domestic.error}
                 startedAt={domestic.startedAt}

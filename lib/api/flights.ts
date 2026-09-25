@@ -201,9 +201,7 @@ export async function fetchAirportByIata(
     return null
   } catch {
     // Abort or network failure — caller keeps the light fallback.
-    if (
-      options.signal?.aborted
-    ) {
+    if (options.signal?.aborted) {
       throw new DOMException("Aborted", "AbortError")
     }
     return null
@@ -482,7 +480,6 @@ export function toFlightSearchRequest(payload: FlightSearchPayload) {
     ...(payload.max_stops !== null && payload.max_stops !== undefined
       ? { max_stops: payload.max_stops }
       : {}),
-    cabin,
     max_offers: FLIGHT_SEARCH_MAX_OFFERS,
   }
   switch (payload.trip_type) {
@@ -703,6 +700,11 @@ export interface FlightOfferDisplay {
   airline: string
   departureAt: string
   arrivalAt: string
+  /** ISO date part when the backend provides one, e.g. "2026-10-10". */
+  departureDate?: string | null
+  arrivalDate?: string | null
+  /** Whole-day arrival offset (1 = next day) derived from real dates only. */
+  arrivalDayOffset?: number
   duration: string
   stops: number
   stopsLabel: string
@@ -729,6 +731,8 @@ function extractPrice(offer: FlightOffer): {
   const candidates: unknown[] = [
     offer.total_amount,
     offer.totalAmount,
+    offer.total_price,
+    offer.totalPrice,
     offer.grandTotal,
     offer.price,
   ]
@@ -768,7 +772,8 @@ function formatTime(iso?: string): string {
   // Prefer the wall-clock time embedded in the ISO string (airport-local)
   // over Date parsing, which shifts naive "2026-10-10T08:30:00" into the
   // browser zone. Falls back to Date only for non-ISO shapes.
-  const timeMatch = iso.match(/T(\d{2}:\d{2})/)
+  const timeMatch =
+    iso.match(/[T ](\d{1,2}:\d{2})/) ?? iso.match(/^(\d{1,2}:\d{2})/)
   if (timeMatch) return timeMatch[1]
   try {
     const d = new Date(iso)
@@ -783,6 +788,121 @@ function formatTime(iso?: string): string {
   }
 }
 
+export function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : {}
+}
+
+/** First non-empty string among the candidates — backend shapes vary. */
+export function pickString(...values: unknown[]): string {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim()
+  }
+  return ""
+}
+
+/** Read a nested departure/arrival node (`{ at, iataCode }` or a bare string). */
+export function pickNodeValue(node: unknown, keys: readonly string[]): string {
+  if (typeof node === "string") return node.trim()
+  const record = asRecord(node)
+  return pickString(...keys.map((key) => record[key]))
+}
+
+/** Read the same key from an offer and, as fallback, its nested `flight_offer`. */
+function readOfferField(
+  offer: Record<string, unknown>,
+  inner: Record<string, unknown>,
+  keys: readonly string[]
+): string {
+  return pickString(
+    ...keys.map((key) => offer[key]),
+    ...keys.map((key) => inner[key])
+  )
+}
+
+function clockMinutes(value: string): number | null {
+  const match = value.match(/(\d{1,2}):(\d{2})/)
+  if (!match) return null
+  const hours = Number(match[1])
+  const minutes = Number(match[2])
+  if (hours > 23 || minutes > 59) return null
+  return hours * 60 + minutes
+}
+
+function datePart(value: string): string | null {
+  const match = value.match(/(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : null
+}
+
+/**
+ * Day offset between departure and arrival. Prefers real calendar dates;
+ * falls back to a time-only overnight crossing when dates are absent.
+ * Returns 0 when it cannot be established — never a fabricated "+1".
+ */
+function arrivalDayOffset(departureAt: string, arrivalAt: string): number {
+  const depDate = datePart(departureAt)
+  const arrDate = datePart(arrivalAt)
+  if (depDate && arrDate) {
+    const depTime = Date.parse(`${depDate}T00:00:00Z`)
+    const arrTime = Date.parse(`${arrDate}T00:00:00Z`)
+    if (Number.isFinite(depTime) && Number.isFinite(arrTime)) {
+      return Math.max(0, Math.round((arrTime - depTime) / 86_400_000))
+    }
+  }
+  const depMins = clockMinutes(departureAt)
+  const arrMins = clockMinutes(arrivalAt)
+  if (depMins !== null && arrMins !== null && arrMins < depMins) return 1
+  return 0
+}
+
+function formatBaggagePieces(
+  pieces: Record<string, unknown>,
+  label: string
+): string | null {
+  const quantity = pieces.quantity
+  if (typeof quantity !== "number" || !Number.isFinite(quantity)) return null
+  if (quantity <= 0) return `No ${label} bag`
+  const weight = pieces.weight
+  const unit =
+    typeof pieces.weightUnit === "string" && pieces.weightUnit.trim()
+      ? pieces.weightUnit.trim().toLowerCase()
+      : "kg"
+  return typeof weight === "number" && Number.isFinite(weight)
+    ? `${quantity} × ${weight}${unit} ${label}`
+    : `${quantity} ${label}`
+}
+
+/** Baggage when the backend/airline actually provides it — otherwise null. */
+function extractBaggage(offer: FlightOffer): string | null {
+  const record = asRecord(offer)
+  if (typeof record.baggage === "string" && record.baggage.trim()) {
+    return record.baggage.trim()
+  }
+  const travelerPricings = Array.isArray(record.travelerPricings)
+    ? record.travelerPricings
+    : []
+  for (const pricing of travelerPricings) {
+    const fareDetails = Array.isArray(asRecord(pricing).fareDetailsBySegment)
+      ? (asRecord(pricing).fareDetailsBySegment as unknown[])
+      : []
+    for (const detail of fareDetails) {
+      const node = asRecord(detail)
+      const checked = formatBaggagePieces(
+        asRecord(node.includedCheckedBags),
+        "checked"
+      )
+      if (checked) return checked
+      const cabin = formatBaggagePieces(
+        asRecord(node.includedCabinBags),
+        "cabin"
+      )
+      if (cabin) return cabin
+    }
+  }
+  return null
+}
+
 /** Hide Amadeus-vs-normalized segment shape walk behind one helper. */
 function getSegmentEndpoints(segment: unknown): {
   departureAt: string
@@ -794,29 +914,117 @@ function getSegmentEndpoints(segment: unknown): {
   flightNumber: string
   duration: string
 } {
-  const seg = segment as Record<string, unknown>
-  const dep = seg.departure as Record<string, string> | undefined
-  const arr = seg.arrival as Record<string, string> | undefined
+  const seg = asRecord(segment)
+  const dep = seg.departure
+  const arr = seg.arrival
   return {
-    departureAt: (seg.departureAt as string) ?? dep?.at ?? "",
-    arrivalAt: (seg.arrivalAt as string) ?? arr?.at ?? "",
-    departureAirport: (seg.departureAirport as string) ?? dep?.iataCode ?? "",
-    arrivalAirport: (seg.arrivalAirport as string) ?? arr?.iataCode ?? "",
-    cabin: (seg.cabin as string) ?? "",
-    carrierCode:
-      (seg.carrierCode as string) ?? (seg.carrier as string) ?? "",
-    flightNumber: (seg.flightNumber as string) ?? (seg.number as string) ?? "",
-    duration: (seg.duration as string) ?? "",
+    departureAt: pickString(
+      seg.departureAt,
+      seg.departure_at,
+      seg.departureTime,
+      seg.departure_time,
+      pickNodeValue(dep, ["at", "time", "dateTime", "datetime", "date_time"])
+    ),
+    arrivalAt: pickString(
+      seg.arrivalAt,
+      seg.arrival_at,
+      seg.arrivalTime,
+      seg.arrival_time,
+      pickNodeValue(arr, ["at", "time", "dateTime", "datetime", "date_time"])
+    ),
+    departureAirport: pickString(
+      seg.departureAirport,
+      seg.departure_airport,
+      seg.origin,
+      pickNodeValue(dep, [
+        "iataCode",
+        "iata_code",
+        "code",
+        "airport",
+        "airportCode",
+        "airport_code",
+      ])
+    ),
+    arrivalAirport: pickString(
+      seg.arrivalAirport,
+      seg.arrival_airport,
+      seg.destination,
+      pickNodeValue(arr, [
+        "iataCode",
+        "iata_code",
+        "code",
+        "airport",
+        "airportCode",
+        "airport_code",
+      ])
+    ),
+    cabin: pickString(seg.cabin, seg.cabinClass, seg.cabin_class),
+    carrierCode: pickString(
+      seg.carrierCode,
+      seg.carrier_code,
+      seg.carrier,
+      seg.marketingCarrierCode,
+      seg.marketing_carrier_code,
+      seg.airlineCode,
+      seg.airline_code,
+      seg.airline
+    ),
+    flightNumber: pickString(
+      seg.flightNumber,
+      seg.flight_number,
+      seg.number,
+      seg.flight_no
+    ),
+    duration: pickString(seg.duration, seg.flightDuration, seg.flight_duration),
   }
+}
+
+/**
+ * Itinerary list across backend shape variants: a canonical `itineraries`
+ * array, an Amadeus offer nested under `flight_offer`, or `slices`/`legs`.
+ */
+function collectItineraries(
+  offer: Record<string, unknown>
+): { duration: string; segments: unknown[] }[] {
+  const inner = asRecord(offer.flight_offer)
+  const candidates: unknown[] = [
+    offer.itineraries,
+    inner.itineraries,
+    offer.slices,
+    inner.slices,
+    offer.legs,
+    inner.legs,
+  ]
+  const list = candidates.find(
+    (candidate): candidate is unknown[] =>
+      Array.isArray(candidate) && candidate.length > 0
+  )
+  if (!list) return []
+  return list.map((itinerary) => {
+    const record = asRecord(itinerary)
+    const rawSegments = Array.isArray(itinerary)
+      ? itinerary
+      : (record.segments ??
+        record.flightSegments ??
+        record.flight_segments ??
+        record.flights ??
+        [])
+    return {
+      duration: pickString(
+        record.duration,
+        record.totalDuration,
+        record.total_duration
+      ),
+      segments: Array.isArray(rawSegments) ? rawSegments : [],
+    }
+  })
 }
 
 /** Build the full journey timeline across every itinerary — defensive pass-through. */
 function buildJourneys(offer: FlightOffer): FlightJourney[] {
-  if (!Array.isArray(offer.itineraries) || offer.itineraries.length === 0) {
-    return []
-  }
-  return offer.itineraries.map((itin, index) => {
-    const segs = Array.isArray(itin.segments) ? itin.segments : []
+  const itineraries = collectItineraries(asRecord(offer))
+  return itineraries.map((itinerary, index) => {
+    const segs = itinerary.segments
     const segments: FlightJourneySegment[] = segs.map((seg) => {
       const e = getSegmentEndpoints(seg)
       return {
@@ -838,7 +1046,7 @@ function buildJourneys(offer: FlightOffer): FlightJourney[] {
     const stops = segs.length > 0 ? segs.length - 1 : 0
     return {
       index,
-      duration: itin.duration ? formatDuration(itin.duration) : "—",
+      duration: itinerary.duration ? formatDuration(itinerary.duration) : "—",
       stops,
       stopsLabel:
         stops === 0 ? "Non-stop" : `${stops} ${stops === 1 ? "stop" : "stops"}`,
@@ -857,26 +1065,96 @@ export function normalizeFlightOffer(
   offer: FlightOffer,
   index: number
 ): FlightOfferDisplay {
-  const id = (offer.id as string) || `offer-${index}`
+  const record = asRecord(offer)
+  const inner = asRecord(record.flight_offer)
+  const read = (...keys: string[]) => readOfferField(record, inner, keys)
+
+  const id = pickString(record.id, inner.id) || `offer-${index}`
+  const firstCarrierCode = (source: Record<string, unknown>): string => {
+    const codes =
+      source.validatingAirlineCodes ?? source.validating_airline_codes
+    return Array.isArray(codes) && typeof codes[0] === "string" ? codes[0] : ""
+  }
   const airline =
-    offer.airline ||
-    (Array.isArray(offer.validatingAirlineCodes) &&
-      offer.validatingAirlineCodes[0]) ||
+    pickString(
+      record.airline,
+      record.airlineName,
+      record.airline_name,
+      inner.airline
+    ) ||
+    firstCarrierCode(record) ||
+    firstCarrierCode(inner) ||
     "Airline"
 
-  // Try itineraries first
-  let departureAt = (offer.departure as string) || ""
-  let arrivalAt = (offer.arrival as string) || ""
-  let duration = (offer.duration as string) || ""
-  let stops: number | undefined = offer.stops as number | undefined
-  let origin = (offer.origin as string) || ""
-  let destination = (offer.destination as string) || ""
-  let cabin = (offer.cabin as string) || "ECONOMY"
-  const baggage = (offer.baggage as string | null) ?? null
+  const itineraries = collectItineraries(record)
 
-  if (Array.isArray(offer.itineraries) && offer.itineraries.length > 0) {
-    const itin = offer.itineraries[0]
-    const segs = itin.segments ?? []
+  // Flat offers (backend "clean cards", mocked data) plus Amadeus shapes.
+  let departureAt = read(
+    "departureAt",
+    "departure_at",
+    "departureTime",
+    "departure_time"
+  )
+  let arrivalAt = read("arrivalAt", "arrival_at", "arrivalTime", "arrival_time")
+  let duration = read("duration", "totalDuration", "total_duration")
+  let origin = read("origin", "departureAirport", "departure_airport", "from")
+  let destination = read(
+    "destination",
+    "arrivalAirport",
+    "arrival_airport",
+    "to"
+  )
+  let cabin = read("cabin", "cabinClass", "cabin_class") || "ECONOMY"
+  const stopsRaw = record.stops ?? inner.stops
+  let stops =
+    typeof stopsRaw === "number" && Number.isFinite(stopsRaw)
+      ? Math.max(0, Math.floor(stopsRaw))
+      : undefined
+  const baggage = extractBaggage(offer) ?? extractBaggage(inner as FlightOffer)
+
+  // Nested departure/arrival nodes when no explicit flat field exists.
+  if (!departureAt) {
+    departureAt = pickNodeValue(record.departure, [
+      "at",
+      "time",
+      "dateTime",
+      "datetime",
+      "date_time",
+    ])
+  }
+  if (!arrivalAt) {
+    arrivalAt = pickNodeValue(record.arrival, [
+      "at",
+      "time",
+      "dateTime",
+      "datetime",
+      "date_time",
+    ])
+  }
+  if (!origin) {
+    origin = pickNodeValue(record.departure, [
+      "iataCode",
+      "iata_code",
+      "code",
+      "airport",
+      "airportCode",
+      "airport_code",
+    ])
+  }
+  if (!destination) {
+    destination = pickNodeValue(record.arrival, [
+      "iataCode",
+      "iata_code",
+      "code",
+      "airport",
+      "airportCode",
+      "airport_code",
+    ])
+  }
+
+  if (itineraries.length > 0) {
+    const firstItinerary = itineraries[0]
+    const segs = firstItinerary.segments
     if (segs.length > 0) {
       const firstEndpoints = getSegmentEndpoints(segs[0])
       const lastEndpoints = getSegmentEndpoints(segs[segs.length - 1])
@@ -886,8 +1164,8 @@ export function normalizeFlightOffer(
         origin = firstEndpoints.departureAirport
       if (lastEndpoints.arrivalAirport)
         destination = lastEndpoints.arrivalAirport
-      if (itin.duration) duration = itin.duration
-      stops = segs.length > 0 ? segs.length - 1 : 0
+      if (firstItinerary.duration) duration = firstItinerary.duration
+      stops = segs.length - 1
       if (firstEndpoints.cabin) cabin = firstEndpoints.cabin
     }
   }
@@ -902,12 +1180,42 @@ export function normalizeFlightOffer(
         : `${stops} ${stops === 1 ? "stop" : "stops"}`
   const airportsLabel =
     origin && destination ? `${origin} → ${destination}` : "—"
+  const journeys = buildJourneys(offer)
+
+  // Flat responses without itineraries still get a real, expandable timeline.
+  if (
+    journeys.length === 0 &&
+    (departureAt || arrivalAt || origin || destination)
+  ) {
+    journeys.push({
+      index: 0,
+      duration: duration ? formatDuration(duration) : "—",
+      stops: stops ?? 0,
+      stopsLabel,
+      origin: origin || "—",
+      destination: destination || "—",
+      airportsLabel,
+      segments: [
+        {
+          departureAirport: origin || "—",
+          arrivalAirport: destination || "—",
+          departureAt: departureAt ? formatTime(departureAt) : "—",
+          arrivalAt: arrivalAt ? formatTime(arrivalAt) : "—",
+          carrierCode: airline === "Airline" ? "" : airline,
+          ...(duration ? { duration: formatDuration(duration) } : {}),
+        },
+      ],
+    })
+  }
 
   return {
     id,
     airline,
     departureAt: departureAt ? formatTime(departureAt) : "—",
     arrivalAt: arrivalAt ? formatTime(arrivalAt) : "—",
+    departureDate: departureAt ? datePart(departureAt) : null,
+    arrivalDate: arrivalAt ? datePart(arrivalAt) : null,
+    arrivalDayOffset: arrivalDayOffset(departureAt, arrivalAt),
     duration: duration ? formatDuration(duration) : "—",
     stops: stops ?? 0,
     stopsLabel,
@@ -918,7 +1226,7 @@ export function normalizeFlightOffer(
     baggage,
     price: amount,
     currency,
-    journeys: buildJourneys(offer),
+    journeys,
     raw: offer,
   }
 }
@@ -965,6 +1273,9 @@ export async function searchFlights(
     if (Array.isArray(rec.results)) return rec.results as FlightOffer[]
     if (Array.isArray(rec.data)) return rec.data as FlightOffer[]
     if (Array.isArray(rec.offers)) return rec.offers as FlightOffer[]
+    if (Array.isArray(rec.cards)) return rec.cards as FlightOffer[]
+    if (Array.isArray(rec.flights)) return rec.flights as FlightOffer[]
+    if (Array.isArray(rec.items)) return rec.items as FlightOffer[]
   }
   return []
 }
@@ -1182,7 +1493,9 @@ export function saveConfirmedOffer(offer: FlightOffer): void {
 
 /** Read back the Confirmed Offer, or null when absent/corrupt. */
 export function readConfirmedOffer(): FlightOffer | null {
-  return memoryConfirmedOffer ?? readOfferFromSession(CONFIRMED_OFFER_SESSION_KEY)
+  return (
+    memoryConfirmedOffer ?? readOfferFromSession(CONFIRMED_OFFER_SESSION_KEY)
+  )
 }
 
 export const SELECTED_PARTY_SESSION_KEY = "alphaa:selected-flight-party:v1"

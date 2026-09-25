@@ -461,3 +461,141 @@ test("Flight Offer rendering: normalize covers airline, departure, arrival, dura
     "Analytics must strip opaque blob keys"
   )
 })
+
+// ---------------------------------------------------------------------------
+// Backend shape variants — search must render times/details for every
+// documented card shape (flat snake_case, wrapped flight_offer, nested nodes)
+// ---------------------------------------------------------------------------
+
+test("normalize survives flat snake_case, wrapped, and nested backend shapes without inventing data", () => {
+  const future = new Date(Date.now() + 86400000 * 14).toISOString().slice(0, 10)
+  const req = toFlightSearchRequest(
+    oneWayFlightSearchSchema.parse({
+      origin: "LOS",
+      destination: "LHR",
+      departureDate: future,
+      adults: 1,
+      children: 0,
+      infants: 0,
+      cabin: "BUSINESS",
+      trip_type: "one_way",
+    })
+  )
+  assert.equal(
+    "cabin" in req,
+    false,
+    "Cabin must ride per leg only (apidoc FlightSearchRequest has no top-level cabin)"
+  )
+  assert.equal(req.legs[0].cabin, "BUSINESS")
+
+  // Flat snake_case "clean card"
+  const flat = normalizeFlightOffer(
+    {
+      id: "flat-1",
+      airline_name: "Air Peace",
+      departure_at: "2026-10-10 08:30:00",
+      arrival_at: "2026-10-10 10:15:00",
+      origin: "LOS",
+      destination: "ABV",
+      duration: "1h 45m",
+      stops: "0",
+      total_price: "185000.00",
+    } as never,
+    0
+  )
+  assert.equal(flat.airline, "Air Peace")
+  assert.equal(flat.departureAt, "08:30", "Must read snake_case departure_at")
+  assert.equal(flat.arrivalAt, "10:15", "Must read snake_case arrival_at")
+  assert.equal(flat.departureDate, "2026-10-10")
+  assert.equal(flat.arrivalDayOffset, 0)
+  assert.equal(flat.duration, "1h 45m")
+  assert.equal(flat.price, "185000.00")
+  assert.equal(
+    flat.baggage,
+    null,
+    "Missing baggage must stay null — never fabricated"
+  )
+  assert.equal(
+    flat.journeys.length,
+    1,
+    "Flat cards still expand a real timeline"
+  )
+  assert.equal(flat.journeys[0].segments[0].departureAt, "08:30")
+
+  // Overnight flight: real dates derive the +1 offset
+  const overnight = normalizeFlightOffer(
+    {
+      id: "flat-2",
+      airline: "British Airways",
+      departure_at: "2026-10-10T23:30:00",
+      arrival_at: "2026-10-11T05:10:00",
+    } as never,
+    1
+  )
+  assert.equal(overnight.arrivalDayOffset, 1)
+
+  // Wrapped flight_offer blob (opaque pass-through still renders)
+  const wrapped = normalizeFlightOffer(
+    {
+      id: "wrap-1",
+      total_amount: "500000",
+      flight_offer: {
+        itineraries: [
+          {
+            duration: "PT6H",
+            segments: [
+              {
+                departure: { iataCode: "LOS", at: "2026-10-10T08:00:00" },
+                arrival: { iataCode: "ACC", at: "2026-10-10T10:00:00" },
+                carrierCode: "AR",
+                flight_number: "AR123",
+                cabin: "ECONOMY",
+              },
+            ],
+          },
+        ],
+        validatingAirlineCodes: ["AR"],
+      },
+    } as never,
+    2
+  )
+  assert.equal(wrapped.origin, "LOS")
+  assert.equal(wrapped.destination, "ACC")
+  assert.equal(wrapped.departureAt, "08:00", "Wrapped blobs must render times")
+  assert.equal(wrapped.airline, "AR")
+  assert.equal(wrapped.price, "500000")
+  assert.equal(wrapped.journeys.length, 1)
+  assert.equal(wrapped.journeys[0].segments[0].flightNumber, "AR123")
+
+  // Amadeus baggage is surfaced only when the airline provides it
+  const withBaggage = normalizeFlightOffer(
+    {
+      id: "bag-1",
+      itineraries: [
+        {
+          segments: [
+            {
+              departure: { iataCode: "LOS", at: "2026-10-10T08:00:00" },
+              arrival: { iataCode: "LHR", at: "2026-10-10T16:00:00" },
+            },
+          ],
+        },
+      ],
+      travelerPricings: [
+        {
+          fareDetailsBySegment: [
+            {
+              includedCheckedBags: {
+                quantity: 2,
+                weight: 23,
+                weightUnit: "KG",
+              },
+            },
+          ],
+        },
+      ],
+    } as never,
+    3
+  )
+  assert.equal(withBaggage.baggage, "2 × 23kg checked")
+})

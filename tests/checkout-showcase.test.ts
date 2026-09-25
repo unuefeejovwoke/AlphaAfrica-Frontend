@@ -90,10 +90,20 @@ test("Checkout page presents a secure Guest Booking without marketing egress", (
     /without creating an account/i,
     "Must explain Guest Booking plainly"
   )
-  assert.match(
+  assert.doesNotMatch(
     content,
     /AAA-000000/,
-    "Must show a booking reference placeholder"
+    "Must not show a fake booking reference before payment"
+  )
+  assert.match(
+    content,
+    /reference is issued/i,
+    "Must explain when the booking reference is issued"
+  )
+  assert.match(
+    content,
+    /payment is confirmed/i,
+    "Must tie the reference to confirmed payment"
   )
 })
 

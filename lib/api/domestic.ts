@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { apiGet } from "./client.ts"
+import { asRecord, pickNodeValue, pickString } from "./flights.ts"
 import type { Airport } from "./flights.ts"
 import type { FlightOfferDisplay } from "./flights.ts"
 
@@ -178,17 +179,38 @@ export const domesticCardSchema = z
 
 export type DomesticFlightCard = z.infer<typeof domesticCardSchema>
 
+function readNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
 function cardPriceToString(raw: unknown): string {
   if (typeof raw === "string" && raw.trim()) return raw.trim()
   if (typeof raw === "number" && Number.isFinite(raw)) return String(raw)
   return "—"
 }
 
-function pickCardPrice(card: DomesticFlightCard): string {
-  const candidates: unknown[] = [card.total_amount, card.amount, card.price]
-  for (const c of candidates) {
-    const s = cardPriceToString(c)
-    if (s !== "—") return s
+function pickCardPrice(record: Record<string, unknown>): string {
+  const candidates: unknown[] = [
+    record.total_amount,
+    record.totalAmount,
+    record.total_price,
+    record.totalPrice,
+    record.amount,
+    record.price,
+  ]
+  const nested = record.price
+  if (typeof nested === "object" && nested !== null) {
+    const price = nested as Record<string, unknown>
+    candidates.push(price.total, price.grandTotal, price.amount, price.value)
+  }
+  for (const candidate of candidates) {
+    const value = cardPriceToString(candidate)
+    if (value !== "—") return value
   }
   return "—"
 }
@@ -197,51 +219,133 @@ function pickCardPrice(card: DomesticFlightCard): string {
  * Normalize a QuickAir card to the shared card-display shape so the
  * existing FlightOfferCard renders it with no duplicate UI.
  * No opaque blob is attached — domestic cards carry none (CONTEXT.md).
+ *
+ * Field extraction reads the raw record directly (with snake_case and
+ * camelCase aliases) so one unexpected field type never discards the whole
+ * card — missing data must never hide a bookable option.
  */
 export function normalizeDomesticCard(
   raw: unknown,
   index: number
 ): FlightOfferDisplay {
-  const parsed = domesticCardSchema.safeParse(raw)
-  const card: DomesticFlightCard = parsed.success ? parsed.data : {}
+  const record = asRecord(raw)
+  const read = (...keys: string[]) =>
+    pickString(...keys.map((key) => record[key]))
+
   const id =
-    (typeof card.id === "string" && card.id.trim()) || `domestic-${index}`
-  const airline = card.airline || card.carrier || "Airline"
-  const origin = (card.origin ?? "").toUpperCase() || "—"
-  const destination = (card.destination ?? "").toUpperCase() || "—"
+    read("id", "card_id", "offer_id", "flight_id") || `domestic-${index}`
+  const airline =
+    read("airline", "airline_name", "airlineName", "carrier", "carrier_name") ||
+    "Airline"
+  const origin =
+    (
+      read(
+        "origin",
+        "from",
+        "origin_code",
+        "departure_airport",
+        "departureAirport"
+      ) ||
+      pickNodeValue(record.departure, [
+        "iataCode",
+        "iata_code",
+        "code",
+        "airport",
+      ])
+    ).toUpperCase() || "—"
+  const destination =
+    (
+      read(
+        "destination",
+        "to",
+        "destination_code",
+        "arrival_airport",
+        "arrivalAirport"
+      ) ||
+      pickNodeValue(record.arrival, [
+        "iataCode",
+        "iata_code",
+        "code",
+        "airport",
+      ])
+    ).toUpperCase() || "—"
   const departureAt =
-    card.departureAt || card.departure || card.departureTime || "—"
-  const arrivalAt = card.arrivalAt || card.arrival || card.arrivalTime || "—"
-  const stops = card.stops ?? 0
-  const duration = card.duration || "—"
+    read(
+      "departureAt",
+      "departure_at",
+      "departureTime",
+      "departure_time",
+      "departure",
+      "departureDate",
+      "departure_date"
+    ) ||
+    pickNodeValue(record.departure, [
+      "at",
+      "time",
+      "dateTime",
+      "datetime",
+      "date_time",
+    ]) ||
+    "—"
+  const arrivalAt =
+    read(
+      "arrivalAt",
+      "arrival_at",
+      "arrivalTime",
+      "arrival_time",
+      "arrival",
+      "arrivalDate",
+      "arrival_date"
+    ) ||
+    pickNodeValue(record.arrival, [
+      "at",
+      "time",
+      "dateTime",
+      "datetime",
+      "date_time",
+    ]) ||
+    "—"
+  const stops = Math.max(0, Math.floor(readNumber(record.stops) ?? 0))
+  const duration = read("duration", "flightDuration", "flight_duration") || "—"
+  const cabin = read("cabin", "cabinClass", "cabin_class") || "ECONOMY"
+  const departureDate =
+    read("departure_date", "departureDate", "date") ||
+    (departureAt !== "—"
+      ? (departureAt.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "")
+      : "")
+  const arrivalDate =
+    read("arrival_date", "arrivalDate") ||
+    (arrivalAt !== "—" ? (arrivalAt.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "") : "")
+  const stopsLabel =
+    stops === 0 ? "Non-stop" : `${stops} ${stops === 1 ? "stop" : "stops"}`
+
   return {
     id,
     airline,
     departureAt,
     arrivalAt,
+    departureDate: departureDate || null,
+    arrivalDate: arrivalDate || null,
+    arrivalDayOffset: 0,
     duration,
     stops,
-    stopsLabel:
-      stops === 0 ? "Non-stop" : `${stops} ${stops === 1 ? "stop" : "stops"}`,
+    stopsLabel,
     origin,
     destination,
     airportsLabel:
       origin !== "—" && destination !== "—"
         ? `${origin} → ${destination}`
         : "—",
-    cabin: card.cabin || "ECONOMY",
-    baggage: null,
-    price: pickCardPrice(card),
+    cabin,
+    baggage: read("baggage", "checked_baggage", "checkedBaggage") || null,
+    price: pickCardPrice(record),
     currency: "NGN",
     journeys: [
       {
         index: 0,
         duration,
         stops,
-        stopsLabel:
-          stops === 0
-            ? "Non-stop"
-            : `${stops} ${stops === 1 ? "stop" : "stops"}`,
+        stopsLabel,
         origin,
         destination,
         airportsLabel:
@@ -260,7 +364,7 @@ export function normalizeDomesticCard(
         ],
       },
     ],
-    raw: { ...(typeof raw === "object" && raw !== null ? raw : {}), id },
+    raw: { ...record, id },
   }
 }
 
@@ -436,7 +540,10 @@ export function saveSelectedDomesticCard(card: DomesticFlightCard): void {
 
 /** Read back the selected Domestic Flight Card, or null when absent/corrupt. */
 export function readSelectedDomesticCard(): DomesticFlightCard | null {
-  return memorySelectedDomesticCard ?? readDomesticCardFromSession(SELECTED_DOMESTIC_CARD_SESSION_KEY)
+  return (
+    memorySelectedDomesticCard ??
+    readDomesticCardFromSession(SELECTED_DOMESTIC_CARD_SESSION_KEY)
+  )
 }
 
 /** Drop the selected Domestic Flight Card from memory and session (branch switches). */
@@ -458,5 +565,8 @@ export function saveConfirmedDomesticCard(card: DomesticFlightCard): void {
 
 /** Read back the confirmed Domestic Flight Card, or null when absent/corrupt. */
 export function readConfirmedDomesticCard(): DomesticFlightCard | null {
-  return memoryConfirmedDomesticCard ?? readDomesticCardFromSession(CONFIRMED_DOMESTIC_CARD_SESSION_KEY)
+  return (
+    memoryConfirmedDomesticCard ??
+    readDomesticCardFromSession(CONFIRMED_DOMESTIC_CARD_SESSION_KEY)
+  )
 }

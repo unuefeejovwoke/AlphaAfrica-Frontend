@@ -7,7 +7,6 @@ import {
   SunCloud01Icon,
   Moon02Icon,
   MoonStarIcon,
-  Luggage01Icon,
   Clock01Icon,
   FilterIcon,
 } from "@hugeicons/core-free-icons"
@@ -15,8 +14,9 @@ import { cn } from "@/lib/utils"
 import { formatNaira } from "@/lib/format"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
-  DEPARTURE_WINDOWS,
+  DEPARTURE_WINDOW_SLOTS,
   type DepartureWindow,
+  type DurationCeilingOption,
   type FlightFilters,
   type FlightSortKey,
   type PriceCeilingOption,
@@ -33,40 +33,16 @@ export interface FlightSidebarFiltersProps {
   airlineOptions: AirlineOption[]
   allOffers: FlightOfferDisplay[]
   priceCeilings?: PriceCeilingOption[]
+  durationCeilings?: DurationCeilingOption[]
   className?: string
 }
 
-const DEPARTURE_SLOTS: {
-  key: DepartureWindow
-  title: string
-  time: string
-  icon: typeof Sun01Icon
-}[] = [
-  {
-    key: "morning",
-    title: "Morning",
-    time: "06:00 - 12:00",
-    icon: Sun01Icon,
-  },
-  {
-    key: "afternoon",
-    title: "Afternoon",
-    time: "12:00 - 18:00",
-    icon: SunCloud01Icon,
-  },
-  {
-    key: "evening",
-    title: "Evening",
-    time: "18:00 - 00:00",
-    icon: Moon02Icon,
-  },
-  {
-    key: "night",
-    title: "Night",
-    time: "00:00 - 06:00",
-    icon: MoonStarIcon,
-  },
-]
+const DEPARTURE_WINDOW_ICONS: Record<DepartureWindow, typeof Sun01Icon> = {
+  morning: Sun01Icon,
+  afternoon: SunCloud01Icon,
+  evening: Moon02Icon,
+  night: MoonStarIcon,
+}
 
 const CABIN_OPTIONS: { label: string; value: string | null }[] = [
   { label: "Any Cabin", value: null },
@@ -92,6 +68,7 @@ export function FlightSidebarFilters({
   airlineOptions,
   allOffers,
   priceCeilings,
+  durationCeilings,
   className,
 }: FlightSidebarFiltersProps) {
   // Compute dynamic counts from all offers
@@ -105,24 +82,6 @@ export function FlightSidebarFilters({
       else twoPlus++
     }
     return { direct, oneStop, twoPlus }
-  }, [allOffers])
-
-  // Checked bag counts
-  const bagCounts = React.useMemo(() => {
-    let noBag = 0
-    let oneBag = 0
-    let twoBags = 0
-    for (const o of allOffers) {
-      const b = (o.baggage || "").toLowerCase()
-      if (!b || b.includes("0") || b.includes("no ")) {
-        noBag++
-      } else if (b.includes("1") || b.includes("20kg") || b.includes("23kg")) {
-        oneBag++
-      } else {
-        twoBags++
-      }
-    }
-    return { noBag, oneBag, twoBags }
   }, [allOffers])
 
   // Price range (min and max across offers)
@@ -142,7 +101,8 @@ export function FlightSidebarFilters({
     filters.departureWindows !== null ||
     filters.airlines !== null ||
     filters.cabin !== null ||
-    filters.maxPriceNgn !== null
+    filters.maxPriceNgn !== null ||
+    filters.maxDurationMin !== null
 
   return (
     <div
@@ -154,7 +114,12 @@ export function FlightSidebarFilters({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border/60 pb-3">
         <div className="flex items-center gap-2">
-          <HugeiconsIcon icon={FilterIcon} size={16} className="text-primary" aria-hidden="true" />
+          <HugeiconsIcon
+            icon={FilterIcon}
+            size={16}
+            className="text-primary"
+            aria-hidden="true"
+          />
           <h3 className="text-base font-bold text-foreground">Filters</h3>
         </div>
         {hasActive ? (
@@ -217,39 +182,7 @@ export function FlightSidebarFilters({
 
       <hr className="border-border/60" />
 
-      {/* 2. Checked Bags */}
-      <div className="space-y-2.5">
-        <div className="flex items-center gap-1.5">
-          <HugeiconsIcon icon={Luggage01Icon} size={14} className="text-muted-foreground" aria-hidden="true" />
-          <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
-            Checked Bags
-          </p>
-        </div>
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">No checked bag</span>
-            <span className="text-xs font-medium text-muted-foreground tabular-nums">
-              {bagCounts.noBag}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">1 checked bag</span>
-            <span className="text-xs font-medium text-muted-foreground tabular-nums">
-              {bagCounts.oneBag}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-foreground">2 checked bags</span>
-            <span className="text-xs font-medium text-muted-foreground tabular-nums">
-              {bagCounts.twoBags}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <hr className="border-border/60" />
-
-      {/* 3. Price Filter */}
+      {/* 2. Price Filter */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
@@ -274,7 +207,7 @@ export function FlightSidebarFilters({
                   className={cn(
                     "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors",
                     isSelected
-                      ? "border-primary bg-primary text-primary-foreground font-bold"
+                      ? "border-primary bg-primary font-bold text-primary-foreground"
                       : "border-border bg-muted/40 text-foreground hover:bg-muted"
                   )}
                 >
@@ -288,19 +221,57 @@ export function FlightSidebarFilters({
 
       <hr className="border-border/60" />
 
-      {/* 4. Departure Time */}
+      {/* 4. Duration */}
+      <div className="space-y-2.5">
+        <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+          Duration
+        </p>
+        {durationCeilings && durationCeilings.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {durationCeilings.map((option) => {
+              const isSelected = filters.maxDurationMin === option.value
+              return (
+                <button
+                  key={`${option.label}-${option.value ?? "all"}`}
+                  type="button"
+                  onClick={() =>
+                    onFiltersChange({ maxDurationMin: option.value })
+                  }
+                  className={cn(
+                    "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors",
+                    isSelected
+                      ? "border-primary bg-primary font-bold text-primary-foreground"
+                      : "border-border bg-muted/40 text-foreground hover:bg-muted"
+                  )}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
+      </div>
+
+      <hr className="border-border/60" />
+
+      {/* 5. Departure Time */}
       <div className="space-y-2.5">
         <div className="flex items-center gap-1.5">
-          <HugeiconsIcon icon={Clock01Icon} size={14} className="text-muted-foreground" aria-hidden="true" />
+          <HugeiconsIcon
+            icon={Clock01Icon}
+            size={14}
+            className="text-muted-foreground"
+            aria-hidden="true"
+          />
           <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
             Departure Time
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          {DEPARTURE_SLOTS.map((slot) => {
+          {DEPARTURE_WINDOW_SLOTS.map((slot) => {
             const isSelected =
               filters.departureWindows?.includes(slot.key) ?? false
-            const Icon = slot.icon
+            const Icon = DEPARTURE_WINDOW_ICONS[slot.key]
 
             return (
               <button
@@ -317,7 +288,7 @@ export function FlightSidebarFilters({
                 className={cn(
                   "flex flex-col items-center justify-center rounded-xl border p-2.5 text-center transition-all",
                   isSelected
-                    ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/40 font-bold"
+                    ? "border-primary bg-primary/10 font-bold text-primary ring-1 ring-primary/40"
                     : "border-border bg-card text-foreground hover:bg-muted/50"
                 )}
               >
@@ -391,7 +362,7 @@ export function FlightSidebarFilters({
                 className={cn(
                   "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors",
                   isSelected
-                    ? "border-primary bg-primary text-primary-foreground font-bold"
+                    ? "border-primary bg-primary font-bold text-primary-foreground"
                     : "border-border bg-card text-foreground hover:bg-muted"
                 )}
               >

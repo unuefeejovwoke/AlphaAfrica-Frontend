@@ -21,6 +21,7 @@ export interface DomesticStreamState {
   isFallingBack: boolean
   isComplete: boolean
   didFallback: boolean
+  isCancelled: boolean
   searchId: string | null
   error: unknown | null
   /** Wall-clock start of the current run — drives honest elapsed-time copy. */
@@ -49,6 +50,7 @@ export function useDomesticStream() {
     isFallingBack: false,
     isComplete: false,
     didFallback: false,
+    isCancelled: false,
     searchId: null,
     error: null,
     startedAt: null,
@@ -72,6 +74,16 @@ export function useDomesticStream() {
     runIdRef.current += 1
     abortRef.current?.abort()
     abortRef.current = null
+    // User cancel must stop the UI immediately — a late stream/fallback
+    // rejection is dropped by the run guard, so the state reset lives here.
+    setState((prev) => ({
+      ...prev,
+      isStreaming: false,
+      isFallingBack: false,
+      isComplete: prev.cards.length > 0,
+      isCancelled: true,
+      error: null,
+    }))
   }, [])
 
   const start = React.useCallback(async (params: DomesticSearchParams) => {
@@ -88,6 +100,7 @@ export function useDomesticStream() {
       isFallingBack: false,
       isComplete: false,
       didFallback: false,
+      isCancelled: false,
       searchId: null,
       error: null,
       startedAt: Date.now(),

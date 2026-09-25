@@ -34,7 +34,6 @@ import {
 } from "@/components/flights/flight-offer-card"
 import { TrackLink } from "@/components/analytics/track-link"
 import { useFilteredOffers } from "@/components/flights/use-filtered-offers"
-import { AlphaaPrimeBanner } from "@/components/flights/alphaa-prime-banner"
 import { FlightSidebarFilters } from "@/components/flights/flight-sidebar-filters"
 import { BestDealsAirline } from "@/components/flights/best-deals-airline"
 import { formatNaira } from "@/lib/format"
@@ -46,6 +45,7 @@ export interface DomesticStreamResultsProps {
   isFallingBack: boolean
   isComplete: boolean
   didFallback: boolean
+  isCancelled: boolean
   searchId: string | null
   error: unknown | null
   startedAt: number | null
@@ -76,6 +76,7 @@ export function DomesticStreamResults({
   isFallingBack,
   isComplete,
   didFallback,
+  isCancelled,
   searchId,
   error,
   startedAt,
@@ -155,10 +156,12 @@ export function DomesticStreamResults({
     return map
   }, [filtered.visible])
 
-  // Initial streaming with no cards yet
+  // Initial streaming with no cards yet, or the brief pre-start moment while
+  // the auto-search effect kicks the stream off on a shared URL.
   if (
     (isStreaming && displays.length === 0 && !isFallingBack) ||
-    (isFallingBack && displays.length === 0)
+    (isFallingBack && displays.length === 0) ||
+    (displays.length === 0 && !isComplete && !isCancelled && error === null)
   ) {
     return (
       <div
@@ -178,7 +181,12 @@ export function DomesticStreamResults({
                 Search ref: {searchId}
               </p>
             ) : null}
-            <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onCancel}
+            >
               <span>Cancel search</span>
             </Button>
           </div>
@@ -188,6 +196,28 @@ export function DomesticStreamResults({
             <FlightOfferSkeleton key={i} />
           ))}
         </div>
+      </div>
+    )
+  }
+
+  // Cancelled before any result arrived — honest state with retry.
+  if (isCancelled && displays.length === 0) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs"
+      >
+        <h3 className="text-base font-bold text-foreground">
+          Search cancelled
+        </h3>
+        <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
+          You stopped this domestic search, so no results were loaded. Nothing
+          was booked and no payment was taken.
+        </p>
+        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          <span>Retry search</span>
+        </Button>
       </div>
     )
   }
@@ -264,9 +294,8 @@ export function DomesticStreamResults({
     <div className="w-full">
       {/* 2-Column Responsive Layout */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_1fr]">
-        {/* Left Column (Desktop Only): Alphaa Prime + Sidebar Filters */}
+        {/* Left Column (Desktop Only): Sidebar Filters */}
         <aside className="hidden flex-col gap-5 lg:flex">
-          <AlphaaPrimeBanner trip={trip} />
           <FlightSidebarFilters
             filters={filtered.filters}
             sort={filtered.sort}
@@ -275,6 +304,7 @@ export function DomesticStreamResults({
             airlineOptions={filtered.airlineOptions}
             allOffers={displays}
             priceCeilings={filtered.priceCeilings}
+            durationCeilings={filtered.durationCeilings}
           />
         </aside>
 
@@ -308,7 +338,7 @@ export function DomesticStreamResults({
               >
                 <span>Cheapest</span>
                 {sortMetrics.cheapest ? (
-                  <span className="opacity-90 tabular-nums">
+                  <span className="tabular-nums opacity-90">
                     {sortMetrics.cheapest}
                   </span>
                 ) : null}
@@ -326,7 +356,7 @@ export function DomesticStreamResults({
               >
                 <span>Fastest</span>
                 {sortMetrics.fastest ? (
-                  <span className="opacity-90 tabular-nums">
+                  <span className="tabular-nums opacity-90">
                     {sortMetrics.fastest}
                   </span>
                 ) : null}
@@ -344,7 +374,7 @@ export function DomesticStreamResults({
               >
                 <span>Earliest</span>
                 {sortMetrics.earliest ? (
-                  <span className="opacity-90 tabular-nums">
+                  <span className="tabular-nums opacity-90">
                     {sortMetrics.earliest}
                   </span>
                 ) : null}
@@ -371,16 +401,13 @@ export function DomesticStreamResults({
                   : ""}
             </p>
             {searchId ? (
-              <p className="font-mono text-[11px] tabular-nums">Ref: {searchId}</p>
+              <p className="font-mono text-[11px] tabular-nums">
+                Ref: {searchId}
+              </p>
             ) : null}
           </div>
 
-          {/* Mobile Prime Banner */}
-          <div className="lg:hidden">
-            <AlphaaPrimeBanner trip={trip} />
-          </div>
-
-          {/* Best Deals by Airline */}
+          {/* Best fares by airline */}
           <BestDealsAirline
             offers={displays}
             origin={trip?.origin ?? displays[0]?.origin}
@@ -390,9 +417,10 @@ export function DomesticStreamResults({
               const current = filtered.filters.airlines ?? []
               if (current.includes(airline)) {
                 filtered.updateFilters({
-                  airlines: current.filter((a) => a !== airline).length > 0
-                    ? current.filter((a) => a !== airline)
-                    : null,
+                  airlines:
+                    current.filter((a) => a !== airline).length > 0
+                      ? current.filter((a) => a !== airline)
+                      : null,
                 })
               } else {
                 filtered.updateFilters({ airlines: [airline] })
@@ -484,10 +512,18 @@ export function DomesticStreamResults({
                 variant="outline"
                 size="sm"
               >
-                <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={Message01Icon}
+                  size={14}
+                  aria-hidden="true"
+                />
                 <span>Talk to Alphaa</span>
               </Button>
-              <Button render={<Link href="/flights" />} variant="ghost" size="sm">
+              <Button
+                render={<Link href="/flights" />}
+                variant="ghost"
+                size="sm"
+              >
                 <span>New search</span>
               </Button>
             </div>
@@ -496,7 +532,10 @@ export function DomesticStreamResults({
       </div>
 
       {/* Mobile Drawer */}
-      <DrawerPrimitive.Root open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
+      <DrawerPrimitive.Root
+        open={mobileDrawerOpen}
+        onOpenChange={setMobileDrawerOpen}
+      >
         <DrawerPrimitive.Portal>
           <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-4">
             <DrawerPrimitive.Popup className="max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl border border-border bg-card p-5 text-foreground shadow-2xl">
@@ -508,7 +547,11 @@ export function DomesticStreamResults({
                   aria-label="Close filters"
                   className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
-                  <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={Cancel01Icon}
+                    size={16}
+                    aria-hidden="true"
+                  />
                 </DrawerPrimitive.Close>
               </div>
 
@@ -521,6 +564,7 @@ export function DomesticStreamResults({
                   airlineOptions={filtered.airlineOptions}
                   allOffers={displays}
                   priceCeilings={filtered.priceCeilings}
+                  durationCeilings={filtered.durationCeilings}
                 />
               </div>
 

@@ -150,13 +150,6 @@ export function deriveDurationCeilings(
   })
 }
 
-export const DEPARTURE_WINDOWS: readonly DepartureWindow[] = [
-  "morning",
-  "afternoon",
-  "evening",
-  "night",
-]
-
 /** [startHourInclusive, endHourExclusive) — night wraps past midnight. */
 const DEPARTURE_WINDOW_RANGES: Record<DepartureWindow, [number, number]> = {
   morning: [5, 12],
@@ -164,6 +157,42 @@ const DEPARTURE_WINDOW_RANGES: Record<DepartureWindow, [number, number]> = {
   evening: [17, 21],
   night: [21, 5],
 }
+
+export const DEPARTURE_WINDOWS: readonly DepartureWindow[] = [
+  "morning",
+  "afternoon",
+  "evening",
+  "night",
+]
+
+const DEPARTURE_WINDOW_TITLES: Record<DepartureWindow, string> = {
+  morning: "Morning",
+  afternoon: "Afternoon",
+  evening: "Evening",
+  night: "Night",
+}
+
+function formatClockHour(hour: number): string {
+  return `${String(((hour % 24) + 24) % 24).padStart(2, "0")}:00`
+}
+
+/**
+ * Single source for departure-window labels: copy is derived from the same
+ * ranges the filter uses, so the UI can never contradict the behaviour.
+ */
+export const DEPARTURE_WINDOW_SLOTS: readonly {
+  key: DepartureWindow
+  title: string
+  time: string
+}[] = DEPARTURE_WINDOWS.map((key) => {
+  const [start, end] = DEPARTURE_WINDOW_RANGES[key]
+  const wraps = end <= start
+  return {
+    key,
+    title: DEPARTURE_WINDOW_TITLES[key],
+    time: `${formatClockHour(start)} - ${formatClockHour(end)}${wraps ? " (next day)" : ""}`,
+  }
+})
 
 export interface FlightFilters {
   /** NGN ceiling; null = any price. */

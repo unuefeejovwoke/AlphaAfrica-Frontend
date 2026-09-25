@@ -17,20 +17,20 @@ export const FLIGHT_JOURNEY_STEPS = [
   { key: "confirm", label: "Confirm fare", icon: Tick01Icon },
   { key: "travellers", label: "Travellers", icon: UserIcon },
   { key: "pay", label: "Pay", icon: Wallet01Icon },
-  { key: "ticket", label: "Ticket", icon: Ticket01Icon },
+  { key: "booking", label: "Booking", icon: Ticket01Icon },
 ] as const
 
 export type FlightJourneyStepKey = (typeof FLIGHT_JOURNEY_STEPS)[number]["key"]
 
 export interface FlightJourneyHeaderProps {
-  /** 1-based current step (1=Search … 6=Ticket). */
+  /** 1-based current step (1=Search … 6=Booking). */
   current: 1 | 2 | 3 | 4 | 5 | 6
   className?: string
 }
 
 /**
  * Six-step flights journey header (Search, Compare, Confirm fare,
- * Travellers, Pay, Ticket). Ordered list with `aria-current="step"` so
+ * Travellers, Pay, Booking). Ordered list with `aria-current="step"` so
  * screen readers announce progress; decorative icons hidden; compact and
  * horizontally scrollable on small screens; sticky-safe (no overlay).
  */

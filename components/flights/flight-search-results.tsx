@@ -33,8 +33,6 @@ import {
 } from "@/components/flights/flight-offer-card"
 import { TrackLink } from "@/components/analytics/track-link"
 import { useFilteredOffers } from "@/components/flights/use-filtered-offers"
-import { AirlineLogo } from "@/components/flights/airline-logo"
-import { AlphaaPrimeBanner } from "@/components/flights/alphaa-prime-banner"
 import { FlightSidebarFilters } from "@/components/flights/flight-sidebar-filters"
 import { BestDealsAirline } from "@/components/flights/best-deals-airline"
 import { formatNaira } from "@/lib/format"
@@ -210,9 +208,8 @@ export function FlightSearchResults({
     <div className="w-full">
       {/* Main 2-Column Responsive Layout: Left Sidebar (Desktop) + Right Content */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_1fr]">
-        {/* Left Column (Desktop Only): Alphaa Prime + Sidebar Filters */}
+        {/* Left Column (Desktop Only): Sidebar Filters */}
         <aside className="hidden flex-col gap-5 lg:flex">
-          <AlphaaPrimeBanner trip={trip} />
           <FlightSidebarFilters
             filters={filtered.filters}
             sort={filtered.sort}
@@ -221,6 +218,7 @@ export function FlightSearchResults({
             airlineOptions={filtered.airlineOptions}
             allOffers={displays}
             priceCeilings={filtered.priceCeilings}
+            durationCeilings={filtered.durationCeilings}
           />
         </aside>
 
@@ -254,7 +252,7 @@ export function FlightSearchResults({
               >
                 <span>Cheapest</span>
                 {sortMetrics.cheapest ? (
-                  <span className="opacity-90 tabular-nums">
+                  <span className="tabular-nums opacity-90">
                     {sortMetrics.cheapest}
                   </span>
                 ) : null}
@@ -273,7 +271,7 @@ export function FlightSearchResults({
               >
                 <span>Fastest</span>
                 {sortMetrics.fastest ? (
-                  <span className="opacity-90 tabular-nums">
+                  <span className="tabular-nums opacity-90">
                     {sortMetrics.fastest}
                   </span>
                 ) : null}
@@ -292,7 +290,7 @@ export function FlightSearchResults({
               >
                 <span>Earliest</span>
                 {sortMetrics.earliest ? (
-                  <span className="opacity-90 tabular-nums">
+                  <span className="tabular-nums opacity-90">
                     {sortMetrics.earliest}
                   </span>
                 ) : null}
@@ -315,12 +313,7 @@ export function FlightSearchResults({
             </div>
           </div>
 
-          {/* Mobile Prime Banner (appears here on mobile matching screenshot 2) */}
-          <div className="lg:hidden">
-            <AlphaaPrimeBanner trip={trip} />
-          </div>
-
-          {/* Best Deals by Airline Matrix / Comparison */}
+          {/* Best fares by airline matrix */}
           <BestDealsAirline
             offers={displays}
             origin={trip?.origin ?? displays[0]?.origin}
@@ -330,9 +323,10 @@ export function FlightSearchResults({
               const current = filtered.filters.airlines ?? []
               if (current.includes(airline)) {
                 filtered.updateFilters({
-                  airlines: current.filter((a) => a !== airline).length > 0
-                    ? current.filter((a) => a !== airline)
-                    : null,
+                  airlines:
+                    current.filter((a) => a !== airline).length > 0
+                      ? current.filter((a) => a !== airline)
+                      : null,
                 })
               } else {
                 filtered.updateFilters({ airlines: [airline] })
@@ -444,10 +438,18 @@ export function FlightSearchResults({
                 variant="outline"
                 size="sm"
               >
-                <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={Message01Icon}
+                  size={14}
+                  aria-hidden="true"
+                />
                 <span>Talk to Alphaa</span>
               </Button>
-              <Button render={<Link href="/flights" />} variant="ghost" size="sm">
+              <Button
+                render={<Link href="/flights" />}
+                variant="ghost"
+                size="sm"
+              >
                 <span>New search</span>
               </Button>
             </div>
@@ -456,7 +458,10 @@ export function FlightSearchResults({
       </div>
 
       {/* Mobile Filters Drawer */}
-      <DrawerPrimitive.Root open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
+      <DrawerPrimitive.Root
+        open={mobileDrawerOpen}
+        onOpenChange={setMobileDrawerOpen}
+      >
         <DrawerPrimitive.Portal>
           <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-4">
             <DrawerPrimitive.Popup className="max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl border border-border bg-card p-5 text-foreground shadow-2xl">
@@ -468,7 +473,11 @@ export function FlightSearchResults({
                   aria-label="Close filters"
                   className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
-                  <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={Cancel01Icon}
+                    size={16}
+                    aria-hidden="true"
+                  />
                 </DrawerPrimitive.Close>
               </div>
 
@@ -481,6 +490,7 @@ export function FlightSearchResults({
                   airlineOptions={filtered.airlineOptions}
                   allOffers={displays}
                   priceCeilings={filtered.priceCeilings}
+                  durationCeilings={filtered.durationCeilings}
                 />
               </div>
 

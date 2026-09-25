@@ -3,45 +3,120 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 
-test("Flight results page has Wakanow-style 2-column layout and cards structure", () => {
-  const cardPath = path.resolve(process.cwd(), "components/flights/flight-offer-card.tsx")
+test("Flight results page has 2-column layout and factual cards structure", () => {
+  const cardPath = path.resolve(
+    process.cwd(),
+    "components/flights/flight-offer-card.tsx"
+  )
   assert.ok(fs.existsSync(cardPath), "flight-offer-card.tsx must exist")
   const cardContent = fs.readFileSync(cardPath, "utf-8")
 
-  // Must have 3-fare options
-  assert.match(cardContent, /FULL PAY/i, "Must have FULL PAY option")
-  assert.match(cardContent, /PRIME/i, "Must have PRIME member fare option")
-  assert.match(cardContent, /PAY SMALL SMALL/i, "Must have PAY SMALL SMALL option")
-  assert.match(cardContent, /Book Now/i, "Must have Book Now button")
-  assert.match(cardContent, /Refundable/i, "Must have Refundable policy")
-  assert.match(cardContent, /View Flight Details/i, "Must have View Flight Details toggle")
+  // Factual card structure — real times, dates, fare, journey details
+  assert.match(cardContent, /Total fare/i, "Must show the total fare")
+  assert.match(cardContent, /Select flight/i, "Must have a select action")
+  assert.match(
+    cardContent,
+    /View Flight Details/i,
+    "Must have View Flight Details toggle"
+  )
+  assert.match(cardContent, /departureAt/, "Must render departure time")
+  assert.match(cardContent, /arrivalAt/, "Must render arrival time")
+  assert.match(
+    cardContent,
+    /departureDate/,
+    "Must render departure date when available"
+  )
+  assert.match(
+    cardContent,
+    /arrivalDayOffset/,
+    "Must derive overnight arrival from real dates"
+  )
+  assert.match(
+    cardContent,
+    /journeyLabel/,
+    "Must label outbound/return/leg journeys"
+  )
+  assert.doesNotMatch(
+    cardContent,
+    /PRIME/i,
+    "Must not invent a Prime member fare"
+  )
+  assert.doesNotMatch(
+    cardContent,
+    /PAY SMALL SMALL/i,
+    "Must not invent instalment plans"
+  )
+  assert.doesNotMatch(
+    cardContent,
+    /Refundable/i,
+    "Must not invent a refund policy"
+  )
+  assert.doesNotMatch(
+    cardContent,
+    /1 × 7kg cabin|2 × 23kg checked/,
+    "Must not fabricate baggage allowances"
+  )
 
-  // Best deals by airline
-  const dealsPath = path.resolve(process.cwd(), "components/flights/best-deals-airline.tsx")
-  assert.ok(fs.existsSync(dealsPath), "best-deals-airline.tsx must exist")
-  const dealsContent = fs.readFileSync(dealsPath, "utf-8")
-  assert.match(dealsContent, /Best Deals by Airline/i)
-  assert.match(dealsContent, /Non stop/i)
-  assert.match(dealsContent, /1 Stop/i)
+  // Best fares by airline
+  const faresPath = path.resolve(
+    process.cwd(),
+    "components/flights/best-deals-airline.tsx"
+  )
+  assert.ok(fs.existsSync(faresPath), "best-deals-airline.tsx must exist")
+  const faresContent = fs.readFileSync(faresPath, "utf-8")
+  assert.match(faresContent, /Fares by airline/i)
+  assert.doesNotMatch(
+    faresContent,
+    /Best Deals/i,
+    "Must not use banned deal vocabulary"
+  )
+  assert.match(faresContent, /Non stop/i)
+  assert.match(faresContent, /1 Stop/i)
 
   // Sidebar filters
-  const sidebarPath = path.resolve(process.cwd(), "components/flights/flight-sidebar-filters.tsx")
+  const sidebarPath = path.resolve(
+    process.cwd(),
+    "components/flights/flight-sidebar-filters.tsx"
+  )
   assert.ok(fs.existsSync(sidebarPath), "flight-sidebar-filters.tsx must exist")
   const sidebarContent = fs.readFileSync(sidebarPath, "utf-8")
   assert.match(sidebarContent, /Stops/i)
-  assert.match(sidebarContent, /Checked Bags/i)
   assert.match(sidebarContent, /Departure Time/i)
+  assert.match(sidebarContent, /Duration/i, "Must expose the duration filter")
+  assert.doesNotMatch(
+    sidebarContent,
+    /Checked Bags/i,
+    "Must not show inert bag controls"
+  )
 
   // Nearby dates bar
-  const datesPath = path.resolve(process.cwd(), "components/flights/nearby-dates-bar.tsx")
+  const datesPath = path.resolve(
+    process.cwd(),
+    "components/flights/nearby-dates-bar.tsx"
+  )
   assert.ok(fs.existsSync(datesPath), "nearby-dates-bar.tsx must exist")
   const datesContent = fs.readFileSync(datesPath, "utf-8")
-  assert.match(datesContent, /todayStr/i, "Must check todayStr to prevent past dates")
-  assert.match(datesContent, /canGoPrev/i, "Must have canGoPrev guard to prevent navigating into the past")
+  assert.match(
+    datesContent,
+    /todayStr/i,
+    "Must check todayStr to prevent past dates"
+  )
+  assert.match(
+    datesContent,
+    /canGoPrev/i,
+    "Must have canGoPrev guard to prevent navigating into the past"
+  )
 
-  // Alphaa prime banner
-  const primePath = path.resolve(process.cwd(), "components/flights/alphaa-prime-banner.tsx")
-  assert.ok(fs.existsSync(primePath), "alphaa-prime-banner.tsx must exist")
+  // Fabricated Prime membership banner must be gone
+  const primePath = path.resolve(
+    process.cwd(),
+    "components/flights/alphaa-prime-banner.tsx"
+  )
+  assert.equal(
+    fs.existsSync(primePath),
+    false,
+    "alphaa-prime-banner.tsx must not exist"
+  )
 })
 
 test("Nearby dates calculation only produces current and future dates", () => {
@@ -69,27 +144,42 @@ test("Nearby dates calculation only produces current and future dates", () => {
   }
 
   const now = new Date()
-  const todayStr = formatYMD(now.getFullYear(), now.getMonth() + 1, now.getDate())
+  const todayStr = formatYMD(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    now.getDate()
+  )
 
   // Test 1: Base is today
   const daysFromToday = Math.max(0, diffDays(todayStr, todayStr))
   const defaultStartDay = Math.max(0, daysFromToday - 3)
   const currentStartDay = Math.max(0, defaultStartDay + 0)
-  const tabsToday = [0, 1, 2, 3, 4, 5, 6].map((idx) => addDays(todayStr, currentStartDay + idx))
+  const tabsToday = [0, 1, 2, 3, 4, 5, 6].map((idx) =>
+    addDays(todayStr, currentStartDay + idx)
+  )
 
   for (const d of tabsToday) {
     assert.ok(d >= todayStr, `Date ${d} must be >= today ${todayStr}`)
   }
-  assert.equal(tabsToday[0], todayStr, "First tab must be today when base is today")
+  assert.equal(
+    tabsToday[0],
+    todayStr,
+    "First tab must be today when base is today"
+  )
 
   // Test 2: Base is tomorrow
   const tomorrow = addDays(todayStr, 1)
   const diffTomorrow = Math.max(0, diffDays(tomorrow, todayStr))
   const startTomorrow = Math.max(0, diffTomorrow - 3)
-  const tabsTomorrow = [0, 1, 2, 3, 4, 5, 6].map((idx) => addDays(todayStr, startTomorrow + idx))
+  const tabsTomorrow = [0, 1, 2, 3, 4, 5, 6].map((idx) =>
+    addDays(todayStr, startTomorrow + idx)
+  )
 
   for (const d of tabsTomorrow) {
-    assert.ok(d >= todayStr, `Date ${d} for tomorrow search must be >= today ${todayStr}`)
+    assert.ok(
+      d >= todayStr,
+      `Date ${d} for tomorrow search must be >= today ${todayStr}`
+    )
   }
   assert.equal(tabsTomorrow[0], todayStr, "Earliest tab cannot be before today")
 
@@ -97,9 +187,14 @@ test("Nearby dates calculation only produces current and future dates", () => {
   const future15 = addDays(todayStr, 15)
   const diff15 = Math.max(0, diffDays(future15, todayStr))
   const start15 = Math.max(0, diff15 - 3)
-  const tabs15 = [0, 1, 2, 3, 4, 5, 6].map((idx) => addDays(todayStr, start15 + idx))
+  const tabs15 = [0, 1, 2, 3, 4, 5, 6].map((idx) =>
+    addDays(todayStr, start15 + idx)
+  )
 
   for (const d of tabs15) {
-    assert.ok(d >= todayStr, `Date ${d} for future search must be >= today ${todayStr}`)
+    assert.ok(
+      d >= todayStr,
+      `Date ${d} for future search must be >= today ${todayStr}`
+    )
   }
 })

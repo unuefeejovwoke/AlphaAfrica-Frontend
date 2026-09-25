@@ -60,10 +60,8 @@ export default async function CheckoutPage({
           remain one call away if you need assistance…
         </p>
         <p className="text-xs text-muted-foreground">
-          Booking Ref:{" "}
-          <span className="font-variant-numeric font-semibold text-foreground tabular-nums">
-            AAA-000000
-          </span>
+          Complete your booking details below — your reference is issued once
+          payment is confirmed.
         </p>
         <div className="pt-2">
           <Link

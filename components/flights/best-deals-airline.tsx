@@ -23,7 +23,7 @@ export interface BestDealsAirlineProps {
   className?: string
 }
 
-interface AirlineDeal {
+interface AirlineFare {
   airline: string
   nonStopMin: number | null
   oneStopMin: number | null
@@ -44,7 +44,7 @@ export function BestDealsAirline({
   const [showAllMobile, setShowAllMobile] = React.useState(false)
 
   // Compute deals per airline
-  const deals = React.useMemo<AirlineDeal[]>(() => {
+  const deals: AirlineFare[] = React.useMemo<AirlineFare[]>(() => {
     const byAirline = new Map<
       string,
       { nonStop: number[]; oneStop: number[]; twoPlus: number[] }
@@ -68,22 +68,28 @@ export function BestDealsAirline({
       }
     }
 
-    const result: AirlineDeal[] = []
+    const result: AirlineFare[] = []
     for (const [airline, data] of byAirline.entries()) {
-      const nonStopMin = data.nonStop.length > 0 ? Math.min(...data.nonStop) : null
-      const oneStopMin = data.oneStop.length > 0 ? Math.min(...data.oneStop) : null
+      const nonStopMin =
+        data.nonStop.length > 0 ? Math.min(...data.nonStop) : null
+      const oneStopMin =
+        data.oneStop.length > 0 ? Math.min(...data.oneStop) : null
       const twoPlusStopMin =
         data.twoPlus.length > 0 ? Math.min(...data.twoPlus) : null
 
       const validPrices = [nonStopMin, oneStopMin, twoPlusStopMin].filter(
         (p): p is number => p !== null
       )
-      const overallMin = validPrices.length > 0 ? Math.min(...validPrices) : null
+      const overallMin =
+        validPrices.length > 0 ? Math.min(...validPrices) : null
 
       let primaryStops = "Various"
-      if (nonStopMin !== null && nonStopMin === overallMin) primaryStops = "Non-stop"
-      else if (oneStopMin !== null && oneStopMin === overallMin) primaryStops = "1 Stop"
-      else if (twoPlusStopMin !== null && twoPlusStopMin === overallMin) primaryStops = "2+ Stops"
+      if (nonStopMin !== null && nonStopMin === overallMin)
+        primaryStops = "Non-stop"
+      else if (oneStopMin !== null && oneStopMin === overallMin)
+        primaryStops = "1 Stop"
+      else if (twoPlusStopMin !== null && twoPlusStopMin === overallMin)
+        primaryStops = "2+ Stops"
 
       result.push({
         airline,
@@ -96,18 +102,30 @@ export function BestDealsAirline({
     }
 
     // Sort by lowest overall fare ascending
-    return result.sort((a, b) => (a.overallMin ?? Infinity) - (b.overallMin ?? Infinity))
+    return result.sort(
+      (a, b) => (a.overallMin ?? Infinity) - (b.overallMin ?? Infinity)
+    )
   }, [offers])
+
+  const prefersReducedMotion = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   const scrollLeft = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: -240, behavior: "smooth" })
+      scrollRef.current.scrollBy({
+        left: -240,
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+      })
     }
   }
 
   const scrollRight = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: 240, behavior: "smooth" })
+      scrollRef.current.scrollBy({
+        left: 240,
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+      })
     }
   }
 
@@ -130,7 +148,7 @@ export function BestDealsAirline({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-bold text-foreground sm:text-lg">
-            Best Deals by Airline
+            Fares by airline
           </h3>
           <p className="text-xs text-muted-foreground">
             {routeLabel} · Cheapest fares at a glance
@@ -145,7 +163,11 @@ export function BestDealsAirline({
             aria-label="Scroll airlines left"
             className="flex size-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
           >
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={15} aria-hidden="true" />
+            <HugeiconsIcon
+              icon={ArrowLeft01Icon}
+              size={15}
+              aria-hidden="true"
+            />
           </button>
           <button
             type="button"
@@ -153,7 +175,11 @@ export function BestDealsAirline({
             aria-label="Scroll airlines right"
             className="flex size-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
           >
-            <HugeiconsIcon icon={ArrowRight01Icon} size={15} aria-hidden="true" />
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              size={15}
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>
@@ -166,7 +192,7 @@ export function BestDealsAirline({
         >
           {/* Row Labels Left Column */}
           <div className="sticky left-0 z-10 w-24 shrink-0 border-r border-border bg-card pr-3">
-            <div className="h-16 flex items-end pb-2">
+            <div className="flex h-16 items-end pb-2">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase">
                 Stops
               </span>

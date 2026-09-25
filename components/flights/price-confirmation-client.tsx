@@ -130,7 +130,7 @@ export function PriceConfirmationClient() {
       setDomesticCard(domesticSelected)
       // Persist for travellers/payment without ever calling the price endpoint.
       saveConfirmedDomesticCard(domesticSelected)
-      saveConfirmedOffer(domesticSelected as unknown as FlightOffer)
+      saveConfirmedOffer(domesticSelected as FlightOffer)
       setPhase("domestic")
       return
     }
@@ -142,7 +142,7 @@ export function PriceConfirmationClient() {
     // Defensive: a domestic-shaped blob saved via the legacy key still takes
     // the domestic branch — card fields are never submitted as an opaque blob.
     if (resolveBookingBranch(null, selected) === "domestic") {
-      const card = selected as unknown as DomesticFlightCard
+      const card = selected as DomesticFlightCard
       setDomesticCard(card)
       saveConfirmedDomesticCard(card)
       setPhase("domestic")
@@ -172,7 +172,7 @@ export function PriceConfirmationClient() {
   const handleContinue = React.useCallback(() => {
     if (domesticCard) {
       saveConfirmedDomesticCard(domesticCard)
-      saveConfirmedOffer(domesticCard as unknown as FlightOffer)
+      saveConfirmedOffer(domesticCard as FlightOffer)
       router.push(checkoutHref())
       return
     }
@@ -454,9 +454,9 @@ export function PriceConfirmationClient() {
           <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
             {selectedSummary.airline} {selectedSummary.airportsLabel} ·{" "}
             {selectedSummary.departureAt} → {selectedSummary.arrivalAt} ·{" "}
-            {selectedSummary.stopsLabel}. Domestic fares are confirmed
-            directly with the airline at booking — no separate revalidation
-            step is needed, and nothing has been booked or charged yet.
+            {selectedSummary.stopsLabel}. Domestic fares are confirmed directly
+            with the airline at booking — no separate revalidation step is
+            needed, and nothing has been booked or charged yet.
           </p>
         </div>
         <dl className="grid min-w-0 grid-cols-1 gap-3 rounded-xl bg-muted/50 p-4 sm:grid-cols-2">

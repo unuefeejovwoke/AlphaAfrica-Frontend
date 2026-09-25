@@ -285,7 +285,7 @@ export function FlightVerifyClient() {
     const paymentState =
       bookingStatus === "confirmed"
         ? "Confirmed · PNR issued"
-        : "Paid · finalizing your ticket"
+        : "Paid · finalizing your booking"
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6">
         <ViewTracker
