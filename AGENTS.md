@@ -46,6 +46,12 @@ Every feature must be built with:
 - `apidoc.yaml`: OpenAPI 3.0.3 backend specifications (flights, hotels, bookings, auth).
 - `node_modules/next/dist/docs/01-app/`: Bundled version-matched Next.js 16 docs.
 
+## Backend API Integration Guide (read this first)
+- **`apidoc.yaml` is the correct spec** — use it as the source of truth for endpoints, request/response schemas, field names, types, and enums.
+- **Also fetch and read https://api.alphaaafrica.com/api/guide/ for any API integration work.** It is the companion frontend-integration guide: it walks through *how to implement* each flow end-to-end — auth (JWT access/refresh), hotels, packages, car rentals, visa, flights (Amadeus + QuickAir), payments/callback, blog, and SEO — with sequencing, examples, and gotchas that the spec alone does not convey.
+- Read the guide to get the implementation details behind the spec: e.g. the Paystack `authorization_url` redirect → callback → `GET /api/payments/order/<reference>/` confirmation flow, QuickAir's short-lived `search_id` (book promptly, re-search on 502), SSE streaming for domestic flight search, leg-based international search with per-leg cabin, blog `body` rendered as HTML, and which SEO fields belong in `<head>`.
+- Interactive Swagger/ReDoc: https://api.alphaaafrica.com/api/docs/ and https://api.alphaaafrica.com/api/redoc/ for live testing of individual endpoints.
+
 ## Developer Commands
 - **Dev**: `pnpm dev`
 - **Build**: `pnpm build`
