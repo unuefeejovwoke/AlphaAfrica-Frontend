@@ -326,6 +326,142 @@ paths:
       responses:
         '200':
           description: Verification email sent.
+  /api/blog/:
+    get:
+      operationId: blog_list
+      description: Public, paginated blog feed with search + filters.
+      summary: List / search blog posts
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+        description: Filter by category slug
+      - in: query
+        name: featured
+        schema:
+          type: boolean
+        description: Only featured posts when true
+      - in: query
+        name: ordering
+        schema:
+          type: string
+        description: 'Order by: -published_at (default), published_at, -view_count,
+          title'
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search title, excerpt, body, keyword
+      - in: query
+        name: tag
+        schema:
+          type: string
+        description: Filter by tag slug
+      tags:
+      - Blog
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPostListList'
+          description: ''
+  /api/blog/{slug}/:
+    get:
+      operationId: blog_retrieve
+      description: Returns the full article with an auto-built table of contents and
+        SEO block. Viewing a post increments its view counter.
+      summary: Get a blog post by slug
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - Blog
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetail'
+          description: ''
+  /api/blog/{slug}/related/:
+    get:
+      operationId: blog_related_list
+      description: Up to 3 other live posts in the same category (falls back to recent
+        posts).
+      summary: Related posts
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - Blog
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostList'
+          description: ''
+  /api/blog/categories/:
+    get:
+      operationId: blog_categories_list
+      summary: List blog categories
+      tags:
+      - Blog
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+          description: ''
+  /api/blog/tags/:
+    get:
+      operationId: blog_tags_list
+      summary: List blog tags
+      tags:
+      - Blog
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+          description: ''
   /api/cars/:
     get:
       operationId: cars_list
@@ -998,6 +1134,20 @@ paths:
       responses:
         '200':
           description: List of order summaries.
+  /api/seo/config/:
+    get:
+      operationId: seo_config_retrieve
+      description: Returns the marketer-managed SEO settings (verification tags, default
+        meta, and homepage JSON-LD) so the frontend can render them dynamically.
+      summary: Site-wide SEO config
+      tags:
+      - SEO
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/visa/apply/:
     post:
       operationId: visa_apply_create
@@ -1234,6 +1384,28 @@ components:
       - pickup_datetime
       - pickup_location
       - vehicle_id
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        slug:
+          type: string
+          maxLength: 140
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+        post_count:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - name
+      - post_count
     ChangePasswordRequest:
       type: object
       description: Handles password change for an authenticated user.
@@ -2106,6 +2278,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PackageList'
+    PaginatedPostListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostList'
     PaginatedVehicleListList:
       type: object
       required:
@@ -2195,6 +2390,172 @@ components:
         phone_number:
           type: string
           maxLength: 20
+    PostDetail:
+      type: object
+      description: Full article, with an auto-built table of contents and SEO block.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          description: URL part. Leave blank to auto-generate from the title.
+          maxLength: 280
+          pattern: ^[-a-zA-Z0-9_]+$
+        excerpt:
+          type: string
+          description: Short summary/intro shown on cards and used as a fallback meta
+            description.
+        body:
+          type: string
+          readOnly: true
+        table_of_contents:
+          type: string
+          readOnly: true
+        category:
+          allOf:
+          - $ref: '#/components/schemas/Category'
+          readOnly: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          readOnly: true
+        author:
+          type: string
+          readOnly: true
+        featured_image:
+          type: string
+          readOnly: true
+        featured_image_alt:
+          type: string
+          description: Alt text for the hero image (SEO/accessibility)
+          maxLength: 200
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostImage'
+          readOnly: true
+        reading_time:
+          type: integer
+          readOnly: true
+        view_count:
+          type: integer
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the post goes live. Set automatically when you publish;
+            set a future date with status "Scheduled".
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        seo:
+          type: string
+          readOnly: true
+      required:
+      - author
+      - body
+      - category
+      - featured_image
+      - id
+      - images
+      - reading_time
+      - seo
+      - table_of_contents
+      - tags
+      - title
+      - updated_at
+      - view_count
+    PostImage:
+      type: object
+      description: |-
+        Provides a helper to turn a model's display_image (which may be a relative
+        /media/ path or an absolute http URL) into an absolute URL using the request.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          readOnly: true
+        caption:
+          type: string
+          maxLength: 200
+      required:
+      - id
+      - image
+    PostList:
+      type: object
+      description: Compact shape for blog listing/cards.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          description: URL part. Leave blank to auto-generate from the title.
+          maxLength: 280
+          pattern: ^[-a-zA-Z0-9_]+$
+        excerpt:
+          type: string
+          description: Short summary/intro shown on cards and used as a fallback meta
+            description.
+        category:
+          allOf:
+          - $ref: '#/components/schemas/Category'
+          readOnly: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          readOnly: true
+        author:
+          type: string
+          readOnly: true
+        featured_image:
+          type: string
+          readOnly: true
+        featured_image_alt:
+          type: string
+          description: Alt text for the hero image (SEO/accessibility)
+          maxLength: 200
+        target_keyword:
+          type: string
+          description: Primary keyword this post targets.
+          maxLength: 160
+        is_featured:
+          type: boolean
+          description: Pin to the featured slot on the blog.
+        reading_time:
+          type: integer
+          readOnly: true
+        view_count:
+          type: integer
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the post goes live. Set automatically when you publish;
+            set a future date with status "Scheduled".
+      required:
+      - author
+      - category
+      - featured_image
+      - id
+      - reading_time
+      - tags
+      - title
+      - view_count
     RegisterRequest:
       type: object
       description: |-
@@ -2292,6 +2653,22 @@ components:
         * `confirmed` - Confirmed
         * `cancelled` - Cancelled
         * `failed` - Payment Failed
+    Tag:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 80
+        slug:
+          type: string
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - id
+      - name
     TokenRefresh:
       type: object
       properties:
