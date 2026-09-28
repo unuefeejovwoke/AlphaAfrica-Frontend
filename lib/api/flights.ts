@@ -686,6 +686,28 @@ export interface FlightJourneySegment {
   flightNumber?: string
   duration?: string
   cabin?: string
+  /** Full ISO timestamp from the API (for layover math) — display uses departureAt/arrivalAt. */
+  departureAtRaw?: string | null
+  arrivalAtRaw?: string | null
+  departureTerminal?: string | null
+  arrivalTerminal?: string | null
+  aircraft?: string | null
+  carrierName?: string | null
+  operatingCarrier?: string | null
+  /** Booking class (e.g. "O"), fare basis (e.g. "OA0WE1IA"), branded fare label. */
+  bookingClass?: string | null
+  fareBasis?: string | null
+  brandedFare?: string | null
+  checkedBags?: number | null
+  cabinBags?: number | null
+}
+
+export interface FlightLayover {
+  airport: string
+  durationMinutes: number | null
+  durationLabel: string
+  overnight: boolean
+  terminalChange: string | null
 }
 
 export interface FlightJourney {
@@ -698,11 +720,36 @@ export interface FlightJourney {
   destination: string
   airportsLabel: string
   segments: FlightJourneySegment[]
+  layovers: FlightLayover[]
+}
+
+export interface FlightPriceBreakdown {
+  baseFare: string | null
+  markup: string | null
+  total: string
+  currency: string
+}
+
+export interface FlightFareRules {
+  /** null = airline did not say; true/false only from explicit fareRules. */
+  refundable: boolean | null
+  exchangePenalty: string | null
+  exchangeAllowed: boolean | null
+  revalidationAllowed: boolean | null
+  ticketDeadline: string | null
+}
+
+export interface FlightAmenity {
+  description: string
+  chargeable: boolean
+  type: string
 }
 
 export interface FlightOfferDisplay {
   id: string
   airline: string
+  airlineCode?: string | null
+  validatingAirline?: string | null
   departureAt: string
   arrivalAt: string
   /** ISO date part when the backend provides one, e.g. "2026-10-10". */
@@ -717,9 +764,18 @@ export interface FlightOfferDisplay {
   destination: string
   airportsLabel: string
   cabin: string
+  bookingClass?: string | null
+  fareBrand?: string | null
   baggage: string | null
+  checkedBags?: number | null
+  cabinBags?: number | null
   price: string
   currency: string
+  priceBreakdown?: FlightPriceBreakdown | null
+  fareRules?: FlightFareRules | null
+  amenities?: FlightAmenity[]
+  seatsAvailable?: number | null
+  lastTicketingDate?: string | null
   /** Full journey timeline across ALL itineraries — never a single-leg summary alone. */
   journeys: FlightJourney[]
   // Keep reference to raw offer for selection
@@ -861,6 +917,51 @@ function arrivalDayOffset(departureAt: string, arrivalAt: string): number {
   return 0
 }
 
+/** The opaque Amadeus blob rides under `raw_offer` (live), `flight_offer` (legacy), or `rawOffer`. */
+export function getOpaqueBlob(
+  record: Record<string, unknown>
+): Record<string, unknown> {
+  for (const key of ["raw_offer", "flight_offer", "rawOffer"]) {
+    const value = record[key]
+    if (typeof value === "object" && value !== null) {
+      return value as Record<string, unknown>
+    }
+  }
+  return {}
+}
+
+function readNumberLike(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value.trim())
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function formatLayoverMinutes(minutes: number | null): string {
+  if (minutes === null || !Number.isFinite(minutes) || minutes < 0) return "—"
+  const total = Math.round(minutes)
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  if (h <= 0) return `${m}m`
+  if (m <= 0) return `${h}h`
+  return `${h}h ${m}m`
+}
+
+/** Minutes between two ISO timestamps — null when either is unparseable. */
+function layoverMinutesBetween(
+  arrivalIso: string,
+  departureIso: string
+): number | null {
+  if (!arrivalIso || !departureIso) return null
+  const arrival = Date.parse(arrivalIso)
+  const departure = Date.parse(departureIso)
+  if (!Number.isFinite(arrival) || !Number.isFinite(departure)) return null
+  const diff = Math.round((departure - arrival) / 60000)
+  return diff >= 0 ? diff : null
+}
+
 function formatBaggagePieces(
   pieces: Record<string, unknown>,
   label: string
@@ -878,32 +979,54 @@ function formatBaggagePieces(
     : `${quantity} ${label}`
 }
 
+function baggageQuantity(node: unknown): number | null {
+  const record = asRecord(node)
+  const quantity = record.quantity
+  return typeof quantity === "number" && Number.isFinite(quantity)
+    ? Math.max(0, Math.floor(quantity))
+    : null
+}
+
+/** First traveler pricing node — all travellers share the same segment fares in v1. */
+function firstTravelerPricing(
+  sources: Record<string, unknown>[]
+): Record<string, unknown> {
+  for (const source of sources) {
+    const list = source.travelerPricings ?? source.traveler_pricings
+    if (Array.isArray(list) && list.length > 0) {
+      return asRecord(list[0])
+    }
+  }
+  return {}
+}
+
+function fareDetailsList(
+  pricing: Record<string, unknown>
+): Record<string, unknown>[] {
+  const list = pricing.fareDetailsBySegment ?? pricing.fare_details_by_segment
+  if (!Array.isArray(list)) return []
+  return list.map((item) => asRecord(item))
+}
+
 /** Baggage when the backend/airline actually provides it — otherwise null. */
 function extractBaggage(offer: FlightOffer): string | null {
   const record = asRecord(offer)
   if (typeof record.baggage === "string" && record.baggage.trim()) {
     return record.baggage.trim()
   }
-  const travelerPricings = Array.isArray(record.travelerPricings)
-    ? record.travelerPricings
-    : []
-  for (const pricing of travelerPricings) {
-    const fareDetails = Array.isArray(asRecord(pricing).fareDetailsBySegment)
-      ? (asRecord(pricing).fareDetailsBySegment as unknown[])
-      : []
-    for (const detail of fareDetails) {
-      const node = asRecord(detail)
-      const checked = formatBaggagePieces(
-        asRecord(node.includedCheckedBags),
-        "checked"
-      )
-      if (checked) return checked
-      const cabin = formatBaggagePieces(
-        asRecord(node.includedCabinBags),
-        "cabin"
-      )
-      if (cabin) return cabin
-    }
+  const opaque = getOpaqueBlob(record)
+  const pricing = firstTravelerPricing([record, opaque])
+  for (const detail of fareDetailsList(pricing)) {
+    const checked = formatBaggagePieces(
+      asRecord(detail.includedCheckedBags),
+      "checked"
+    )
+    if (checked) return checked
+    const cabin = formatBaggagePieces(
+      asRecord(detail.includedCabinBags),
+      "cabin"
+    )
+    if (cabin) return cabin
   }
   return null
 }
@@ -914,14 +1037,23 @@ function getSegmentEndpoints(segment: unknown): {
   arrivalAt: string
   departureAirport: string
   arrivalAirport: string
+  departureTerminal: string
+  arrivalTerminal: string
   cabin: string
   carrierCode: string
+  carrierName: string
+  operatingCarrier: string
   flightNumber: string
   duration: string
+  aircraft: string
+  segmentId: string
 } {
   const seg = asRecord(segment)
   const dep = seg.departure
   const arr = seg.arrival
+  const depNode = asRecord(dep)
+  const arrNode = asRecord(arr)
+  const aircraftNode = seg.aircraft
   return {
     departureAt: pickString(
       seg.departureAt,
@@ -963,6 +1095,20 @@ function getSegmentEndpoints(segment: unknown): {
         "airport_code",
       ])
     ),
+    departureTerminal: pickString(
+      seg.departureTerminal,
+      seg.departure_terminal,
+      depNode.terminal,
+      depNode.terminalName,
+      depNode.terminal_name
+    ),
+    arrivalTerminal: pickString(
+      seg.arrivalTerminal,
+      seg.arrival_terminal,
+      arrNode.terminal,
+      arrNode.terminalName,
+      arrNode.terminal_name
+    ),
     cabin: pickString(seg.cabin, seg.cabinClass, seg.cabin_class),
     carrierCode: pickString(
       seg.carrierCode,
@@ -974,6 +1120,20 @@ function getSegmentEndpoints(segment: unknown): {
       seg.airline_code,
       seg.airline
     ),
+    carrierName: pickString(
+      seg.carrierName,
+      seg.carrier_name,
+      seg.marketingCarrier,
+      seg.marketing_carrier,
+      seg.airlineName,
+      seg.airline_name
+    ),
+    operatingCarrier: pickString(
+      seg.operatingCarrier,
+      seg.operating_carrier,
+      pickNodeValue(seg.operating, ["carrierCode", "carrier_code", "code"]),
+      pickNodeValue(seg.operatingCarrier, ["carrierCode", "code"])
+    ),
     flightNumber: pickString(
       seg.flightNumber,
       seg.flight_number,
@@ -981,24 +1141,33 @@ function getSegmentEndpoints(segment: unknown): {
       seg.flight_no
     ),
     duration: pickString(seg.duration, seg.flightDuration, seg.flight_duration),
+    aircraft: pickString(
+      seg.aircraft,
+      seg.aircraft_code,
+      seg.aircraftCode,
+      seg.equipment,
+      pickNodeValue(aircraftNode, ["code", "aircraftCode", "aircraft_code"])
+    ),
+    segmentId: pickString(seg.id, seg.segmentId, seg.segment_id),
   }
 }
 
 /**
  * Itinerary list across backend shape variants: a canonical `itineraries`
- * array, an Amadeus offer nested under `flight_offer`, or `slices`/`legs`.
+ * array, an Amadeus offer nested under `raw_offer`/`flight_offer`, or
+ * `slices`/`legs`.
  */
 function collectItineraries(
   offer: Record<string, unknown>
 ): { duration: string; segments: unknown[] }[] {
-  const inner = asRecord(offer.flight_offer)
+  const opaque = getOpaqueBlob(offer)
   const candidates: unknown[] = [
     offer.itineraries,
-    inner.itineraries,
+    opaque.itineraries,
     offer.slices,
-    inner.slices,
+    opaque.slices,
     offer.legs,
-    inner.legs,
+    opaque.legs,
   ]
   const list = candidates.find(
     (candidate): candidate is unknown[] =>
@@ -1025,22 +1194,125 @@ function collectItineraries(
   })
 }
 
+/** Enrichment lookups from the opaque Amadeus blob, aligned by itinerary/segment index. */
+function buildEnrichment(record: Record<string, unknown>): {
+  rawItineraries: { segments: unknown[] }[]
+  fareBySegmentId: Map<string, Record<string, unknown>>
+  fareOrdered: Record<string, unknown>[]
+} {
+  const opaque = getOpaqueBlob(record)
+  const rawItineraries = collectItineraries(opaque)
+  const pricing = firstTravelerPricing([opaque, record])
+  const fareOrdered = fareDetailsList(pricing)
+  const fareBySegmentId = new Map<string, Record<string, unknown>>()
+  for (const fare of fareOrdered) {
+    const id = pickString(fare.segmentId, fare.segment_id)
+    if (id && !fareBySegmentId.has(id)) fareBySegmentId.set(id, fare)
+  }
+  return { rawItineraries, fareBySegmentId, fareOrdered }
+}
+
+function resolveSegmentFare(
+  enrichment: ReturnType<typeof buildEnrichment>,
+  globalIndex: number,
+  cleanId: string,
+  rawId: string
+): Record<string, unknown> {
+  if (cleanId && enrichment.fareBySegmentId.has(cleanId)) {
+    return enrichment.fareBySegmentId.get(cleanId) as Record<string, unknown>
+  }
+  if (rawId && enrichment.fareBySegmentId.has(rawId)) {
+    return enrichment.fareBySegmentId.get(rawId) as Record<string, unknown>
+  }
+  // fareDetailsBySegment spans the whole offer (all itineraries in order),
+  // so the fallback is the running segment ordinal — never the per-leg index,
+  // which would reuse leg 1 fares on the return leg.
+  return enrichment.fareOrdered[globalIndex] ?? {}
+}
+
 /** Build the full journey timeline across every itinerary — defensive pass-through. */
-function buildJourneys(offer: FlightOffer): FlightJourney[] {
-  const itineraries = collectItineraries(asRecord(offer))
+function buildJourneys(
+  offer: FlightOffer,
+  enrichment?: ReturnType<typeof buildEnrichment>
+): FlightJourney[] {
+  const record = asRecord(offer)
+  const enrich = enrichment ?? buildEnrichment(record)
+  const itineraries = collectItineraries(record)
+  let ordinal = 0
   return itineraries.map((itinerary, index) => {
     const segs = itinerary.segments
-    const segments: FlightJourneySegment[] = segs.map((seg) => {
+    const rawSegs = enrich.rawItineraries[index]?.segments ?? []
+    const segments: FlightJourneySegment[] = segs.map((seg, segIndex) => {
       const e = getSegmentEndpoints(seg)
+      const rawEndpoints =
+        rawSegs.length > segIndex
+          ? getSegmentEndpoints(rawSegs[segIndex])
+          : null
+      const fare = resolveSegmentFare(
+        enrich,
+        ordinal++,
+        e.segmentId,
+        rawEndpoints?.segmentId ?? ""
+      )
+      const cabin =
+        e.cabin || pickString(fare.cabin, fare.cabinClass, fare.cabin_class)
+      const bookingClass =
+        pickString(fare.class, fare.bookingClass, fare.booking_class) || null
+      const fareBasis = pickString(fare.fareBasis, fare.fare_basis) || null
+      const brandedFare =
+        pickString(
+          fare.brandedFareLabel,
+          fare.branded_fare_label,
+          fare.brandedFare,
+          fare.branded_fare
+        ) || null
+      const checkedBags = baggageQuantity(
+        fare.includedCheckedBags ??
+          (fare as Record<string, unknown>).included_checked_bags
+      )
+      const cabinBags = baggageQuantity(
+        fare.includedCabinBags ??
+          (fare as Record<string, unknown>).included_cabin_bags
+      )
+      const departureTerminal =
+        e.departureTerminal || rawEndpoints?.departureTerminal || null
+      const arrivalTerminal =
+        e.arrivalTerminal || rawEndpoints?.arrivalTerminal || null
+      const aircraft = e.aircraft || rawEndpoints?.aircraft || null
+      const carrierName = e.carrierName || rawEndpoints?.carrierName || null
+      const operatingCarrier =
+        e.operatingCarrier || rawEndpoints?.operatingCarrier || null
+      const carrierCode = e.carrierCode || rawEndpoints?.carrierCode || ""
+      const flightNumber = e.flightNumber || rawEndpoints?.flightNumber || ""
+      const duration = e.duration || rawEndpoints?.duration || ""
       return {
-        departureAirport: e.departureAirport || "—",
-        arrivalAirport: e.arrivalAirport || "—",
-        departureAt: e.departureAt ? formatTime(e.departureAt) : "—",
-        arrivalAt: e.arrivalAt ? formatTime(e.arrivalAt) : "—",
-        carrierCode: e.carrierCode || "",
-        ...(e.flightNumber ? { flightNumber: e.flightNumber } : {}),
-        ...(e.duration ? { duration: formatDuration(e.duration) } : {}),
-        ...(e.cabin ? { cabin: e.cabin } : {}),
+        departureAirport:
+          e.departureAirport || rawEndpoints?.departureAirport || "—",
+        arrivalAirport: e.arrivalAirport || rawEndpoints?.arrivalAirport || "—",
+        departureAt:
+          e.departureAt || rawEndpoints?.departureAt
+            ? formatTime(e.departureAt || rawEndpoints?.departureAt)
+            : "—",
+        arrivalAt:
+          e.arrivalAt || rawEndpoints?.arrivalAt
+            ? formatTime(e.arrivalAt || rawEndpoints?.arrivalAt)
+            : "—",
+        carrierCode,
+        ...(flightNumber ? { flightNumber } : {}),
+        ...(duration ? { duration: formatDuration(duration) } : {}),
+        ...(cabin ? { cabin } : {}),
+        departureAtRaw: e.departureAt || rawEndpoints?.departureAt || null,
+        arrivalAtRaw: e.arrivalAt || rawEndpoints?.arrivalAt || null,
+        ...(departureTerminal ? { departureTerminal } : {}),
+        ...(arrivalTerminal ? { arrivalTerminal } : {}),
+        ...(aircraft ? { aircraft } : {}),
+        ...(carrierName ? { carrierName } : {}),
+        ...(operatingCarrier ? { operatingCarrier } : {}),
+        ...(bookingClass ? { bookingClass } : {}),
+        ...(fareBasis ? { fareBasis } : {}),
+        ...(brandedFare ? { brandedFare } : {}),
+        ...(checkedBags !== null ? { checkedBags } : {}),
+        ...(cabinBags !== null ? { cabinBags } : {}),
       }
     })
     const first = segs.length > 0 ? getSegmentEndpoints(segs[0]) : null
@@ -1049,6 +1321,33 @@ function buildJourneys(offer: FlightOffer): FlightJourney[] {
     const origin = first?.departureAirport || "—"
     const destination = last?.arrivalAirport || "—"
     const stops = segs.length > 0 ? segs.length - 1 : 0
+    // Layovers: airport + connection time between consecutive segments.
+    const layovers: FlightLayover[] = []
+    for (let i = 0; i < segments.length - 1; i++) {
+      const arrivalRaw = segments[i].arrivalAtRaw ?? ""
+      const departureRaw = segments[i + 1].departureAtRaw ?? ""
+      const minutes = layoverMinutesBetween(arrivalRaw, departureRaw)
+      const airport = segments[i].arrivalAirport
+      const arrivalTerminal = segments[i].arrivalTerminal ?? null
+      const departureTerminal = segments[i + 1].departureTerminal ?? null
+      const terminalChange =
+        arrivalTerminal &&
+        departureTerminal &&
+        arrivalTerminal !== departureTerminal
+          ? `${arrivalTerminal} → ${departureTerminal}`
+          : null
+      const overnight =
+        (datePart(arrivalRaw) ?? "") !== "" &&
+        (datePart(departureRaw) ?? "") !== "" &&
+        datePart(arrivalRaw) !== datePart(departureRaw)
+      layovers.push({
+        airport,
+        durationMinutes: minutes,
+        durationLabel: formatLayoverMinutes(minutes),
+        overnight,
+        terminalChange,
+      })
+    }
     return {
       index,
       duration: itinerary.duration ? formatDuration(itinerary.duration) : "—",
@@ -1062,8 +1361,147 @@ function buildJourneys(offer: FlightOffer): FlightJourney[] {
           ? `${origin} → ${destination}`
           : "—",
       segments,
+      layovers,
     }
   })
+}
+
+/** Price breakdown (base fare + Alphaa markup + total) — null parts stay null, never zero-filled. */
+function extractPriceBreakdown(
+  record: Record<string, unknown>,
+  opaque: Record<string, unknown>,
+  total: string,
+  currency: string
+): FlightPriceBreakdown | null {
+  const baseFromNode = (value: unknown): string => {
+    if (typeof value === "object" && value !== null) {
+      return pickNodeValue(value, ["base"])
+    }
+    return ""
+  }
+  const baseFare =
+    pickString(
+      record.base_fare,
+      record.baseFare,
+      record.base_price,
+      record.basePrice,
+      opaque.base_fare,
+      baseFromNode(record.price),
+      baseFromNode(opaque.price)
+    ) || null
+  const markup =
+    pickString(
+      record.markup,
+      record.markup_amount,
+      record.markupAmount,
+      opaque.markup,
+      opaque.markup_amount
+    ) || null
+  if (!baseFare && !markup) return null
+  return { baseFare, markup, total, currency }
+}
+
+/** Fare conditions from the Amadeus `fareRules` block — null means the airline did not say. */
+function extractFareRules(
+  record: Record<string, unknown>,
+  opaque: Record<string, unknown>
+): FlightFareRules | null {
+  const source = asRecord(opaque.fareRules ?? record.fareRules)
+  const rules = source.rules
+  if (!Array.isArray(rules) || rules.length === 0) return null
+  let refundable: boolean | null = null
+  let exchangeAllowed: boolean | null = null
+  let exchangePenalty: string | null = null
+  let revalidationAllowed: boolean | null = null
+  for (const item of rules) {
+    const rule = asRecord(item)
+    const category = pickString(rule.category).toUpperCase()
+    const notApplicable =
+      rule.notApplicable === true || rule.not_applicable === true
+    if (category === "REFUND") {
+      refundable = !notApplicable
+      if (!notApplicable && exchangeAllowed === null) {
+        // A bare applicable REFUND rule with no penalty stated still means
+        // refunds are possible — amount unknown, so keep penalty null.
+      }
+    } else if (category === "EXCHANGE") {
+      exchangeAllowed = !notApplicable
+      const penalty = pickString(
+        rule.maxPenaltyAmount,
+        rule.max_penalty_amount,
+        rule.penalty,
+        rule.amount
+      )
+      if (penalty) exchangePenalty = penalty
+    } else if (category === "REVALIDATION") {
+      revalidationAllowed = !notApplicable
+    }
+  }
+  if (
+    refundable === null &&
+    exchangeAllowed === null &&
+    revalidationAllowed === null &&
+    !exchangePenalty
+  ) {
+    return null
+  }
+  const ticketDeadline =
+    pickString(
+      opaque.lastTicketingDate,
+      record.lastTicketingDate,
+      record.last_ticketing_date
+    ) || null
+  return {
+    refundable,
+    exchangePenalty,
+    exchangeAllowed,
+    revalidationAllowed,
+    ticketDeadline,
+  }
+}
+
+/** Unique onboard amenities across all fare details — surfaced only when the airline provides them. */
+function extractAmenities(
+  record: Record<string, unknown>,
+  opaque: Record<string, unknown>
+): FlightAmenity[] {
+  const pricing = firstTravelerPricing([opaque, record])
+  const seen = new Map<string, FlightAmenity>()
+  for (const detail of fareDetailsList(pricing)) {
+    const amenities = (detail as Record<string, unknown>).amenities
+    if (!Array.isArray(amenities)) continue
+    for (const item of amenities) {
+      const node = asRecord(item)
+      const description = pickString(node.description)
+      if (!description) continue
+      const key = description.toUpperCase()
+      if (seen.has(key)) continue
+      seen.set(key, {
+        description,
+        chargeable: node.isChargeable === true,
+        type: pickString(node.amenityType, node.amenity_type) || "OTHER",
+      })
+    }
+  }
+  return [...seen.values()]
+}
+
+function extractSeats(
+  record: Record<string, unknown>,
+  opaque: Record<string, unknown>
+): number | null {
+  const candidates = [
+    record.seats_available,
+    record.seatsAvailable,
+    record.numberOfBookableSeats,
+    opaque.numberOfBookableSeats,
+    opaque.seats_available,
+  ]
+  for (const candidate of candidates) {
+    const value = readNumberLike(candidate)
+    if (value !== null) return Math.max(0, Math.floor(value))
+  }
+  return null
 }
 
 export function normalizeFlightOffer(
@@ -1071,14 +1509,23 @@ export function normalizeFlightOffer(
   index: number
 ): FlightOfferDisplay {
   const record = asRecord(offer)
-  const inner = asRecord(record.flight_offer)
-  const read = (...keys: string[]) => readOfferField(record, inner, keys)
+  const opaque = getOpaqueBlob(record)
+  const inner =
+    Object.keys(opaque).length > 0 ? opaque : asRecord(record.flight_offer)
+  const read = (...keys: string[]) =>
+    pickString(
+      ...keys.map((key) => record[key]),
+      ...keys.map((key) => opaque[key]),
+      ...keys.map((key) => inner[key])
+    )
 
   const id =
     pickString(
       record.offer_id,
       record.offerId,
       record.id,
+      opaque.offer_id,
+      opaque.id,
       inner.offer_id,
       inner.id
     ) || `offer-${index}`
@@ -1087,15 +1534,27 @@ export function normalizeFlightOffer(
       source.validatingAirlineCodes ?? source.validating_airline_codes
     return Array.isArray(codes) && typeof codes[0] === "string" ? codes[0] : ""
   }
+  const validatingAirline =
+    firstCarrierCode(record) ||
+    firstCarrierCode(opaque) ||
+    firstCarrierCode(inner) ||
+    null
+  const airlineCode =
+    pickString(
+      record.airline_code,
+      record.airlineCode,
+      opaque.airline_code,
+      opaque.airlineCode
+    ) || validatingAirline
   const airline =
     pickString(
       record.airline,
       record.airlineName,
       record.airline_name,
+      opaque.airline,
       inner.airline
     ) ||
-    firstCarrierCode(record) ||
-    firstCarrierCode(inner) ||
+    validatingAirline ||
     "Airline"
 
   const itineraries = collectItineraries(record)
@@ -1117,11 +1576,15 @@ export function normalizeFlightOffer(
     "to"
   )
   let cabin = read("cabin", "cabinClass", "cabin_class") || "ECONOMY"
-  const stopsRaw = record.stops ?? inner.stops
+  const stopsRaw = record.stops ?? opaque.stops ?? inner.stops
   let stops =
     typeof stopsRaw === "number" && Number.isFinite(stopsRaw)
       ? Math.max(0, Math.floor(stopsRaw))
-      : undefined
+      : typeof stopsRaw === "string" &&
+          stopsRaw.trim() !== "" &&
+          Number.isFinite(Number(stopsRaw))
+        ? Math.max(0, Math.floor(Number(stopsRaw)))
+        : undefined
   const baggage = extractBaggage(offer) ?? extractBaggage(inner as FlightOffer)
 
   // Nested departure/arrival nodes when no explicit flat field exists.
@@ -1192,7 +1655,8 @@ export function normalizeFlightOffer(
         : `${stops} ${stops === 1 ? "stop" : "stops"}`
   const airportsLabel =
     origin && destination ? `${origin} → ${destination}` : "—"
-  const journeys = buildJourneys(offer)
+  const enrichment = buildEnrichment(record)
+  const journeys = buildJourneys(offer, enrichment)
 
   // Flat responses without itineraries still get a real, expandable timeline.
   if (
@@ -1213,16 +1677,73 @@ export function normalizeFlightOffer(
           arrivalAirport: destination || "—",
           departureAt: departureAt ? formatTime(departureAt) : "—",
           arrivalAt: arrivalAt ? formatTime(arrivalAt) : "—",
-          carrierCode: airline === "Airline" ? "" : airline,
+          carrierCode: airlineCode ?? (airline === "Airline" ? "" : airline),
           ...(duration ? { duration: formatDuration(duration) } : {}),
+          departureAtRaw: departureAt || null,
+          arrivalAtRaw: arrivalAt || null,
         },
       ],
+      layovers: [],
     })
   }
+
+  // Offer-level enrichments from the opaque blob + clean card.
+  const pricing = firstTravelerPricing([opaque, record])
+  const fareOrdered = fareDetailsList(pricing)
+  const firstFare = fareOrdered[0] ?? {}
+  const bookingClass =
+    pickString(
+      firstFare.class,
+      firstFare.bookingClass,
+      firstFare.booking_class
+    ) || null
+  const fareBrand =
+    pickString(
+      firstFare.brandedFareLabel,
+      firstFare.branded_fare_label,
+      firstFare.brandedFare,
+      firstFare.branded_fare
+    ) || null
+  const checkedBags =
+    fareOrdered.length > 0
+      ? ((): number | null => {
+          for (const fare of fareOrdered) {
+            const q = baggageQuantity(
+              (fare as Record<string, unknown>).includedCheckedBags
+            )
+            if (q !== null) return q
+          }
+          return null
+        })()
+      : null
+  const cabinBags =
+    fareOrdered.length > 0
+      ? ((): number | null => {
+          for (const fare of fareOrdered) {
+            const q = baggageQuantity(
+              (fare as Record<string, unknown>).includedCabinBags
+            )
+            if (q !== null) return q
+          }
+          return null
+        })()
+      : null
+  const priceBreakdown = extractPriceBreakdown(record, opaque, amount, currency)
+  const fareRules = extractFareRules(record, opaque)
+  const amenities = extractAmenities(record, opaque)
+  const seatsAvailable = extractSeats(record, opaque)
+  const lastTicketingDate =
+    pickString(
+      opaque.lastTicketingDate,
+      record.lastTicketingDate,
+      record.last_ticketing_date
+    ) || null
 
   return {
     id,
     airline,
+    airlineCode: airlineCode || null,
+    validatingAirline,
     departureAt: departureAt ? formatTime(departureAt) : "—",
     arrivalAt: arrivalAt ? formatTime(arrivalAt) : "—",
     departureDate: departureAt ? datePart(departureAt) : null,
@@ -1235,9 +1756,18 @@ export function normalizeFlightOffer(
     destination: destination || "—",
     airportsLabel,
     cabin,
+    bookingClass,
+    fareBrand,
     baggage,
+    checkedBags,
+    cabinBags,
     price: amount,
     currency,
+    priceBreakdown,
+    fareRules,
+    amenities,
+    seatsAvailable,
+    lastTicketingDate,
     journeys,
     raw: offer,
   }

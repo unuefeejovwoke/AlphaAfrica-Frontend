@@ -46,10 +46,50 @@ test("Flight results page has 2-column layout and factual cards structure", () =
     /PAY SMALL SMALL/i,
     "Must not invent instalment plans"
   )
+  // Fare conditions render truthfully from the API fareRules block only —
+  // never invented. The card must carry the fare-conditions section,
+  // layover rendering with connection times, and terminal/aircraft detail.
+  assert.match(
+    cardContent,
+    /Fare conditions/i,
+    "Must render the airline fare-conditions section when provided"
+  )
+  assert.match(
+    cardContent,
+    /Layover/i,
+    "Must render layover airport and connection time"
+  )
+  assert.match(
+    cardContent,
+    /Terminal/,
+    "Must render terminal detail when the airline provides it"
+  )
+  assert.match(
+    cardContent,
+    /Aircraft/,
+    "Must render aircraft detail when the airline provides it"
+  )
+  assert.match(
+    cardContent,
+    /Price breakdown/i,
+    "Must render base fare + markup breakdown when provided"
+  )
+  // Review regressions: fare section renders only on airline-provided facts,
+  // bags iterate every journey (not just the first), amenities never truncate.
+  assert.match(
+    cardContent,
+    /typeof offer\.seatsAvailable/,
+    "Fare section must be gated on real facts, never an always-true check"
+  )
+  assert.match(
+    cardContent,
+    /allSegments/,
+    "Bags section must iterate segments across all journeys"
+  )
   assert.doesNotMatch(
     cardContent,
-    /Refundable/i,
-    "Must not invent a refund policy"
+    /slice\(0, 8\)/,
+    "Must not silently truncate airline-provided amenities"
   )
   assert.doesNotMatch(
     cardContent,
