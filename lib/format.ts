@@ -11,7 +11,8 @@ const nairaFormatter = new Intl.NumberFormat("en-NG", {
   maximumFractionDigits: 0,
 })
 
-export function formatNaira(amount: string | number): string {
+export function formatNaira(amount: string | number | null | undefined): string {
+  if (amount === null || amount === undefined) return ""
   if (typeof amount === "number") {
     if (Number.isNaN(amount)) return ""
     return nairaFormatter.format(amount)
