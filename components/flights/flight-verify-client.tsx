@@ -18,6 +18,7 @@ import { FlightETicket } from "@/components/flights/flight-e-ticket"
 import {
   buildFlightVerifyUrl,
   clearBookingSession,
+  flightBookingSchema,
   readPaymentReference,
   resolveFlightVerificationState,
   verifyFlightBooking,
@@ -26,11 +27,18 @@ import {
 import { clearFlightCheckoutSession } from "@/lib/api/flights"
 import { clearSelectedDomesticCard } from "@/lib/api/domestic"
 import {
+  extractOrderDetails,
   getPaymentOrder,
   isOrderPaid,
+  isOrderPending,
+  resolveOrderPaymentStatus,
   type PaymentOrder,
 } from "@/lib/api/payments"
-import { getHumanErrorMessage, getPaymentSafetyCopy } from "@/lib/api/client"
+import {
+  ApiError,
+  getHumanErrorMessage,
+  getPaymentSafetyCopy,
+} from "@/lib/api/client"
 import { track } from "@/lib/analytics"
 import { formatNaira } from "@/lib/format"
 import { pluralize } from "@/lib/schemas/travel"
@@ -58,15 +66,41 @@ function formatTravellerSummary(booking: FlightBooking): string | null {
 }
 
 /**
+ * Build a renderable Booking from the universal order's embedded details
+ * when the module verify call fails (e.g. transient backend error after a
+ * confirmed payment). Only the reference is guaranteed; everything else is
+ * read defensively by renderers.
+ */
+function bookingFromOrder(
+  reference: string,
+  order: PaymentOrder
+): FlightBooking | null {
+  const details = extractOrderDetails(order)
+  if (typeof details !== "object" || details === null) return null
+  const parsed = flightBookingSchema.safeParse({
+    ...(details as Record<string, unknown>),
+    reference,
+  })
+  if (parsed.success) return parsed.data
+  return flightBookingSchema.parse({ reference })
+}
+
+function waitForWebhook(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
  * Paystack return handler for flight Bookings. A return from payment proves
  * nothing by itself: this client reads the Payment Reference from the return
- * URL, fetches the live verification (never cached) and then the universal
- * order before rendering any outcome (spec stories 24–27). Guests are
- * welcome — verification needs only the reference.
+ * URL, fetches the universal order FIRST (guide §12 — it verifies money
+ * movement and creates the PNR on the spot), then the flight verify call
+ * for the full Booking shape. Guests are welcome — verification needs only
+ * the reference, plus the email `token` when present.
  */
 export function FlightVerifyClient() {
   const searchParams = useSearchParams()
   const reference = searchParams.get("reference")?.trim() || null
+  const guestToken = searchParams.get("token")?.trim() || null
   const [savedReference] = React.useState<string | null>(readPaymentReference)
   const [state, setState] = React.useState<VerifyState>({ kind: "verifying" })
   const [attempt, setAttempt] = React.useState(0)
@@ -80,21 +114,67 @@ export function FlightVerifyClient() {
     ;(async () => {
       setState({ kind: "verifying" })
       try {
-        const booking = await verifyFlightBooking(reference)
-        // Verification is authoritative for the Booking, but the universal
-        // order is the final word on money movement — fetch it too,
-        // tolerating its absence.
+        // Primary: the universal order is the final word on money movement.
         let order: PaymentOrder | null = null
+        let orderForbidden = false
         try {
-          order = await getPaymentOrder(reference)
-        } catch {
+          order = await getPaymentOrder(
+            reference,
+            guestToken ? { token: guestToken } : undefined
+          )
+        } catch (error) {
+          if (error instanceof ApiError && error.code === "forbidden") {
+            orderForbidden = true
+          }
           order = null
         }
         if (cancelled) return
+        if (orderForbidden) {
+          throw new ApiError(
+            "This confirmation link is invalid or has expired. Ask Alphaa to resend your receipt link.",
+            { status: 403, code: "forbidden" }
+          )
+        }
+        // Still settling (webhook may not have run): wait ~2s and retry
+        // ONCE, per the guide. No continuous polling.
+        if (
+          order &&
+          !isOrderPaid(resolveOrderPaymentStatus(order)) &&
+          isOrderPending(resolveOrderPaymentStatus(order))
+        ) {
+          await waitForWebhook(2000)
+          if (cancelled) return
+          try {
+            order = await getPaymentOrder(
+              reference,
+              guestToken ? { token: guestToken } : undefined
+            )
+          } catch {
+            // Keep the first result — verify below still gets its chance.
+          }
+          if (cancelled) return
+        }
+        // Fallback/detail: the flight verify call carries the full Booking.
+        let booking: FlightBooking | null = null
+        try {
+          booking = await verifyFlightBooking(reference)
+        } catch {
+          booking = null
+        }
+        if (cancelled) return
+        if (!booking && order) {
+          booking = bookingFromOrder(reference, order)
+        }
+        if (!booking) {
+          throw new ApiError(
+            "We could not confirm this payment yet. It may still be processing.",
+            { status: null, code: "server" }
+          )
+        }
         setState({ kind: "resolved", booking, order })
         const paid =
           resolveFlightVerificationState(booking) === "paid" ||
-          isOrderPaid(order?.status)
+          (order !== null && isOrderPaid(resolveOrderPaymentStatus(order)))
         if (paid && paymentCompletedRef.current !== booking.reference) {
           paymentCompletedRef.current = booking.reference
           track("flight_payment_completed", { type: "flight" })
@@ -291,7 +371,7 @@ export function FlightVerifyClient() {
   const bookingStatus = booking.status.trim().toLowerCase()
   const paid =
     resolveFlightVerificationState(booking) === "paid" ||
-    isOrderPaid(order?.status)
+    (order !== null && isOrderPaid(resolveOrderPaymentStatus(order)))
 
   if (paid) {
     return (

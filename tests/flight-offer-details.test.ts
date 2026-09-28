@@ -412,3 +412,104 @@ test("Per-segment stops: a connecting leg's own stop count never leaks into its 
   assert.equal(direct.journeys[0].stops, 0)
   assert.equal(direct.journeys[0].segments[0].segmentStops, 1)
 })
+
+test("Trip-wide stops: a 0-stop outbound plus 1-stop return is a 1-stop trip, never Direct", () => {
+  const offer = {
+    offer_id: "mixed-rt-1",
+    airline: "Test Air",
+    price: "600000.00",
+    max_stops_in_trip: 1,
+    stops_per_itinerary: [0, 1],
+    is_direct: false,
+    itineraries: [
+      {
+        duration: "7h",
+        segments: [
+          {
+            departure_airport: "LOS",
+            departure_time: "2026-11-20T08:00:00",
+            arrival_airport: "LHR",
+            arrival_time: "2026-11-20T15:00:00",
+            carrier_code: "TA",
+            flight_number: "TA100",
+          },
+        ],
+      },
+      {
+        duration: "9h",
+        segments: [
+          {
+            departure_airport: "LHR",
+            departure_time: "2026-11-27T10:00:00",
+            arrival_airport: "CMN",
+            arrival_time: "2026-11-27T13:00:00",
+            carrier_code: "TA",
+            flight_number: "TA101",
+          },
+          {
+            departure_airport: "CMN",
+            departure_time: "2026-11-27T15:00:00",
+            arrival_airport: "LOS",
+            arrival_time: "2026-11-27T19:00:00",
+            carrier_code: "TA",
+            flight_number: "TA102",
+          },
+        ],
+      },
+    ],
+  } as never
+  const display = normalizeFlightOffer(offer, 0)
+  assert.equal(display.maxStopsInTrip, 1)
+  assert.equal(display.stops, 1)
+  assert.equal(display.stopsLabel, "1 stop")
+  assert.deepEqual(display.stopsPerItinerary, [0, 1])
+  assert.equal(display.isDirect, false)
+})
+
+test("Trip-wide stops: worst itinerary wins when the backend sends no max_stops_in_trip", () => {
+  const offer = {
+    offer_id: "mixed-rt-2",
+    airline: "Test Air",
+    price: "600000.00",
+    itineraries: [
+      {
+        duration: "7h",
+        segments: [
+          {
+            departure_airport: "LOS",
+            departure_time: "2026-11-20T08:00:00",
+            arrival_airport: "LHR",
+            arrival_time: "2026-11-20T15:00:00",
+            carrier_code: "TA",
+            flight_number: "TA100",
+          },
+        ],
+      },
+      {
+        duration: "12h",
+        segments: [
+          {
+            departure_airport: "LHR",
+            departure_time: "2026-11-27T10:00:00",
+            arrival_airport: "DXB",
+            arrival_time: "2026-11-27T19:00:00",
+            carrier_code: "TA",
+            flight_number: "TA101",
+          },
+          {
+            departure_airport: "DXB",
+            departure_time: "2026-11-27T21:00:00",
+            arrival_airport: "LOS",
+            arrival_time: "2026-11-28T01:00:00",
+            carrier_code: "TA",
+            flight_number: "TA102",
+          },
+        ],
+      },
+    ],
+  } as never
+  const display = normalizeFlightOffer(offer, 0)
+  assert.equal(display.maxStopsInTrip, 1)
+  assert.equal(display.stops, 1)
+  assert.equal(display.isDirect, false)
+})

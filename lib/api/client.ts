@@ -201,6 +201,12 @@ export interface ApiGetOptions {
    * backend host (no CORS, identical local/production behaviour).
    */
   sameOrigin?: boolean
+  /**
+   * Logged-in order access: sent as `Authorization: Bearer` to the
+   * same-origin proxy, which forwards it to the backend. Never logged,
+   * never stored, never placed in URLs.
+   */
+  authToken?: string
 }
 
 /**
@@ -214,6 +220,10 @@ export async function apiGet<T>(
   options: ApiGetOptions = {}
 ): Promise<T> {
   const url = buildRequestUrl(path, options.query, options.sameOrigin)
+  const headers: Record<string, string> = { Accept: "application/json" }
+  if (options.authToken && options.authToken.trim()) {
+    headers.Authorization = `Bearer ${options.authToken.trim()}`
+  }
   let response: Response
   try {
     response = await fetch(
@@ -221,13 +231,13 @@ export async function apiGet<T>(
       options.noStore
         ? {
             method: "GET",
-            headers: { Accept: "application/json" },
+            headers,
             cache: "no-store",
             ...(options.signal ? { signal: options.signal } : {}),
           }
         : {
             method: "GET",
-            headers: { Accept: "application/json" },
+            headers,
             next: {
               revalidate: options.revalidate ?? API_REVALIDATE_SECONDS,
               ...(options.tags ? { tags: options.tags } : {}),

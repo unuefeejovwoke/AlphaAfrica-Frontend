@@ -19,7 +19,8 @@ export interface NearbyDatesBarProps {
 
 function parseYMD(dateStr: string): [number, number, number] {
   const parts = dateStr.split("-").map(Number)
-  return [parts[0] || 2026, parts[1] || 1, parts[2] || 1]
+  const currentYear = new Date().getFullYear()
+  return [parts[0] || currentYear, parts[1] || 1, parts[2] || 1]
 }
 
 function formatYMD(year: number, month: number, day: number): string {

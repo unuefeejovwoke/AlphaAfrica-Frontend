@@ -14,18 +14,25 @@ import {
 // ---------------------------------------------------------------------------
 
 function card(overrides: Partial<FlightOfferDisplay>): FlightOfferDisplay {
+  const stops = overrides.stops ?? 0
   return {
     id: "offer",
     airline: "Arik Air",
     departureAt: "08:30",
     arrivalAt: "09:45",
     duration: "1h 15m",
-    stops: 0,
-    stopsLabel: "Non-stop",
+    stops,
+    stopsLabel: stops === 0 ? "Non-stop" : `${stops} stop${stops === 1 ? "" : "s"}`,
+    maxStopsInTrip: overrides.maxStopsInTrip ?? stops,
+    stopsPerItinerary: null,
+    isDirect: stops === 0,
     origin: "LOS",
     destination: "ABV",
     airportsLabel: "LOS → ABV",
     cabin: "ECONOMY",
+    fareCode: null,
+    fareName: null,
+    airlineLogo: null,
     baggage: null,
     price: "185000",
     currency: "NGN",

@@ -3,9 +3,13 @@
 import * as React from "react"
 import {
   DOMESTIC_SSE_DONE_EVENT,
+  DOMESTIC_SSE_ERROR_EVENT,
+  DOMESTIC_SSE_META_EVENT,
   DOMESTIC_STREAM_PROXY_PATH,
   DOMESTIC_STREAM_TIMEOUT_MS,
   fetchDomesticBlocking,
+  getSseErrorMessage,
+  isDomesticResultPayload,
   parseSseEventBlock,
   toDomesticQuery,
   type DomesticFlightCard,
@@ -219,10 +223,15 @@ export function useDomesticStream() {
                   (typeof parsed.data === "string" && parsed.data.trim()
                     ? parsed.data.trim()
                     : null)
-              } else if (
-                typeof parsed.data === "object" &&
-                parsed.data !== null
-              ) {
+              } else if (parsed.event === DOMESTIC_SSE_META_EVENT) {
+                // Search reference only — never a selectable flight card.
+              } else if (parsed.event === DOMESTIC_SSE_ERROR_EVENT) {
+                throw new ApiError(
+                  getSseErrorMessage(parsed.data) ??
+                    "The travel service interrupted the live results.",
+                  { code: "server", status: null }
+                )
+              } else if (isDomesticResultPayload(parsed.data)) {
                 const card = parsed.data as DomesticFlightCard
                 if (mountedRef.current && runId === runIdRef.current) {
                   // Non-urgent list growth stays in a transition.
@@ -235,6 +244,15 @@ export function useDomesticStream() {
                     }))
                   })
                 }
+              } else {
+                const errorMessage = getSseErrorMessage(parsed.data)
+                if (errorMessage) {
+                  throw new ApiError(errorMessage, {
+                    code: "server",
+                    status: null,
+                  })
+                }
+                // Unknown non-result payload (e.g. keepalive) — ignore.
               }
             }
             boundary = buffer.indexOf("\n\n")

@@ -1,6 +1,12 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { resolvePriceConfirmation } from "../lib/api/flights.ts"
+import {
+  DOMESTIC_OFFER_TTL_MS,
+  isConfirmedOfferStale,
+  isOfferExpiredError,
+  resolvePriceConfirmation,
+} from "../lib/api/flights.ts"
+import { ApiError } from "../lib/api/client.ts"
 
 // ---------------------------------------------------------------------------
 // Seam: price-confirmation machine (Phase 3, ticket 05 — spec stories 12–15).
@@ -102,5 +108,51 @@ test("Price confirmation machine: same fare, changed fare, and expired offer bra
     noSelection.status,
     "expired",
     "Missing selected offer must also resolve to expired"
+  )
+})
+
+test("Offer expiry: QuickAir 502 reserve failures map to expired, generic 502 stays retryable", () => {
+  assert.equal(
+    isOfferExpiredError(
+      new ApiError("Could not reserve the flight", { status: 502 })
+    ),
+    true,
+    "Guide 502 reserve copy must route to re-search, never blind retry"
+  )
+  assert.equal(
+    isOfferExpiredError(
+      new ApiError("Upstream error", { status: 502, code: "server" })
+    ),
+    false,
+    "Generic 502 without expiry copy stays retryable"
+  )
+  assert.equal(
+    isOfferExpiredError(new ApiError("Gone", { status: 410 })),
+    true,
+    "410 stays expired"
+  )
+  assert.equal(
+    isOfferExpiredError(new Error("boom")),
+    false,
+    "Non-API errors are never expiry"
+  )
+})
+
+test("Domestic offer freshness: aged offers must re-search, fresh/unknown stay bookable", () => {
+  const now = Date.now()
+  assert.equal(
+    isConfirmedOfferStale(now - DOMESTIC_OFFER_TTL_MS - 1, now),
+    true,
+    "Offers past the TTL must re-search"
+  )
+  assert.equal(
+    isConfirmedOfferStale(now - 60_000, now),
+    false,
+    "Minute-old offers stay bookable"
+  )
+  assert.equal(
+    isConfirmedOfferStale(null, now),
+    false,
+    "Pre-sidecar sessions never hard-block — the 502 path still guards them"
   )
 })

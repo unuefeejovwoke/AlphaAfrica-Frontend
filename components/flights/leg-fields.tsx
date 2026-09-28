@@ -1,13 +1,22 @@
 "use client"
 
 import * as React from "react"
-import { useFormContext } from "react-hook-form"
+import { Controller, useFormContext } from "react-hook-form"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Delete02Icon, Calendar01Icon } from "@hugeicons/core-free-icons"
+import {
+  Delete02Icon,
+  Calendar01Icon,
+  ArrowLeftRightIcon,
+} from "@hugeicons/core-free-icons"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Select } from "@/components/ui/select"
 import { AirportAutocomplete } from "@/components/flights/airport-autocomplete"
-import type { Airport, FlightSearchFormValues } from "@/lib/api/flights"
+import {
+  CABIN_OPTIONS,
+  type Airport,
+  type FlightSearchFormValues,
+} from "@/lib/api/flights"
 
 export interface LegSelection {
   origin: Airport | null
@@ -60,6 +69,7 @@ export const LegFields = React.memo(function LegFields({
   const {
     register,
     setValue,
+    control,
     formState: { errors },
   } = useFormContext<FlightSearchFormValues>()
 
@@ -116,6 +126,33 @@ export const LegFields = React.memo(function LegFields({
       ? legErrors.date.message
       : undefined
 
+  const handleSwapLeg = React.useCallback(() => {
+    const nextOriginAirport = destinationAirport
+    const nextDestinationAirport = originAirport
+    const nextOriginInput = destinationInput
+    const nextDestinationInput = originInput
+    setOriginAirport(nextOriginAirport)
+    setDestinationAirport(nextDestinationAirport)
+    setOriginInput(nextOriginInput)
+    setDestinationInput(nextDestinationInput)
+    setValue(`legs.${index}.origin`, nextOriginAirport?.iata_code ?? "", {
+      shouldValidate: false,
+    })
+    setValue(
+      `legs.${index}.destination`,
+      nextDestinationAirport?.iata_code ?? "",
+      { shouldValidate: false }
+    )
+  }, [
+    destinationAirport,
+    originAirport,
+    destinationInput,
+    originInput,
+    index,
+    setValue,
+  ])
+  const canSwapLeg = originInput.trim() !== "" || destinationInput.trim() !== ""
+
   const groupLabelId = React.useId()
 
   const formatAirportDisplay = (airport: Airport) => {
@@ -150,7 +187,7 @@ export const LegFields = React.memo(function LegFields({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1fr_auto_1fr_1fr_180px] xl:items-start">
         <AirportAutocomplete
           label={`Leg ${index + 1} from`}
           placeholder="Lagos, LOS, Murtala Muhammed…"
@@ -163,6 +200,21 @@ export const LegFields = React.memo(function LegFields({
           showSelectedHint={false}
           excludeIata={destinationAirport?.iata_code ?? null}
         />
+        <div className="hidden justify-center xl:mt-[22px] xl:flex">
+          <button
+            type="button"
+            onClick={handleSwapLeg}
+            disabled={!canSwapLeg}
+            aria-label={`Swap leg ${index + 1} origin and destination`}
+            className="flex size-10 touch-manipulation items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <HugeiconsIcon
+              icon={ArrowLeftRightIcon}
+              size={16}
+              aria-hidden="true"
+            />
+          </button>
+        </div>
         <AirportAutocomplete
           label={`Leg ${index + 1} to`}
           placeholder="London, LHR, Heathrow…"
@@ -184,6 +236,21 @@ export const LegFields = React.memo(function LegFields({
           }
           error={dateError}
           {...register(`legs.${index}.date`)}
+        />
+        <Controller
+          name={`legs.${index}.cabin`}
+          control={control}
+          render={({ field, fieldState }) => (
+            <Select
+              label="Cabin class"
+              options={[...CABIN_OPTIONS]}
+              value={field.value ?? "ECONOMY"}
+              onValueChange={(val) => {
+                field.onChange(val)
+              }}
+              error={fieldState.error?.message}
+            />
+          )}
         />
       </div>
     </div>

@@ -6,7 +6,7 @@ import {
   parseFlightSearchPayload,
   parseFlightSearchUrl,
 } from "../lib/api/flight-search-url.ts"
-import { tripTypeSchema } from "../lib/api/flights.ts"
+import { toFlightSearchRequest, tripTypeSchema } from "../lib/api/flights.ts"
 
 function isoDate(offsetDays: number): string {
   return new Date(Date.now() + 86400000 * offsetDays).toISOString().slice(0, 10)
@@ -216,5 +216,86 @@ test("Invalid or partial URL state is rejected without triggering a search", () 
     parseFlightSearchUrl(new URLSearchParams(`trip_type=bogus&origin=LOS`))
       .isValid,
     false
+  )
+})
+
+test("Multi-city legs keep their own cabin each; round-trip stamps one cabin on both legs", () => {
+  const d1 = isoDate(14)
+  const d2 = isoDate(16)
+  const parsed = tripTypeSchema.safeParse({
+    trip_type: "multi_city",
+    legs: [
+      { origin: "LOS", destination: "LHR", date: d1, cabin: "ECONOMY" },
+      { origin: "LHR", destination: "LOS", date: d2, cabin: "BUSINESS" },
+    ],
+    adults: 1,
+    children: 0,
+    infants: 0,
+    cabin: "ECONOMY",
+    currency: "NGN",
+    non_stop: false,
+    max_stops: null,
+  })
+  assert.equal(parsed.success, true)
+  if (!parsed.success) return
+
+  const request = toFlightSearchRequest(parsed.data)
+  assert.equal(request.trip_type, "multi_city")
+  assert.deepEqual(
+    request.legs.map((leg) => leg.cabin),
+    ["ECONOMY", "BUSINESS"],
+    "Each multi-city leg must carry its own cabin"
+  )
+
+  // Shareable URL preserves the mixed cabins and parses back identically.
+  const back = parseFlightSearchUrl(
+    new URLSearchParams(buildFlightSearchQuery(parsed.data))
+  )
+  assert.equal(back.isValid, true)
+  assert.deepEqual(
+    (back.values.legs ?? []).map((leg) => leg.cabin),
+    ["ECONOMY", "BUSINESS"]
+  )
+
+  // Round-trip keeps one global cabin on both legs.
+  const rt = tripTypeSchema.safeParse({
+    trip_type: "round_trip",
+    origin: "LOS",
+    destination: "LHR",
+    departureDate: d1,
+    returnDate: d2,
+    adults: 1,
+    children: 0,
+    infants: 0,
+    cabin: "BUSINESS",
+    currency: "NGN",
+    non_stop: false,
+    max_stops: null,
+  })
+  assert.equal(rt.success, true)
+  if (!rt.success) return
+  const rtRequest = toFlightSearchRequest(rt.data)
+  assert.deepEqual(
+    rtRequest.legs.map((leg) => leg.cabin),
+    ["BUSINESS", "BUSINESS"]
+  )
+})
+
+test("Old multi-city links without per-leg cabins inherit the global cabin", () => {
+  const d1 = isoDate(14)
+  const d2 = isoDate(16)
+  const legs = encodeURIComponent(
+    JSON.stringify([
+      { origin: "LOS", destination: "LHR", date: d1 },
+      { origin: "LHR", destination: "DXB", date: d2 },
+    ])
+  )
+  const back = parseFlightSearchUrl(
+    new URLSearchParams(`trip_type=multi_city&legs=${legs}&cabin=BUSINESS`)
+  )
+  assert.equal(back.isValid, true)
+  assert.deepEqual(
+    (back.values.legs ?? []).map((leg) => leg.cabin),
+    ["BUSINESS", "BUSINESS"]
   )
 })

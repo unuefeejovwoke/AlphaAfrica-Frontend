@@ -239,7 +239,12 @@ export function FlightOfferCard({
         {/* Card Header: Airline Info + Select CTA */}
         <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
           <div className="flex items-center gap-3">
-            <AirlineLogo airline={offer.airline} size="md" />
+            <AirlineLogo
+              airline={offer.airline}
+              carrierCode={offer.airlineCode ?? undefined}
+              logoUrl={offer.airlineLogo}
+              size="md"
+            />
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-foreground sm:text-lg">

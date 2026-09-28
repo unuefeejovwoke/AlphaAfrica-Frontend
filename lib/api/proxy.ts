@@ -4,12 +4,14 @@ const METHODS_WITHOUT_BODY = new Set(["GET", "HEAD", "OPTIONS"])
 
 /**
  * Same-origin proxy for browser API calls. Forwards method, query, body, and
- * Accept/Content-Type headers to the backend and passes the upstream status
+ * safe headers to the backend and passes the upstream status
  * and body back verbatim, so client-side `ApiError` mapping still works.
  *
  * - Never cached: flight search/price/booking/verify must reflect live data.
  * - Client disconnects abort the upstream fetch via `request.signal`.
  * - Only safe headers travel; no cookies or tokens are stored or logged.
+ *   `Authorization` (logged-in order access) and guest `?token=` query params
+ *   pass through untouched so the backend can enforce its own 403s.
  */
 export async function proxyToBackend(
   request: Request,
@@ -21,8 +23,10 @@ export async function proxyToBackend(
   const headers = new Headers()
   const accept = request.headers.get("accept")
   const contentType = request.headers.get("content-type")
+  const authorization = request.headers.get("authorization")
   if (accept) headers.set("accept", accept)
   if (contentType) headers.set("content-type", contentType)
+  if (authorization) headers.set("authorization", authorization)
 
   let upstream: Response
   try {

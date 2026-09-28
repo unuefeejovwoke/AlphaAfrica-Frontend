@@ -91,6 +91,9 @@ export function shouldFallbackToBlocking(reason: SseTerminalReason): boolean {
 
 export const DOMESTIC_STREAM_TIMEOUT_MS = 75_000
 export const DOMESTIC_SSE_DONE_EVENT = "done"
+export const DOMESTIC_SSE_META_EVENT = "meta"
+export const DOMESTIC_SSE_ERROR_EVENT = "error"
+export const DOMESTIC_SSE_RESULT_EVENT = "result"
 export const DOMESTIC_STREAM_PROXY_PATH = "/api/flights/domestic-stream"
 
 export interface DomesticSearchParams {
@@ -305,7 +308,52 @@ export function normalizeDomesticCard(
       "date_time",
     ]) ||
     "—"
-  const stops = Math.max(0, Math.floor(readNumber(record.stops) ?? 0))
+  const stops = readNumber(record.stops) ?? readNumber(record.max_stops_in_trip) ?? readNumber(record.maxStopsInTrip) ?? 0
+  // QuickAir serves single-leg domestic hops, but stop counts may ride
+  // inside `itineraries[]` (per the guide) instead of a flat `stops` —
+  // the worst across itineraries wins so nothing reads as non-stop wrongly.
+  const itineraryStops: number[] = []
+  const itinerariesRaw = Array.isArray(record.itineraries)
+    ? (record.itineraries as unknown[])
+    : []
+  for (const item of itinerariesRaw) {
+    const itin = asRecord(item)
+    const segments = Array.isArray(itin.segments)
+      ? itin.segments
+      : Array.isArray(itin.flightSegments)
+        ? itin.flightSegments
+        : []
+    const itinStops =
+      readNumber(itin.stops) ??
+      (segments.length > 0 ? segments.length - 1 : null)
+    if (itinStops !== null) itineraryStops.push(Math.max(0, Math.floor(itinStops)))
+  }
+  const maxStops =
+    itineraryStops.length > 0
+      ? Math.max(stops, ...itineraryStops)
+      : Math.max(0, Math.floor(stops))
+  const backendDirect = record.is_direct ?? record.isDirect
+  const isDirect =
+    typeof backendDirect === "boolean" ? backendDirect : maxStops === 0
+  const airlineCode =
+    read(
+      "airline_code",
+      "airlineCode",
+      "carrier_code",
+      "carrierCode",
+      "validating_airline"
+    ) || null
+  const fareCode = read("fare_code", "fareCode") || null
+  const fareName =
+    read("fare_name", "fareName", "fare_class_name") || null
+  const airlineLogo =
+    read("airline_logo", "airlineLogo", "logo") || null
+  const seatsAvailable =
+    readNumber(
+      record.seats_available ??
+        record.seatsAvailable ??
+        record.numberOfBookableSeats
+    ) ?? null
   const duration = read("duration", "flightDuration", "flight_duration") || "—"
   const cabin = read("cabin", "cabinClass", "cabin_class") || "ECONOMY"
   const departureDate =
@@ -317,12 +365,12 @@ export function normalizeDomesticCard(
     read("arrival_date", "arrivalDate") ||
     (arrivalAt !== "—" ? (arrivalAt.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "") : "")
   const stopsLabel =
-    stops === 0 ? "Non-stop" : `${stops} ${stops === 1 ? "stop" : "stops"}`
+    maxStops === 0 ? "Non-stop" : `${maxStops} ${maxStops === 1 ? "stop" : "stops"}`
 
   return {
     id,
     airline,
-    airlineCode: null,
+    airlineCode,
     validatingAirline: null,
     departureAt,
     arrivalAt,
@@ -330,8 +378,11 @@ export function normalizeDomesticCard(
     arrivalDate: arrivalDate || null,
     arrivalDayOffset: 0,
     duration,
-    stops,
+    stops: maxStops,
     stopsLabel,
+    maxStopsInTrip: maxStops,
+    stopsPerItinerary: itineraryStops.length > 0 ? itineraryStops : null,
+    isDirect,
     origin,
     destination,
     airportsLabel:
@@ -339,8 +390,11 @@ export function normalizeDomesticCard(
         ? `${origin} → ${destination}`
         : "—",
     cabin,
-    bookingClass: null,
-    fareBrand: null,
+    bookingClass: fareCode,
+    fareBrand: fareName,
+    fareCode,
+    fareName,
+    airlineLogo,
     baggage: read("baggage", "checked_baggage", "checkedBaggage") || null,
     checkedBags: null,
     cabinBags: null,
@@ -349,13 +403,13 @@ export function normalizeDomesticCard(
     priceBreakdown: null,
     fareRules: null,
     amenities: [],
-    seatsAvailable: null,
+    seatsAvailable,
     lastTicketingDate: null,
     journeys: [
       {
         index: 0,
         duration,
-        stops,
+        stops: maxStops,
         stopsLabel,
         origin,
         destination,
@@ -373,6 +427,8 @@ export function normalizeDomesticCard(
             ...(duration !== "—" ? { duration } : {}),
             departureAtRaw: departureAt !== "—" ? departureAt : null,
             arrivalAtRaw: arrivalAt !== "—" ? arrivalAt : null,
+            ...(fareCode ? { bookingClass: fareCode } : {}),
+            ...(fareName ? { brandedFare: fareName } : {}),
           },
         ],
         layovers: [],
@@ -395,7 +451,83 @@ export interface ParsedSseEvent {
 export function extractSearchId(data: unknown): string | null {
   if (typeof data !== "object" || data === null) return null
   const rec = data as Record<string, unknown>
-  for (const key of ["search_id", "searchId", "searchID", "id"]) {
+  // Only explicit search-reference keys — a bare card `id`/`offer_id` must
+  // never pollute the visible search reference.
+  for (const key of ["search_id", "searchId", "searchID"]) {
+    const v = rec[key]
+    if (typeof v === "string" && v.trim()) return v.trim()
+  }
+  return null
+}
+
+/**
+ * True only when an SSE `data` payload looks like a flight result.
+ * The guide's `meta` event (`{ search_id }`) and `error` envelopes carry no
+ * flight fields — they must never become selectable cards.
+ */
+export function isDomesticResultPayload(data: unknown): boolean {
+  if (typeof data !== "object" || data === null) return false
+  const rec = data as Record<string, unknown>
+  const flightKeys = [
+    "airline",
+    "airline_name",
+    "airlineName",
+    "carrier",
+    "carrier_name",
+    "carrierName",
+    "providerName",
+    "provider_name",
+    "flightNumber",
+    "flight_number",
+    "flight_id",
+    "offer_id",
+    "offerId",
+    "origin",
+    "Origin",
+    "from",
+    "destination",
+    "Destination",
+    "to",
+    "departure",
+    "departureTime",
+    "departure_time",
+    "departureAt",
+    "departure_at",
+    "arrival",
+    "arrivalTime",
+    "arrival_time",
+    "arrivalAt",
+    "arrival_at",
+    "price",
+    "amount",
+    "total_amount",
+    "totalAmount",
+    "total_price",
+    "totalPrice",
+    "fare_code",
+    "fareCode",
+    "fare_name",
+    "fareName",
+    "itineraries",
+  ]
+  return flightKeys.some((key) => {
+    const v = rec[key]
+    if (Array.isArray(v)) return v.length > 0
+    if (typeof v === "object" && v !== null)
+      return Object.keys(v as Record<string, unknown>).length > 0
+    return v !== undefined && v !== null && v !== ""
+  })
+}
+
+/** Human-readable message from an SSE `error` event payload, if any. */
+export function getSseErrorMessage(data: unknown): string | null {
+  if (typeof data === "string") {
+    const trimmed = data.trim()
+    return trimmed ? trimmed : null
+  }
+  if (typeof data !== "object" || data === null) return null
+  const rec = data as Record<string, unknown>
+  for (const key of ["error", "message", "detail"]) {
     const v = rec[key]
     if (typeof v === "string" && v.trim()) return v.trim()
   }

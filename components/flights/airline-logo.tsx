@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils"
 export interface AirlineLogoProps {
   airline: string
   carrierCode?: string
+  /** Backend `airline_logo` URL — rendered when present, monogram otherwise. */
+  logoUrl?: string | null
   className?: string
   size?: "sm" | "md" | "lg"
 }
@@ -143,6 +145,7 @@ function getAirlineColors(name: string): {
 export function AirlineLogo({
   airline,
   carrierCode,
+  logoUrl,
   className,
   size = "md",
 }: AirlineLogoProps) {
@@ -163,6 +166,34 @@ export function AirlineLogo({
         .slice(0, 2)
         .join("")
         .toUpperCase()
+
+  // Backend-provided mark wins; the monogram stays the fallback so a
+  // missing logo never becomes a broken image.
+  const [logoFailed, setLogoFailed] = React.useState(false)
+  React.useEffect(() => {
+    setLogoFailed(false)
+  }, [logoUrl])
+  if (logoUrl && !logoFailed) {
+    return (
+      <div
+        aria-hidden="true"
+        className={cn(
+          "relative flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-card p-1 shadow-xs",
+          sizeClasses[size],
+          className
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoUrl}
+          alt=""
+          loading="lazy"
+          className="size-full object-contain"
+          onError={() => setLogoFailed(true)}
+        />
+      </div>
+    )
+  }
 
   return (
     <div

@@ -389,6 +389,7 @@ export function resolveFlightVerificationState(booking: {
 export const flightBookingSchema = z.object({
   reference: z.string(),
   pnr: z.string().nullable().optional(),
+  amadeus_order_id: z.string().optional(),
   contact_name: z.string().optional().default(""),
   origin: z.string().optional().default(""),
   destination: z.string().optional().default(""),

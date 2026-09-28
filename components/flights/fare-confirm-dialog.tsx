@@ -33,6 +33,16 @@ type ConfirmPhase = "confirming" | "changed" | "expired" | "error" | "domestic"
 
 type ChangedOutcome = Extract<PriceConfirmOutcome, { status: "changed" }>
 
+/** "PREMIUM_ECONOMY" → "Premium Economy" for display pills. */
+function prettifyCabinLabel(cabin: string): string {
+  return cabin
+    .split("_")
+    .map((part) =>
+      part ? part.charAt(0).toUpperCase() + part.slice(1).toLowerCase() : part
+    )
+    .join(" ")
+}
+
 export interface FareConfirmDialogProps {
   open: boolean
   /** Raw selected Flight Offer / Domestic Flight Card (opaque blob included). */
@@ -353,7 +363,7 @@ export function FareConfirmDialog({
     body = (
       <div className="flex flex-col gap-4">
         <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          Domestic flight · Economy
+          Domestic flight · {prettifyCabinLabel(display.cabin)}
         </span>
         <p className="text-sm leading-relaxed text-muted-foreground">
           {display.airline} {display.airportsLabel} · {display.departureAt} →{" "}

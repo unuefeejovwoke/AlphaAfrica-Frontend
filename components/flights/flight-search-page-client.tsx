@@ -641,11 +641,16 @@ export function FlightSearchPageClient() {
       const dates = [text(first?.date), text(last?.date)]
         .filter(Boolean)
         .join(" → ")
+      const legCabins = legs.map((leg) => text(leg.cabin)).filter(Boolean)
+      const uniqueCabins = [...new Set(legCabins)]
       return {
         route: `Multi-city · ${legs.length} legs`,
         dates: dates || null,
         party: partyLabel,
-        cabin: cabinLabel,
+        cabin:
+          uniqueCabins.length === 1
+            ? (uniqueCabins[0] ?? cabinLabel)
+            : "Mixed cabins",
       }
     }
     const origin = text(values.origin)

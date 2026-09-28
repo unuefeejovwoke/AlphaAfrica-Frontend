@@ -164,7 +164,7 @@ export function parseBookingForETicket(booking: FlightBooking) {
   const primaryPassenger =
     travelersList[0]?.name ||
     booking.contact_name.trim().toUpperCase() ||
-    "PRIMARY PASSENGER"
+    "—"
 
   // 2. Flight Details extraction
   let rawDetails: Record<string, unknown> = {}
@@ -206,6 +206,57 @@ export function parseBookingForETicket(booking: FlightBooking) {
     ? (rawDetails.itineraries as Array<Record<string, unknown>>)
     : []
 
+  interface TicketLeg {
+    origin: string
+    destination: string
+    departAt: string | null
+    arriveAt: string | null
+    duration: string
+    stops: number
+    stopsLabel: string
+    flightNumber: string
+  }
+
+  const legs: TicketLeg[] = []
+  for (const itin of itineraries) {
+    const segments = Array.isArray(itin.segments)
+      ? (itin.segments as Array<Record<string, unknown>>)
+      : []
+    const firstSeg = segments[0]
+    const lastSeg = segments[segments.length - 1]
+    const legOrigin =
+      (typeof firstSeg?.from === "string" && firstSeg.from.trim()) || ""
+    const legDestination =
+      (typeof lastSeg?.to === "string" && lastSeg.to.trim()) || ""
+    const legDepart =
+      (typeof firstSeg?.depart_at === "string" && firstSeg.depart_at) || null
+    const legArrive =
+      (typeof lastSeg?.arrive_at === "string" && lastSeg.arrive_at) || null
+    const legStops =
+      (typeof itin.stops === "number" && itin.stops) ||
+      (segments.length > 1 ? segments.length - 1 : 0)
+    const legFlight =
+      (typeof firstSeg?.flight_number === "string" &&
+        firstSeg.flight_number.trim()) ||
+      ""
+    legs.push({
+      origin: legOrigin,
+      destination: legDestination,
+      departAt: legDepart,
+      arriveAt: legArrive,
+      duration:
+        (typeof itin.duration === "string" && itin.duration) || "Scheduled",
+      stops: legStops,
+      stopsLabel:
+        legStops === 0
+          ? "Non-stop"
+          : legStops === 1
+            ? "1 Stop"
+            : `${legStops} Stops`,
+      flightNumber: legFlight,
+    })
+  }
+
   if (itineraries.length > 0) {
     const firstItin = itineraries[0]
     if (typeof firstItin.duration === "string") duration = firstItin.duration
@@ -234,17 +285,58 @@ export function parseBookingForETicket(booking: FlightBooking) {
     }
   }
 
-  const effectiveAirlineCode = (airlineCode || "FLIGHT").toUpperCase()
-  const effectiveFlightNumber = flightNumber
-    ? flightNumber.startsWith(effectiveAirlineCode)
-      ? flightNumber
-      : `${effectiveAirlineCode}${flightNumber}`
-    : booking.reference.slice(-4) || "900"
+  // Seat + ticketing facts only when the backend provides them — never filled.
+  const seatsAvailable = ((): number | null => {
+    const candidates = [
+      rawDetails.seats_available,
+      rawDetails.seatsAvailable,
+      rawDetails.seats,
+    ]
+    for (const candidate of candidates) {
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        return Math.max(0, Math.floor(candidate))
+      }
+      if (
+        typeof candidate === "string" &&
+        candidate.trim() &&
+        Number.isFinite(Number(candidate.trim()))
+      ) {
+        return Math.max(0, Math.floor(Number(candidate.trim())))
+      }
+    }
+    return null
+  })()
+  const ticketDeadline =
+    (typeof rawDetails.last_ticketing_date === "string" &&
+      rawDetails.last_ticketing_date.trim()) ||
+    (typeof rawDetails.lastTicketingDate === "string" &&
+      rawDetails.lastTicketingDate.trim()) ||
+    null
+  const amadeusOrderId =
+    (typeof booking.amadeus_order_id === "string" &&
+      booking.amadeus_order_id.trim()) ||
+    null
 
+  const effectiveAirlineCode = (airlineCode || "").toUpperCase()
+  const effectiveFlightNumber =
+    flightNumber && effectiveAirlineCode
+      ? flightNumber.startsWith(effectiveAirlineCode)
+        ? flightNumber
+        : `${effectiveAirlineCode}${flightNumber}`
+      : flightNumber || ""
+
+  // Backend facts first — the hardcoded map is a last-resort label so a
+  // stale entry can never override the airline the booking was issued with.
+  const backendAirlineName =
+    typeof rawDetails.airline_name === "string" &&
+    rawDetails.airline_name.trim()
+      ? rawDetails.airline_name.trim()
+      : ""
   const airlineName =
+    backendAirlineName ||
     AIRLINE_NAMES[effectiveAirlineCode] ||
-    (typeof rawDetails.airline_name === "string" && rawDetails.airline_name) ||
-    effectiveAirlineCode
+    effectiveAirlineCode ||
+    "—"
 
   const stopsLabel =
     stops === 0 ? "Non-stop" : stops === 1 ? "1 Stop" : `${stops} Stops`
@@ -267,13 +359,19 @@ export function parseBookingForETicket(booking: FlightBooking) {
     duration: duration || "Scheduled",
     stops,
     stopsLabel,
-    origin: booking.origin || "LOS",
+    legs,
+    // Header route is the first leg; unknown airports stay blank, never
+    // invented (no LOS/DXB-style fallbacks on an official document).
+    origin: booking.origin || legs[0]?.origin || "",
     originCity: AIRPORT_CITIES[booking.origin] || "",
-    destination: booking.destination || "DXB",
+    destination: booking.destination || legs[0]?.destination || "",
     destinationCity: AIRPORT_CITIES[booking.destination] || "",
     departFormatted,
     arriveFormatted,
     pnr,
+    amadeusOrderId,
+    seatsAvailable,
+    ticketDeadline,
     reference,
     securityReference,
     amountFormatted: formatNaira(String(booking.total_amount)),
@@ -331,7 +429,7 @@ export function FlightETicket({
         {/* Right: PNR / Booking Reference Box */}
         <div className="flex shrink-0 flex-col items-end">
           <span className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase sm:text-[10px]">
-            PNR REFERENCE CODE
+            {data.pnr ? "PNR REFERENCE CODE" : "BOOKING REFERENCE"}
           </span>
           <div className="mt-1 rounded-lg border border-border/80 bg-muted/40 px-2.5 py-1 font-mono text-xs font-black tracking-wider text-foreground select-all sm:rounded-xl sm:px-3.5 sm:py-1.5 sm:text-sm md:text-base">
             {data.pnr || data.reference}
@@ -366,11 +464,13 @@ export function FlightETicket({
           <div className="mt-0.5 flex items-center gap-1.5 sm:gap-2">
             <AirlineLogo
               airline={data.airlineName}
-              carrierCode={data.carrierCode}
+              carrierCode={data.carrierCode || undefined}
               size="sm"
             />
             <span className="text-base font-black tracking-tight text-primary sm:text-lg md:text-xl">
-              {data.carrierCode} · {data.flightNumber}
+              {data.carrierCode && data.flightNumber
+                ? `${data.carrierCode} · ${data.flightNumber}`
+                : data.airlineName}
             </span>
           </div>
         </div>
@@ -394,7 +494,7 @@ export function FlightETicket({
           {/* Origin */}
           <div className="flex min-w-0 flex-col items-start">
             <span className="font-sans text-2xl font-black tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-5xl">
-              {data.origin}
+              {data.origin || "—"}
             </span>
             {data.originCity ? (
               <span className="max-w-full truncate text-[10px] font-semibold text-muted-foreground uppercase sm:text-[11px]">
@@ -440,7 +540,7 @@ export function FlightETicket({
           {/* Destination */}
           <div className="flex min-w-0 flex-col items-end text-right">
             <span className="font-sans text-2xl font-black tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-5xl">
-              {data.destination}
+              {data.destination || "—"}
             </span>
             {data.destinationCity ? (
               <span className="max-w-full truncate text-[10px] font-semibold text-muted-foreground uppercase sm:text-[11px]">
@@ -468,6 +568,45 @@ export function FlightETicket({
         </div>
       </div>
 
+      {/* Additional legs (return / multi-city) — every itinerary on the document */}
+      {data.legs.length > 1 ? (
+        <div className="my-4 flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/30 p-3.5 sm:my-5 sm:rounded-2xl sm:p-5">
+          <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase sm:text-[10px]">
+            ALL LEGS ON THIS BOOKING
+          </span>
+          {data.legs.map((leg, idx) => {
+            const label =
+              data.legs.length === 2
+                ? idx === 0
+                  ? "Outbound"
+                  : "Return"
+                : `Leg ${idx + 1}`
+            const depart = leg.departAt
+              ? formatETicketDateTime(leg.departAt)
+              : null
+            const arrive = leg.arriveAt
+              ? formatETicketDateTime(leg.arriveAt)
+              : null
+            return (
+              <div
+                key={idx}
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border/60 pt-2 text-[11px] first:border-t-0 first:pt-0 sm:text-xs"
+              >
+                <span className="font-extrabold text-foreground">
+                  {label}: {leg.origin || "—"} → {leg.destination || "—"}
+                </span>
+                <span className="text-muted-foreground">
+                  {depart ? depart.full : "Scheduled"}
+                  {arrive ? ` → ${arrive.full}` : ""} · {leg.duration} ·{" "}
+                  {leg.stopsLabel}
+                  {leg.flightNumber ? ` · ${leg.flightNumber}` : ""}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
+
       {/* Passenger & Ticket Metadata (4-column grid) */}
       <div className="my-3 grid grid-cols-2 gap-3 border-t border-b border-border/70 py-3.5 text-left sm:my-4 sm:grid-cols-4 sm:gap-4 sm:py-5">
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -490,10 +629,12 @@ export function FlightETicket({
 
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase sm:text-[10px]">
-            SEAT STATUS
+            {data.seatsAvailable !== null ? "SEATS AVAILABLE" : "SEAT STATUS"}
           </span>
           <span className="text-xs font-extrabold text-foreground sm:text-sm">
-            Standard Assigned
+            {data.seatsAvailable !== null
+              ? `${data.seatsAvailable} left`
+              : "Assigned at check-in"}
           </span>
         </div>
 
@@ -539,11 +680,20 @@ export function FlightETicket({
           {data.carrierCode} · {data.airlineName}
         </p>
         <p className="text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
-          Standard scheduled flight service reference {data.flightNumber} from{" "}
-          {data.origin} to {data.destination}. Please complete airline airport
-          check-in at least 45 minutes prior to departure (2 to 3 hours
-          recommended for international routes). Valid passport, entry visas,
-          and boarding pass are required at security and gate clearance.
+          {data.flightNumber || data.origin || data.destination ? (
+            <>
+              Standard scheduled flight service
+              {data.flightNumber ? ` reference ${data.flightNumber}` : ""}
+              {data.origin || data.destination
+                ? ` from ${data.origin || "—"} to ${data.destination || "—"}`
+                : ""}
+              .{" "}
+            </>
+          ) : null}
+          Please complete airline airport check-in at least 45 minutes prior
+          to departure (2 to 3 hours recommended for international routes).
+          Valid passport, entry visas, and boarding pass are required at
+          security and gate clearance.
         </p>
       </div>
 
@@ -551,16 +701,35 @@ export function FlightETicket({
       <div className="mt-4 flex flex-col items-start justify-between gap-2.5 border-t border-border/80 pt-4 text-xs font-bold sm:mt-5 sm:flex-row sm:items-center sm:pt-5">
         <div className="flex items-center gap-1.5 text-[10px] tracking-wide sm:gap-2 sm:text-[11px]">
           <span className="text-muted-foreground uppercase">STATUS:</span>
-          <span className="font-black text-emerald-600 uppercase">
-            CONFIRMED &amp; ISSUED
-          </span>
+          {data.pnr ? (
+            <span className="font-black text-emerald-600 uppercase">
+              CONFIRMED &amp; ISSUED
+            </span>
+          ) : (
+            <span className="font-black text-amber-600 uppercase">
+              PAYMENT RECEIVED — ISSUING TICKET
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase sm:text-[11px]">
-          <HugeiconsIcon icon={Tick01Icon} size={15} />
-          <span>VERIFIED TICKET &amp; PNR ISSUED</span>
-        </div>
+        {data.pnr ? (
+          <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase sm:text-[11px]">
+            <HugeiconsIcon icon={Tick01Icon} size={15} />
+            <span>VERIFIED TICKET &amp; PNR ISSUED</span>
+          </div>
+        ) : (
+          <div className="text-[10px] font-bold text-muted-foreground uppercase sm:text-[11px]">
+            <span>PNR PENDING — CHECK BACK SHORTLY</span>
+          </div>
+        )}
       </div>
+      {data.amadeusOrderId || data.ticketDeadline ? (
+        <p className="mt-3 text-center font-mono text-[10px] break-all text-muted-foreground">
+          {data.amadeusOrderId ? `Order ${data.amadeusOrderId}` : ""}
+          {data.amadeusOrderId && data.ticketDeadline ? " · " : ""}
+          {data.ticketDeadline ? `Ticket by ${data.ticketDeadline}` : ""}
+        </p>
+      ) : null}
     </div>
   )
 }

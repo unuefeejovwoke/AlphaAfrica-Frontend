@@ -25,6 +25,7 @@ export interface BestDealsAirlineProps {
 
 interface AirlineFare {
   airline: string
+  logoUrl: string | null
   nonStopMin: number | null
   oneStopMin: number | null
   twoPlusStopMin: number | null
@@ -43,11 +44,19 @@ export function BestDealsAirline({
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const [showAllMobile, setShowAllMobile] = React.useState(false)
 
-  // Compute deals per airline
+  // Compute deals per airline — grouped by carrier code (guide: lowest
+  // `price` per airline_code + max_stops_in_trip cell), labelled by the
+  // display name so sidebar selection keeps matching.
   const deals: AirlineFare[] = React.useMemo<AirlineFare[]>(() => {
     const byAirline = new Map<
       string,
-      { nonStop: number[]; oneStop: number[]; twoPlus: number[] }
+      {
+        name: string
+        logoUrl: string | null
+        nonStop: number[]
+        oneStop: number[]
+        twoPlus: number[]
+      }
     >()
 
     for (const offer of offers) {
@@ -55,13 +64,22 @@ export function BestDealsAirline({
       const amount = parseNairaAmount(offer.price)
       if (amount === null || amount <= 0) continue
 
-      if (!byAirline.has(offer.airline)) {
-        byAirline.set(offer.airline, { nonStop: [], oneStop: [], twoPlus: [] })
+      const key = offer.airlineCode || offer.airline
+      if (!byAirline.has(key)) {
+        byAirline.set(key, {
+          name: offer.airline,
+          logoUrl: offer.airlineLogo ?? null,
+          nonStop: [],
+          oneStop: [],
+          twoPlus: [],
+        })
       }
-      const entry = byAirline.get(offer.airline)!
-      if (offer.stops === 0) {
+      const entry = byAirline.get(key)!
+      if (!entry.logoUrl && offer.airlineLogo) entry.logoUrl = offer.airlineLogo
+      const stops = offer.maxStopsInTrip ?? offer.stops
+      if (stops === 0) {
         entry.nonStop.push(amount)
-      } else if (offer.stops === 1) {
+      } else if (stops === 1) {
         entry.oneStop.push(amount)
       } else {
         entry.twoPlus.push(amount)
@@ -69,7 +87,8 @@ export function BestDealsAirline({
     }
 
     const result: AirlineFare[] = []
-    for (const [airline, data] of byAirline.entries()) {
+    for (const [, data] of byAirline.entries()) {
+      const airline = data.name
       const nonStopMin =
         data.nonStop.length > 0 ? Math.min(...data.nonStop) : null
       const oneStopMin =
@@ -93,6 +112,7 @@ export function BestDealsAirline({
 
       result.push({
         airline,
+        logoUrl: data.logoUrl,
         nonStopMin,
         oneStopMin,
         twoPlusStopMin,
@@ -226,7 +246,11 @@ export function BestDealsAirline({
                 >
                   {/* Airline Header */}
                   <div className="flex h-16 w-full flex-col items-center justify-center gap-1">
-                    <AirlineLogo airline={deal.airline} size="sm" />
+                    <AirlineLogo
+                      airline={deal.airline}
+                      logoUrl={deal.logoUrl}
+                      size="sm"
+                    />
                     <span className="line-clamp-1 w-full text-[11px] font-bold text-foreground">
                       {deal.airline}
                     </span>
@@ -286,7 +310,11 @@ export function BestDealsAirline({
               )}
             >
               <div className="flex items-center gap-3">
-                <AirlineLogo airline={deal.airline} size="sm" />
+                <AirlineLogo
+                  airline={deal.airline}
+                  logoUrl={deal.logoUrl}
+                  size="sm"
+                />
                 <div>
                   <h4 className="text-xs font-bold text-foreground">
                     {deal.airline}

@@ -114,7 +114,7 @@ export function DomesticStreamResults({
     ? "Streaming was slow — loading full domestic results…"
     : displays.length > 0
       ? `${displays.length} ${displays.length === 1 ? "flight" : "flights"} so far… airlines still checking…`
-      : "Finding domestic flights… live airline checks underway…"
+      : "Finding domestic flights… live airline checks underway (usually 30–60 seconds)…"
 
   // Quick-sort metrics
   const sortMetrics = React.useMemo(() => {

@@ -30,8 +30,12 @@ import {
   clearTravellersDraft,
   extractOpaqueOfferBlob,
   getFlightSupportWhatsAppUrl,
+  isConfirmedOfferStale,
+  isOfferExpiredError,
   normalizeFlightOffer,
   readConfirmedOffer,
+  readConfirmedOfferSavedAt,
+  clearConfirmedOffer,
   readSelectedParty,
   readTravellersDraft,
   saveTravellersDraft,
@@ -51,7 +55,13 @@ import {
   type TravellerFormValues,
 } from "@/lib/schemas/travel"
 
-type CheckoutPhase = "idle" | "creating" | "redirecting" | "review" | "failed"
+type CheckoutPhase =
+  | "idle"
+  | "creating"
+  | "redirecting"
+  | "review"
+  | "failed"
+  | "expired"
 
 interface LoadedCheckout {
   offer: FlightOffer
@@ -63,7 +73,9 @@ interface LoadedCheckout {
 }
 
 type CheckoutSession =
-  { kind: "missing" } | { kind: "ready"; data: LoadedCheckout }
+  | { kind: "missing" }
+  | { kind: "expired" }
+  | { kind: "ready"; data: LoadedCheckout }
 
 /** Changed fare discovered at Pending Booking creation — never redirected silently. */
 interface PriceReviewState {
@@ -96,6 +108,15 @@ function loadCheckoutSession(
     const display = normalizeFlightOffer(offer, 0)
     const party = urlParty ??
       readSelectedParty() ?? { adults: 1, children: 0, infants: 0 }
+    const isInternational = !isDomesticSearch(
+      display.origin,
+      display.destination
+    )
+    // QuickAir `search_id` windows are short: a stale domestic offer must
+    // re-search instead of booking a dead fare.
+    if (!isInternational && isConfirmedOfferStale(readConfirmedOfferSavedAt())) {
+      return { kind: "expired" }
+    }
     const draft = readTravellersDraft()
     return {
       kind: "ready",
@@ -103,7 +124,7 @@ function loadCheckoutSession(
         offer,
         display,
         party,
-        isInternational: !isDomesticSearch(display.origin, display.destination),
+        isInternational,
         initialValues: draft ? draftToTravellerFormValues(party, draft) : null,
       },
     }
@@ -284,6 +305,15 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           travellers: payload.travellers.length,
         })
       } catch (error) {
+        // The airline withdrew the fare (or the QuickAir search window
+        // lapsed): the dead card is dropped so it can never be resubmitted —
+        // the guest re-searches for a fresh fare instead.
+        if (isOfferExpiredError(error)) {
+          clearConfirmedOffer()
+          setPhase("expired")
+          inFlightRef.current = false
+          return
+        }
         const message = getHumanErrorMessage(error)
         setPhase("failed")
         setFailure(message)
@@ -319,6 +349,46 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
   }, [])
 
   if (!hydrated || !session) return <CheckoutSkeleton />
+
+  if (session.kind === "expired" || phase === "expired") {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-700">
+          <HugeiconsIcon icon={AlertCircleIcon} size={24} aria-hidden="true" />
+        </div>
+        <h2 className="text-xl font-extrabold text-foreground">
+          This fare has expired — search again for a fresh price
+        </h2>
+        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+          The airline released this fare before booking completed, so it can
+          no longer be reserved. No booking was made and no payment was taken.
+          Run a fresh search — live fares refresh every few minutes.
+        </p>
+        <div className="flex flex-col items-center gap-2 pt-1 sm:flex-row">
+          <Button render={<Link href="/flights" />}>
+            <span>Search flights again</span>
+          </Button>
+          <Button
+            variant="outline"
+            render={
+              <TrackLink
+                event="support_click"
+                eventProps={{
+                  context: "a flight fare that expired before booking",
+                  channel: "whatsapp",
+                }}
+                href={getSupportWhatsAppUrl("a flight fare that expired")}
+                target="_blank"
+                rel="noopener noreferrer"
+              />
+            }
+          >
+            <span>Talk to Alphaa</span>
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   if (session.kind === "missing") {
     return (

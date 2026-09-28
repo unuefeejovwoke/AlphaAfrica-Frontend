@@ -232,6 +232,14 @@ export const cabinSchema = z.enum([
 ])
 export type Cabin = z.infer<typeof cabinSchema>
 
+/** Cabin choices for search UIs — single source so leg editors match. */
+export const CABIN_OPTIONS = [
+  { value: "ECONOMY", label: "Economy" },
+  { value: "PREMIUM_ECONOMY", label: "Premium Economy" },
+  { value: "BUSINESS", label: "Business" },
+  { value: "FIRST", label: "First" },
+] as const
+
 const iataSchema = z
   .string()
   .trim()
@@ -332,8 +340,8 @@ export type OneWayFlightSearchPayload = z.output<
  *
  * - Trip types map to legs per spec §51: one-way is 1 leg, round-trip is
  *   outbound plus return, multi-city is 2–6 legs through one leg editor.
- * - Cabin is a single global selection applied to every leg in v1 while the
- *   contract stays per-leg capable (each leg carries its own cabin value).
+ * - Cabin is global for one-way/round-trip and per-leg for multi-city;
+ *   the wire contract stays per-leg capable (each leg carries its own cabin).
  * - Party rules reuse travellerCompositionSchema in every branch.
  */
 
@@ -345,8 +353,9 @@ export function createEmptyLeg(): {
   origin: string
   destination: string
   date: string
+  cabin: Cabin
 } {
-  return { origin: "", destination: "", date: "" }
+  return { origin: "", destination: "", date: "", cabin: "ECONOMY" }
 }
 
 /** Add Leg is allowed below the 6-leg cap. */
@@ -360,8 +369,8 @@ export function canRemoveLeg(count: number): boolean {
 }
 
 // Strict single-leg shape: airports via autocomplete IATA, real future date,
-// distinct airports per leg. Cabin stays per-leg capable; v1 fills the global
-// cabin at request mapping (toFlightSearchRequest).
+// distinct airports per leg, and its own cabin class. One-way/round-trip
+// fill the global cabin at request mapping (toFlightSearchRequest).
 const flightLegBase = z.object({
   origin: iataSchema,
   destination: iataSchema,
@@ -510,11 +519,13 @@ export function toFlightSearchRequest(payload: FlightSearchPayload) {
     case "multi_city":
       return {
         trip_type: "multi_city" as const,
+        // Multi-city legs carry their own cabin each (Economy out, Business
+        // back); one-way/round-trip use the single global cabin above.
         legs: payload.legs.map((leg) => ({
           origin: leg.origin,
           destination: leg.destination,
           date: leg.date,
-          cabin,
+          cabin: leg.cabin ?? cabin,
         })),
         ...common,
       }
@@ -548,6 +559,7 @@ const looseLegSchema = z.object({
   origin: z.string(),
   destination: z.string(),
   date: z.string(),
+  cabin: cabinSchema.optional().default("ECONOMY"),
 })
 
 export const flightSearchFormSchema = z
@@ -762,12 +774,24 @@ export interface FlightOfferDisplay {
   duration: string
   stops: number
   stopsLabel: string
+  /** Worst stop count across the whole trip (guide `max_stops_in_trip`).
+   * `stops` mirrors this value; prefer this field for filters and matrices. */
+  maxStopsInTrip: number
+  /** Per-leg stop counts (guide `stops_per_itinerary`) — null when unknown. */
+  stopsPerItinerary: number[] | null
+  /** Guide `is_direct` — true only when the whole trip is non-stop. */
+  isDirect: boolean
   origin: string
   destination: string
   airportsLabel: string
   cabin: string
   bookingClass?: string | null
   fareBrand?: string | null
+  /** Fare class code/name (guide `fare_code`/`fare_name`, Amadeus class/brand fallback). */
+  fareCode: string | null
+  fareName: string | null
+  /** Guide `airline_logo` URL — null when the backend provides none. */
+  airlineLogo: string | null
   baggage: string | null
   checkedBags?: number | null
   cabinBags?: number | null
@@ -1654,23 +1678,64 @@ export function normalizeFlightOffer(
       if (lastEndpoints.arrivalAirport)
         destination = lastEndpoints.arrivalAirport
       if (firstItinerary.duration) duration = firstItinerary.duration
-      stops = segs.length - 1
+      // Stop counts are derived trip-wide below (max_stops_in_trip / max
+      // across itineraries) — the first leg alone must never label the trip.
       if (firstEndpoints.cabin) cabin = firstEndpoints.cabin
     }
   }
 
   const { amount, currency } = extractPrice(offer)
 
-  const stopsLabel =
-    stops === undefined
-      ? "—"
-      : stops === 0
-        ? "Non-stop"
-        : `${stops} ${stops === 1 ? "stop" : "stops"}`
   const airportsLabel =
     origin && destination ? `${origin} → ${destination}` : "—"
   const enrichment = buildEnrichment(record)
   const journeys = buildJourneys(offer, enrichment)
+
+  // Trip-wide stop counts (guide §9): the backend `max_stops_in_trip` wins;
+  // otherwise the worst across all itineraries; otherwise the flat `stops`.
+  // A 0-stop outbound + 1-stop return is a 1-stop trip, never "Direct".
+  const backendMaxStops = readNumberLike(
+    record.max_stops_in_trip ??
+      record.maxStopsInTrip ??
+      opaque.max_stops_in_trip ??
+      opaque.maxStopsInTrip ??
+      inner.max_stops_in_trip ??
+      inner.maxStopsInTrip
+  )
+  const backendStopsPerItinerary = ((): number[] | null => {
+    const raw =
+      record.stops_per_itinerary ??
+      record.stopsPerItinerary ??
+      opaque.stops_per_itinerary ??
+      opaque.stopsPerItinerary ??
+      inner.stops_per_itinerary ??
+      inner.stopsPerItinerary
+    if (!Array.isArray(raw)) return null
+    const out: number[] = []
+    for (const item of raw) {
+      const n = readNumberLike(item)
+      if (n !== null) out.push(Math.max(0, Math.floor(n)))
+    }
+    return out.length > 0 ? out : null
+  })()
+  const journeyStops = journeys.map((j) => j.stops)
+  const maxJourneyStops =
+    journeyStops.length > 0 ? Math.max(...journeyStops) : undefined
+  const maxStops =
+    backendMaxStops !== null
+      ? Math.max(0, Math.floor(backendMaxStops))
+      : (maxJourneyStops ?? stops ?? 0)
+  const stopsPerItinerary =
+    backendStopsPerItinerary ??
+    (journeyStops.length > 0 ? journeyStops : null)
+  const backendDirect =
+    record.is_direct ?? record.isDirect ?? opaque.is_direct ?? inner.is_direct
+  const isDirect =
+    typeof backendDirect === "boolean" ? backendDirect : maxStops === 0
+  const stopsLabel =
+    maxStops === 0
+      ? "Non-stop"
+      : `${maxStops} ${maxStops === 1 ? "stop" : "stops"}`
 
   // Flat responses without itineraries still get a real, expandable timeline.
   if (
@@ -1680,7 +1745,7 @@ export function normalizeFlightOffer(
     journeys.push({
       index: 0,
       duration: duration ? formatDuration(duration) : "—",
-      stops: stops ?? 0,
+      stops: maxStops,
       stopsLabel,
       origin: origin || "—",
       destination: destination || "—",
@@ -1752,6 +1817,38 @@ export function normalizeFlightOffer(
       record.lastTicketingDate,
       record.last_ticketing_date
     ) || null
+  const airlineLogo =
+    pickString(
+      record.airline_logo,
+      record.airlineLogo,
+      record.logo,
+      opaque.airline_logo,
+      opaque.airlineLogo,
+      inner.airline_logo
+    ) || null
+  // Guide fare_code/fare_name ride top-level (domestic fare classes); fall
+  // back to the Amadeus fare-details class/brand so cards have one lookup.
+  const fareCode =
+    pickString(
+      record.fare_code,
+      record.fareCode,
+      opaque.fare_code,
+      opaque.fareCode,
+      inner.fare_code,
+      inner.fareCode
+    ) ||
+    bookingClass
+  const fareName =
+    pickString(
+      record.fare_name,
+      record.fareName,
+      record.fare_class_name,
+      opaque.fare_name,
+      opaque.fareName,
+      inner.fare_name,
+      inner.fareName
+    ) ||
+    fareBrand
 
   return {
     id,
@@ -1764,14 +1861,20 @@ export function normalizeFlightOffer(
     arrivalDate: arrivalAt ? datePart(arrivalAt) : null,
     arrivalDayOffset: arrivalDayOffset(departureAt, arrivalAt),
     duration: duration ? formatDuration(duration) : "—",
-    stops: stops ?? 0,
+    stops: maxStops,
     stopsLabel,
+    maxStopsInTrip: maxStops,
+    stopsPerItinerary,
+    isDirect,
     origin: origin || "—",
     destination: destination || "—",
     airportsLabel,
     cabin,
     bookingClass,
     fareBrand,
+    fareCode,
+    fareName,
+    airlineLogo,
     baggage,
     checkedBags,
     cabinBags,
@@ -1910,17 +2013,24 @@ export function resolvePriceConfirmation(
 }
 
 const EXPIRED_OFFER_PATTERN =
-  /expir|no longer (available|valid)|unavailable|not found|invalid offer|stale|offer .*gone/i
+  /expir|no longer (available|valid)|unavailable|not found|invalid offer|stale|offer .*gone|reserv|could not (hold|book|confirm)|search (again|expired)|seat .*gone|fare .*gone/i
 
 /**
  * Map a price-confirmation failure to the expired branch. A 404/410 means the
  * offer is gone; a 400/422 carrying expired copy means the airline withdrew
- * the fare. Everything else is a retryable error, never an expiry.
+ * the fare; a 502 carrying reserve/stale copy means the QuickAir `search_id`
+ * window lapsed — the fix is a fresh search, never a retry of the same card.
+ * Everything else is a retryable error, never an expiry.
  */
 export function isOfferExpiredError(error: unknown): boolean {
   if (!(error instanceof ApiError)) return false
   if (error.status === 404 || error.status === 410) return true
-  if (error.status === 400 || error.status === 422) {
+  if (
+    error.status === 400 ||
+    error.status === 422 ||
+    error.status === 502 ||
+    error.status === 504
+  ) {
     return EXPIRED_OFFER_PATTERN.test(error.message)
   }
   return false
@@ -2064,6 +2174,7 @@ export function clearSelectedOffer(): void {
 export function saveConfirmedOffer(offer: FlightOffer): void {
   memoryConfirmedOffer = offer
   writeOfferToSession(CONFIRMED_OFFER_SESSION_KEY, offer)
+  writeOfferSavedAt(CONFIRMED_OFFER_SAVED_AT_KEY, Date.now())
 }
 
 /** Read back the Confirmed Offer, or null when absent/corrupt. */
@@ -2079,9 +2190,53 @@ export function clearConfirmedOffer(): void {
   if (typeof window === "undefined") return
   try {
     window.sessionStorage.removeItem(CONFIRMED_OFFER_SESSION_KEY)
+    window.sessionStorage.removeItem(CONFIRMED_OFFER_SAVED_AT_KEY)
   } catch {
     // ignore — memory copy already cleared
   }
+}
+
+/**
+ * QuickAir `search_id` freshness (guide §9: a domestic offer is only
+ * bookable for a short window after the search — re-search on expiry).
+ * The saved-at sidecar travels with the Confirmed Offer; offers saved
+ * before sidecars existed (or with corrupt clocks) are treated as fresh
+ * so old sessions never hard-block — the backend 502 path still catches
+ * genuinely dead offers.
+ */
+export const CONFIRMED_OFFER_SAVED_AT_KEY =
+  "alphaa:confirmed-flight-offer-saved-at:v1"
+/** Domestic offers older than this must re-search instead of booking. */
+export const DOMESTIC_OFFER_TTL_MS = 10 * 60 * 1000
+
+function writeOfferSavedAt(key: string, now: number): void {
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.setItem(key, String(now))
+  } catch {
+    // sessionStorage may throw in private mode — freshness unknown, treat as fresh
+  }
+}
+
+export function readConfirmedOfferSavedAt(): number | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.sessionStorage.getItem(CONFIRMED_OFFER_SAVED_AT_KEY)
+    if (!raw) return null
+    const parsed = Number(raw)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+/** True when a domestic Confirmed Offer outlived its bookable window. */
+export function isConfirmedOfferStale(
+  savedAt: number | null,
+  now: number = Date.now()
+): boolean {
+  if (savedAt === null) return false
+  return now - savedAt > DOMESTIC_OFFER_TTL_MS
 }
 
 export const SELECTED_PARTY_SESSION_KEY = "alphaa:selected-flight-party:v1"

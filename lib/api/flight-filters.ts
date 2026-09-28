@@ -343,7 +343,9 @@ export function filterOffers(
       if (minutes !== null && minutes > filters.maxDurationMin) continue
     }
     if (allowedStops) {
-      const stops = display.stops
+      // Trip-wide stop count (guide `max_stops_in_trip`): a mixed 0-stop +
+      // 1-stop round trip filters as 1 stop, never Direct.
+      const stops = display.maxStopsInTrip ?? display.stops
       const exact = allowedStops.has(stops)
       const twoPlus = allowedStops.has(2) && stops > 2
       if (!exact && !twoPlus) continue

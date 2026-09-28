@@ -31,6 +31,7 @@ import { AirportAutocomplete } from "@/components/flights/airport-autocomplete"
 import { LegFields, type LegSelection } from "@/components/flights/leg-fields"
 import { isDomesticSearch } from "@/lib/api/domestic"
 import {
+  CABIN_OPTIONS,
   type Airport,
   type Cabin,
   type FlightSearchPayload,
@@ -62,13 +63,6 @@ const TRIP_TYPE_OPTIONS = [
 
 type TripType = (typeof TRIP_TYPE_OPTIONS)[number]["value"]
 
-const CABIN_OPTIONS = [
-  { value: "ECONOMY", label: "Economy" },
-  { value: "PREMIUM_ECONOMY", label: "Premium Economy" },
-  { value: "BUSINESS", label: "Business" },
-  { value: "FIRST", label: "First" },
-] as const
-
 const MAX_STOPS_OPTIONS = [
   { value: "", label: "Any stops" },
   { value: "0", label: "0 — non-stop" },
@@ -86,8 +80,8 @@ const MAX_STOPS_OPTIONS = [
  *   parses with the tripTypeSchema discriminated union — the domain source
  *   of truth — so backend mapping stays strictly typed.
  * - Airports required via autocomplete selection (free-text IATA bypass
- *   rejected); global cabin applies to every leg while legs stay per-leg
- *   capable in the contract.
+ *   rejected); one-way/round-trip share one global cabin while each
+ *   multi-city leg carries its own cabin class.
  */
 export function FlightSearchForm({
   defaultValues,
@@ -355,7 +349,10 @@ export function FlightSearchForm({
         if (
           seg0 === "legs" &&
           typeof seg1 === "number" &&
-          (seg2 === "origin" || seg2 === "destination" || seg2 === "date")
+          (seg2 === "origin" ||
+            seg2 === "destination" ||
+            seg2 === "date" ||
+            seg2 === "cabin")
         ) {
           form.setError(`legs.${seg1}.${seg2}`, {
             type: "zod",
@@ -750,24 +747,31 @@ export function FlightSearchForm({
               </div>
             </div>
             <div className="w-full sm:w-48">
-              <Controller
-                name="cabin"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Select
-                    label="Cabin"
-                    options={[...CABIN_OPTIONS]}
-                    value={field.value}
-                    onValueChange={(val) => {
-                      field.onChange(val)
-                      form.clearErrors("cabin")
-                    }}
-                    error={fieldState.error?.message}
-                    disabled={isDomesticRoute}
-                    helperText={isDomesticRoute ? "Economy only." : undefined}
-                  />
-                )}
-              />
+              {tripType === "multi_city" ? (
+                <p className="rounded-xl border border-border/60 bg-muted/30 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground">
+                  Cabin is set per leg above — mix Economy, Business, and
+                  First across your trip.
+                </p>
+              ) : (
+                <Controller
+                  name="cabin"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Select
+                      label="Cabin"
+                      options={[...CABIN_OPTIONS]}
+                      value={field.value}
+                      onValueChange={(val) => {
+                        field.onChange(val)
+                        form.clearErrors("cabin")
+                      }}
+                      error={fieldState.error?.message}
+                      disabled={isDomesticRoute}
+                      helperText={isDomesticRoute ? "Economy only." : undefined}
+                    />
+                  )}
+                />
+              )}
             </div>
           </div>
         </details>

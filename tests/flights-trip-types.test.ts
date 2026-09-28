@@ -181,12 +181,12 @@ test("Multi-city validation: chronological chain enforced, 2-6 legs", () => {
   })
   assert.equal(pastLeg.success, false, "Past leg date must fail")
 
-  // Valid 2-leg chain passes and maps each leg with the global cabin
+  // Valid 2-leg chain passes and keeps each leg's own cabin
   const valid = tripTypeSchema.safeParse({
     ...party,
     legs: [
-      { origin: "LOS", destination: "LHR", date: d1 },
-      { origin: "LHR", destination: "DXB", date: d2 },
+      { origin: "LOS", destination: "LHR", date: d1, cabin: "ECONOMY" },
+      { origin: "LHR", destination: "DXB", date: d2, cabin: "BUSINESS" },
     ],
   })
   assert.equal(valid.success, true, "Valid 2-leg chain must pass")
@@ -197,9 +197,10 @@ test("Multi-city validation: chronological chain enforced, 2-6 legs", () => {
     assert.equal(req.legs.length, 2)
     assert.equal(req.legs[0].origin, "LOS")
     assert.equal(req.legs[1].destination, "DXB")
-    assert.ok(
-      req.legs.every((leg) => leg.cabin === "BUSINESS"),
-      "Global cabin must apply to every leg"
+    assert.deepEqual(
+      req.legs.map((leg) => leg.cabin),
+      ["ECONOMY", "BUSINESS"],
+      "Each multi-city leg must carry its own cabin"
     )
   }
 
@@ -222,8 +223,8 @@ test("LegFields add/remove: starts at 2 legs, adds up to 6, removes down to 2", 
   const empty = createEmptyLeg()
   assert.deepEqual(
     empty,
-    { origin: "", destination: "", date: "" },
-    "New leg must start blank"
+    { origin: "", destination: "", date: "", cabin: "ECONOMY" },
+    "New leg must start blank in Economy"
   )
 
   // Add guard: allowed below max, refused at max

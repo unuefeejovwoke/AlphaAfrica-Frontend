@@ -39,11 +39,19 @@ export interface ParsedFlightLeg {
   origin: string
   destination: string
   date: string
+  cabin: Cabin
+}
+
+function parseLegCabin(value: unknown, fallback: Cabin): Cabin {
+  return (VALID_CABINS as readonly string[]).includes(value as string)
+    ? (value as Cabin)
+    : fallback
 }
 
 /** Multi-city legs ride in one `legs` query param as JSON (opaque fare blobs never in URL). */
 export function parseFlightLegsParam(
-  raw: string | null
+  raw: string | null,
+  fallbackCabin: Cabin = "ECONOMY"
 ): ParsedFlightLeg[] | undefined {
   if (!raw) return undefined
   try {
@@ -64,6 +72,8 @@ export function parseFlightLegsParam(
         origin: l.origin.toUpperCase(),
         destination: l.destination.toUpperCase(),
         date: l.date,
+        // Old shared links carry no per-leg cabin — inherit the global one.
+        cabin: parseLegCabin(l.cabin, fallbackCabin),
       })
     }
     return legs.length >= 2 ? legs : undefined
@@ -136,6 +146,8 @@ export function parseFlightSearchPayload(
               typeof l.destination === "string"
                 ? l.destination.toUpperCase()
                 : l.destination,
+            cabin:
+              typeof l.cabin === "string" ? l.cabin.toUpperCase() : l.cabin,
           }
         })
       : candidate.legs,
@@ -177,7 +189,6 @@ export function parseFlightSearchUrl(
   const destination = searchParams.get("destination")?.toUpperCase() ?? ""
   const departureDate = searchParams.get("departureDate") ?? ""
   const returnDate = searchParams.get("returnDate") ?? ""
-  const legs = parseFlightLegsParam(searchParams.get("legs"))
   const adultsRaw = Number(searchParams.get("adults") ?? "1")
   const childrenRaw = Number(searchParams.get("children") ?? "0")
   const infantsRaw = Number(searchParams.get("infants") ?? "0")
@@ -193,6 +204,7 @@ export function parseFlightSearchUrl(
   const cabin: Cabin = (VALID_CABINS as readonly string[]).includes(cabinRaw)
     ? (cabinRaw as Cabin)
     : "ECONOMY"
+  const legs = parseFlightLegsParam(searchParams.get("legs"), cabin)
   const max_stops =
     maxStopsRaw === null || maxStopsRaw === "" ? null : Number(maxStopsRaw)
 
@@ -275,6 +287,7 @@ export function buildFlightSearchParams(
           origin: leg.origin,
           destination: leg.destination,
           date: leg.date,
+          cabin: leg.cabin,
         }))
       )
     )
