@@ -79,3 +79,23 @@ _Avoid_: Occupant, passenger, traveller (for hotels)
 **Hotel Booking**:
 A Hotel plus one Room Type plus dates, room/guest counts, and its Hotel Guest, paid via Paystack reference and verified to pending/confirmed/cancelled/failed.
 _Avoid_: Hotel order, reservation attempt, room ticket
+
+**Post**:
+A published editorial article with title, slug, excerpt, HTML body, category, tags, author, reading time, and view count.
+_Avoid_: Blog, article page, news item
+
+**Category**:
+A named grouping for Posts (e.g. Visa & Documents) with slug, description, and post count.
+_Avoid_: Section, topic page
+
+**Tag**:
+A lightweight label attached to Posts for cross-category discovery, with slug.
+_Avoid_: Keyword, hashtag
+
+**Table of Contents**:
+The API-built anchor list for a Post (id, text, level) used for in-article navigation.
+_Avoid_: Index, outline
+
+**Related Posts**:
+Up to 3 other live Posts in the same Category as the current Post, falling back to recent Posts.
+_Avoid_: Similar articles, recommended reads

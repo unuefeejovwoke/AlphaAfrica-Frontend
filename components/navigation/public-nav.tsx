@@ -13,6 +13,7 @@ import {
   HelpCircleIcon,
   PhoneIcon,
   CustomerService01Icon,
+  Book02Icon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { UnderConstructionBadge } from "@/components/shared/under-construction-badge"
@@ -188,6 +189,13 @@ export function PublicNav() {
             className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             <span>FAQ</span>
+          </Link>
+
+          <Link
+            href="/blog"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <span>Blog</span>
           </Link>
 
           <Link
@@ -460,6 +468,20 @@ export function PublicNav() {
                     aria-hidden="true"
                   />
                   <span>FAQ</span>
+                </Link>
+
+                <Link
+                  href="/blog"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex touch-manipulation items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <HugeiconsIcon
+                    icon={Book02Icon}
+                    size={15}
+                    className="text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <span>Blog</span>
                 </Link>
 
                 <Link

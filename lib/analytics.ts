@@ -22,6 +22,10 @@
  * - hotel_confirmation_viewed { type, outcome }
  * - support_click { context, channel }
  *
+ * Blog funnel (ADR-0006 — all props coarse, never PII):
+ * - blog_viewed { slug, category }
+ * - blog_search { has_search, has_category, has_tag }
+ *
  * - Events are an allowlist: `track()` throws on unknown names so a typo
  *   fails loudly in development instead of silently dropping data.
  * - Props are sanitized: any key resembling passport, payment, card, token,
@@ -61,6 +65,8 @@ export const ANALYTICS_EVENTS = [
   "hotel_payment_initiated",
   "hotel_payment_completed",
   "hotel_confirmation_viewed",
+  "blog_viewed",
+  "blog_search",
 ] as const
 
 export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[number]
