@@ -408,7 +408,7 @@ export function HomeFlightSearch() {
       <div
         role="radiogroup"
         aria-label="Trip type"
-        className="inline-flex items-center gap-1 self-start rounded-2xl border border-border/50 bg-muted/70 p-1 dark:bg-muted/40"
+        className="inline-flex items-center gap-1 self-start rounded-2xl border border-border/50 bg-muted/70 p-1"
       >
         {TRIP_OPTIONS.map((option) => {
           const checked = tripType === option.value
@@ -447,7 +447,7 @@ export function HomeFlightSearch() {
       </div>
 
       {isMultiCity ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-muted/30 p-5 dark:bg-muted/15">
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-muted/30 p-5">
           <p className="text-sm font-bold tracking-tight text-foreground">
             Visiting more than one city?
           </p>

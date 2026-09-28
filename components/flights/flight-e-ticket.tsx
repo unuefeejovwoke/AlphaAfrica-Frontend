@@ -299,7 +299,7 @@ export function FlightETicket({
   return (
     <div
       className={cn(
-        "relative mx-auto w-full max-w-2xl rounded-2xl border border-border/80 bg-card p-4 text-card-foreground shadow-[0_20px_60px_-15px_rgba(0,0,0,0.07)] sm:rounded-[2rem] sm:p-6 md:p-8 dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)]",
+        "relative mx-auto w-full max-w-2xl rounded-2xl border border-border/80 bg-card p-4 text-card-foreground shadow-[0_20px_60px_-15px_rgba(0,0,0,0.07)] sm:rounded-[2rem] sm:p-6 md:p-8",
         "print:max-w-2xl print:shadow-none",
         className
       )}
@@ -344,7 +344,7 @@ export function FlightETicket({
         {/* Left Cutout Notch (bites into the card from the page background) */}
         <div
           aria-hidden="true"
-          className="-ml-3 size-6 rounded-full border-y border-r border-border/80 bg-[#FAF9F7] shadow-[inset_-2px_0_3px_rgba(0,0,0,0.04)] sm:-ml-3.5 sm:size-7 md:-ml-4 md:size-8 dark:bg-background"
+          className="-ml-3 size-6 rounded-full border-y border-r border-border/80 bg-[#FAF9F7] shadow-[inset_-2px_0_3px_rgba(0,0,0,0.04)] sm:-ml-3.5 sm:size-7 md:-ml-4 md:size-8"
         />
 
         {/* Dashed Line */}
@@ -353,7 +353,7 @@ export function FlightETicket({
         {/* Right Cutout Notch */}
         <div
           aria-hidden="true"
-          className="-mr-3 size-6 rounded-full border-y border-l border-border/80 bg-[#FAF9F7] shadow-[inset_2px_0_3px_rgba(0,0,0,0.04)] sm:-mr-3.5 sm:size-7 md:-mr-4 md:size-8 dark:bg-background"
+          className="-mr-3 size-6 rounded-full border-y border-l border-border/80 bg-[#FAF9F7] shadow-[inset_2px_0_3px_rgba(0,0,0,0.04)] sm:-mr-3.5 sm:size-7 md:-mr-4 md:size-8"
         />
       </div>
 
@@ -389,7 +389,7 @@ export function FlightETicket({
       <div className="my-3.5 h-[2px] w-full bg-gradient-to-r from-secondary/40 via-primary/30 to-transparent sm:my-4" />
 
       {/* Flight Route Visual Section */}
-      <div className="my-4 rounded-xl border border-border/70 bg-muted/30 p-3.5 sm:my-5 sm:rounded-2xl sm:p-5 md:p-6 dark:bg-muted/15">
+      <div className="my-4 rounded-xl border border-border/70 bg-muted/30 p-3.5 sm:my-5 sm:rounded-2xl sm:p-5 md:p-6">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4 md:gap-6">
           {/* Origin */}
           <div className="flex min-w-0 flex-col items-start">
@@ -422,7 +422,7 @@ export function FlightETicket({
 
           {/* Center Flight Path */}
           <div className="flex flex-col items-center justify-center px-1">
-            <span className="mb-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-extrabold tracking-wider whitespace-nowrap text-amber-700 uppercase sm:mb-2 sm:px-2.5 sm:py-1 sm:text-[10px] md:text-[11px] dark:text-amber-400">
+            <span className="mb-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-extrabold tracking-wider whitespace-nowrap text-amber-700 uppercase sm:mb-2 sm:px-2.5 sm:py-1 sm:text-[10px] md:text-[11px]">
               {data.duration} · {data.stopsLabel}
             </span>
             <div className="relative flex w-12 items-center justify-center sm:w-20 md:w-32">
@@ -501,7 +501,7 @@ export function FlightETicket({
           <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase sm:text-[10px]">
             SECURITY REFERENCE
           </span>
-          <span className="truncate font-mono text-xs font-bold text-secondary sm:text-sm dark:text-primary">
+          <span className="truncate font-mono text-xs font-bold text-secondary sm:text-sm">
             #{data.securityReference}
           </span>
         </div>
@@ -531,8 +531,8 @@ export function FlightETicket({
       ) : null}
 
       {/* Itinerary Assignment Details Callout Box */}
-      <div className="my-4 rounded-xl border border-secondary/20 bg-secondary/5 p-3.5 text-left sm:my-5 sm:rounded-2xl sm:p-5 dark:border-secondary/30 dark:bg-secondary/15">
-        <span className="mb-1 block text-[9px] font-black tracking-[0.18em] text-secondary uppercase sm:text-[10px] dark:text-primary">
+      <div className="my-4 rounded-xl border border-secondary/20 bg-secondary/5 p-3.5 text-left sm:my-5 sm:rounded-2xl sm:p-5">
+        <span className="mb-1 block text-[9px] font-black tracking-[0.18em] text-secondary uppercase sm:text-[10px]">
           ITINERARY ASSIGNMENT DETAILS
         </span>
         <p className="mb-1 text-xs font-black text-foreground sm:text-sm">
@@ -551,12 +551,12 @@ export function FlightETicket({
       <div className="mt-4 flex flex-col items-start justify-between gap-2.5 border-t border-border/80 pt-4 text-xs font-bold sm:mt-5 sm:flex-row sm:items-center sm:pt-5">
         <div className="flex items-center gap-1.5 text-[10px] tracking-wide sm:gap-2 sm:text-[11px]">
           <span className="text-muted-foreground uppercase">STATUS:</span>
-          <span className="font-black text-emerald-600 uppercase dark:text-emerald-400">
+          <span className="font-black text-emerald-600 uppercase">
             CONFIRMED &amp; ISSUED
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase sm:text-[11px] dark:text-emerald-400">
+        <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase sm:text-[11px]">
           <HugeiconsIcon icon={Tick01Icon} size={15} />
           <span>VERIFIED TICKET &amp; PNR ISSUED</span>
         </div>

@@ -69,7 +69,7 @@ export function AssistedSupportWidget() {
           type="button"
           onClick={() => setIsOpen(true)}
           className={cn(
-            "group flex touch-manipulation items-center rounded-full border border-foreground/20 bg-background/90 text-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/35 hover:bg-background hover:shadow-[0_12px_36px_rgba(0,0,0,0.18)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97] dark:border-border/80 dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] dark:hover:border-foreground/20",
+            "group flex touch-manipulation items-center rounded-full border border-foreground/20 bg-background/90 text-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/35 hover:bg-background hover:shadow-[0_12px_36px_rgba(0,0,0,0.18)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]",
             showLabel ? "py-1.5 pr-1.5 pl-4" : "p-1.5"
           )}
           aria-expanded={isOpen}
@@ -108,7 +108,7 @@ export function AssistedSupportWidget() {
           <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-end p-4 sm:p-6">
             <Drawer.Popup
               id="travel-concierge"
-              className="w-[340px] max-w-[calc(100vw-2rem)] rounded-3xl border border-foreground/20 bg-background/95 p-2 text-foreground shadow-[0_24px_60px_-15px_rgba(0,0,0,0.25)] backdrop-blur-2xl transition-all sm:w-[380px] dark:border-border/70 dark:shadow-[0_24px_60px_-15px_rgba(0,0,0,0.7)]"
+              className="w-[340px] max-w-[calc(100vw-2rem)] rounded-3xl border border-foreground/20 bg-background/95 p-2 text-foreground shadow-[0_24px_60px_-15px_rgba(0,0,0,0.25)] backdrop-blur-2xl transition-all sm:w-[380px]"
             >
               <Drawer.Content className="flex flex-col gap-4 rounded-2xl border border-border/40 bg-card/60 p-5">
                 <div className="flex items-start justify-between">
@@ -163,10 +163,10 @@ export function AssistedSupportWidget() {
                       </div>
                       <div className="flex min-w-0 flex-col text-left">
                         <div className="flex items-center gap-2">
-                          <span className="truncate text-sm font-semibold tracking-tight text-foreground transition-colors group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                          <span className="truncate text-sm font-semibold tracking-tight text-foreground transition-colors group-hover:text-emerald-600">
                             Chat on WhatsApp
                           </span>
-                          <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9.5px] font-semibold text-emerald-700 dark:text-emerald-300">
+                          <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9.5px] font-semibold text-emerald-700">
                             Fastest
                           </span>
                         </div>
@@ -175,7 +175,7 @@ export function AssistedSupportWidget() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 dark:text-emerald-400">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
                       <HugeiconsIcon
                         icon={ArrowUpRight01Icon}
                         size={15}

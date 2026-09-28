@@ -126,7 +126,7 @@ export const LegFields = React.memo(function LegFields({
     <div
       role="group"
       aria-labelledby={groupLabelId}
-      className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-muted/30 p-4 shadow-xs sm:p-5 dark:bg-muted/15"
+      className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-muted/30 p-4 shadow-xs sm:p-5"
     >
       <div className="flex items-center justify-between gap-3">
         <span

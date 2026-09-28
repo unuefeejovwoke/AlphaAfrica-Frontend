@@ -548,8 +548,8 @@ function ChangedFarePanel({
           <dd
             className={
               review.increased
-                ? "font-variant-numeric mt-1 text-base font-extrabold text-amber-700 tabular-nums dark:text-amber-400"
-                : "font-variant-numeric mt-1 text-base font-extrabold text-emerald-700 tabular-nums dark:text-emerald-400"
+                ? "font-variant-numeric mt-1 text-base font-extrabold text-amber-700 tabular-nums"
+                : "font-variant-numeric mt-1 text-base font-extrabold text-emerald-700 tabular-nums"
             }
           >
             {differenceLabel}

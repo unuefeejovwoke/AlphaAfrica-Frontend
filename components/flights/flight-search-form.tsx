@@ -485,7 +485,7 @@ export function FlightSearchForm({
         <div
           role="radiogroup"
           aria-label="Trip type"
-          className="inline-flex items-center gap-1 self-start rounded-2xl border border-border/50 bg-muted/70 p-1 dark:bg-muted/40"
+          className="inline-flex items-center gap-1 self-start rounded-2xl border border-border/50 bg-muted/70 p-1"
         >
           {TRIP_TYPE_OPTIONS.map((option) => {
             const checked = tripType === option.value

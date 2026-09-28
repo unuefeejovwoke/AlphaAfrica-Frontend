@@ -307,12 +307,12 @@ export function FlightVerifyClient() {
 
         {/* Verification Status Header (matches official e-ticket layout) */}
         <div className="flex flex-col items-center gap-1.5 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-0.5 text-[10px] font-black tracking-wider text-emerald-600 uppercase sm:text-[11px] dark:text-emerald-400">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-0.5 text-[10px] font-black tracking-wider text-emerald-600 uppercase sm:text-[11px]">
             <span className="size-1.5 animate-pulse rounded-full bg-emerald-500 motion-reduce:animate-none" />
             PAYMENT VERIFIED
           </span>
 
-          <h1 className="text-lg font-black tracking-tight text-secondary uppercase sm:text-2xl dark:text-foreground">
+          <h1 className="text-lg font-black tracking-tight text-secondary uppercase sm:text-2xl">
             BOOKING CONFIRMED!
           </h1>
 
@@ -333,7 +333,7 @@ export function FlightVerifyClient() {
               {formatNaira(String(booking.total_amount))}{" "}
               {booking.currency || "NGN"}
             </span>
-            <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
               Verified
             </span>
           </div>

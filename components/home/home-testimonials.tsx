@@ -220,8 +220,8 @@ export function HomeTestimonials() {
             aria-label={`Testimonial ${index + 1} of ${testimonials.length}`}
             className="w-[85vw] shrink-0 snap-start sm:w-[380px] md:w-[410px]"
           >
-            <div className="group relative flex h-full flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 dark:border-white/10 dark:bg-zinc-900/40">
-              <div className="flex h-full flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-7 dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+            <div className="group relative flex h-full flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2">
+              <div className="flex h-full flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-7">
                 {/* Rating + Trip pill */}
                 <div className="flex items-center justify-between gap-2">
                   <div
@@ -257,7 +257,7 @@ export function HomeTestimonials() {
                 <div className="flex items-center gap-3 border-t border-border/60 pt-4">
                   <div
                     aria-hidden="true"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-xs font-bold text-secondary select-none dark:bg-secondary/25 dark:text-white"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-xs font-bold text-secondary select-none"
                   >
                     {getInitials(item.name)}
                   </div>

@@ -35,7 +35,7 @@ export function CardCta({ label }: { label: string }) {
 }
 
 const cardLinkClassName =
-  "group relative flex flex-col rounded-3xl p-1.5 sm:p-2 bg-muted/40 border border-border/80 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md dark:bg-zinc-900/40 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+  "group relative flex flex-col rounded-3xl p-1.5 sm:p-2 bg-muted/40 border border-border/80 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 
 /**
  * Shared crawlable card shell: image with alt + body. Keeps destination
@@ -56,7 +56,7 @@ export function ListingCardShell({
 }) {
   return (
     <Link href={href} className={cn(cardLinkClassName)}>
-      <div className="flex flex-1 flex-col overflow-hidden rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]">
         <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">
           {/* Plain img: backend media host varies by env, so next/image remotePatterns cannot cover it. */}
           <img

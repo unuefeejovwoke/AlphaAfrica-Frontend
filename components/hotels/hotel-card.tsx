@@ -77,7 +77,7 @@ export function HotelCard({ hotel }: { hotel: HotelList }) {
                 <HugeiconsIcon
                   icon={Tick01Icon}
                   size={14}
-                  className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-500"
+                  className="mt-0.5 shrink-0 text-emerald-600"
                   aria-hidden="true"
                 />
                 <span className="line-clamp-1">{amenity}</span>

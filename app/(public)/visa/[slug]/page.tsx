@@ -386,7 +386,7 @@ export default async function VisaCountryDetailPage({
           className="flex flex-col gap-5"
         >
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-400">
+            <span className="text-xs font-bold tracking-wider text-emerald-600 uppercase">
               Transparent Support
             </span>
             <h2

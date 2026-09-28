@@ -117,8 +117,8 @@ export default async function VisaPage() {
         </div>
 
         {countries.length === 0 ? (
-          <div className="relative rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 dark:border-white/10 dark:bg-zinc-900/40">
-            <div className="flex flex-col items-center gap-4 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-10 text-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-14 dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+          <div className="relative rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2">
+            <div className="flex flex-col items-center gap-4 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-10 text-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-14">
               <h2 className="text-xl font-semibold text-foreground">
                 No visa countries published yet
               </h2>

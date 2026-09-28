@@ -77,7 +77,7 @@ export function PackageFilters({
   const hasActiveFilters = destination !== "" || maxPrice !== "" || featured
 
   return (
-    <div className="relative rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 dark:border-white/10 dark:bg-zinc-900/40">
+    <div className="relative rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2">
       <form
         method="get"
         action="/packages"
@@ -89,7 +89,7 @@ export function PackageFilters({
           event.preventDefault()
           apply({ destination, maxPrice, featured })
         }}
-        className="flex flex-col gap-5 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6 dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+        className="flex flex-col gap-5 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6"
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col gap-1.5">

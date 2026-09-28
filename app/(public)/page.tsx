@@ -242,8 +242,8 @@ export default function HomePage() {
         {/* Asymmetrical Bento Grid */}
         <div className="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-12">
           {/* 1. Everything in one place */}
-          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4 dark:border-white/10 dark:bg-zinc-900/40">
-            <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6 dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
+            <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -267,8 +267,8 @@ export default function HomePage() {
           </div>
 
           {/* 2. Book in minutes */}
-          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4 dark:border-white/10 dark:bg-zinc-900/40">
-            <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6 dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
+            <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -292,14 +292,14 @@ export default function HomePage() {
           </div>
 
           {/* 3. Clear prices */}
-          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4 dark:border-white/10 dark:bg-zinc-900/40">
-            <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6 dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
+            <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
                     <HugeiconsIcon icon={SecurityCheckIcon} size={22} />
                   </div>
-                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
                     No hidden fees
                   </span>
                 </div>
@@ -318,7 +318,7 @@ export default function HomePage() {
           </div>
 
           {/* 4. Editorial: custom planning */}
-          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-7 lg:col-span-8 dark:border-white/10 dark:bg-zinc-900/40">
+          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-7 lg:col-span-8">
             <div className="relative flex min-h-[360px] flex-1 flex-col justify-between overflow-hidden rounded-[calc(1.5rem-2px)] border border-white/20 p-6 text-white shadow-xl sm:min-h-[400px] sm:p-8">
               <Image
                 src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1600&q=85"
@@ -369,14 +369,14 @@ export default function HomePage() {
           </div>
 
           {/* 5. Human support — fills the column beside the editorial card */}
-          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-5 lg:col-span-4 dark:border-white/10 dark:bg-zinc-900/40">
-            <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6 dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-5 lg:col-span-4">
+            <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <div className="flex size-11 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
                     <HugeiconsIcon icon={HeadphonesIcon} size={22} />
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
                     <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
                     <span>Real specialists</span>
                   </span>

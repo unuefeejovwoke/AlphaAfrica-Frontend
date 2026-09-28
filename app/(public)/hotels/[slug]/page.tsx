@@ -370,7 +370,7 @@ export default async function HotelDetailPage({
                     <HugeiconsIcon
                       icon={Tick01Icon}
                       size={16}
-                      className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-500"
+                      className="mt-0.5 shrink-0 text-emerald-600"
                       aria-hidden="true"
                     />
                     <span>{amenity}</span>

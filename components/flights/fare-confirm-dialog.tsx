@@ -231,8 +231,8 @@ export function FareConfirmDialog({
             <dd
               className={
                 changedOutcome.increased
-                  ? "font-variant-numeric mt-1 text-base font-extrabold text-amber-700 tabular-nums dark:text-amber-400"
-                  : "font-variant-numeric mt-1 text-base font-extrabold text-emerald-700 tabular-nums dark:text-emerald-400"
+                  ? "font-variant-numeric mt-1 text-base font-extrabold text-amber-700 tabular-nums"
+                  : "font-variant-numeric mt-1 text-base font-extrabold text-emerald-700 tabular-nums"
               }
             >
               {differenceLabel}
@@ -323,7 +323,7 @@ export function FareConfirmDialog({
             }
             variant="outline"
             size="lg"
-            className="justify-center border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400"
+            className="justify-center border-emerald-600/30 text-emerald-700 hover:bg-emerald-50"
           >
             <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
             <span>Talk to Alphaa</span>

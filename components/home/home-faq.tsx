@@ -17,13 +17,13 @@ import { TrackLink } from "@/components/analytics/track-link"
 
 function ConciergeCard() {
   return (
-    <div className="rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 dark:border-white/10 dark:bg-zinc-900/40">
-      <div className="flex flex-col gap-4 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6 dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+    <div className="rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2">
+      <div className="flex flex-col gap-4 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
         <div className="flex items-center justify-between">
           <div className="flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <HugeiconsIcon icon={HelpCircleIcon} size={20} />
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
             <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
             <span>Support Desk Live</span>
           </span>
@@ -114,9 +114,9 @@ export function HomeFaq() {
               <Accordion.Item
                 key={item.id}
                 value={item.id}
-                className="group relative flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md data-[panel-open]:border-primary/40 data-[panel-open]:bg-primary/[0.03] data-[panel-open]:shadow-md sm:p-1.5 dark:border-white/10 dark:bg-zinc-900/40"
+                className="group relative flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md data-[panel-open]:border-primary/40 data-[panel-open]:bg-primary/[0.03] data-[panel-open]:shadow-md sm:p-1.5"
               >
-                <div className="flex flex-1 flex-col overflow-hidden rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+                <div className="flex flex-1 flex-col overflow-hidden rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]">
                   <Accordion.Header className="m-0 p-0">
                     <Accordion.Trigger className="flex w-full touch-manipulation items-center justify-between p-5 text-left transition-colors duration-150 hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:p-6">
                       <div className="flex flex-col gap-2 pr-3 text-left sm:flex-row sm:items-center sm:gap-3">

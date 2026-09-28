@@ -215,7 +215,7 @@ export default async function PackageDetailPage({
             </Link>
 
             {pkg.is_featured === true && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700">
                 <HugeiconsIcon
                   icon={StarIcon}
                   size={12}
@@ -305,7 +305,7 @@ export default async function PackageDetailPage({
               </h2>
             </div>
 
-            <div className="prose prose-zinc dark:prose-invert max-w-none space-y-4 text-sm leading-relaxed text-muted-foreground md:text-base">
+            <div className="prose prose-zinc max-w-none space-y-4 text-sm leading-relaxed text-muted-foreground md:text-base">
               {pkg.description.split(/\n{2,}/).map((paragraph, index) => (
                 <p key={index} className="leading-relaxed">
                   {paragraph}
@@ -358,7 +358,7 @@ export default async function PackageDetailPage({
             className="flex flex-col gap-5"
           >
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-400">
+              <span className="text-xs font-bold tracking-wider text-emerald-600 uppercase">
                 Transparent Inclusions
               </span>
               <h2

@@ -90,9 +90,9 @@ export default function ContactPage() {
                   href={channel.href}
                   target={isWhatsApp ? "_blank" : undefined}
                   rel={isWhatsApp ? "noopener noreferrer" : undefined}
-                  className="group relative rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 dark:border-white/10 dark:bg-zinc-900/40"
+                  className="group relative rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2"
                 >
-                  <div className="flex h-full flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-7 dark:border-white/[0.06] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+                  <div className="flex h-full flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-7">
                     <div className="flex flex-col gap-5">
                       <div className="flex size-11 items-center justify-center rounded-2xl bg-muted/60 text-foreground transition-all duration-300 group-hover:scale-105 group-hover:bg-primary/10 group-hover:text-primary">
                         <HugeiconsIcon
@@ -160,8 +160,8 @@ export default function ContactPage() {
 
           <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-12 lg:gap-8">
             {/* Office Details Card */}
-            <div className="rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 lg:col-span-5 dark:border-white/10 dark:bg-zinc-900/40">
-              <div className="flex h-full flex-col justify-between gap-6 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-6 sm:p-8 dark:border-white/[0.06]">
+            <div className="rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 lg:col-span-5">
+              <div className="flex h-full flex-col justify-between gap-6 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-6 sm:p-8">
                 <div className="flex flex-col gap-5">
                   <div className="flex flex-col gap-1.5">
                     <span className="text-xs font-semibold text-muted-foreground">
@@ -233,8 +233,8 @@ export default function ContactPage() {
             </div>
 
             {/* Framed Map Card */}
-            <div className="min-h-[340px] rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:min-h-[400px] sm:p-2 lg:col-span-7 dark:border-white/10 dark:bg-zinc-900/40">
-              <div className="relative h-full min-h-[340px] w-full overflow-hidden rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card sm:min-h-[400px] dark:border-white/[0.06]">
+            <div className="min-h-[340px] rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:min-h-[400px] sm:p-2 lg:col-span-7">
+              <div className="relative h-full min-h-[340px] w-full overflow-hidden rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card sm:min-h-[400px]">
                 <iframe
                   title="Map showing the Alphaa Africa Abuja office location"
                   src={getOfficeMapEmbedUrl()}
@@ -244,7 +244,7 @@ export default function ContactPage() {
                   allowFullScreen
                 />
                 <div className="pointer-events-none absolute right-4 bottom-4 left-4 sm:right-auto">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.08] bg-card/95 px-4 py-2 text-xs font-medium text-foreground shadow-sm backdrop-blur-md dark:border-white/[0.1]">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.08] bg-card/95 px-4 py-2 text-xs font-medium text-foreground shadow-sm backdrop-blur-md">
                     <HugeiconsIcon
                       icon={Location01Icon}
                       size={15}
@@ -265,8 +265,8 @@ export default function ContactPage() {
         aria-labelledby="faq-teaser-heading"
         className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
       >
-        <div className="rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2 dark:border-white/10 dark:bg-zinc-900/40">
-          <div className="flex flex-col gap-8 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-6 sm:p-12 dark:border-white/[0.06]">
+        <div className="rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2">
+          <div className="flex flex-col gap-8 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-6 sm:p-12">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-semibold text-primary">

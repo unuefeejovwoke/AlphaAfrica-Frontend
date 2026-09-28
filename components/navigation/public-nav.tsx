@@ -255,7 +255,7 @@ export function PublicNav() {
             onMouseLeave={handleMegaMenuLeave}
             className="absolute top-full right-4 left-4 hidden pt-2 sm:right-6 sm:left-6 lg:right-8 lg:left-8 lg:block"
           >
-            <div className="w-full rounded-2xl border border-border/80 bg-card p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)]">
+            <div className="w-full rounded-2xl border border-border/80 bg-card p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)]">
               <div className="grid grid-cols-4 gap-3.5">
                 {SERVICES.map((service) => {
                   const isDisabled = Boolean(service.comingSoon)

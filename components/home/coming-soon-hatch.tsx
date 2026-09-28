@@ -19,7 +19,7 @@ export function ComingSoonHatch({
   blurb: string
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-muted/30 p-5 sm:gap-5 sm:p-6 dark:bg-muted/15">
+    <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-muted/30 p-5 sm:gap-5 sm:p-6">
       <div className="flex flex-col gap-2">
         <div className="inline-flex items-center">
           <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold tracking-wider text-primary uppercase">

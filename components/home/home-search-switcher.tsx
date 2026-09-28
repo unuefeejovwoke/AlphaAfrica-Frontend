@@ -80,7 +80,7 @@ export function HomeSearchSwitcher() {
 
   return (
     <div className="w-full rounded-3xl border border-border/80 bg-card/95 p-4 shadow-xl shadow-black/[0.04] backdrop-blur-xl sm:p-6 md:p-7">
-      <div className="inline-flex max-w-full scrollbar-none items-center gap-1 overflow-x-auto rounded-2xl border border-border/50 bg-muted/70 p-1 sm:gap-1.5 sm:p-1.5 dark:bg-muted/40">
+      <div className="inline-flex max-w-full scrollbar-none items-center gap-1 overflow-x-auto rounded-2xl border border-border/50 bg-muted/70 p-1 sm:gap-1.5 sm:p-1.5">
         {/* Tablist owns only the interactive tabs; links are siblings. */}
         <div
           role="tablist"

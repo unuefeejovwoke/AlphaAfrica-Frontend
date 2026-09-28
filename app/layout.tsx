@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { AnalyticsLoader } from "@/components/analytics/analytics-loader"
 import { cn } from "@/lib/utils"
@@ -39,7 +38,6 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      suppressHydrationWarning
       className={cn(
         "antialiased",
         fontMono.variable,
@@ -49,10 +47,8 @@ export default function RootLayout({
     >
       <body>
         <link rel="preconnect" href="https://wa.me" />
-        <ThemeProvider>
-          {children}
-          <Toaster position="top-right" />
-        </ThemeProvider>
+        {children}
+        <Toaster position="top-right" />
         <AnalyticsLoader />
       </body>
     </html>
