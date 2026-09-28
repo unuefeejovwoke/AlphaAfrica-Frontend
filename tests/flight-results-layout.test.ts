@@ -69,10 +69,61 @@ test("Flight results page has 2-column layout and factual cards structure", () =
     /Aircraft/,
     "Must render aircraft detail when the airline provides it"
   )
+  // Results show totals only — no fare split is ever rendered on this
+  // page, so the card must not contain a price-breakdown section.
+  assert.doesNotMatch(
+    cardContent,
+    /Price breakdown/,
+    "Must show only the total fare, never a base/markup breakdown"
+  )
+  // No hardcoded flight facts: every rendered time, airport, airline, flight
+  // number, baggage figure, and fare figure must come from the offer prop.
+  // Sample API values must never appear as literals in the component.
+  // (The "AT554" dedup example lives in a code comment explaining prefix
+  // handling, so it is excluded from this guard.)
+  assert.doesNotMatch(
+    cardContent,
+    /RwandAir|Turkish Airlines|ROYAL AIR MAROC|WB203|AT800|196723|517656|543538|586879/,
+    "Must not hardcode sample airline, flight, or fare values"
+  )
+  // Tabbed details (reference layout): Base UI tabs with Flight Details /
+  // Fare Rules panels inside the expander; per-direction route headers with
+  // Outbound/Inbound badges; connecting-flight dividers between segments.
   assert.match(
     cardContent,
-    /Price breakdown/i,
-    "Must render base fare + markup breakdown when provided"
+    /@base-ui\/react\/tabs/,
+    "Must use Base UI tabs, not a custom tab implementation"
+  )
+  assert.match(cardContent, /Flight Details/, "Must have a Flight Details tab")
+  assert.match(cardContent, /Fare Rules/, "Must have a Fare Rules tab")
+  assert.match(
+    cardContent,
+    /directionBadge/,
+    "Must badge each direction Outbound/Inbound per the reference"
+  )
+  assert.match(
+    cardContent,
+    /Connecting [Ff]light/,
+    "Must divide connecting segments with a connecting-flight marker"
+  )
+  assert.match(
+    cardContent,
+    /lg:grid-cols-2/,
+    "Must lay Outbound/Inbound directions side by side on desktop"
+  )
+  // Per-segment rails use the leg's own stop count (segmentStops), never the
+  // journey count — a 1-stop journey's first segment card must read Non-stop.
+  assert.match(
+    cardContent,
+    /segmentStops/,
+    "Must render each segment's own stop count on its rail"
+  )
+  // The collapsed summary shows the total fare only — the markup disclosure
+  // line was removed as redundant.
+  assert.doesNotMatch(
+    cardContent,
+    /Final price with Alphaa markup/,
+    "Must not render the redundant markup disclosure line"
   )
   // Review regressions: fare section renders only on airline-provided facts,
   // bags iterate every journey (not just the first), amenities never truncate.

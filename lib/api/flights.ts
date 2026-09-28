@@ -700,6 +700,8 @@ export interface FlightJourneySegment {
   brandedFare?: string | null
   checkedBags?: number | null
   cabinBags?: number | null
+  /** Same-plane intermediate stops on THIS leg only — never the journey count. */
+  segmentStops?: number | null
 }
 
 export interface FlightLayover {
@@ -1047,6 +1049,7 @@ function getSegmentEndpoints(segment: unknown): {
   duration: string
   aircraft: string
   segmentId: string
+  segmentStops: number | null
 } {
   const seg = asRecord(segment)
   const dep = seg.departure
@@ -1054,6 +1057,14 @@ function getSegmentEndpoints(segment: unknown): {
   const depNode = asRecord(dep)
   const arrNode = asRecord(arr)
   const aircraftNode = seg.aircraft
+  // Same-plane intermediate stops on this leg (Amadeus numberOfStops).
+  // Bare `stops` is deliberately ignored here — on some shapes it carries
+  // the journey-level count and must never leak into a segment.
+  const segmentStopsRaw = readNumberLike(
+    seg.numberOfStops ?? seg.number_of_stops
+  )
+  const segmentStops =
+    segmentStopsRaw === null ? null : Math.max(0, Math.floor(segmentStopsRaw))
   return {
     departureAt: pickString(
       seg.departureAt,
@@ -1149,6 +1160,7 @@ function getSegmentEndpoints(segment: unknown): {
       pickNodeValue(aircraftNode, ["code", "aircraftCode", "aircraft_code"])
     ),
     segmentId: pickString(seg.id, seg.segmentId, seg.segment_id),
+    segmentStops,
   }
 }
 
@@ -1285,6 +1297,7 @@ function buildJourneys(
       const carrierCode = e.carrierCode || rawEndpoints?.carrierCode || ""
       const flightNumber = e.flightNumber || rawEndpoints?.flightNumber || ""
       const duration = e.duration || rawEndpoints?.duration || ""
+      const segmentStops = e.segmentStops ?? rawEndpoints?.segmentStops ?? null
       return {
         departureAirport:
           e.departureAirport || rawEndpoints?.departureAirport || "—",
@@ -1313,6 +1326,7 @@ function buildJourneys(
         ...(brandedFare ? { brandedFare } : {}),
         ...(checkedBags !== null ? { checkedBags } : {}),
         ...(cabinBags !== null ? { cabinBags } : {}),
+        ...(segmentStops !== null ? { segmentStops } : {}),
       }
     })
     const first = segs.length > 0 ? getSegmentEndpoints(segs[0]) : null

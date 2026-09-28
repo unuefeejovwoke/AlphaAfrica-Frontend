@@ -326,3 +326,89 @@ test("Round-trip: return-leg segments take return-leg fares, never the outbound 
   assert.equal(display.journeys[1].segments[0].checkedBags, 2)
   assert.equal(display.journeys[1].segments[0].cabin, "BUSINESS")
 })
+
+test("Per-segment stops: a connecting leg's own stop count never leaks into its segments", () => {
+  const offer = {
+    offer_id: "seg-stops-1",
+    price: "500000.00",
+    itineraries: [
+      {
+        duration: "11h",
+        segments: [
+          {
+            departure_airport: "LOS",
+            departure_time: "2026-11-20T07:00:00",
+            arrival_airport: "NBO",
+            arrival_time: "2026-11-20T11:30:00",
+            carrier_code: "KQ",
+            flight_number: "KQ533",
+          },
+          {
+            departure_airport: "NBO",
+            departure_time: "2026-11-20T15:50:00",
+            arrival_airport: "KGL",
+            arrival_time: "2026-11-20T17:20:00",
+            carrier_code: "KQ",
+            flight_number: "KQ448",
+          },
+        ],
+      },
+    ],
+    raw_offer: {
+      itineraries: [
+        {
+          segments: [
+            {
+              departure: { iataCode: "LOS", at: "2026-11-20T07:00:00" },
+              arrival: { iataCode: "NBO", at: "2026-11-20T11:30:00" },
+              carrierCode: "KQ",
+              number: "533",
+              id: "s1",
+              numberOfStops: 0,
+            },
+            {
+              departure: { iataCode: "NBO", at: "2026-11-20T15:50:00" },
+              arrival: { iataCode: "KGL", at: "2026-11-20T17:20:00" },
+              carrierCode: "KQ",
+              number: "448",
+              id: "s2",
+              numberOfStops: 0,
+            },
+          ],
+        },
+      ],
+    },
+  } as never
+  const display = normalizeFlightOffer(offer, 0)
+  // Journey level still reports the connection…
+  assert.equal(display.stops, 1)
+  assert.equal(display.journeys[0].stops, 1)
+  // …but each segment is its own non-stop flight.
+  assert.equal(display.journeys[0].segments[0].segmentStops, 0)
+  assert.equal(display.journeys[0].segments[1].segmentStops, 0)
+  // A same-plane direct with an en-route stop keeps its own count.
+  const direct = normalizeFlightOffer(
+    {
+      offer_id: "seg-stops-2",
+      price: "100000",
+      itineraries: [
+        {
+          segments: [
+            {
+              departure_airport: "LOS",
+              departure_time: "2026-11-20T07:00:00",
+              arrival_airport: "KGL",
+              arrival_time: "2026-11-20T12:00:00",
+              carrier_code: "KQ",
+              flight_number: "KQ100",
+              numberOfStops: 1,
+            },
+          ],
+        },
+      ],
+    } as never,
+    1
+  )
+  assert.equal(direct.journeys[0].stops, 0)
+  assert.equal(direct.journeys[0].segments[0].segmentStops, 1)
+})
