@@ -29,9 +29,9 @@ import {
 } from "@/lib/api/flight-filters"
 import { useComparisonBadges } from "@/components/flights/use-comparison-badges"
 import {
-  FlightOfferCard,
   FlightOfferSkeleton,
 } from "@/components/flights/flight-offer-card"
+import { GroupedFlightOffers } from "@/components/flights/grouped-flight-offers"
 import { TrackLink } from "@/components/analytics/track-link"
 import { useFilteredOffers } from "@/components/flights/use-filtered-offers"
 import { FlightSidebarFilters } from "@/components/flights/flight-sidebar-filters"
@@ -146,15 +146,6 @@ export function DomesticStreamResults({
       earliest: earliestLabel,
     }
   }, [displays])
-
-  // Count flights per airline for grouping
-  const airlineCounts = React.useMemo(() => {
-    const map = new Map<string, number>()
-    for (const d of filtered.visible) {
-      map.set(d.airline, (map.get(d.airline) ?? 0) + 1)
-    }
-    return map
-  }, [filtered.visible])
 
   // Initial streaming with no cards yet, or the brief pre-start moment while
   // the auto-search effect kicks the stream off on a shared URL.
@@ -462,19 +453,11 @@ export function DomesticStreamResults({
               className="flex flex-col gap-4"
               style={{ opacity: filtered.isStale ? 0.85 : 1 }}
             >
-              {filtered.visible.map((display) => (
-                <FlightOfferCard
-                  key={display.id}
-                  offer={display}
-                  onSelect={onSelect}
-                  isCheapest={badgeIds.cheapest.has(display.id)}
-                  isFastest={badgeIds.fastest.has(display.id)}
-                  relatedFlightCount={airlineCounts.get(display.airline) ?? 0}
-                  onViewRelated={(airline) => {
-                    filtered.updateFilters({ airlines: [airline] })
-                  }}
-                />
-              ))}
+              <GroupedFlightOffers
+                visible={filtered.visible}
+                badgeIds={badgeIds}
+                onSelect={onSelect}
+              />
             </div>
           )}
 

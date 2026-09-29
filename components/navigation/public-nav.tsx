@@ -366,6 +366,7 @@ export function PublicNav() {
 
       <Drawer.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <Drawer.Portal>
+          <Drawer.Backdrop className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 sm:bg-black/10" />
           <Drawer.Viewport className="fixed inset-0 z-50 flex items-start justify-center p-4">
             <Drawer.Popup className="max-h-[88vh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl border border-border/60 bg-background px-4 py-5 shadow-2xl lg:hidden">
               <Drawer.Content className="flex min-w-0 flex-col gap-1">

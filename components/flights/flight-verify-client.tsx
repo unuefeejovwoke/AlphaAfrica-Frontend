@@ -196,7 +196,7 @@ export function FlightVerifyClient() {
     return () => {
       cancelled = true
     }
-  }, [reference, attempt])
+  }, [reference, guestToken, attempt])
 
   if (!reference) {
     return (

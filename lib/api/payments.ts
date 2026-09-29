@@ -84,10 +84,13 @@ export function isOrderPaid(status: string | undefined | null): boolean {
   )
 }
 
-/** Still settling (webhook may not have run) — retry once after ~2s, never poll. */
+/** Still settling (webhook may not have run) — retry once after ~2s, never poll.
+ * Terminal states (`abandoned`, `failed`, `cancelled`, `expired`) are NOT
+ * pending: the payment will never settle, so callers must render the
+ * not-completed branch immediately instead of waiting + retrying. */
 export function isOrderPending(status: string | undefined | null): boolean {
   if (!status) return true
-  return ["pending", "processing", "initialized", "abandoned"].includes(
+  return ["pending", "processing", "initialized"].includes(
     status.trim().toLowerCase()
   )
 }

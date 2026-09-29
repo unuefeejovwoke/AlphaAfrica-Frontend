@@ -9,7 +9,6 @@ import {
   Airplane01Icon,
   SecurityCheckIcon,
   Tick01Icon,
-  InformationCircleIcon,
   Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import { FlightSearchForm } from "@/components/flights/flight-search-form"
@@ -753,32 +752,20 @@ export function FlightSearchPageClient() {
       >
         {hasSearched ? (
           <>
-            {/* Sleek Route Summary Bar using website brand color (Brand Plum #571563, NO gradients) */}
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-secondary bg-secondary p-4 text-secondary-foreground shadow-xs">
+            {/* Sleek Route Summary Bar — matches NearbyDatesBar surface (bg-card, border-border/80, shadow-2xs) */}
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card p-3 shadow-2xs sm:p-4">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="text-base font-black tracking-tight text-white sm:text-lg">
+                <span className="text-base font-black tracking-tight text-foreground sm:text-lg">
                   {summary.route || "Flight Search"}
                 </span>
-                <span className="text-xs font-medium text-purple-100 sm:text-sm">
+                <span className="text-xs font-medium text-muted-foreground sm:text-sm">
                   {[summary.dates, summary.party, summary.cabin]
                     .filter(Boolean)
                     .join(" · ")}
                 </span>
                 {searchMode ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-[11px] font-bold text-white uppercase">
-                    <span
-                      aria-hidden="true"
-                      className={
-                        searchMode === "domestic"
-                          ? "size-1.5 animate-pulse rounded-full bg-emerald-400"
-                          : "size-1.5 rounded-full bg-sky-300"
-                      }
-                    />
-                    <span>
-                      {searchMode === "domestic"
-                        ? "Domestic · Live"
-                        : "International · Instant"}
-                    </span>
+                  <span className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+                    {searchMode === "domestic" ? "Domestic" : "International"}
                   </span>
                 ) : null}
               </div>
@@ -985,31 +972,6 @@ export function FlightSearchPageClient() {
             </Button>
           </div>
         )}
-      </section>
-
-      <section className="rounded-3xl border border-border/80 bg-card/95 p-6 shadow-xs backdrop-blur-xl sm:p-7">
-        <div className="flex items-start gap-3.5">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <HugeiconsIcon
-              icon={InformationCircleIcon}
-              size={18}
-              aria-hidden="true"
-            />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-foreground">
-              Why prices are live
-            </h3>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Fares are fetched live from the airline and already include
-              Alphaa&apos;s markup. The total you see on each offer is in Naira.
-              Domestic searches check airlines live and can take 30–60 seconds —
-              results appear as they arrive with a search ref for support. If
-              you select a flight, we re-check the live fare before traveller
-              details — so you consent to any change.
-            </p>
-          </div>
-        </div>
       </section>
 
       <FareConfirmDialog

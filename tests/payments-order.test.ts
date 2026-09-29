@@ -38,6 +38,13 @@ test("Order status: guide payment_status wins, legacy status falls back", () => 
   assert.equal(isOrderPending(null), true)
 })
 
+test("Order status: terminal states are never pending (no webhook wait)", () => {
+  for (const terminal of ["abandoned", "failed", "cancelled", "expired"]) {
+    assert.equal(isOrderPending(terminal), false)
+    assert.equal(isOrderPaid(terminal), false)
+  }
+})
+
 test("Order details: embedded module order is extractable, absence is null", () => {
   const withOrder = paymentOrderSchema.parse({
     reference: "ALPHAA-1",

@@ -30,6 +30,8 @@ export interface FlightOfferCardProps {
   isCheapest?: boolean
   isFastest?: boolean
   relatedFlightCount?: number
+  /** True when this airline group is expanded — the toggle collapses instead. */
+  relatedExpanded?: boolean
   onViewRelated?: (airline: string) => void
   className?: string
 }
@@ -169,6 +171,7 @@ export function FlightOfferCard({
   isCheapest,
   isFastest,
   relatedFlightCount,
+  relatedExpanded,
   onViewRelated,
   className,
 }: FlightOfferCardProps) {
@@ -889,17 +892,33 @@ export function FlightOfferCard({
         ) : null}
       </article>
 
-      {/* Accordion to view more flights from this airline */}
+      {/* Expand/collapse toggle for more flights from this airline */}
       {relatedFlightCount && relatedFlightCount > 1 ? (
         <button
           type="button"
           onClick={() => onViewRelated?.(offer.airline)}
+          aria-expanded={relatedExpanded ?? false}
+          aria-label={
+            relatedExpanded
+              ? `Show fewer ${offer.airline} flights`
+              : `Show ${relatedFlightCount - 1} more ${offer.airline} flights`
+          }
           className="flex items-center justify-center gap-1.5 py-1 text-xs font-bold tracking-wide text-primary uppercase transition-colors hover:text-primary/80"
         >
           <span>
-            +{relatedFlightCount - 1} {offer.airline} Flights
+            {relatedExpanded ? (
+              <>Show less {offer.airline} flights</>
+            ) : (
+              <>
+                +{relatedFlightCount - 1} {offer.airline} Flights
+              </>
+            )}
           </span>
-          <HugeiconsIcon icon={ChevronDownIcon} size={14} aria-hidden="true" />
+          <HugeiconsIcon
+            icon={relatedExpanded ? ChevronUpIcon : ChevronDownIcon}
+            size={14}
+            aria-hidden="true"
+          />
         </button>
       ) : null}
     </div>
