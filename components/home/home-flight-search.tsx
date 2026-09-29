@@ -16,7 +16,6 @@ import {
   ArrowDown01Icon,
   UserIcon,
   Airplane01Icon,
-  Calendar01Icon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -408,7 +407,7 @@ export function HomeFlightSearch() {
       <div
         role="radiogroup"
         aria-label="Trip type"
-        className="inline-flex items-center gap-1 self-start rounded-2xl border border-border/50 bg-muted/70 p-1"
+        className="flex w-full items-center gap-1 rounded-2xl border border-border/50 bg-muted/70 p-1 sm:inline-flex sm:w-auto sm:self-start"
       >
         {TRIP_OPTIONS.map((option) => {
           const checked = tripType === option.value
@@ -416,7 +415,7 @@ export function HomeFlightSearch() {
             <label
               key={option.value}
               className={cn(
-                "inline-flex touch-manipulation items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:text-sm",
+                "inline-flex flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                 checked
                   ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
                   : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
@@ -539,13 +538,6 @@ export function HomeFlightSearch() {
                   type="date"
                   min={today}
                   error={departureError}
-                  startIcon={
-                    <HugeiconsIcon
-                      icon={Calendar01Icon}
-                      size={16}
-                      aria-hidden="true"
-                    />
-                  }
                   {...departureRegistration}
                   onChange={(e) => {
                     departureRegistration.onChange(e)
@@ -561,13 +553,6 @@ export function HomeFlightSearch() {
                     type="date"
                     min={departureDateValue || today}
                     error={returnError}
-                    startIcon={
-                      <HugeiconsIcon
-                        icon={Calendar01Icon}
-                        size={16}
-                        aria-hidden="true"
-                      />
-                    }
                     {...returnRegistration}
                     onChange={(e) => {
                       returnRegistration.onChange(e)
@@ -592,7 +577,7 @@ export function HomeFlightSearch() {
                     Travellers
                   </span>
                   <PopoverPrimitive.Root>
-                    <PopoverPrimitive.Trigger className="flex h-10 w-full touch-manipulation items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-sm text-foreground shadow-xs transition-colors hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none">
+                    <PopoverPrimitive.Trigger className="flex h-12 w-full touch-manipulation items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-base text-foreground shadow-xs transition-colors hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none sm:h-10 sm:text-sm">
                       <span className="flex min-w-0 items-center gap-2">
                         <HugeiconsIcon
                           icon={UserIcon}
@@ -674,7 +659,7 @@ export function HomeFlightSearch() {
               <Button
                 type="submit"
                 size="lg"
-                className="w-full justify-center px-6 font-semibold sm:w-auto"
+                className="h-12 w-full justify-center px-6 text-base font-semibold sm:h-10 sm:w-auto sm:text-sm"
               >
                 <HugeiconsIcon
                   icon={Search01Icon}

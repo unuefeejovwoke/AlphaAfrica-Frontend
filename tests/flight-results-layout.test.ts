@@ -13,7 +13,7 @@ test("Flight results page has 2-column layout and factual cards structure", () =
 
   // Factual card structure — real times, dates, fare, journey details
   assert.match(cardContent, /Total fare/i, "Must show the total fare")
-  assert.match(cardContent, /Select flight/i, "Must have a select action")
+  assert.match(cardContent, />Book</, "Must have a book action")
   assert.match(
     cardContent,
     /View Flight Details/i,

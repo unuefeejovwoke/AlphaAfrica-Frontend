@@ -286,7 +286,7 @@ export function AirportAutocomplete({
           }}
           onKeyDown={onKeyDown}
           className={cn(
-            "flex h-10 w-full rounded-xl border border-input bg-card py-2 pr-9 pl-9 text-sm text-foreground shadow-xs transition-colors",
+            "flex h-12 w-full rounded-xl border border-input bg-card py-2 pr-9 pl-9 text-base text-foreground shadow-xs transition-colors sm:h-10 sm:text-sm",
             "placeholder:text-muted-foreground",
             "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none",
             "disabled:cursor-not-allowed disabled:opacity-50",

@@ -229,13 +229,13 @@ export function FlightSearchResults({
             </div>
 
             {/* Quick Sorter Pills (Wakanow style: Cheapest / Fastest / Earliest) */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="no-scrollbar -mx-1 flex w-full items-center gap-2 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
               {/* Cheapest */}
               <button
                 type="button"
                 onClick={() => filtered.changeSort("cheapest")}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.98]",
+                  "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all active:scale-[0.98]",
                   filtered.sort === "cheapest"
                     ? "bg-secondary text-secondary-foreground shadow-xs"
                     : "border border-border bg-card text-foreground hover:bg-muted/60"
@@ -254,7 +254,7 @@ export function FlightSearchResults({
                 type="button"
                 onClick={() => filtered.changeSort("fastest")}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.98]",
+                  "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all active:scale-[0.98]",
                   filtered.sort === "fastest"
                     ? "bg-secondary text-secondary-foreground shadow-xs"
                     : "border border-border bg-card text-foreground hover:bg-muted/60"
@@ -273,7 +273,7 @@ export function FlightSearchResults({
                 type="button"
                 onClick={() => filtered.changeSort("earliest")}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.98]",
+                  "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all active:scale-[0.98]",
                   filtered.sort === "earliest"
                     ? "bg-secondary text-secondary-foreground shadow-xs"
                     : "border border-border bg-card text-foreground hover:bg-muted/60"
@@ -291,7 +291,7 @@ export function FlightSearchResults({
               <button
                 type="button"
                 onClick={() => setMobileDrawerOpen(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-muted lg:hidden"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-bold whitespace-nowrap text-foreground transition-colors hover:bg-muted lg:hidden"
               >
                 <HugeiconsIcon icon={FilterIcon} size={14} aria-hidden="true" />
                 <span>Filters</span>
@@ -397,11 +397,11 @@ export function FlightSearchResults({
           )}
 
           {/* Need Help footer bar */}
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
+          <div className="mt-2 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground sm:text-sm">
               Need assistance booking or comparing flight options?
             </p>
-            <div className="flex gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <Button
                 render={
                   <TrackLink
@@ -446,6 +446,7 @@ export function FlightSearchResults({
         onOpenChange={setMobileDrawerOpen}
       >
         <DrawerPrimitive.Portal>
+          <DrawerPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 sm:bg-black/10" />
           <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-4">
             <DrawerPrimitive.Popup className="max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-3xl border border-border bg-card p-5 text-foreground shadow-2xl">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">

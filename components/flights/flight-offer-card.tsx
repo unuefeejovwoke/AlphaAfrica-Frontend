@@ -239,32 +239,33 @@ export function FlightOfferCard({
         className="flex min-w-0 flex-col rounded-2xl border border-border/80 bg-card p-4 shadow-xs transition-shadow hover:shadow-md sm:p-5"
         style={{ contentVisibility: "auto" } as React.CSSProperties}
       >
-        {/* Card Header: Airline Info + Select CTA */}
-        <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
-          <div className="flex items-center gap-3">
+        {/* Card Header: Airline Info + Select CTA — stacks on mobile so
+            airline name, badges, and CTA never squeeze into one row */}
+        <div className="flex flex-col gap-3 border-b border-border/60 pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <AirlineLogo
               airline={offer.airline}
               carrierCode={offer.airlineCode ?? undefined}
               logoUrl={offer.airlineLogo}
               size="md"
             />
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-foreground sm:text-lg">
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <h3 className="min-w-0 max-w-full truncate text-sm font-bold text-foreground sm:text-lg">
                   {offer.airline}
                 </h3>
                 {isCheapest ? (
-                  <span className="inline-flex items-center rounded-full bg-emerald-600/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                  <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-600/10 px-2 py-0.5 text-[10px] font-bold whitespace-nowrap text-emerald-700">
                     Cheapest
                   </span>
                 ) : null}
                 {isFastest ? (
-                  <span className="inline-flex items-center rounded-full bg-sky-600/10 px-2 py-0.5 text-[10px] font-bold text-sky-700">
+                  <span className="inline-flex shrink-0 items-center rounded-full bg-sky-600/10 px-2 py-0.5 text-[10px] font-bold whitespace-nowrap text-sky-700">
                     Fastest
                   </span>
                 ) : null}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-xs">
                 {offer.cabin} · {offer.airportsLabel}
                 {offer.bookingClass ? ` · Class ${offer.bookingClass}` : null}
               </p>
@@ -277,9 +278,9 @@ export function FlightOfferCard({
             onClick={() => onSelect(offer)}
             disabled={!!isSelecting}
             isLoading={!!isSelecting}
-            className="rounded-xl bg-primary px-6 font-bold text-primary-foreground shadow-xs hover:bg-primary/90 active:scale-[0.98]"
+            className="w-full shrink-0 rounded-xl bg-primary px-4 py-2.5 font-bold text-primary-foreground shadow-xs hover:bg-primary/90 active:scale-[0.98] sm:w-auto sm:px-6"
           >
-            <span>Select flight</span>
+            <span>Book</span>
           </Button>
         </div>
 
@@ -303,10 +304,10 @@ export function FlightOfferCard({
               : offer.airline}
           </p>
 
-          <div className="flex items-center justify-between gap-3 sm:gap-6">
+          <div className="flex items-center justify-between gap-2 sm:gap-6">
             {/* Departure */}
-            <div className="min-w-0">
-              <p className="text-xl font-extrabold text-foreground tabular-nums sm:text-2xl">
+            <div className="min-w-0 shrink-0">
+              <p className="text-lg font-extrabold text-foreground tabular-nums sm:text-2xl">
                 {offer.departureAt}
               </p>
               <p className="text-xs font-bold text-muted-foreground sm:text-sm">
@@ -320,8 +321,8 @@ export function FlightOfferCard({
             </div>
 
             {/* Path Graphic & Duration */}
-            <div className="flex flex-1 flex-col items-center justify-center px-2">
-              <p className="text-xs font-bold text-foreground tabular-nums">
+            <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-1 sm:px-2">
+              <p className="max-w-full truncate text-[11px] font-bold text-foreground tabular-nums sm:text-xs">
                 {offer.duration}
               </p>
               <div className="relative my-1.5 flex w-full max-w-[200px] items-center">
@@ -343,14 +344,14 @@ export function FlightOfferCard({
                 <div className="h-0.5 flex-1 bg-border" />
                 <span className="size-2 rounded-full border-2 border-primary bg-background" />
               </div>
-              <p className="text-[11px] font-semibold text-muted-foreground">
+              <p className="max-w-full truncate text-center text-[10px] font-semibold text-muted-foreground sm:text-[11px]">
                 {layoverCode}
               </p>
             </div>
 
             {/* Arrival */}
-            <div className="min-w-0 text-right">
-              <p className="text-xl font-extrabold text-foreground tabular-nums sm:text-2xl">
+            <div className="min-w-0 shrink-0 text-right">
+              <p className="text-lg font-extrabold text-foreground tabular-nums sm:text-2xl">
                 {offer.arrivalAt}
                 {offer.arrivalDayOffset && offer.arrivalDayOffset > 0 ? (
                   <sup className="ml-1 text-xs font-black text-primary">

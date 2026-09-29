@@ -5,7 +5,6 @@ import { Controller, useFormContext } from "react-hook-form"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Delete02Icon,
-  Calendar01Icon,
   ArrowLeftRightIcon,
 } from "@hugeicons/core-free-icons"
 import { Input } from "@/components/ui/input"
@@ -231,9 +230,6 @@ export const LegFields = React.memo(function LegFields({
           label={`Leg ${index + 1} date`}
           type="date"
           min={dateMin}
-          startIcon={
-            <HugeiconsIcon icon={Calendar01Icon} size={16} aria-hidden="true" />
-          }
           error={dateError}
           {...register(`legs.${index}.date`)}
         />

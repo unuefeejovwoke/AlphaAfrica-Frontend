@@ -20,7 +20,6 @@ import {
   ArrowLeftRightIcon,
   ArrowDown01Icon,
   UserIcon,
-  Calendar01Icon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -430,7 +429,7 @@ export function FlightSearchForm({
         Travellers
       </span>
       <PopoverPrimitive.Root>
-        <PopoverPrimitive.Trigger className="flex h-10 w-full touch-manipulation items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-sm text-foreground shadow-xs transition-colors hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none">
+        <PopoverPrimitive.Trigger className="flex h-12 w-full touch-manipulation items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-base text-foreground shadow-xs transition-colors hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none sm:h-10 sm:text-sm">
           <span className="flex min-w-0 items-center gap-2">
             <HugeiconsIcon
               icon={UserIcon}
@@ -477,12 +476,12 @@ export function FlightSearchForm({
         noValidate
         onSubmit={handleFormSubmit}
         aria-label="Flight search"
-        className="flex flex-col gap-5 rounded-3xl border border-border/80 bg-card/95 p-4 shadow-xl shadow-black/[0.04] backdrop-blur-xl sm:p-6 md:p-7"
+        className="flex flex-col gap-5 rounded-2xl border border-border/80 bg-card/95 p-4 shadow-xl shadow-black/[0.04] backdrop-blur-xl sm:p-6 md:p-7"
       >
         <div
           role="radiogroup"
           aria-label="Trip type"
-          className="inline-flex items-center gap-1 self-start rounded-2xl border border-border/50 bg-muted/70 p-1"
+          className="flex w-full items-center gap-1 rounded-2xl border border-border/50 bg-muted/70 p-1 sm:inline-flex sm:w-auto sm:self-start"
         >
           {TRIP_TYPE_OPTIONS.map((option) => {
             const checked = tripType === option.value
@@ -490,7 +489,7 @@ export function FlightSearchForm({
               <label
                 key={option.value}
                 className={cn(
-                  "inline-flex touch-manipulation items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:text-sm",
+                  "inline-flex flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                   checked
                     ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
                     : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
@@ -628,13 +627,6 @@ export function FlightSearchForm({
                   type="date"
                   min={today}
                   error={form.formState.errors.departureDate?.message}
-                  startIcon={
-                    <HugeiconsIcon
-                      icon={Calendar01Icon}
-                      size={16}
-                      aria-hidden="true"
-                    />
-                  }
                   {...departureRegistration}
                   onChange={(e) => {
                     departureRegistration.onChange(e)
@@ -649,13 +641,6 @@ export function FlightSearchForm({
                     type="date"
                     min={departureDateValue || today}
                     error={form.formState.errors.returnDate?.message}
-                    startIcon={
-                      <HugeiconsIcon
-                        icon={Calendar01Icon}
-                        size={16}
-                        aria-hidden="true"
-                      />
-                    }
                     {...returnRegistration}
                     onChange={(e) => {
                       returnRegistration.onChange(e)
@@ -717,7 +702,7 @@ export function FlightSearchForm({
                   />
                 )}
               />
-              <div className="w-36">
+              <div className="w-full sm:w-36">
                 <Controller
                   name="max_stops"
                   control={form.control}
@@ -783,17 +768,22 @@ export function FlightSearchForm({
               variant="outline"
               size="lg"
               onClick={onCancel}
-              className="justify-center px-6 font-semibold"
+              className="h-12 w-full justify-center px-6 text-base font-semibold sm:h-10 sm:w-auto sm:text-sm"
             >
               <span>Cancel</span>
             </Button>
           ) : null}
+          {/*
+            Mobile stack is a column flex container: `flex-1` would set
+            flex-basis on the height axis and collapse h-12 to min-content.
+            Full-width comes from the container's stretch; flex-1 is sm+ only.
+          */}
           <Button
             type="submit"
             size="lg"
             isLoading={!!isSearching}
             disabled={!!isSearching}
-            className="flex-1 justify-center px-6 font-semibold"
+            className="h-12 w-full justify-center px-6 text-base font-semibold sm:h-10 sm:w-auto sm:flex-1 sm:text-sm"
           >
             <HugeiconsIcon icon={Search01Icon} size={18} aria-hidden="true" />
             <span>{isSearching ? "Searching flights…" : "Search flights"}</span>
