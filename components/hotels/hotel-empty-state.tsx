@@ -1,6 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AlertCircleIcon, Message01Icon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { TrackLink } from "@/components/analytics/track-link"
 import {
   getHotelSupportWhatsAppUrl,
@@ -91,29 +92,26 @@ export function HotelEmptyState({
         <Button type="button" variant="ghost" size="sm" onClick={onStartOver}>
           <span>Start over</span>
         </Button>
-        <Button
-          render={
-            <TrackLink
-              event="support_click"
-              eventProps={{
-                context: "finding a hotel for my stay",
-                channel: "whatsapp",
-              }}
-              href={getHotelSupportWhatsAppUrl(
-                "finding a hotel for my stay",
-                stayContext
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-            />
-          }
-          variant="secondary"
-          size="sm"
-          className="bg-emerald-600 text-white hover:bg-emerald-700"
+        <TrackLink
+          event="support_click"
+          eventProps={{
+            context: "finding a hotel for my stay",
+            channel: "whatsapp",
+          }}
+          href={getHotelSupportWhatsAppUrl(
+            "finding a hotel for my stay",
+            stayContext
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            buttonVariants({ variant: "secondary", size: "sm" }),
+            "bg-emerald-600 text-white hover:bg-emerald-700"
+          )}
         >
           <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
           <span>Talk to Alphaa</span>
-        </Button>
+        </TrackLink>
       </div>
     </div>
   )

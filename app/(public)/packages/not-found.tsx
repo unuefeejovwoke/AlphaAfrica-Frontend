@@ -1,5 +1,4 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 
 /** 404 for unknown package slugs: diagnosis + recovery, no dead end. */
 export default function PackageNotFound() {
@@ -16,12 +15,12 @@ export default function PackageNotFound() {
         specialist what you had in mind and they will rebuild it with you.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-        <Button render={<Link href="/packages" />}>
+        <ButtonLink href="/packages">
           <span>Browse packages</span>
-        </Button>
-        <Button render={<Link href="/destinations" />} variant="outline">
+        </ButtonLink>
+        <ButtonLink href="/destinations" variant="outline">
           <span>Browse destinations</span>
-        </Button>
+        </ButtonLink>
       </div>
     </div>
   )

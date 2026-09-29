@@ -1,5 +1,4 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 
 /** 404 for unknown destination slugs: diagnosis + recovery, no dead end. */
 export default function DestinationNotFound() {
@@ -16,12 +15,12 @@ export default function DestinationNotFound() {
         specialist where you want to go and they will plan it with you.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-        <Button render={<Link href="/destinations" />}>
+        <ButtonLink href="/destinations">
           <span>Browse destinations</span>
-        </Button>
-        <Button render={<Link href="/packages" />} variant="outline">
+        </ButtonLink>
+        <ButtonLink href="/packages" variant="outline">
           <span>Browse packages</span>
-        </Button>
+        </ButtonLink>
       </div>
     </div>
   )

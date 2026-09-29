@@ -3,7 +3,7 @@ import Link from "next/link"
 import type { Metadata } from "next"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Message01Icon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { HotelSearchPageClient } from "@/components/hotels/hotel-search-page-client"
 import { HotelResultsSkeleton } from "@/components/hotels/hotel-results-skeleton"
 import {
@@ -177,20 +177,16 @@ function HotelsPageFallback() {
     <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-foreground">Hotel results</h2>
-        <Button
-          render={
-            <a
-              href={getHotelSupportWhatsAppUrl("finding a Hotel for my stay")}
-              target="_blank"
-              rel="noopener noreferrer"
-            />
-          }
+        <ButtonLink
+          href={getHotelSupportWhatsAppUrl("finding a Hotel for my stay")}
+          target="_blank"
+          rel="noopener noreferrer"
           variant="ghost"
           size="sm"
         >
           <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
           <span>Talk to Alphaa</span>
-        </Button>
+        </ButtonLink>
       </div>
       <HotelResultsSkeleton />
     </div>

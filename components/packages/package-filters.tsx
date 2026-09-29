@@ -1,9 +1,8 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { buildPackageSearchParams } from "@/lib/listings"
 import type { PackageFilters } from "@/lib/api/packages"
@@ -189,13 +188,14 @@ export function PackageFilters({
               <span>{isPending ? "Updating…" : "Apply filters"}</span>
             </Button>
             {hasActiveFilters && (
-              <Button
-                render={<Link href="/packages" scroll={false} />}
+              <ButtonLink
+                href="/packages"
+                scroll={false}
                 variant="outline"
                 className="h-11 touch-manipulation font-medium"
               >
                 <span>Clear</span>
-              </Button>
+              </ButtonLink>
             )}
           </div>
         </div>

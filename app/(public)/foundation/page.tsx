@@ -1,10 +1,9 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -214,13 +213,9 @@ export default function FoundationShowcasePage() {
           <Button type="button" isLoading>
             Saving…
           </Button>
-          <Button
-            render={<Link href="/checkout" />}
-            variant="outline"
-            size="sm"
-          >
+          <ButtonLink href="/checkout" variant="outline" size="sm">
             Go to Secure Checkout
-          </Button>
+          </ButtonLink>
         </div>
       </section>
 
@@ -547,26 +542,22 @@ export default function FoundationShowcasePage() {
             call the Abuja desk, or request a callback for your Enquiry…
           </p>
           <div className="mt-4 flex min-w-0 flex-wrap gap-3">
-            <Button
-              render={
-                <a
-                  href={getSupportWhatsAppUrl("travel planning")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
+            <ButtonLink
+              href={getSupportWhatsAppUrl("travel planning")}
+              target="_blank"
+              rel="noopener noreferrer"
               variant="secondary"
               size="sm"
             >
               Chat on WhatsApp
-            </Button>
-            <Button
-              render={<a href={`tel:${company.phone.e164}`} />}
+            </ButtonLink>
+            <ButtonLink
+              href={`tel:${company.phone.e164}`}
               variant="outline"
               size="sm"
             >
               Call Abuja Desk
-            </Button>
+            </ButtonLink>
           </div>
         </div>
       </section>

@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { WhatsappIcon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
 import { BlogCard } from "@/components/blog/blog-card"
@@ -200,23 +199,19 @@ export default async function BlogPage({
                 right post.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <Button render={<Link href="/blog" scroll={false} />} variant="outline" size="sm">
+                <ButtonLink href="/blog" scroll={false} variant="outline" size="sm">
                   <span>Clear filters</span>
-                </Button>
-                <Button
-                  render={
-                    <a
-                      href={getSupportWhatsAppUrl("finding the right blog post")}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    />
-                  }
+                </ButtonLink>
+                <ButtonLink
+                  href={getSupportWhatsAppUrl("finding the right blog post")}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   size="sm"
                   className="bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
                 >
                   <HugeiconsIcon icon={WhatsappIcon} size={16} aria-hidden="true" />
                   <span>Ask Alphaa</span>
-                </Button>
+                </ButtonLink>
               </div>
             </div>
           </div>
@@ -234,13 +229,14 @@ export default async function BlogPage({
                 className="mt-10 flex items-center justify-center gap-3"
               >
                 {hasPrevious ? (
-                  <Button
-                    render={<Link href={prevQuery ? `/blog?${prevQuery}` : "/blog"} scroll={false} />}
+                  <ButtonLink
+                    href={prevQuery ? `/blog?${prevQuery}` : "/blog"}
+                    scroll={false}
                     variant="outline"
                     size="sm"
                   >
                     <span>Previous</span>
-                  </Button>
+                  </ButtonLink>
                 ) : null}
                 <span
                   className="text-xs font-medium text-muted-foreground"
@@ -250,13 +246,14 @@ export default async function BlogPage({
                   {total > 0 ? ` · ${total} ${total === 1 ? "post" : "posts"}` : ""}
                 </span>
                 {hasNext ? (
-                  <Button
-                    render={<Link href={`/blog?${nextQuery}`} scroll={false} />}
+                  <ButtonLink
+                    href={`/blog?${nextQuery}`}
+                    scroll={false}
                     variant="outline"
                     size="sm"
                   >
                     <span>Next</span>
-                  </Button>
+                  </ButtonLink>
                 ) : null}
               </nav>
             )}

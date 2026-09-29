@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -7,7 +6,7 @@ import {
   ArrowLeft01Icon,
   Message01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import {
   HotelGuestForm,
@@ -112,20 +111,20 @@ function InvalidStay({
         {message} No booking was made and no payment was taken.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Button render={<Link href={backHref(slug, stay)} />}>
+        <ButtonLink href={backHref(slug, stay)}>
           <HugeiconsIcon icon={ArrowLeft01Icon} size={14} aria-hidden="true" />
           <span>Back to Hotel</span>
-        </Button>
-        <Button
-          render={
-            <a href={supportHref} target="_blank" rel="noopener noreferrer" />
-          }
+        </ButtonLink>
+        <ButtonLink
+          href={supportHref}
+          target="_blank"
+          rel="noopener noreferrer"
           variant="outline"
           size="sm"
         >
           <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
           <span>Talk to Alphaa</span>
-        </Button>
+        </ButtonLink>
       </div>
     </div>
   )
@@ -154,9 +153,9 @@ export default async function HotelBookPage({
           title="We couldn't load this Hotel right now."
           supportContext={`the ${humanizeSlug(slug)} Hotel stay`}
         />
-        <Button render={<Link href="/hotels" />} variant="ghost" size="sm">
+        <ButtonLink href="/hotels" variant="ghost" size="sm">
           <span>Back to Hotel search</span>
-        </Button>
+        </ButtonLink>
       </div>
     )
   }

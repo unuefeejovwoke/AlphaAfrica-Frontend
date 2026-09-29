@@ -3,7 +3,7 @@
 import * as React from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 
 /**
  * Thumb-first booking bar for the Hotel detail (Phase 4, ticket 07).
@@ -49,19 +49,15 @@ export function HotelMobileBar({
           </span>
         </div>
 
-        <Button
-          render={
-            <a
-              href="#room-types"
-              aria-label={`See Room Types and prices at ${hotelName}`}
-            />
-          }
+        <ButtonLink
+          href="#room-types"
+          aria-label={`See Room Types and prices at ${hotelName}`}
           size="sm"
           className="shrink-0 gap-1.5 shadow-md"
         >
           <span>See Room Types</span>
           <HugeiconsIcon icon={ArrowRight01Icon} size={14} aria-hidden="true" />
-        </Button>
+        </ButtonLink>
       </div>
     </aside>
   )

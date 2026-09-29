@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Message01Icon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
 import { DestinationCard } from "@/components/destinations/destination-card"
@@ -103,20 +102,16 @@ export default async function DestinationsPage() {
             New destinations land regularly. Tell us where you want to go and a
             specialist will plan it with you.
           </p>
-          <Button
-            render={
-              <a
-                href={getSupportWhatsAppUrl("destination planning")}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
+          <ButtonLink
+            href={getSupportWhatsAppUrl("destination planning")}
+            target="_blank"
+            rel="noopener noreferrer"
             size="sm"
             className="bg-emerald-600 text-white hover:bg-emerald-700"
           >
             <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
             <span>Talk to Alphaa</span>
-          </Button>
+          </ButtonLink>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -136,9 +131,9 @@ export default async function DestinationsPage() {
             destination.
           </p>
         </div>
-        <Button render={<Link href="/packages" />} variant="outline">
+        <ButtonLink href="/packages" variant="outline">
           <span>Browse all packages</span>
-        </Button>
+        </ButtonLink>
       </div>
 
       <TerminalCta

@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { WhatsappIcon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { WhatsappIcon } from "@hugeicons/core-free-icons"
+import { buttonVariants } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
 import { VisaCountryCard } from "@/components/visa/visa-country-card"
@@ -12,6 +11,7 @@ import { getVisaCountries } from "@/lib/api/visa"
 import { canonicalUrl, getSiteUrl, organizationJsonLd } from "@/lib/seo"
 import { sortFeaturedFirst, visaCountryListJsonLd } from "@/lib/listings"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
+import { cn } from "@/lib/utils"
 
 export const revalidate = 3600
 
@@ -126,18 +126,16 @@ export default async function VisaPage() {
                 New countries land regularly. Tell us where you want to go and
                 our specialists will advise on the visa path.
               </p>
-              <Button
-                render={
-                  <TrackLink
-                    event="support_click"
-                    eventProps={{ context: "visa assistance" }}
-                    href={getSupportWhatsAppUrl("visa assistance")}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-                size="sm"
-                className="bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
+              <TrackLink
+                event="support_click"
+                eventProps={{ context: "visa assistance" }}
+                href={getSupportWhatsAppUrl("visa assistance")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  buttonVariants({ size: "sm" }),
+                  "bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
+                )}
               >
                 <HugeiconsIcon
                   icon={WhatsappIcon}
@@ -145,7 +143,7 @@ export default async function VisaPage() {
                   aria-hidden="true"
                 />
                 <span>Talk to Alphaa on WhatsApp</span>
-              </Button>
+              </TrackLink>
             </div>
           </div>
         ) : (

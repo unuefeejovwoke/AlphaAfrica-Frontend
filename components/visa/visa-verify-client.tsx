@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Message01Icon,
@@ -9,7 +8,8 @@ import {
   AlertCircleIcon,
   Clock01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { CardSkeleton } from "@/components/ui/skeleton"
 import { ViewTracker } from "@/components/analytics/view-tracker"
 import { verifyVisaPayment, type VisaApplication } from "@/lib/api/visa"
@@ -171,22 +171,21 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
             </div>
           </dl>
           <div className="flex flex-col gap-2">
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "verified visa consultation",
-                    channel: "whatsapp",
-                  }}
-                  href={getWhatsAppUrl(
-                    `Hello Alphaa Africa! My ${application.country_name} visa consultation ${application.reference} is verified. Please guide me on next steps.`
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "verified visa consultation",
+                channel: "whatsapp",
+              }}
+              href={getWhatsAppUrl(
+                `Hello Alphaa Africa! My ${application.country_name} visa consultation ${application.reference} is verified. Please guide me on next steps.`
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants(),
+                "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+              )}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -194,14 +193,14 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
                 aria-hidden="true"
               />
               <span>Continue on WhatsApp with this reference</span>
-            </Button>
-            <Button
-              render={<Link href="/visa" />}
+            </TrackLink>
+            <ButtonLink
+              href="/visa"
               variant="outline"
               className="w-full justify-center"
             >
               <span>Browse other visa countries</span>
-            </Button>
+            </ButtonLink>
           </div>
         </div>
       </div>
@@ -245,35 +244,34 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
           >
             <span>Check payment again</span>
           </Button>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "unresolved visa payment",
-                  channel: "whatsapp",
-                }}
-                href={getSupportWhatsAppUrl(
-                  application
-                    ? `visa consultation ${application.reference}`
-                    : `visa payment ${reference}`
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "unresolved visa payment",
+              channel: "whatsapp",
+            }}
+            href={getSupportWhatsAppUrl(
+              application
+                ? `visa consultation ${application.reference}`
+                : `visa payment ${reference}`
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants(),
+              "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            )}
           >
             <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
             <span>Contact support on WhatsApp</span>
-          </Button>
-          <Button
-            render={<Link href="/visa" />}
+          </TrackLink>
+          <ButtonLink
+            href="/visa"
             variant="ghost"
             className="w-full justify-center"
           >
             <span>Back to visa countries</span>
-          </Button>
+          </ButtonLink>
         </div>
       </div>
     </div>

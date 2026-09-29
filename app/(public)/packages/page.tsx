@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { WhatsappIcon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
 import { PackageCard } from "@/components/packages/package-card"
@@ -147,21 +146,18 @@ export default async function PackagesPage({
                 itinerary with you.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <Button
-                  render={<Link href="/packages" scroll={false} />}
+                <ButtonLink
+                  href="/packages"
+                  scroll={false}
                   variant="outline"
                   size="sm"
                 >
                   <span>Clear filters</span>
-                </Button>
-                <Button
-                  render={
-                    <a
-                      href={getSupportWhatsAppUrl("a custom holiday package")}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    />
-                  }
+                </ButtonLink>
+                <ButtonLink
+                  href={getSupportWhatsAppUrl("a custom holiday package")}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   size="sm"
                   className="bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
                 >
@@ -171,7 +167,7 @@ export default async function PackagesPage({
                     aria-hidden="true"
                   />
                   <span>Plan custom trip</span>
-                </Button>
+                </ButtonLink>
               </div>
             </div>
           </div>

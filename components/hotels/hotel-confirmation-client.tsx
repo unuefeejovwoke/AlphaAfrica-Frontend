@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -11,7 +10,8 @@ import {
   PrinterIcon,
   Tick01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { CardSkeleton } from "@/components/ui/skeleton"
 import { TrackLink } from "@/components/analytics/track-link"
 import { track } from "@/lib/analytics"
@@ -116,29 +116,26 @@ export function HotelConfirmationClient() {
           </div>
           <div className="flex flex-col gap-2">
             {savedReference ? (
-              <Button
-                render={
-                  <Link href={buildHotelConfirmationUrl(savedReference)} />
-                }
+              <ButtonLink
+                href={buildHotelConfirmationUrl(savedReference)}
                 className="w-full justify-center"
               >
                 <span>Resume with your saved reference</span>
-              </Button>
+              </ButtonLink>
             ) : null}
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "hotel confirmation missing reference",
-                    channel: "whatsapp",
-                  }}
-                  href={getSupportWhatsAppUrl("hotel stay booking payment")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "hotel confirmation missing reference",
+                channel: "whatsapp",
+              }}
+              href={getSupportWhatsAppUrl("hotel stay booking payment")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants(),
+                "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+              )}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -146,14 +143,14 @@ export function HotelConfirmationClient() {
                 aria-hidden="true"
               />
               <span>Contact support on WhatsApp</span>
-            </Button>
-            <Button
-              render={<Link href="/hotels" />}
+            </TrackLink>
+            <ButtonLink
+              href="/hotels"
               variant="ghost"
               className="w-full justify-center"
             >
               <span>Back to Hotel search</span>
-            </Button>
+            </ButtonLink>
           </div>
         </div>
       </div>
@@ -230,22 +227,21 @@ export function HotelConfirmationClient() {
             >
               <span>Check payment again</span>
             </Button>
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "unresolved hotel payment",
-                    channel: "whatsapp",
-                  }}
-                  href={getSupportWhatsAppUrl(
-                    `hotel stay booking ${reference}`
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "unresolved hotel payment",
+                channel: "whatsapp",
+              }}
+              href={getSupportWhatsAppUrl(
+                `hotel stay booking ${reference}`
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants(),
+                "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+              )}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -253,7 +249,7 @@ export function HotelConfirmationClient() {
                 aria-hidden="true"
               />
               <span>Contact support on WhatsApp</span>
-            </Button>
+            </TrackLink>
           </div>
         </div>
       </div>
@@ -382,18 +378,14 @@ export function HotelConfirmationClient() {
             </ol>
           </div>
           <div className="flex flex-col gap-2">
-            <Button
-              render={
-                <Link
-                  href={buildHotelConfirmationUrl(booking.reference)}
-                  aria-label="View this Hotel Booking confirmation"
-                />
-              }
+            <ButtonLink
+              href={buildHotelConfirmationUrl(booking.reference)}
+              aria-label="View this Hotel Booking confirmation"
               variant="outline"
               className="w-full justify-center"
             >
               <span>View booking</span>
-            </Button>
+            </ButtonLink>
             <Button
               type="button"
               onClick={() => window.print()}
@@ -403,22 +395,21 @@ export function HotelConfirmationClient() {
               <HugeiconsIcon icon={PrinterIcon} size={16} aria-hidden="true" />
               <span>Download / print confirmation</span>
             </Button>
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "verified hotel booking",
-                    channel: "whatsapp",
-                  }}
-                  href={getWhatsAppUrl(
-                    `Hello Alphaa Africa! My hotel stay booking ${booking.reference} at ${booking.hotel_name} is verified. Please guide me on next steps.`
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "verified hotel booking",
+                channel: "whatsapp",
+              }}
+              href={getWhatsAppUrl(
+                `Hello Alphaa Africa! My hotel stay booking ${booking.reference} at ${booking.hotel_name} is verified. Please guide me on next steps.`
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants(),
+                "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+              )}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -426,14 +417,14 @@ export function HotelConfirmationClient() {
                 aria-hidden="true"
               />
               <span>Share on WhatsApp with this reference</span>
-            </Button>
-            <Button
-              render={<Link href="/hotels" />}
+            </TrackLink>
+            <ButtonLink
+              href="/hotels"
               variant="ghost"
               className="w-full justify-center"
             >
               <span>Search more Hotels</span>
-            </Button>
+            </ButtonLink>
           </div>
           <p className="border-t border-emerald-200/70 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
             Booked as a Guest Booking — no account needed. Stay often? Talk to
@@ -486,26 +477,25 @@ export function HotelConfirmationClient() {
           >
             <span>Check payment again</span>
           </Button>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "unresolved hotel payment",
-                  channel: "whatsapp",
-                }}
-                href={getSupportWhatsAppUrl(
-                  `hotel stay booking ${booking.reference}`
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "unresolved hotel payment",
+              channel: "whatsapp",
+            }}
+            href={getSupportWhatsAppUrl(
+              `hotel stay booking ${booking.reference}`
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants(),
+              "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            )}
           >
             <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
             <span>Contact support on WhatsApp</span>
-          </Button>
+          </TrackLink>
         </div>
       </div>
     </div>

@@ -13,7 +13,8 @@ import {
 } from "@hugeicons/core-free-icons"
 import { FlightSearchForm } from "@/components/flights/flight-search-form"
 import { FlightOfferSkeleton } from "@/components/flights/flight-offer-card"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { TrackLink } from "@/components/analytics/track-link"
 import {
   type Airport,
@@ -946,22 +947,19 @@ export function FlightSearchPageClient() {
               Pick your route and travel dates above, then click Search flights
               to see live airline availability and transparent fares in Naira.
             </p>
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "planning a flight search",
-                    channel: "whatsapp",
-                  }}
-                  href={getSupportWhatsAppUrl("planning a flight search")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              variant="outline"
-              size="sm"
-              className="mt-2 rounded-xl"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "planning a flight search",
+                channel: "whatsapp",
+              }}
+              href={getSupportWhatsAppUrl("planning a flight search")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "mt-2 rounded-xl"
+              )}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -969,7 +967,7 @@ export function FlightSearchPageClient() {
                 aria-hidden="true"
               />
               <span>Not sure where to start? Talk to Alphaa</span>
-            </Button>
+            </TrackLink>
           </div>
         )}
       </section>

@@ -1,9 +1,8 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { buildBlogSearchParams, parseBlogOrdering } from "@/lib/blog"
 import type { BlogFilters } from "@/lib/api/blog"
@@ -237,13 +236,14 @@ export function BlogFilters({
               <span>{isPending ? "Updating…" : "Apply filters"}</span>
             </Button>
             {hasActive && (
-              <Button
-                render={<Link href="/blog" scroll={false} />}
+              <ButtonLink
+                href="/blog"
+                scroll={false}
                 variant="outline"
                 className="h-10 font-medium"
               >
                 <span>Clear</span>
-              </Button>
+              </ButtonLink>
             )}
           </div>
         </div>

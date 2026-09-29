@@ -10,7 +10,7 @@ import {
   Passport01Icon,
   InformationCircleIcon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink, buttonVariants } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
 import { VisaConsultationForm } from "@/components/visa/visa-consultation-form"
@@ -41,6 +41,7 @@ import {
 } from "@/lib/listings"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { faqs } from "@/lib/content/faqs"
+import { cn } from "@/lib/utils"
 
 export const revalidate = 3600
 export const dynamicParams = true
@@ -515,22 +516,20 @@ export default async function VisaCountryDetailPage({
             </p>
           </div>
           <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: `a ${country.name} visa consultation`,
-                  }}
-                  href={getSupportWhatsAppUrl(
-                    `a ${country.name} visa consultation`
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              size="lg"
-              className="justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: `a ${country.name} visa consultation`,
+              }}
+              href={getSupportWhatsAppUrl(
+                `a ${country.name} visa consultation`
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+              )}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -538,9 +537,9 @@ export default async function VisaCountryDetailPage({
                 aria-hidden="true"
               />
               <span>Chat on WhatsApp</span>
-            </Button>
-            <Button
-              render={<Link href="/visa" />}
+            </TrackLink>
+            <ButtonLink
+              href="/visa"
               variant="outline"
               size="lg"
               className="justify-center border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
@@ -551,7 +550,7 @@ export default async function VisaCountryDetailPage({
                 size={16}
                 aria-hidden="true"
               />
-            </Button>
+            </ButtonLink>
           </div>
         </div>
       </section>

@@ -10,7 +10,8 @@ import {
   Hotel01Icon,
   Message01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { ErrorState } from "@/components/feedback/error-state"
 import { TrackLink } from "@/components/analytics/track-link"
 import { HotelSearchForm } from "@/components/hotels/hotel-search-form"
@@ -339,21 +340,16 @@ export function HotelSearchPageClient() {
               <HugeiconsIcon icon={Hotel01Icon} size={16} aria-hidden="true" />
               <span>Browse all Hotels</span>
             </Button>
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "planning a hotel stay",
-                    channel: "whatsapp",
-                  }}
-                  href={getHotelSupportWhatsAppUrl("planning a hotel stay")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              variant="ghost"
-              size="sm"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "planning a hotel stay",
+                channel: "whatsapp",
+              }}
+              href={getHotelSupportWhatsAppUrl("planning a hotel stay")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -361,7 +357,7 @@ export function HotelSearchPageClient() {
                 aria-hidden="true"
               />
               <span>Talk to Alphaa</span>
-            </Button>
+            </TrackLink>
           </div>
         </div>
       )
@@ -519,24 +515,19 @@ export function HotelSearchPageClient() {
               >
                 <span>Clear amenities</span>
               </Button>
-              <Button
-                render={
-                  <TrackLink
-                    event="support_click"
-                    eventProps={{
-                      context: "finding a hotel for my stay",
-                      channel: "whatsapp",
-                    }}
-                    href={getHotelSupportWhatsAppUrl(
-                      "finding a hotel for my stay",
-                      stayContext
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-                variant="ghost"
-                size="sm"
+              <TrackLink
+                event="support_click"
+                eventProps={{
+                  context: "finding a hotel for my stay",
+                  channel: "whatsapp",
+                }}
+                href={getHotelSupportWhatsAppUrl(
+                  "finding a hotel for my stay",
+                  stayContext
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
               >
                 <HugeiconsIcon
                   icon={Message01Icon}
@@ -544,7 +535,7 @@ export function HotelSearchPageClient() {
                   aria-hidden="true"
                 />
                 <span>Talk to Alphaa</span>
-              </Button>
+              </TrackLink>
             </div>
           </div>
         ) : (
@@ -628,28 +619,23 @@ export function HotelSearchPageClient() {
               ? `Hotels in ${parsedQuery.destination.trim()}`
               : "Hotel results"}
           </h2>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "choosing a hotel",
-                  channel: "whatsapp",
-                }}
-                href={getHotelSupportWhatsAppUrl(
-                  "choosing a hotel",
-                  stayContext
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            variant="ghost"
-            size="sm"
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "choosing a hotel",
+              channel: "whatsapp",
+            }}
+            href={getHotelSupportWhatsAppUrl(
+              "choosing a hotel",
+              stayContext
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
           >
             <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
             <span>Talk to Alphaa</span>
-          </Button>
+          </TrackLink>
         </div>
 
         {resultsContent}
@@ -666,29 +652,26 @@ export function HotelSearchPageClient() {
           before you pay.
         </p>
         <div>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "hotel pricing explainer",
-                  channel: "whatsapp",
-                }}
-                href={getHotelSupportWhatsAppUrl(
-                  "hotel prices for my stay",
-                  stayContext
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            variant="ghost"
-            size="sm"
-            className="w-fit"
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "hotel pricing explainer",
+              channel: "whatsapp",
+            }}
+            href={getHotelSupportWhatsAppUrl(
+              "hotel prices for my stay",
+              stayContext
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "w-fit"
+            )}
           >
             <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
             <span>Ask Alphaa about prices</span>
-          </Button>
+          </TrackLink>
         </div>
       </section>
     </div>

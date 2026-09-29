@@ -1,3 +1,5 @@
+import * as React from "react"
+import Link from "next/link"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
@@ -66,4 +68,50 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+export interface ButtonLinkProps
+  extends Omit<React.ComponentProps<typeof Link>, "className">,
+    VariantProps<typeof buttonVariants> {
+  className?: string
+}
+
+/**
+ * Anchor styled as a button. Use for navigation instead of
+ * `<Button render={<Link />} />` — Base UI reserves the Button's `render`
+ * prop for real `<button>` elements and warns when it renders an anchor
+ * (see https://base-ui.com/react/components/button). Internal `href`s
+ * render through `next/link`; external (`https:`), `tel:`, `mailto:`, and
+ * hash (`#`) targets fall back to a plain `<a>` so no router work is wasted.
+ */
+function ButtonLink({
+  className,
+  variant = "default",
+  size = "default",
+  href,
+  ...props
+}: ButtonLinkProps) {
+  const classes = cn(buttonVariants({ variant, size, className }))
+  const target = typeof href === "string" ? href : String(href)
+  const isPlainAnchor =
+    target.startsWith("#") ||
+    target.startsWith("tel:") ||
+    target.startsWith("mailto:") ||
+    /^https?:\/\//.test(target)
+
+  if (isPlainAnchor) {
+    const {
+      scroll: _scroll,
+      replace: _replace,
+      prefetch: _prefetch,
+      ...anchorProps
+    } = props as Record<string, unknown>
+    return (
+      <a data-slot="button" href={target} className={classes} {...anchorProps} />
+    )
+  }
+
+  return (
+    <Link data-slot="button" href={href} className={classes} {...props} />
+  )
+}
+
+export { Button, ButtonLink, buttonVariants }

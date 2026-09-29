@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -10,7 +9,7 @@ import {
   FilterIcon,
   Cancel01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import {
   describeFlightTrip,
@@ -168,28 +167,26 @@ export function FlightSearchResults({
           <Button type="button" variant="outline" size="sm" onClick={onRetry}>
             <span>Retry search</span>
           </Button>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "finding a flight for my route",
-                  channel: "whatsapp",
-                }}
-                href={getFlightSupportWhatsAppUrl(
-                  "finding a flight for my route",
-                  trip
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            size="sm"
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "finding a flight for my route",
+              channel: "whatsapp",
+            }}
+            href={getFlightSupportWhatsAppUrl(
+              "finding a flight for my route",
+              trip
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ size: "sm" }),
+              "bg-emerald-600 text-white hover:bg-emerald-700"
+            )}
           >
             <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
             <span>Talk to Alphaa</span>
-          </Button>
+          </TrackLink>
         </div>
       </div>
     )
@@ -355,24 +352,22 @@ export function FlightSearchResults({
                 >
                   <span>Clear filters</span>
                 </Button>
-                <Button
-                  render={
-                    <TrackLink
-                      event="support_click"
-                      eventProps={{
-                        context: "finding a flight for my route",
-                        channel: "whatsapp",
-                      }}
-                      href={getFlightSupportWhatsAppUrl(
-                        "finding a flight for my route",
-                        trip
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    />
-                  }
-                  size="sm"
-                  className="bg-emerald-600 text-white hover:bg-emerald-700"
+                <TrackLink
+                  event="support_click"
+                  eventProps={{
+                    context: "finding a flight for my route",
+                    channel: "whatsapp",
+                  }}
+                  href={getFlightSupportWhatsAppUrl(
+                    "finding a flight for my route",
+                    trip
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    buttonVariants({ size: "sm" }),
+                    "bg-emerald-600 text-white hover:bg-emerald-700"
+                  )}
                 >
                   <HugeiconsIcon
                     icon={Message01Icon}
@@ -380,7 +375,7 @@ export function FlightSearchResults({
                     aria-hidden="true"
                   />
                   <span>Talk to Alphaa</span>
-                </Button>
+                </TrackLink>
               </div>
             </div>
           ) : (
@@ -402,24 +397,21 @@ export function FlightSearchResults({
               Need assistance booking or comparing flight options?
             </p>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <Button
-                render={
-                  <TrackLink
-                    event="support_click"
-                    eventProps={{
-                      context: "choosing a flight from these results",
-                      channel: "whatsapp",
-                    }}
-                    href={getFlightSupportWhatsAppUrl(
-                      "choosing a flight from these results",
-                      trip
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-                variant="outline"
-                size="sm"
+              <TrackLink
+                event="support_click"
+                eventProps={{
+                  context: "choosing a flight from these results",
+                  channel: "whatsapp",
+                }}
+                href={getFlightSupportWhatsAppUrl(
+                  "choosing a flight from these results",
+                  trip
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" })
+                )}
               >
                 <HugeiconsIcon
                   icon={Message01Icon}
@@ -427,14 +419,10 @@ export function FlightSearchResults({
                   aria-hidden="true"
                 />
                 <span>Talk to Alphaa</span>
-              </Button>
-              <Button
-                render={<Link href="/flights" />}
-                variant="ghost"
-                size="sm"
-              >
+              </TrackLink>
+              <ButtonLink href="/flights" variant="ghost" size="sm">
                 <span>New search</span>
-              </Button>
+              </ButtonLink>
             </div>
           </div>
         </main>

@@ -9,7 +9,7 @@ import {
   ArrowRight01Icon,
   Tick01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
 import { PackageCard } from "@/components/packages/package-card"
@@ -247,23 +247,19 @@ export default async function DestinationDetailPage({
           {intro}
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <Button render={<a href="#packages" />} size="sm">
+          <ButtonLink href="#packages" size="sm">
             <span>Compare packages</span>
-          </Button>
-          <Button
-            render={
-              <a
-                href={getSupportWhatsAppUrl(`a ${destination.name} holiday`)}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
+          </ButtonLink>
+          <ButtonLink
+            href={getSupportWhatsAppUrl(`a ${destination.name} holiday`)}
+            target="_blank"
+            rel="noopener noreferrer"
             variant="outline"
             size="sm"
           >
             <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
             <span>Ask a specialist</span>
-          </Button>
+          </ButtonLink>
         </div>
       </section>
 
@@ -296,14 +292,10 @@ export default async function DestinationDetailPage({
               trip and a specialist will design it with you — no payment needed
               to start.
             </p>
-            <Button
-              render={
-                <a
-                  href={getSupportWhatsAppUrl(`a ${destination.name} holiday`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
+            <ButtonLink
+              href={getSupportWhatsAppUrl(`a ${destination.name} holiday`)}
+              target="_blank"
+              rel="noopener noreferrer"
               size="sm"
               className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
@@ -313,7 +305,7 @@ export default async function DestinationDetailPage({
                 aria-hidden="true"
               />
               <span>Plan a custom trip</span>
-            </Button>
+            </ButtonLink>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -384,20 +376,16 @@ export default async function DestinationDetailPage({
           ))}
         </ol>
         <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border/60 pt-6">
-          <Button
-            render={
-              <a
-                href={getSupportWhatsAppUrl(`a ${destination.name} holiday`)}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
+          <ButtonLink
+            href={getSupportWhatsAppUrl(`a ${destination.name} holiday`)}
+            target="_blank"
+            rel="noopener noreferrer"
             variant="outline"
             size="sm"
           >
             <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
             <span>Send your three answers on WhatsApp</span>
-          </Button>
+          </ButtonLink>
           <Link
             href="/packages"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"

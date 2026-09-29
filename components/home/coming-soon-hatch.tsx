@@ -1,7 +1,6 @@
-import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Message01Icon, Call02Icon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
 
 /**
@@ -34,40 +33,33 @@ export function ComingSoonHatch({
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2.5 pt-1">
-        <Button
-          render={
-            <a
-              href={getSupportWhatsAppUrl(whatsappContext)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="justify-center"
-            />
-          }
+        <ButtonLink
+          href={getSupportWhatsAppUrl(whatsappContext)}
+          target="_blank"
+          rel="noopener noreferrer"
           size="sm"
           className="justify-center rounded-xl bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
         >
           <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
           <span>WhatsApp a specialist</span>
-        </Button>
-        <Button
-          render={
-            <a href={`tel:${company.phone.e164}`} className="justify-center" />
-          }
+        </ButtonLink>
+        <ButtonLink
+          href={`tel:${company.phone.e164}`}
           variant="outline"
           size="sm"
           className="justify-center rounded-xl"
         >
           <HugeiconsIcon icon={Call02Icon} size={16} aria-hidden="true" />
           <span>Call {company.phone.display}</span>
-        </Button>
-        <Button
-          render={<Link href="/contact" className="justify-center" />}
+        </ButtonLink>
+        <ButtonLink
+          href="/contact"
           variant="ghost"
           size="sm"
           className="justify-center rounded-xl text-muted-foreground hover:text-foreground"
         >
           <span>All contact options</span>
-        </Button>
+        </ButtonLink>
       </div>
     </div>
   )

@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -10,7 +9,7 @@ import {
   FilterIcon,
   Cancel01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import {
   normalizeDomesticCard,
@@ -257,25 +256,23 @@ export function DomesticStreamResults({
           <Button type="button" variant="outline" size="sm" onClick={onRetry}>
             <span>Retry search</span>
           </Button>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "a domestic flight search",
-                  channel: "whatsapp",
-                }}
-                href={supportUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            size="sm"
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "a domestic flight search",
+              channel: "whatsapp",
+            }}
+            href={supportUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ size: "sm" }),
+              "bg-emerald-600 text-white hover:bg-emerald-700"
+            )}
           >
             <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
             <span>Talk to Alphaa</span>
-          </Button>
+          </TrackLink>
         </div>
       </div>
     )
@@ -479,21 +476,16 @@ export function DomesticStreamResults({
               Need assistance booking or verifying domestic fares?
             </p>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <Button
-                render={
-                  <TrackLink
-                    event="support_click"
-                    eventProps={{
-                      context: "a domestic flight search",
-                      channel: "whatsapp",
-                    }}
-                    href={supportUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-                variant="outline"
-                size="sm"
+              <TrackLink
+                event="support_click"
+                eventProps={{
+                  context: "a domestic flight search",
+                  channel: "whatsapp",
+                }}
+                href={supportUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
               >
                 <HugeiconsIcon
                   icon={Message01Icon}
@@ -501,14 +493,10 @@ export function DomesticStreamResults({
                   aria-hidden="true"
                 />
                 <span>Talk to Alphaa</span>
-              </Button>
-              <Button
-                render={<Link href="/flights" />}
-                variant="ghost"
-                size="sm"
-              >
+              </TrackLink>
+              <ButtonLink href="/flights" variant="ghost" size="sm">
                 <span>New search</span>
-              </Button>
+              </ButtonLink>
             </div>
           </div>
         </main>

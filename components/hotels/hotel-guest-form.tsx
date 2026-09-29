@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -11,7 +10,7 @@ import {
   LockIcon,
   Message01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { track } from "@/lib/analytics"
 import {
@@ -241,13 +240,13 @@ export function HotelGuestForm({
           Complete payment on the secure Paystack page to confirm your stay.
         </p>
         {redirectUrl ? (
-          <Button
-            render={<a href={redirectUrl} className="justify-center" />}
+          <ButtonLink
+            href={redirectUrl}
             size="lg"
             className="w-full justify-center"
           >
             <span>Continue to Paystack</span>
-          </Button>
+          </ButtonLink>
         ) : null}
       </div>
     )
@@ -330,27 +329,27 @@ export function HotelGuestForm({
               : "Continue to payment"}
           </span>
         </Button>
-        <Button
-          render={<Link href={backHref} />}
+        <ButtonLink
+          href={backHref}
           variant="ghost"
           size="sm"
-          disabled={busy}
+          aria-disabled={busy || undefined}
           className="w-full justify-center"
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={14} aria-hidden="true" />
           <span>Back to Hotel</span>
-        </Button>
-        <Button
-          render={
-            <a href={supportHref} target="_blank" rel="noopener noreferrer" />
-          }
+        </ButtonLink>
+        <ButtonLink
+          href={supportHref}
+          target="_blank"
+          rel="noopener noreferrer"
           variant="ghost"
           size="sm"
           className="w-full justify-center"
         >
           <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
           <span>Talk to Alphaa</span>
-        </Button>
+        </ButtonLink>
       </div>
 
       <p className="text-center text-[11px] leading-relaxed text-muted-foreground">

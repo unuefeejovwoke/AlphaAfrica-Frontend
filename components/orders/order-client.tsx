@@ -9,7 +9,7 @@ import {
   Clock01Icon,
   Message01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FlightVerifyClient } from "@/components/flights/flight-verify-client"
 import {
@@ -173,20 +173,19 @@ export function OrderClient() {
                 <span>Try again</span>
               </Button>
             ) : null}
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "an order confirmation link",
-                    channel: "whatsapp",
-                  }}
-                  href={getSupportWhatsAppUrl(`order ${reference}`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "an order confirmation link",
+                channel: "whatsapp",
+              }}
+              href={getSupportWhatsAppUrl(`order ${reference}`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants(),
+                "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+              )}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -194,7 +193,7 @@ export function OrderClient() {
                 aria-hidden="true"
               />
               <span>Contact support on WhatsApp</span>
-            </Button>
+            </TrackLink>
           </div>
         </div>
       </div>
@@ -314,26 +313,26 @@ export function OrderClient() {
             <span>Check payment again</span>
           </Button>
         ) : null}
-        <Button
-          render={
-            <TrackLink
-              event="support_click"
-              eventProps={{
-                context: `an order confirmation (${bookingType})`,
-                channel: "whatsapp",
-              }}
-              href={getSupportWhatsAppUrl(`order ${order.reference}`)}
-              target="_blank"
-              rel="noopener noreferrer"
-            />
-          }
-          variant={pending ? "ghost" : "outline"}
-          size="lg"
-          className="w-full justify-center font-semibold sm:w-auto"
+        <TrackLink
+          event="support_click"
+          eventProps={{
+            context: `an order confirmation (${bookingType})`,
+            channel: "whatsapp",
+          }}
+          href={getSupportWhatsAppUrl(`order ${order.reference}`)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            buttonVariants({
+              variant: pending ? "ghost" : "outline",
+              size: "lg",
+            }),
+            "w-full justify-center font-semibold sm:w-auto"
+          )}
         >
           <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
           <span>Contact support on WhatsApp</span>
-        </Button>
+        </TrackLink>
       </div>
 
       <p className="text-center text-xs text-muted-foreground">

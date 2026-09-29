@@ -1,5 +1,4 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 
 /** 404 for unknown post slugs: diagnosis + recovery, no dead end. */
 export default function BlogNotFound() {
@@ -16,12 +15,12 @@ export default function BlogNotFound() {
         a specialist what you are planning and they will point you forward.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-        <Button render={<Link href="/blog" />}>
+        <ButtonLink href="/blog">
           <span>Browse posts</span>
-        </Button>
-        <Button render={<Link href="/contact" />} variant="outline">
+        </ButtonLink>
+        <ButtonLink href="/contact" variant="outline">
           <span>Talk to Alphaa</span>
-        </Button>
+        </ButtonLink>
       </div>
     </div>
   )

@@ -15,7 +15,7 @@ import {
   CustomerService01Icon,
   Book02Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { UnderConstructionBadge } from "@/components/shared/under-construction-badge"
 import { cn } from "@/lib/utils"
 
@@ -232,19 +232,15 @@ export function PublicNav() {
             <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
             <span>Sign In</span>
           </Link>
-          <Button render={<Link href="/flights" />} size="default">
+          <ButtonLink href="/flights" size="default">
             Book a Trip
-          </Button>
+          </ButtonLink>
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
-          <Button
-            render={<Link href="/flights" />}
-            size="sm"
-            className="text-xs"
-          >
+          <ButtonLink href="/flights" size="sm" className="text-xs">
             Book
-          </Button>
+          </ButtonLink>
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
@@ -512,18 +508,14 @@ export function PublicNav() {
                     />
                     <span>Sign In</span>
                   </Link>
-                  <Button
-                    render={
-                      <Link
-                        href="/flights"
-                        onClick={() => setMobileMenuOpen(false)}
-                      />
-                    }
+                  <ButtonLink
+                    href="/flights"
+                    onClick={() => setMobileMenuOpen(false)}
                     size="lg"
                     className="w-full justify-center"
                   >
                     Book a Trip
-                  </Button>
+                  </ButtonLink>
                 </div>
               </Drawer.Content>
             </Drawer.Popup>

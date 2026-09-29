@@ -10,7 +10,7 @@ import {
   StarIcon,
   Tick01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
 import { TerminalCta } from "@/components/shared/terminal-cta"
@@ -131,14 +131,14 @@ export default async function HotelDetailPage({
         />
         <div className="flex flex-wrap items-center justify-center gap-3">
           <RetryButton label="Retry loading Hotel" />
-          <Button render={<Link href="/hotels" />} variant="ghost" size="sm">
+          <ButtonLink href="/hotels" variant="ghost" size="sm">
             <HugeiconsIcon
               icon={ArrowLeft01Icon}
               size={14}
               aria-hidden="true"
             />
             <span>Back to Hotel search</span>
-          </Button>
+          </ButtonLink>
         </div>
       </div>
     )
@@ -205,10 +205,10 @@ export default async function HotelDetailPage({
           </span>
         </nav>
 
-        <Button render={<Link href="/hotels" />} variant="ghost" size="sm">
+        <ButtonLink href="/hotels" variant="ghost" size="sm">
           <HugeiconsIcon icon={ArrowLeft01Icon} size={14} aria-hidden="true" />
           <span>Back to Hotel search</span>
-        </Button>
+        </ButtonLink>
       </div>
 
       {/* Title block: one h1, place context, star rating. */}
@@ -321,14 +321,10 @@ export default async function HotelDetailPage({
               </p>
               {display.mapUrl ? (
                 <div>
-                  <Button
-                    render={
-                      <a
-                        href={display.mapUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      />
-                    }
+                  <ButtonLink
+                    href={display.mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     variant="outline"
                     size="sm"
                   >
@@ -338,7 +334,7 @@ export default async function HotelDetailPage({
                       size={14}
                       aria-hidden="true"
                     />
-                  </Button>
+                  </ButtonLink>
                 </div>
               ) : (
                 <p className="text-xs leading-relaxed text-muted-foreground">

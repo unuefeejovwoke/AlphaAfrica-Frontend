@@ -1,7 +1,7 @@
 import * as React from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AlertCircleIcon, Message01Icon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { TrackLink } from "@/components/analytics/track-link"
 import { getErrorPreset, type ErrorPreset } from "@/lib/feedback-presets"
@@ -84,38 +84,31 @@ export function ErrorState({
             {retryLabel}
           </Button>
         ) : null}
-        <Button
-          render={
-            <a
-              href={displayAlternateHref}
-              className="flex items-center gap-2"
-            />
-          }
+        <ButtonLink
+          href={displayAlternateHref}
           variant="ghost"
           size="sm"
+          className="flex items-center gap-2"
         >
           <span>{displayAlternateLabel}</span>
-        </Button>
-        <Button
-          render={
-            <TrackLink
-              event="support_click"
-              eventProps={{
-                context: supportContext ?? presetData.whatsappText,
-                channel: "whatsapp",
-              }}
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2"
-            />
-          }
-          variant="secondary"
-          size="sm"
+        </ButtonLink>
+        <TrackLink
+          event="support_click"
+          eventProps={{
+            context: supportContext ?? presetData.whatsappText,
+            channel: "whatsapp",
+          }}
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            buttonVariants({ variant: "secondary", size: "sm" }),
+            "flex items-center gap-2"
+          )}
         >
           <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
           <span>Speak with Alphaa</span>
-        </Button>
+        </TrackLink>
       </div>
     </div>
   )

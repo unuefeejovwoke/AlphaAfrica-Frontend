@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -11,7 +10,7 @@ import {
   Clock01Icon,
   PrinterIcon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { CardSkeleton } from "@/components/ui/skeleton"
 import { ViewTracker } from "@/components/analytics/view-tracker"
 import { FlightETicket } from "@/components/flights/flight-e-ticket"
@@ -41,6 +40,7 @@ import {
 } from "@/lib/api/client"
 import { track } from "@/lib/analytics"
 import { formatNaira } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { pluralize } from "@/lib/schemas/travel"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { TrackLink } from "@/components/analytics/track-link"
@@ -227,27 +227,26 @@ export function FlightVerifyClient() {
           </div>
           <div className="flex flex-col gap-2">
             {savedReference ? (
-              <Button
-                render={<Link href={buildFlightVerifyUrl(savedReference)} />}
+              <ButtonLink
+                href={buildFlightVerifyUrl(savedReference)}
                 className="w-full justify-center"
               >
                 <span>Resume with your saved reference</span>
-              </Button>
+              </ButtonLink>
             ) : null}
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "flight verify missing reference",
-                    channel: "whatsapp",
-                  }}
-                  href={getSupportWhatsAppUrl("flight booking payment")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "flight verify missing reference",
+                channel: "whatsapp",
+              }}
+              href={getSupportWhatsAppUrl("flight booking payment")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants(),
+                "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+              )}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -255,14 +254,14 @@ export function FlightVerifyClient() {
                 aria-hidden="true"
               />
               <span>Contact support on WhatsApp</span>
-            </Button>
-            <Button
-              render={<Link href="/flights" />}
+            </TrackLink>
+            <ButtonLink
+              href="/flights"
               variant="ghost"
               className="w-full justify-center"
             >
               <span>Back to flight search</span>
-            </Button>
+            </ButtonLink>
           </div>
         </div>
       </div>
@@ -339,20 +338,19 @@ export function FlightVerifyClient() {
             >
               <span>Check payment again</span>
             </Button>
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "unresolved flight payment",
-                    channel: "whatsapp",
-                  }}
-                  href={getSupportWhatsAppUrl(`flight booking ${reference}`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "unresolved flight payment",
+                channel: "whatsapp",
+              }}
+              href={getSupportWhatsAppUrl(`flight booking ${reference}`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants(),
+                "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+              )}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -360,7 +358,7 @@ export function FlightVerifyClient() {
                 aria-hidden="true"
               />
               <span>Contact support on WhatsApp</span>
-            </Button>
+            </TrackLink>
           </div>
         </div>
       </div>
@@ -437,14 +435,14 @@ export function FlightVerifyClient() {
             <span>Print / Save E-Ticket (PDF)</span>
           </Button>
 
-          <Button
-            render={<Link href="/flights" />}
+          <ButtonLink
+            href="/flights"
             variant="outline"
             size="lg"
             className="w-full justify-center px-6 font-semibold sm:w-auto"
           >
             <span>Book another flight</span>
-          </Button>
+          </ButtonLink>
         </div>
 
         {/* Travel Advisory & Next Steps */}
@@ -534,26 +532,25 @@ export function FlightVerifyClient() {
           >
             <span>Check payment again</span>
           </Button>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "unresolved flight payment",
-                  channel: "whatsapp",
-                }}
-                href={getSupportWhatsAppUrl(
-                  `flight booking ${booking.reference} (${bookingContext})`
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "unresolved flight payment",
+              channel: "whatsapp",
+            }}
+            href={getSupportWhatsAppUrl(
+              `flight booking ${booking.reference} (${bookingContext})`
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants(),
+              "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            )}
           >
             <HugeiconsIcon icon={Message01Icon} size={18} aria-hidden="true" />
             <span>Contact support on WhatsApp</span>
-          </Button>
+          </TrackLink>
         </div>
       </div>
     </div>

@@ -72,13 +72,19 @@ function readRenderValue(tag: string): string {
 /** True when the render value is (or returns) a link/anchor element. */
 function rendersALink(renderValue: string): boolean {
   const value = renderValue.trim()
-  return /^<\/?(Link|a)\b/.test(value) || /=>\s*<\/?(Link|a)\b/.test(value)
+  return (
+    /^<\/?(Link|a|TrackLink)\b/.test(value) ||
+    /=>\s*<\/?(Link|a|TrackLink)\b/.test(value)
+  )
 }
 
 test("Button never renders a link/anchor through Base UI's render prop", () => {
   const violations: string[] = []
 
   for (const file of collectTsxFiles()) {
+    // The primitive module documents the forbidden pattern in ButtonLink's
+    // own doc comment — scanning it would flag its own documentation.
+    if (path.basename(file) === "button.tsx") continue
     const source = fs.readFileSync(file, "utf8")
     const relative = path.relative(process.cwd(), file)
     const openTag = /<Button(?=[\s/>])/g

@@ -1,4 +1,3 @@
-import Link from "next/link"
 import type { Metadata } from "next"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -10,7 +9,7 @@ import {
   ArrowRight01Icon,
   ArrowUpRight01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { company, getOfficeMapEmbedUrl } from "@/lib/content/company"
 import { contact } from "@/lib/content/contact"
 import { faqs } from "@/lib/content/faqs"
@@ -196,14 +195,10 @@ export default function ContactPage() {
                 </div>
 
                 <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-                  <Button
-                    render={
-                      <a
-                        href={`https://maps.google.com/maps?q=${encodeURIComponent(company.office.mapQuery)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      />
-                    }
+                  <ButtonLink
+                    href={`https://maps.google.com/maps?q=${encodeURIComponent(company.office.mapQuery)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     variant="default"
                     size="sm"
                     className="rounded-full font-semibold"
@@ -214,9 +209,9 @@ export default function ContactPage() {
                       size={15}
                       aria-hidden="true"
                     />
-                  </Button>
-                  <Button
-                    render={<a href={company.phone.href} />}
+                  </ButtonLink>
+                  <ButtonLink
+                    href={company.phone.href}
                     variant="outline"
                     size="sm"
                     className="rounded-full font-semibold"
@@ -227,7 +222,7 @@ export default function ContactPage() {
                       aria-hidden="true"
                     />
                     <span>Call before you visit</span>
-                  </Button>
+                  </ButtonLink>
                 </div>
               </div>
             </div>
@@ -279,8 +274,8 @@ export default function ContactPage() {
                   Answers before you reach out
                 </h2>
               </div>
-              <Button
-                render={<Link href="/faq" />}
+              <ButtonLink
+                href="/faq"
                 variant="outline"
                 className="shrink-0 rounded-full font-semibold"
               >
@@ -290,7 +285,7 @@ export default function ContactPage() {
                   size={15}
                   aria-hidden="true"
                 />
-              </Button>
+              </ButtonLink>
             </div>
 
             <div className="grid grid-cols-1 gap-6 pt-2 md:grid-cols-3">

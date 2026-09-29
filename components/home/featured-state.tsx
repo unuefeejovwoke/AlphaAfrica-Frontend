@@ -1,6 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Message01Icon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
@@ -26,20 +26,16 @@ export function FeaturedEmpty({
       <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
         {description}
       </p>
-      <Button
-        render={
-          <a
-            href={getSupportWhatsAppUrl(whatsappContext)}
-            target="_blank"
-            rel="noopener noreferrer"
-          />
-        }
+      <ButtonLink
+        href={getSupportWhatsAppUrl(whatsappContext)}
+        target="_blank"
+        rel="noopener noreferrer"
         size="sm"
         className="bg-emerald-600 text-white hover:bg-emerald-700"
       >
         <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
         <span>Talk to Alphaa</span>
-      </Button>
+      </ButtonLink>
     </div>
   )
 }
@@ -59,20 +55,16 @@ export function FeaturedError({
       <ErrorState preset="general" title={title} error={error} />
       <div className="flex flex-wrap items-center justify-center gap-3">
         <RetryButton />
-        <Button
-          render={
-            <a
-              href={getSupportWhatsAppUrl(whatsappContext)}
-              target="_blank"
-              rel="noopener noreferrer"
-            />
-          }
+        <ButtonLink
+          href={getSupportWhatsAppUrl(whatsappContext)}
+          target="_blank"
+          rel="noopener noreferrer"
           variant="secondary"
           size="sm"
         >
           <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
           <span>Talk to Alphaa</span>
-        </Button>
+        </ButtonLink>
       </div>
     </div>
   )

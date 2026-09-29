@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
@@ -9,8 +8,9 @@ import {
   LockIcon,
   Message01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 import { CheckoutTripSummary } from "@/components/flights/checkout-trip-summary"
 import { TravellerDetailsForm } from "@/components/flights/traveller-details-form"
 import { TrackLink } from "@/components/analytics/track-link"
@@ -365,26 +365,22 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           Run a fresh search — live fares refresh every few minutes.
         </p>
         <div className="flex flex-col items-center gap-2 pt-1 sm:flex-row">
-          <Button render={<Link href="/flights" />}>
+          <ButtonLink href="/flights">
             <span>Search flights again</span>
-          </Button>
-          <Button
-            variant="outline"
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "a flight fare that expired before booking",
-                  channel: "whatsapp",
-                }}
-                href={getSupportWhatsAppUrl("a flight fare that expired")}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
+          </ButtonLink>
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "a flight fare that expired before booking",
+              channel: "whatsapp",
+            }}
+            href={getSupportWhatsAppUrl("a flight fare that expired")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: "outline" }))}
           >
             <span>Talk to Alphaa</span>
-          </Button>
+          </TrackLink>
         </div>
       </div>
     )
@@ -405,28 +401,24 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           to Alphaa and we will help you through it.
         </p>
         <div className="flex flex-col items-center gap-2 pt-1 sm:flex-row">
-          <Button render={<Link href="/flights" />}>
+          <ButtonLink href="/flights">
             <span>Search flights again</span>
-          </Button>
-          <Button
-            variant="outline"
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "a flight payment that could not start",
-                  channel: "whatsapp",
-                }}
-                href={getSupportWhatsAppUrl(
-                  "a flight payment I could not start"
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
+          </ButtonLink>
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "a flight payment that could not start",
+              channel: "whatsapp",
+            }}
+            href={getSupportWhatsAppUrl(
+              "a flight payment I could not start"
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: "outline" }))}
           >
             <span>Talk to Alphaa</span>
-          </Button>
+          </TrackLink>
         </div>
       </div>
     )
@@ -646,29 +638,26 @@ function ChangedFarePanel({
           <span>Back to checkout</span>
         </Button>
       </div>
-      <Button
-        size="lg"
-        variant="ghost"
-        className="w-full justify-center"
-        render={
-          <TrackLink
-            event="support_click"
-            eventProps={{
-              context: "a flight fare that changed before payment",
-              channel: "whatsapp",
-            }}
-            href={getFlightSupportWhatsAppUrl(
-              "a flight fare that changed before payment",
-              { ...trip, amount: formatNaira(review.newTotal) }
-            )}
-            target="_blank"
-            rel="noopener noreferrer"
-          />
-        }
+      <TrackLink
+        event="support_click"
+        eventProps={{
+          context: "a flight fare that changed before payment",
+          channel: "whatsapp",
+        }}
+        href={getFlightSupportWhatsAppUrl(
+          "a flight fare that changed before payment",
+          { ...trip, amount: formatNaira(review.newTotal) }
+        )}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "lg" }),
+          "w-full justify-center"
+        )}
       >
         <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
         <span>Ask Alphaa</span>
-      </Button>
+      </TrackLink>
       <p className="text-center text-xs text-muted-foreground">
         Prices are in {review.currency}. {display.airline}{" "}
         {display.airportsLabel} · approved total {total}.

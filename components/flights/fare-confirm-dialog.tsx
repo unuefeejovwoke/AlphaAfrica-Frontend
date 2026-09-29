@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -11,7 +10,7 @@ import {
   Clock01Icon,
   Message01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import {
   confirmFlightPrice,
@@ -26,6 +25,7 @@ import {
 } from "@/lib/api/flights"
 import type { BookingBranch } from "@/lib/api/domestic"
 import { formatNaira } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { track } from "@/lib/analytics"
 import { TrackLink } from "@/components/analytics/track-link"
 
@@ -268,29 +268,26 @@ export function FareConfirmDialog({
             <span>Back to results</span>
           </Button>
         </div>
-        <Button
-          size="lg"
-          variant="ghost"
-          className="w-full justify-center"
-          render={
-            <TrackLink
-              event="support_click"
-              eventProps={{
-                context: "a flight fare that changed before payment",
-                channel: "whatsapp",
-              }}
-              href={getFlightSupportWhatsAppUrl(
-                "a flight fare that changed before payment",
-                { ...tripContext, amount: formatNaira(changedOutcome.newTotal) }
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-            />
-          }
+        <TrackLink
+          event="support_click"
+          eventProps={{
+            context: "a flight fare that changed before payment",
+            channel: "whatsapp",
+          }}
+          href={getFlightSupportWhatsAppUrl(
+            "a flight fare that changed before payment",
+            { ...tripContext, amount: formatNaira(changedOutcome.newTotal) }
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "lg" }),
+            "w-full justify-center"
+          )}
         >
           <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
           <span>Ask Alphaa</span>
-        </Button>
+        </TrackLink>
         <p className="text-center text-xs text-muted-foreground">
           Prices are in Naira ({changedOutcome.currency}). Continuing takes you
           to traveller details.
@@ -308,36 +305,29 @@ export function FareConfirmDialog({
           will check alternatives with you.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <Button
-            render={<Link href="/flights" />}
-            size="lg"
-            className="justify-center"
-          >
+          <ButtonLink href="/flights" size="lg" className="justify-center">
             <span>Search again</span>
-          </Button>
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "a flight fare that expired before confirmation",
-                  channel: "whatsapp",
-                }}
-                href={getFlightSupportWhatsAppUrl(
-                  "a flight fare that expired before confirmation",
-                  tripContext
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            variant="outline"
-            size="lg"
-            className="justify-center border-emerald-600/30 text-emerald-700 hover:bg-emerald-50"
+          </ButtonLink>
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "a flight fare that expired before confirmation",
+              channel: "whatsapp",
+            }}
+            href={getFlightSupportWhatsAppUrl(
+              "a flight fare that expired before confirmation",
+              tripContext
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "lg" }),
+              "justify-center border-emerald-600/30 text-emerald-700 hover:bg-emerald-50"
+            )}
           >
             <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
             <span>Talk to Alphaa</span>
-          </Button>
+          </TrackLink>
         </div>
         <button
           type="button"
@@ -407,29 +397,26 @@ export function FareConfirmDialog({
             <span>Back to results</span>
           </Button>
         </div>
-        <Button
-          size="lg"
-          variant="ghost"
-          className="w-full justify-center"
-          render={
-            <TrackLink
-              event="support_click"
-              eventProps={{
-                context: "a domestic flight I want to book",
-                channel: "whatsapp",
-              }}
-              href={getFlightSupportWhatsAppUrl(
-                "a domestic flight I want to book",
-                trip
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-            />
-          }
+        <TrackLink
+          event="support_click"
+          eventProps={{
+            context: "a domestic flight I want to book",
+            channel: "whatsapp",
+          }}
+          href={getFlightSupportWhatsAppUrl(
+            "a domestic flight I want to book",
+            trip
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "lg" }),
+            "w-full justify-center"
+          )}
         >
           <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
           <span>Ask Alphaa</span>
-        </Button>
+        </TrackLink>
       </div>
     )
   }

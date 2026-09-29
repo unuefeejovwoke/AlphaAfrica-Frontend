@@ -11,7 +11,8 @@ import {
   MinusSignIcon,
   Copy01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -228,26 +229,24 @@ export function PackageEnquiryForm({
 
           {/* Action CTAs */}
           <div className="flex w-full flex-col gap-3 pt-2 sm:w-auto sm:flex-row">
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "package enquiry follow-up",
-                    channel: "whatsapp",
-                  }}
-                  href={getWhatsAppUrl(
-                    `Hello Alphaa Africa! I just submitted enquiry ${result.reference} for ${result.package_title} (${totalTravellers} travellers). Let's finalize the details.`
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              className="bg-emerald-600 text-white shadow-md hover:bg-emerald-700"
-              size="lg"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "package enquiry follow-up",
+                channel: "whatsapp",
+              }}
+              href={getWhatsAppUrl(
+                `Hello Alphaa Africa! I just submitted enquiry ${result.reference} for ${result.package_title} (${totalTravellers} travellers). Let's finalize the details.`
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "bg-emerald-600 text-white shadow-md hover:bg-emerald-700"
+              )}
             >
               Chat on WhatsApp
-            </Button>
+            </TrackLink>
             <Button
               type="button"
               variant="outline"

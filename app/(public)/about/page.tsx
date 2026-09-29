@@ -13,7 +13,7 @@ import {
   Location01Icon,
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
 import { contact } from "@/lib/content/contact"
 import { canonicalUrl, getSiteUrl, organizationJsonLd } from "@/lib/seo"
@@ -257,14 +257,14 @@ export default function AboutPage() {
             {company.phone.display} · {company.email}
           </p>
           <div>
-            <Button render={<Link href="/contact" />} variant="outline">
+            <ButtonLink href="/contact" variant="outline">
               <span>Contact & directions</span>
               <HugeiconsIcon
                 icon={ArrowRight01Icon}
                 size={16}
                 aria-hidden="true"
               />
-            </Button>
+            </ButtonLink>
           </div>
         </div>
       </section>
@@ -282,15 +282,10 @@ export default function AboutPage() {
             </p>
           </div>
           <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
-            <Button
-              render={
-                <a
-                  href={getSupportWhatsAppUrl("planning your trip")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="justify-center"
-                />
-              }
+            <ButtonLink
+              href={getSupportWhatsAppUrl("planning your trip")}
+              target="_blank"
+              rel="noopener noreferrer"
               size="lg"
               className="justify-center bg-primary text-primary-foreground hover:bg-primary/90"
             >
@@ -300,21 +295,16 @@ export default function AboutPage() {
                 aria-hidden="true"
               />
               <span>Talk to Alphaa</span>
-            </Button>
-            <Button
-              render={
-                <a
-                  href={`tel:${company.phone.e164}`}
-                  className="justify-center"
-                />
-              }
+            </ButtonLink>
+            <ButtonLink
+              href={`tel:${company.phone.e164}`}
               variant="outline"
               size="lg"
               className="justify-center border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
             >
               <HugeiconsIcon icon={Call02Icon} size={18} aria-hidden="true" />
               <span>Call {company.phone.display}</span>
-            </Button>
+            </ButtonLink>
           </div>
         </div>
       </section>

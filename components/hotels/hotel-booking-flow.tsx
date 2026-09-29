@@ -8,7 +8,8 @@ import {
   ArrowRight01Icon,
   Message01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TrackLink } from "@/components/analytics/track-link"
 import { track } from "@/lib/analytics"
@@ -241,14 +242,10 @@ export function HotelBookingFlow({
                 your dates.
               </p>
               <div>
-                <Button
-                  render={
-                    <a
-                      href={supportHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    />
-                  }
+                <ButtonLink
+                  href={supportHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   variant="outline"
                   size="sm"
                 >
@@ -258,7 +255,7 @@ export function HotelBookingFlow({
                     aria-hidden="true"
                   />
                   <span>Ask about Room Types</span>
-                </Button>
+                </ButtonLink>
               </div>
             </div>
           )}
@@ -370,26 +367,23 @@ export function HotelBookingFlow({
             />
           </Button>
 
-          <Button
-            render={
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: `hotel stay at ${hotel.name}`,
-                  channel: "whatsapp",
-                }}
-                href={supportHref}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            }
-            variant="outline"
-            size="sm"
-            className="w-full justify-center"
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: `hotel stay at ${hotel.name}`,
+              channel: "whatsapp",
+            }}
+            href={supportHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "w-full justify-center"
+            )}
           >
             <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
             <span>Talk to Alphaa</span>
-          </Button>
+          </TrackLink>
         </div>
       </aside>
     </div>

@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AlertCircleIcon, Message01Icon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   getOrderHistory,
@@ -139,20 +139,19 @@ export function OrdersClient() {
                 <span>Try again</span>
               </Button>
             ) : null}
-            <Button
-              render={
-                <TrackLink
-                  event="support_click"
-                  eventProps={{
-                    context: "an orders history link",
-                    channel: "whatsapp",
-                  }}
-                  href={getSupportWhatsAppUrl("my orders")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-              className="w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: "an orders history link",
+                channel: "whatsapp",
+              }}
+              href={getSupportWhatsAppUrl("my orders")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants(),
+                "w-full justify-center bg-emerald-600 text-white hover:bg-emerald-700"
+              )}
             >
               <HugeiconsIcon
                 icon={Message01Icon}
@@ -160,7 +159,7 @@ export function OrdersClient() {
                 aria-hidden="true"
               />
               <span>Contact support on WhatsApp</span>
-            </Button>
+            </TrackLink>
           </div>
         </div>
       </div>

@@ -16,7 +16,7 @@ import {
   UserIcon,
   Wallet01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { CardSkeleton } from "@/components/ui/skeleton"
 import { HomeSearchSwitcher } from "@/components/home/home-search-switcher"
 import { FeaturedPackages } from "@/components/home/featured-packages"
@@ -418,14 +418,14 @@ export default function HomePage() {
               Nothing to pay until you&apos;ve seen the plan.
             </p>
           </div>
-          <Button
-            render={<Link href="/packages" />}
+          <ButtonLink
+            href="/packages"
             variant="outline"
             className="shrink-0 rounded-full px-5 py-2 font-medium"
           >
             <span>See all packages</span>
             <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-          </Button>
+          </ButtonLink>
         </div>
         <React.Suspense
           fallback={<FeaturedSkeletonGrid label="Loading featured packages" />}

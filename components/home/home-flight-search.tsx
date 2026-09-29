@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -17,7 +16,7 @@ import {
   UserIcon,
   Airplane01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { TravellerStepper } from "@/components/ui/traveller-stepper"
@@ -454,14 +453,14 @@ export function HomeFlightSearch() {
             Multi-city trips need 2–6 legs in date order, so the full flights
             editor handles each leg properly.
           </p>
-          <Button
-            render={<Link href={delegateHref} className="justify-center" />}
+          <ButtonLink
+            href={delegateHref}
             size="lg"
             className="w-full justify-center"
           >
             <HugeiconsIcon icon={Airplane01Icon} size={18} aria-hidden="true" />
             <span>Continue in the flights editor</span>
-          </Button>
+          </ButtonLink>
         </div>
       ) : (
         <>

@@ -1,5 +1,4 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 
 /** 404 for unknown `/visa/*` routes — points back with a support hatch. */
 export default function VisaNotFound() {
@@ -16,12 +15,12 @@ export default function VisaNotFound() {
         ask a specialist about the destination you have in mind.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Button render={<Link href="/visa" />}>
+        <ButtonLink href="/visa">
           <span>Browse visa countries</span>
-        </Button>
-        <Button render={<Link href="/contact" />} variant="outline">
+        </ButtonLink>
+        <ButtonLink href="/contact" variant="outline">
           <span>Talk to Alphaa</span>
-        </Button>
+        </ButtonLink>
       </div>
     </div>
   )
