@@ -17,33 +17,53 @@ import { TrackLink } from "@/components/analytics/track-link"
 import { track } from "@/lib/analytics"
 import {
   buildHotelConfirmationUrl,
+  hotelBookingFromOrder,
   readHotelPaymentReference,
   resolveHotelVerificationState,
   verifyHotelBooking,
   type HotelBooking,
 } from "@/lib/api/hotels"
-import { getHumanErrorMessage, getPaymentSafetyCopy } from "@/lib/api/client"
+import {
+  ApiError,
+  getHumanErrorMessage,
+  getPaymentSafetyCopy,
+} from "@/lib/api/client"
+import {
+  extractOrderDetails,
+  getPaymentOrder,
+  isOrderPaid,
+  isOrderPending,
+  resolveOrderPaymentStatus,
+  type PaymentOrder,
+} from "@/lib/api/payments"
 import { formatNaira } from "@/lib/format"
 import { getSupportWhatsAppUrl, getWhatsAppUrl } from "@/lib/content/company"
 
 type ConfirmationState =
   | { kind: "verifying" }
-  | { kind: "resolved"; booking: HotelBooking }
+  | { kind: "resolved"; booking: HotelBooking; order: PaymentOrder | null }
   | { kind: "failed"; message: string }
+
+function waitForWebhook(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 /**
  * Paystack return handler for Hotel Bookings (Phase 4, ticket 06).
  *
  * A return from payment proves nothing by itself: this client reads the
- * Payment Reference from the return URL, fetches the live verification
- * (never cached), and only a verified `confirmed` status renders the premium
- * confirmation. Pending keeps the guest checking rather than re-paying;
- * cancelled and failed keep the reference with payment-safety reassurance.
- * Guest Booking — verification needs only the reference.
+ * Payment Reference from the return URL, fetches the universal order FIRST
+ * (guide §12 — the final word on money movement), then the Hotel verify
+ * call for the full Booking shape. Guests are welcome — verification needs
+ * only the reference, plus the email `token` when present. A single ~2s
+ * retry covers the webhook-settling window; the manual button covers the
+ * rest. Only a verified `confirmed` status (or a paid order) renders the
+ * premium confirmation.
  */
 export function HotelConfirmationClient() {
   const searchParams = useSearchParams()
   const reference = searchParams.get("reference")?.trim() || null
+  const guestToken = searchParams.get("token")?.trim() || null
   const [savedReference] = React.useState<string | null>(
     readHotelPaymentReference
   )
@@ -62,18 +82,78 @@ export function HotelConfirmationClient() {
     ;(async () => {
       setState({ kind: "verifying" })
       try {
-        const booking = await verifyHotelBooking(reference)
+        // Primary: the universal order is the final word on money movement.
+        let order: PaymentOrder | null = null
+        let orderForbidden = false
+        try {
+          order = await getPaymentOrder(
+            reference,
+            guestToken ? { token: guestToken } : undefined
+          )
+        } catch (error) {
+          if (error instanceof ApiError && error.code === "forbidden") {
+            orderForbidden = true
+          }
+          order = null
+        }
         if (cancelled) return
-        setState({ kind: "resolved", booking })
+        if (orderForbidden) {
+          throw new ApiError(
+            "This confirmation link is invalid or has expired. Ask Alphaa to resend your receipt link.",
+            { status: 403, code: "forbidden" }
+          )
+        }
+        // Still settling (webhook may not have run): wait ~2s and retry
+        // ONCE, per the guide. No continuous polling.
+        if (
+          order &&
+          !isOrderPaid(resolveOrderPaymentStatus(order)) &&
+          isOrderPending(resolveOrderPaymentStatus(order))
+        ) {
+          await waitForWebhook(2000)
+          if (cancelled) return
+          try {
+            order = await getPaymentOrder(
+              reference,
+              guestToken ? { token: guestToken } : undefined
+            )
+          } catch {
+            // Keep the first result — verify below still gets its chance.
+          }
+          if (cancelled) return
+        }
+        // Fallback/detail: the Hotel verify call carries the full Booking.
+        let booking: HotelBooking | null = null
+        try {
+          booking = await verifyHotelBooking(reference)
+        } catch {
+          booking = null
+        }
+        if (cancelled) return
+        if (!booking && order) {
+          booking = hotelBookingFromOrder(reference, {
+            order: extractOrderDetails(order),
+          })
+        }
+        if (!booking) {
+          throw new ApiError(
+            "We could not confirm this payment yet. It may still be processing.",
+            { status: null, code: "server" }
+          )
+        }
+        setState({ kind: "resolved", booking, order })
         const outcome = resolveHotelVerificationState(booking)
+        const paid =
+          outcome === "confirmed" ||
+          (order !== null && isOrderPaid(resolveOrderPaymentStatus(order)))
         if (viewedRef.current !== booking.reference) {
           viewedRef.current = booking.reference
-          track("hotel_confirmation_viewed", { type: "hotel", outcome })
+          track("hotel_confirmation_viewed", {
+            type: "hotel",
+            outcome: paid ? "confirmed" : outcome,
+          })
         }
-        if (
-          outcome === "confirmed" &&
-          confirmedRef.current !== booking.reference
-        ) {
+        if (paid && confirmedRef.current !== booking.reference) {
           confirmedRef.current = booking.reference
           track("hotel_payment_completed", { type: "hotel" })
         }
@@ -85,7 +165,7 @@ export function HotelConfirmationClient() {
     return () => {
       cancelled = true
     }
-  }, [reference, attempt])
+  }, [reference, guestToken, attempt])
 
   if (!reference) {
     return (
@@ -256,10 +336,13 @@ export function HotelConfirmationClient() {
     )
   }
 
-  const { booking } = state
+  const { booking, order } = state
   const outcome = resolveHotelVerificationState(booking)
+  const paid =
+    outcome === "confirmed" ||
+    (order !== null && isOrderPaid(resolveOrderPaymentStatus(order)))
 
-  if (outcome === "confirmed") {
+  if (paid) {
     const nightWord = booking.nights === 1 ? "night" : "nights"
     const roomWord = booking.num_rooms === 1 ? "room" : "rooms"
     const guestWord = booking.num_guests === 1 ? "guest" : "guests"

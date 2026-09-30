@@ -1,10 +1,16 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Image01Icon } from "@hugeicons/core-free-icons"
 import type { HotelGalleryImage } from "@/lib/api/hotels"
 import { cn } from "@/lib/utils"
+
+/** next/image cannot optimize `data:` URLs — render those with a plain img. */
+function isDataUrl(src: string): boolean {
+  return src.trim().toLowerCase().startsWith("data:")
+}
 
 /**
  * Hotel photo gallery (Phase 4, ticket 03).
@@ -30,15 +36,27 @@ export function HotelGallery({
 
   return (
     <section aria-label={`${hotelName} photos`} className="flex flex-col gap-3">
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-muted shadow-xs sm:rounded-3xl">
-        <img
-          key={active.src}
-          src={active.src}
-          alt={active.alt}
-          fetchPriority="high"
-          decoding="async"
-          className="aspect-[16/10] w-full object-cover sm:aspect-[21/9]"
-        />
+      <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-border/80 bg-muted shadow-xs sm:aspect-[21/9] sm:rounded-3xl">
+        {isDataUrl(active.src) ? (
+          <img
+            key={active.src}
+            src={active.src}
+            alt={active.alt}
+            fetchPriority="high"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <Image
+            key={active.src}
+            src={active.src}
+            alt={active.alt}
+            fill
+            priority
+            sizes="(max-width: 640px) 100vw, 832px"
+            className="object-cover"
+          />
+        )}
         <p
           aria-live="polite"
           className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/60 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-md"
@@ -64,19 +82,30 @@ export function HotelGallery({
               aria-pressed={index === safeIndex}
               aria-label={`Show photo ${index + 1} of ${images.length}: ${image.alt}`}
               className={cn(
-                "min-h-11 touch-manipulation overflow-hidden rounded-xl border-2 bg-muted transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                "relative aspect-[4/3] min-h-11 touch-manipulation overflow-hidden rounded-xl border-2 bg-muted transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                 index === safeIndex
                   ? "border-primary"
                   : "border-transparent opacity-70 hover:opacity-100"
               )}
             >
-              <img
-                src={image.src}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="aspect-[4/3] w-full object-cover"
-              />
+              {isDataUrl(image.src) ? (
+                <img
+                  src={image.src}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-[4/3] w-full object-cover"
+                />
+              ) : (
+                <Image
+                  src={image.src}
+                  alt=""
+                  fill
+                  loading="lazy"
+                  sizes="150px"
+                  className="object-cover"
+                />
+              )}
             </button>
           ))}
         </div>

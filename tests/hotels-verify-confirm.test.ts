@@ -12,7 +12,9 @@ import assert from "node:assert/strict"
 
 import {
   buildHotelConfirmationUrl,
+  hotelBookingFromOrder,
   hotelBookingSchema,
+  normalizeHotelBookingCreateResult,
   resolveHotelVerificationState,
 } from "../lib/api/hotels.ts"
 
@@ -35,6 +37,11 @@ test("Verification states: confirmed, pending, cancelled, failed — unknown sta
     resolveHotelVerificationState({ status: " CONFIRMED " }),
     "confirmed"
   )
+  // The universal order lookup reports money movement as success/paid;
+  // those count as confirmed so an order-first flow never shows a paid
+  // booking as "still processing".
+  assert.equal(resolveHotelVerificationState({ status: "success" }), "confirmed")
+  assert.equal(resolveHotelVerificationState({ status: "paid" }), "confirmed")
 })
 
 test("Verified Hotel Booking carries reference, stay, amounts, and payment state", () => {
@@ -74,4 +81,54 @@ test("Confirmation URL carries only the Payment Reference — never PII", () => 
   assert.ok(!url.includes("@"), "No email may travel in the URL")
   assert.ok(!url.toLowerCase().includes("token"), "No token in the URL")
   assert.ok(!url.toLowerCase().includes("phone"), "No phone in the URL")
+})
+
+test("Create result: flat shape and live { booking, payment } envelope both normalize", () => {
+  // Flat shape (apidoc).
+  assert.deepEqual(
+    normalizeHotelBookingCreateResult({
+      reference: "HOTEL-FLAT",
+      authorization_url: "https://paystack.test/pay/flat",
+    }),
+    {
+      reference: "HOTEL-FLAT",
+      authorization_url: "https://paystack.test/pay/flat",
+    }
+  )
+  // Live envelope (guide §5).
+  assert.deepEqual(
+    normalizeHotelBookingCreateResult({
+      booking: { reference: "HOTEL-ENV", status: "pending" },
+      payment: {
+        reference: "HOTEL-ENV",
+        authorization_url: "https://paystack.test/pay/env",
+        access_code: "abc",
+        amount: "510000.00",
+      },
+    }),
+    {
+      reference: "HOTEL-ENV",
+      authorization_url: "https://paystack.test/pay/env",
+    }
+  )
+  // Neither shape without both halves is usable — never redirect broken.
+  assert.equal(
+    normalizeHotelBookingCreateResult({ booking: { reference: "X" } }),
+    null
+  )
+  assert.equal(normalizeHotelBookingCreateResult({}), null)
+  assert.equal(normalizeHotelBookingCreateResult(null), null)
+})
+
+test("Order fallback: embedded order details build a renderable booking", () => {
+  const booking = hotelBookingFromOrder("HOTEL-ABC123", {
+    order: { hotel_name: "Eko Hotels", status: "confirmed", nights: 3 },
+  })
+  assert.ok(booking, "Embedded details must build a booking")
+  assert.equal(booking?.reference, "HOTEL-ABC123")
+  assert.equal(booking?.hotel_name, "Eko Hotels")
+  // No embedded details: reference-only booking still renders safely.
+  const sparse = hotelBookingFromOrder("HOTEL-XYZ", { order: null })
+  assert.ok(sparse)
+  assert.equal(sparse?.reference, "HOTEL-XYZ")
 })
