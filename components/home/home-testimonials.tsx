@@ -24,8 +24,7 @@ function getInitials(name: string): string {
 export function HomeTestimonials() {
   // ponytail: native CSS scroll-snap slider with auto-advancing interval; upgrade to virtualized carousel if testimonial count exceeds 15.
   const testimonials = React.useMemo(() => getTestimonials(), [])
-  // Published Trustpilot figures — single source of truth lives in stats.ts.
-  const rating = stats.stats.find((stat) => stat.id === "trustpilot")?.value
+  // Published review count — single source of truth lives in stats.ts.
   const reviewCount = stats.stats.find((stat) => stat.id === "reviews")?.value
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const [activeIndex, setActiveIndex] = React.useState(0)
@@ -148,31 +147,18 @@ export function HomeTestimonials() {
             id="home-testimonials-heading"
             className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl"
           >
-            Read reviews, ride with confidence.
+            Trusted by Thousands of African Travellers
           </h2>
           {reviewCount && (
             <p className="max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              Based on {reviewCount} verified reviews.
+              Based on {reviewCount} verified traveller reviews across Nigeria
+              and abroad.
             </p>
           )}
         </div>
 
-        {/* Desktop rating + slider controls */}
+        {/* Desktop slider controls */}
         <div className="hidden items-center gap-3 sm:flex">
-          {rating && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/60 px-3 py-2 text-sm font-semibold text-foreground shadow-xs">
-              <HugeiconsIcon
-                icon={StarIcon}
-                size={15}
-                className="fill-amber-400 text-amber-400"
-                aria-hidden="true"
-              />
-              <span>{rating}</span>
-              <span className="text-xs font-normal text-muted-foreground">
-                Trustpilot
-              </span>
-            </span>
-          )}
           <div className="flex items-center gap-2">
             <button
               type="button"

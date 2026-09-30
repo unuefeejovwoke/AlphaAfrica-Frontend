@@ -896,7 +896,6 @@ export function FlightSearchPageClient() {
                 isCancelled={domestic.isCancelled}
                 searchId={domestic.searchId}
                 error={domestic.error}
-                startedAt={domestic.startedAt}
                 onRetry={handleRetry}
                 onCancel={handleCancelDomestic}
                 onSelect={handleSelect}
@@ -977,7 +976,6 @@ export function FlightSearchPageClient() {
         offer={pendingSelection?.offer ?? null}
         display={pendingSelection?.display ?? null}
         branch={pendingSelection?.branch ?? "international"}
-        trip={tripContext}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) setPendingSelection(null)
         }}

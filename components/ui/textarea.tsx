@@ -1,4 +1,6 @@
 import * as React from "react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { AlertCircleIcon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -46,9 +48,15 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         {error ? (
           <p
             id={`${textareaId}-error`}
-            className="text-xs font-medium text-destructive"
+            className="flex items-start gap-1.5 text-xs font-medium text-destructive"
           >
-            {error}
+            <HugeiconsIcon
+              icon={AlertCircleIcon}
+              size={13}
+              aria-hidden="true"
+              className="mt-0.5 shrink-0"
+            />
+            <span>{error}</span>
           </p>
         ) : helperText ? (
           <p

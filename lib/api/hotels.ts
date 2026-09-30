@@ -432,6 +432,27 @@ export async function getHotels(
   return parsed.data
 }
 
+/**
+ * Featured Hotels for Home. The Hotels endpoint exposes no server-side
+ * featured flag, so this reads the first browse-all page (ISR-cached like
+ * `listHotelSlugs`) and slices to `limit`. Empty stays empty (§12) — the
+ * section renders its WhatsApp escape hatch instead of a blank grid.
+ */
+export async function getFeaturedHotels(limit = 3): Promise<HotelList[]> {
+  const raw = await apiGet<unknown>("/api/hotels/", {
+    query: { page: 1 },
+    tags: ["hotels"],
+  })
+  const parsed = paginatedHotelListSchema.safeParse(raw)
+  if (!parsed.success) {
+    throw new ApiError("Invalid response from the hotel service.", {
+      status: 200,
+      code: "server",
+    })
+  }
+  return parsed.data.results.slice(0, Math.max(1, limit))
+}
+
 // ---------------------------------------------------------------------------
 // Hotel card display mapping + client-side amenity refinement (ticket 02).
 // Pure helpers (TDD seam): no fetch, no DOM. Server owns max price, min
@@ -470,7 +491,7 @@ export interface HotelCardDisplay {
  * when the input is missing, zero, or non-numeric. Shared by card and Room
  * Type price copy so neither invents a "₦0" label.
  */
-function parsePositiveNaira(
+export function parsePositiveNaira(
   value: string | null | undefined
 ): number | null {
   if (value === null || value === undefined) return null
@@ -802,6 +823,32 @@ export function formatRoomTypeCapacity(room: RoomType): string {
       ? ` · ${room.total_rooms} ${room.total_rooms === 1 ? "room" : "rooms"}`
       : ""
   return `Sleeps ${room.max_guests} per room${rooms}`
+}
+
+/**
+ * Whether a Room Type description carries information beyond restating the
+ * Room Type and Hotel names.
+ *
+ * The backend templates most descriptions as `"<Room Type> at <Hotel>."`, which
+ * is pure restatement: printing it under the Room Type name adds a line of
+ * noise and pushes the price below the fold on desktop.
+ *
+ * After the two names are removed, what remains must contain at least one word
+ * of three or more characters to count as content. A bare `"at"` (two letters)
+ * is a connector, not information, so a pure template still reads as filler
+ * while real copy such as `"King bed, city view."` is kept.
+ */
+export function hasSubstantiveRoomDescription(
+  description: string,
+  roomName: string,
+  hotelName: string
+): boolean {
+  let remainder = description.toLowerCase()
+  for (const name of [roomName, hotelName]) {
+    const needle = name.trim().toLowerCase()
+    if (needle.length > 0) remainder = remainder.split(needle).join(" ")
+  }
+  return remainder.split(/[^a-z0-9]+/).some((word) => word.length >= 3)
 }
 
 /**
@@ -1381,4 +1428,96 @@ export function hotelBookingFromOrder(
  */
 export function buildHotelConfirmationUrl(reference: string): string {
   return `/hotels/confirmation?reference=${encodeURIComponent(reference)}`
+}
+
+// ---------------------------------------------------------------------------
+// Listing pagination + active-filter count — mirrors the cars listing so the
+// hotel results shell can share its sidebar layout, numbered pagination, and
+// honest `Showing A–B of N` range (backend exposes `count/next/previous`
+// only). Pure helpers: no fetch, no DOM.
+// ---------------------------------------------------------------------------
+
+/** Number of active server-filter groups (price + stars + sort). */
+export function countActiveHotelFilters(query: {
+  max_price?: number
+  min_stars?: number
+  ordering?: HotelOrdering
+}): number {
+  return (
+    (query.max_price !== undefined ? 1 : 0) +
+    (query.min_stars !== undefined ? 1 : 0) +
+    (query.ordering !== undefined ? 1 : 0)
+  )
+}
+
+export interface HotelPaginationInput {
+  page: number
+  totalCount: number
+  pageSize: number
+  visibleCount: number
+}
+
+export interface HotelPagination {
+  totalPages: number
+  start: number
+  end: number
+}
+
+/**
+ * Numbered-pagination arithmetic over DRF `count/next/previous` shapes.
+ * `pageSize` is the observed full-page length (first full page wins);
+ * `visibleCount` is this page's result length so the last-page range stays
+ * honest (`Showing 11–13 of 13`, never `11–20 of 13`).
+ */
+export function getHotelPagination(
+  input: HotelPaginationInput
+): HotelPagination {
+  const { page, totalCount, visibleCount } = input
+  const pageSize =
+    Number.isInteger(input.pageSize) && input.pageSize > 0
+      ? input.pageSize
+      : visibleCount > 0
+        ? visibleCount
+        : 1
+  if (totalCount <= 0 || visibleCount <= 0) {
+    return { totalPages: 0, start: 0, end: 0 }
+  }
+  const safePage = Number.isInteger(page) && page > 0 ? page : 1
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const start = (safePage - 1) * pageSize + 1
+  const end = Math.min(totalCount, start + visibleCount - 1)
+  return { totalPages, start, end }
+}
+
+export type HotelPageItem = number | "ellipsis"
+
+/**
+ * Compact page-item window: always the first/last page plus `sibling`
+ * neighbours around the current page, with ellipsis gaps. Pure seam so the
+ * pagination UI is unit-testable.
+ */
+export function getHotelPageItems(
+  page: number,
+  totalPages: number,
+  sibling = 1
+): HotelPageItem[] {
+  if (!Number.isInteger(totalPages) || totalPages <= 0) return []
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1)
+  }
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const near = new Set<number>([1, totalPages, safePage])
+  for (let i = 1; i <= Math.max(0, sibling); i++) {
+    if (safePage - i > 1) near.add(safePage - i)
+    if (safePage + i < totalPages) near.add(safePage + i)
+  }
+  const sorted = [...near].sort((a, b) => a - b)
+  const items: HotelPageItem[] = []
+  for (let i = 0; i < sorted.length; i++) {
+    const current = sorted[i]
+    const prev = sorted[i - 1]
+    if (i > 0 && current - prev > 1) items.push("ellipsis")
+    items.push(current)
+  }
+  return items
 }

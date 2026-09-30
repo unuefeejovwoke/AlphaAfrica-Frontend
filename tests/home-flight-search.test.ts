@@ -73,7 +73,7 @@ test("Home flight widget: From/To autocomplete, Departure, Search — submits vi
   )
 })
 
-test("Home switcher: flights panel renders the widget, hotels/cars keep the support hatch", () => {
+test("Home switcher: flights panel renders the widget, hotels and cars link live", () => {
   const switcher = readFile("components/home/home-search-switcher.tsx")
   assert.match(
     switcher,
@@ -82,9 +82,10 @@ test("Home switcher: flights panel renders the widget, hotels/cars keep the supp
   )
   assert.match(
     switcher,
-    /ComingSoonHatch/,
-    "Hotels/Cars must keep the support hatch"
+    /\/hotels/,
+    "Hotels must link to the live /hotels route"
   )
+  assert.match(switcher, /\/cars/, "Cars must link to the live /cars route")
   assert.match(switcher, /role="tablist"/, "Tabs must keep the tablist pattern")
   assert.match(
     switcher,

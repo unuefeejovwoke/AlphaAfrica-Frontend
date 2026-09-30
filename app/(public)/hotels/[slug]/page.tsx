@@ -3,20 +3,18 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
-  Location01Icon,
-  StarIcon,
-  Tick01Icon,
-} from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, StarIcon } from "@hugeicons/core-free-icons"
 import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
 import { TerminalCta } from "@/components/shared/terminal-cta"
 import { ViewTracker } from "@/components/analytics/view-tracker"
 import { HotelGallery } from "@/components/hotels/hotel-gallery"
-import { HotelMobileBar } from "@/components/hotels/hotel-mobile-bar"
+import {
+  HERO_AMENITY_LIMIT,
+  HotelAmenityGrid,
+  HotelAmenityStrip,
+} from "@/components/hotels/hotel-amenities"
 import {
   HotelBookingFlow,
   HotelBookingFlowFallback,
@@ -34,12 +32,13 @@ import { hotelDetailJsonLd, humanizeSlug } from "@/lib/listings"
 /**
  * `/hotels/[slug]` (RSC, ISR 3600, open-ended fallback).
  *
- * One Hotel page answering "can Alphaa help with this stay?": gallery with
- * descriptive alt text, overview, display-only location with a map link only
- * when coordinates exist, full amenities, Room Type list with per-night
- * pricing, and a sticky booking panel. Stable Hotel content revalidates
- * hourly; new slugs render on demand with a prices-confirmed-at-booking
- * caveat against stale from-prices (ADR-0005, ADR-0003).
+ * One Hotel page answering "can Alphaa help with this stay?". The layout is
+ * conversion-first: photo, name, rating, address and top amenities in the
+ * hero, then the Room Type choice immediately beneath it with the stay panel
+ * mirroring that choice, then About, Location and the full amenity list as
+ * supporting evidence. Stable Hotel content revalidates hourly; new slugs
+ * render on demand with a prices-confirmed-at-booking caveat against stale
+ * from-prices (ADR-0005, ADR-0003).
  *
  * CONTEXT.md vocabulary throughout: Hotel, Room Type, Hotel Guest,
  * Hotel Booking, Customer, Payment Reference.
@@ -72,8 +71,8 @@ export async function generateMetadata({
     const description =
       hotel.description.trim().length > 0
         ? hotel.description.trim().slice(0, 155)
-        : `${hotel.name} in ${display.placeLabel} — compare Room Type per-night prices in Naira and book with no account. Prices confirmed at booking.`
-    const title = `${hotel.name} — ${display.placeLabel} | Alphaa Africa`
+        : `${hotel.name} in ${display.placeLabel}: compare Room Type per-night prices in Naira and book with no account. Prices confirmed at booking.`
+    const title = `${hotel.name} | Alphaa Africa`
     return {
       metadataBase: new URL(getSiteUrl()),
       title,
@@ -93,7 +92,7 @@ export async function generateMetadata({
               `${getSiteUrl()}/android-chrome-512x512.png`,
             alt:
               display.gallery[0]?.alt ??
-              `${hotel.name} — ${display.placeLabel}`,
+              `${hotel.name} in ${display.placeLabel}`,
           },
         ],
       },
@@ -167,8 +166,12 @@ export default async function HotelDetailPage({
     .map((p) => p.trim())
     .filter((p) => p.length > 0)
 
+  // The hero strip shows the first amenities; the full grid below carries the
+  // rest, so each amenity appears exactly once on the page.
+  const hasDeferredAmenities = display.amenities.length > HERO_AMENITY_LIMIT
+
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-10 px-4 py-8 pb-24 sm:gap-14 sm:px-6 sm:pb-32 md:py-12 lg:px-8">
+    <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 pt-4 pb-28 sm:px-6 sm:pt-6 lg:px-8 lg:pb-32">
       {/* Funnel: backend place facts only — never guest data (ticket 07). */}
       <ViewTracker
         event="hotel_viewed"
@@ -179,8 +182,8 @@ export default async function HotelDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Breadcrumb + support hatch (crawlable internal links). */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4">
+      {/* Breadcrumb (crawlable internal links) plus a way back to search. */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-4">
         <nav
           aria-label="Breadcrumb"
           className="flex items-center gap-2 text-xs text-muted-foreground"
@@ -211,184 +214,195 @@ export default async function HotelDetailPage({
         </ButtonLink>
       </div>
 
-      {/* Title block: one h1, place context, star rating. */}
-      <section aria-labelledby="hotel-title" className="flex flex-col gap-6">
-        <div className="flex max-w-4xl flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              <HugeiconsIcon
-                icon={Location01Icon}
-                size={14}
-                aria-hidden="true"
-              />
-              <span>{display.placeLabel}</span>
-            </span>
-            {display.starLabel ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                <HugeiconsIcon
-                  icon={StarIcon}
-                  size={13}
-                  className="text-amber-500"
-                  aria-hidden="true"
-                />
-                <span
-                  role="img"
-                  aria-label={`Rated ${hotel.star_rating} out of 5 stars`}
-                >
-                  {display.starLabel}
-                </span>
-              </span>
-            ) : null}
-          </div>
+      {/*
+        The page owns this grid. The hero is deliberately rendered outside the
+        Suspense boundary: it holds the LCP photo, and keeping it in the
+        server payload is what makes the preload Next emits for it actually
+        match the first paint. `HotelBookingFlow` returns a fragment, so the
+        three interactive regions land in these same grid cells once it mounts.
+      */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-x-12">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1">
+          <HotelGallery hotelName={hotel.name} images={display.gallery} />
 
-          <h1
-            id="hotel-title"
-            className="text-3xl leading-[1.15] font-extrabold tracking-tight text-balance text-foreground sm:text-4xl lg:text-5xl"
-          >
-            {hotel.name}
-          </h1>
+          {/* Title block: one h1, rating, place, address. */}
+          <div className="flex flex-col gap-2.5">
+            <h1
+              id="hotel-title"
+              className="text-3xl leading-[1.1] font-extrabold tracking-tight text-balance text-foreground sm:text-4xl lg:text-[2.5rem]"
+            >
+              {hotel.name}
+            </h1>
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              {display.starLabel ? (
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <span aria-hidden="true" className="flex gap-0.5">
+                    {Array.from({ length: hotel.star_rating })
+                      .slice(0, 5)
+                      .map((_, index) => (
+                        <HugeiconsIcon
+                          key={index}
+                          icon={StarIcon}
+                          size={14}
+                          className="text-primary"
+                        />
+                      ))}
+                  </span>
+                  <span
+                    role="img"
+                    aria-label={`Rated ${hotel.star_rating} out of 5 stars`}
+                  >
+                    {display.starLabel}
+                  </span>
+                </span>
+              ) : null}
+              <span aria-hidden="true" className="h-3.5 w-px bg-border" />
+              <span className="text-sm font-medium text-muted-foreground">
+                {display.placeLabel}
+              </span>
+            </div>
+
+            {display.addressText ? (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {display.addressText}
+              </p>
+            ) : null}
+
+            {/* Short description sits with the identity block so the guest
+                gets the pitch before the choice, not after it. */}
+            {overviewParagraphs.length > 0 ? (
+              <p className="max-w-[68ch] text-[15px] leading-relaxed text-foreground/80">
+                {overviewParagraphs[0]}
+              </p>
+            ) : null}
+
+            <HotelAmenityStrip
+              amenities={display.amenities}
+              deferToFullGrid={hasDeferredAmenities}
+            />
+          </div>
         </div>
 
-        <HotelGallery hotelName={hotel.name} images={display.gallery} />
-      </section>
-
-      {/* Room choice + stay panel: interactive leaf around RSC content. */}
-      <React.Suspense fallback={<HotelBookingFlowFallback />}>
-        <HotelBookingFlow
-          hotel={{
-            id: hotel.id,
-            slug: hotel.slug,
-            name: hotel.name,
-            city: hotel.city,
-          }}
-          rooms={hotel.room_types}
-        >
-          {/* Overview */}
-          <section
-            aria-labelledby="hotel-overview-heading"
-            className="flex flex-col gap-4"
-          >
-            <h2
-              id="hotel-overview-heading"
-              className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-            >
-              About this Hotel
-            </h2>
-            {overviewParagraphs.length > 0 ? (
-              <div className="max-w-none space-y-4 text-sm leading-relaxed text-muted-foreground md:text-base">
-                {overviewParagraphs.map((paragraph, index) => (
-                  <p key={index} className="leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Details for this Hotel are being updated. Talk to Alphaa and a
-                specialist will describe the Hotel, its Room Types, and current
-                per-night prices before you pay anything.
-              </p>
-            )}
-          </section>
-
-          {/* Location: display-only place context, map link when pinned. */}
-          <section
-            aria-labelledby="hotel-location-heading"
-            className="flex flex-col gap-4"
-          >
-            <h2
-              id="hotel-location-heading"
-              className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-            >
-              Location
-            </h2>
-            <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs sm:p-6">
-              <p className="flex items-start gap-2.5 text-sm font-semibold text-foreground">
-                <HugeiconsIcon
-                  icon={Location01Icon}
-                  size={18}
-                  className="mt-0.5 shrink-0 text-primary"
-                  aria-hidden="true"
-                />
-                <span>
-                  {display.placeLabel}
-                  {display.addressText ? (
-                    <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                      {display.addressText}
-                    </span>
-                  ) : null}
-                </span>
-              </p>
-              {display.mapUrl ? (
-                <div>
-                  <ButtonLink
-                    href={display.mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="outline"
-                    size="sm"
+        <React.Suspense fallback={<HotelBookingFlowFallback />}>
+          <HotelBookingFlow
+            hotel={{
+              id: hotel.id,
+              slug: hotel.slug,
+              name: hotel.name,
+              city: hotel.city,
+            }}
+            rooms={hotel.room_types}
+            startingPrice={hotel.starting_price}
+            details={
+              <>
+                {/* About: remaining paragraphs beyond the hero lede. */}
+                {overviewParagraphs.length > 1 ? (
+                  <section
+                    aria-labelledby="hotel-overview-heading"
+                    className="flex flex-col gap-3"
                   >
-                    <span>View on map</span>
-                    <HugeiconsIcon
-                      icon={ArrowRight01Icon}
-                      size={14}
-                      aria-hidden="true"
-                    />
-                  </ButtonLink>
-                </div>
-              ) : (
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Ask Alphaa for directions to this Hotel on WhatsApp and a
-                  specialist will guide you.
-                </p>
-              )}
-            </div>
-          </section>
-
-          {/* Amenities */}
-          <section
-            aria-labelledby="hotel-amenities-heading"
-            className="flex flex-col gap-5"
-          >
-            <h2
-              id="hotel-amenities-heading"
-              className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-            >
-              Amenities
-            </h2>
-            {display.amenities.length > 0 ? (
-              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {display.amenities.map((amenity) => (
-                  <li
-                    key={amenity}
-                    className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-card px-4 py-3 text-sm font-medium text-foreground"
+                    <h2
+                      id="hotel-overview-heading"
+                      className="text-2xl font-bold tracking-tight text-foreground"
+                    >
+                      About this Hotel
+                    </h2>
+                    <div className="flex max-w-[68ch] flex-col gap-3 text-[15px] leading-relaxed text-muted-foreground">
+                      {overviewParagraphs.slice(1).map((paragraph, index) => (
+                        <p key={index}>{paragraph}</p>
+                      ))}
+                    </div>
+                  </section>
+                ) : overviewParagraphs.length === 0 ? (
+                  <section
+                    aria-labelledby="hotel-overview-heading"
+                    className="flex flex-col gap-3"
                   >
-                    <HugeiconsIcon
-                      icon={Tick01Icon}
-                      size={16}
-                      className="mt-0.5 shrink-0 text-emerald-600"
-                      aria-hidden="true"
-                    />
-                    <span>{amenity}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                The full amenity list for this Hotel is being updated. Talk to
-                Alphaa to confirm what matters for your stay before you book.
-              </p>
-            )}
-          </section>
-        </HotelBookingFlow>
-      </React.Suspense>
+                    <h2
+                      id="hotel-overview-heading"
+                      className="text-2xl font-bold tracking-tight text-foreground"
+                    >
+                      About this Hotel
+                    </h2>
+                    <p className="max-w-[68ch] text-[15px] leading-relaxed text-muted-foreground">
+                      Details for this Hotel are being updated. Talk to Alphaa
+                      and a specialist will describe the Hotel, its Room Types,
+                      and current per-night prices before you pay anything.
+                    </p>
+                  </section>
+                ) : null}
 
-      {/* Crawlable onward links. */}
+                {/* Location: only rendered when it adds something the hero
+                  does not already carry. The address sits in the hero, so a
+                  Location section without a map would just repeat it. The map
+                  link is an exact point and exists only when the backend
+                  carries coordinates, never a guessed one. */}
+                {display.mapUrl ? (
+                  <section
+                    aria-labelledby="hotel-location-heading"
+                    className="flex flex-col gap-3"
+                  >
+                    <h2
+                      id="hotel-location-heading"
+                      className="text-2xl font-bold tracking-tight text-foreground"
+                    >
+                      Location
+                    </h2>
+                    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-card p-5 ring-1 ring-border/70">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground">
+                          {display.placeLabel}
+                        </p>
+                        {display.addressText ? (
+                          <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+                            {display.addressText}
+                          </p>
+                        ) : null}
+                      </div>
+                      <ButtonLink
+                        href={display.mapUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                      >
+                        <span>View on map</span>
+                      </ButtonLink>
+                    </div>
+                  </section>
+                ) : null}
+
+                {/* Amenities the hero strip deferred, so no amenity repeats. */}
+                {hasDeferredAmenities ? (
+                  <section
+                    id="hotel-amenities"
+                    aria-labelledby="hotel-amenities-heading"
+                    className="flex scroll-mt-24 flex-col gap-4"
+                  >
+                    <h2
+                      id="hotel-amenities-heading"
+                      className="text-2xl font-bold tracking-tight text-foreground"
+                    >
+                      Amenities
+                    </h2>
+                    <HotelAmenityGrid amenities={display.amenities} />
+                  </section>
+                ) : null}
+              </>
+            }
+          />
+        </React.Suspense>
+      </div>
+
+      {/* Crawlable onward links. Contact lives in the site nav, so it is not
+          repeated here. */}
       <nav
         aria-label="Explore more Hotels"
-        className="flex flex-col gap-3 border-t border-border/60 pt-6"
+        className="border-t border-border/60 pt-6"
       >
-        <ul className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-muted-foreground">
+        <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold">
           <li>
             <Link
               href={`/hotels?${buildHotelSearchParams({
@@ -399,30 +413,25 @@ export default async function HotelDetailPage({
                 rooms: 1,
                 page: 1,
               })}`}
-              className="hover:text-primary hover:underline"
+              className="text-muted-foreground transition-colors hover:text-primary hover:underline"
             >
               More Hotels in {hotel.city}
             </Link>
           </li>
           <li>
-            <Link href="/hotels" className="hover:text-primary hover:underline">
+            <Link
+              href="/hotels"
+              className="text-muted-foreground transition-colors hover:text-primary hover:underline"
+            >
               Search all Hotels
             </Link>
           </li>
           <li>
             <Link
               href="/flights"
-              className="hover:text-primary hover:underline"
+              className="text-muted-foreground transition-colors hover:text-primary hover:underline"
             >
               Search flights
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/contact"
-              className="hover:text-primary hover:underline"
-            >
-              Contact Alphaa
             </Link>
           </li>
         </ul>
@@ -432,15 +441,8 @@ export default async function HotelDetailPage({
         title="Unsure this Hotel fits your trip?"
         description="Different dates, more guests, or another city entirely? A specialist will compare options with you and confirm per-night prices before anything is booked."
         eyebrow="Human Help, One Tap Away"
-        primaryHref="/hotels"
-        primaryLabel="Search more Hotels"
+        primaryLabel="Contact Alphaa"
         context={`the ${hotel.name} Hotel stay in ${hotel.city}`}
-      />
-
-      {/* Thumb-first booking bar (mobile only, appears after scrolling). */}
-      <HotelMobileBar
-        fromPriceLabel={display.fromPriceLabel}
-        hotelName={hotel.name}
       />
     </div>
   )

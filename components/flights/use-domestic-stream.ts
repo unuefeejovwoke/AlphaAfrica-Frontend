@@ -28,8 +28,6 @@ export interface DomesticStreamState {
   isCancelled: boolean
   searchId: string | null
   error: unknown | null
-  /** Wall-clock start of the current run — drives honest elapsed-time copy. */
-  startedAt: number | null
 }
 
 /**
@@ -57,7 +55,6 @@ export function useDomesticStream() {
     isCancelled: false,
     searchId: null,
     error: null,
-    startedAt: null,
   })
 
   const abortRef = React.useRef<AbortController | null>(null)
@@ -107,7 +104,6 @@ export function useDomesticStream() {
       isCancelled: false,
       searchId: null,
       error: null,
-      startedAt: Date.now(),
     })
 
     const fail = (error: unknown) => {

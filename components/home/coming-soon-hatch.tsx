@@ -22,11 +22,11 @@ export function ComingSoonHatch({
       <div className="flex flex-col gap-2">
         <div className="inline-flex items-center">
           <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold tracking-wider text-primary uppercase">
-            {service} · Coming soon
+            {service} · Concierge Service
           </span>
         </div>
         <p className="text-base font-bold tracking-tight text-foreground sm:text-lg">
-          Online booking for {service.toLowerCase()} lands soon.
+          Personalized assistance for {service.toLowerCase()}
         </p>
         <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
           {blurb}
@@ -38,25 +38,24 @@ export function ComingSoonHatch({
           target="_blank"
           rel="noopener noreferrer"
           size="sm"
-          className="justify-center rounded-xl bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
+          className="justify-center rounded-full bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
         >
           <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
           <span>WhatsApp a specialist</span>
         </ButtonLink>
         <ButtonLink
-          href={`tel:${company.phone.e164}`}
+          href="/hotels"
           variant="outline"
           size="sm"
-          className="justify-center rounded-xl"
+          className="justify-center rounded-full"
         >
-          <HugeiconsIcon icon={Call02Icon} size={16} aria-hidden="true" />
-          <span>Call {company.phone.display}</span>
+          <span>Browse hotel directory</span>
         </ButtonLink>
         <ButtonLink
           href="/contact"
           variant="ghost"
           size="sm"
-          className="justify-center rounded-xl text-muted-foreground hover:text-foreground"
+          className="justify-center rounded-full text-muted-foreground hover:text-foreground"
         >
           <span>All contact options</span>
         </ButtonLink>

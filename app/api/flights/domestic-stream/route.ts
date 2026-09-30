@@ -50,7 +50,12 @@ export async function GET(request: Request): Promise<Response> {
   try {
     upstream = await fetch(backendUrl, {
       method: "GET",
-      headers: { Accept: "text/event-stream" },
+      // The backend negotiates this header and rejects a bare
+      // `text/event-stream` with 406, which would fail every stream and send
+      // the client into the blocking fallback. Offering the JSON error
+      // payload alongside the stream satisfies the negotiation while still
+      // preferring the event stream.
+      headers: { Accept: "text/event-stream, application/json" },
       cache: "no-store",
       signal: request.signal,
     })

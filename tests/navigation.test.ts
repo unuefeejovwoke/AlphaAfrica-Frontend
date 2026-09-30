@@ -19,8 +19,8 @@ test("Public Navigation component provides all required service links and CTA", 
   assert.match(content, /Destinations/i, "Nav must have Destinations link")
   assert.match(
     content,
-    /Plan a Trip/i,
-    "Nav must have 'Plan a Trip' primary CTA"
+    /Book a Trip/i,
+    "Nav must have 'Book a Trip' primary CTA (PRD §7)"
   )
 })
 
@@ -36,42 +36,32 @@ test("Public Footer component provides Abuja office details and WhatsApp contact
   assert.match(content, /WhatsApp/i, "Footer must link to WhatsApp support")
 })
 
-test("Hotels and Car Rentals are flagged under construction, never linked from chrome", () => {
-  const surfaces = [
-    "components/navigation/public-nav.tsx",
-    "components/navigation/public-footer.tsx",
-  ]
-
-  for (const relative of surfaces) {
-    const content = fs.readFileSync(
-      path.resolve(process.cwd(), relative),
-      "utf-8"
-    )
-
-    assert.doesNotMatch(
-      content,
-      /href=["']\/hotels["']/,
-      `${relative} must not link to /hotels until the page is production-ready`
-    )
-    assert.doesNotMatch(
-      content,
-      /href=["']\/car-rentals["']/,
-      `${relative} must not link to /car-rentals until the page is production-ready`
-    )
-  }
-
+test("Hotels and Car Rentals are live self-service routes (Phase 4-5)", () => {
   const nav = fs.readFileSync(
     path.resolve(process.cwd(), "components/navigation/public-nav.tsx"),
     "utf-8"
   )
-  assert.match(
-    nav,
-    /UnderConstructionBadge/,
-    "Nav must carry the under-construction tag"
+  const footer = fs.readFileSync(
+    path.resolve(process.cwd(), "components/navigation/public-footer.tsx"),
+    "utf-8"
   )
-  assert.equal(
-    (nav.match(/comingSoon: true/g) ?? []).length,
-    2,
-    "Hotels and Car Rentals must both be marked comingSoon in SERVICES"
+
+  for (const [label, content] of [
+    ["nav", nav],
+    ["footer", footer],
+  ] as const) {
+    assert.match(content, /\/hotels/, `${label} must link to live /hotels`)
+    assert.match(content, /\/cars/, `${label} must link to live /cars`)
+    assert.doesNotMatch(
+      content,
+      /\/car-rentals/,
+      `${label} must not use the legacy /car-rentals path`
+    )
+  }
+
+  assert.doesNotMatch(
+    nav,
+    /comingSoon:\s*true/,
+    "No service should be gated behind comingSoon now that cars are live"
   )
 })

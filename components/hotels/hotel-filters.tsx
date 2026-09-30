@@ -5,13 +5,13 @@ import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Cancel01Icon, FilterIcon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
-import type { HotelAmenityOption, HotelOrdering } from "@/lib/api/hotels"
+import { countActiveHotelFilters } from "@/lib/api/hotels"
+import type { HotelOrdering } from "@/lib/api/hotels"
 
 /**
- * Server-driven filter value (ticket 02). Every key maps to a backend query
- * parameter reflected in the URL; `undefined` means "no filter" and is
- * omitted to keep links clean. Amenities are intentionally absent — amenity
- * refinement is client-side over the fetched page (ADR-0005).
+ * Server-driven filter value. Every key maps to a backend query parameter
+ * reflected in the URL; `undefined` means "no filter" and is omitted to keep
+ * links clean.
  */
 export interface HotelServerFilterValue {
   max_price?: number
@@ -22,13 +22,7 @@ export interface HotelServerFilterValue {
 export interface HotelFiltersProps {
   /** Current server filters, hydrated from the URL. */
   server: HotelServerFilterValue
-  /** Amenity options derived from the fetched page, with per-option counts. */
-  amenityOptions: HotelAmenityOption[]
-  /** Client-side amenity selection (never in the URL, never a new search). */
-  selectedAmenities: string[]
-  /** Hotels visible after amenity refinement (page subset). */
-  visibleCount: number
-  /** Backend-authoritative total for the server-filtered query. */
+  /** Total Hotels matching the current search. */
   totalCount: number
   /** True while a server-filter URL transition is in flight. */
   isPending?: boolean
@@ -38,8 +32,7 @@ export interface HotelFiltersProps {
     min_stars?: number
     ordering?: HotelOrdering
   }) => void
-  onAmenitiesChange: (next: string[]) => void
-  /** Clears server filters (URL) and amenity refinement together. */
+  /** Clears server filters (URL). */
   onResetFilters: () => void
 }
 
@@ -81,14 +74,6 @@ export const HOTEL_ORDERING_OPTIONS: {
   { value: "name", label: "Name A–Z" },
 ]
 
-/** Toggle one value in a multi-select list (case-insensitive for amenities). */
-function toggleAmenity(selected: string[], value: string): string[] {
-  const key = value.trim().toLowerCase()
-  const next = selected.filter((item) => item.trim().toLowerCase() !== key)
-  if (next.length !== selected.length) return next
-  return [...selected, value]
-}
-
 function chipClass(active: boolean, large?: boolean): string {
   return cn(
     "inline-flex touch-manipulation items-center justify-center gap-1.5 rounded-full border font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
@@ -102,27 +87,28 @@ function chipClass(active: boolean, large?: boolean): string {
 const selectClassName =
   "flex h-11 w-full touch-manipulation rounded-xl border border-input/80 bg-background/80 px-3.5 text-sm font-medium text-foreground shadow-xs transition-colors hover:border-foreground/20 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
 
-interface FilterGroupsProps extends HotelFiltersProps {
+interface FilterGroupsProps {
+  server: HotelServerFilterValue
+  isPending?: boolean
   large?: boolean
+  onServerChange: HotelFiltersProps["onServerChange"]
 }
 
-function FilterGroups({
+/**
+ * Pure filter groups — sort, per-night cap, and star floor.
+ * Every server change writes to the URL via the owner callback and resets to page 1.
+ * Mirrors the cars filter groups so both catalogues filter alike.
+ */
+export function HotelFilterGroups({
   server,
-  amenityOptions,
-  selectedAmenities,
   onServerChange,
-  onAmenitiesChange,
   large,
   isPending,
 }: FilterGroupsProps) {
   const orderingId = React.useId()
-  const selectedSet = React.useMemo(
-    () => new Set(selectedAmenities.map((item) => item.trim().toLowerCase())),
-    [selectedAmenities]
-  )
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-5">
       <div className="flex min-w-0 flex-col gap-2">
         <label
           htmlFor={orderingId}
@@ -154,7 +140,7 @@ function FilterGroups({
         className="flex min-w-0 flex-col gap-2"
       >
         <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-          Max per-night price
+          Max per night
         </p>
         <div className="flex flex-wrap gap-2">
           {HOTEL_MAX_PRICE_BANDS.map((option) => {
@@ -209,159 +195,123 @@ function FilterGroups({
           })}
         </div>
       </div>
-
-      {amenityOptions.length > 0 ? (
-        <div
-          role="group"
-          aria-label="Refine this page by amenities"
-          className="flex min-w-0 flex-col gap-2"
-        >
-          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Amenities{" "}
-            <span className="font-normal normal-case">(this page only)</span>
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {amenityOptions.map((option) => {
-              const active = selectedSet.has(option.value.trim().toLowerCase())
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() =>
-                    onAmenitiesChange(
-                      toggleAmenity(selectedAmenities, option.value)
-                    )
-                  }
-                  className={chipClass(active, large)}
-                >
-                  <span>{option.label}</span>
-                  <span
-                    aria-label={`${option.count} ${option.count === 1 ? "Hotel" : "Hotels"}`}
-                    className={cn(
-                      "rounded-full px-1.5 text-xs font-bold tabular-nums",
-                      active
-                        ? "bg-primary-foreground/20"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {option.count}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }
 
 /**
- * Hotel filter + sort controls (ticket 02).
- *
- * Server-side filters (max per-night price, min stars, ordering) update the
- * shareable URL via transition so input stays responsive and back, refresh,
- * and shared links restore exactly what the guest saw. Amenity multi-select
- * refines the fetched page instantly with no new search. Location is
- * display-only place context on the cards — there is no radius control here
- * by design (ADR-0005).
- *
- * Desktop: inline panel. Mobile: bottom-sheet trigger with an active-count
- * badge, large tap targets, and a sticky summary.
+ * Desktop sidebar panel. Status line mirrors cars: pending indicator,
+ * applied-filter confirmation, and shareable-URL hint.
  */
-export function HotelFilters(props: HotelFiltersProps) {
-  const {
-    visibleCount,
-    totalCount,
-    isPending,
-    onResetFilters,
-    selectedAmenities,
-    server,
-  } = props
-  const [sheetOpen, setSheetOpen] = React.useState(false)
-
-  const serverGroups =
-    (server.max_price !== undefined ? 1 : 0) +
-    (server.min_stars !== undefined ? 1 : 0) +
-    (server.ordering !== undefined ? 1 : 0)
-  const activeGroups = serverGroups + (selectedAmenities.length > 0 ? 1 : 0)
+export function HotelFilters({
+  server,
+  totalCount,
+  isPending,
+  onServerChange,
+  onResetFilters,
+}: HotelFiltersProps) {
+  const activeGroups = countActiveHotelFilters(server)
   const isFiltering = activeGroups > 0
 
-  const refined = selectedAmenities.length > 0
-
   return (
-    <div className="flex min-w-0 flex-col gap-3">
-      {/* Desktop: inline filter panel */}
-      <div className="hidden min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4 md:flex">
-        <FilterGroups {...props} />
-        <div
-          className="flex items-center justify-between gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground"
-          role="status"
-          aria-live="polite"
-        >
-          <span className="flex items-center gap-2">
-            <span
-              className={cn(
-                "size-1.5 rounded-full transition-colors",
-                isPending
-                  ? "animate-ping bg-amber-500"
-                  : isFiltering
-                    ? "bg-primary"
-                    : "bg-muted-foreground/40"
-              )}
-            />
-            {isPending
-              ? "Updating Hotels…"
-              : refined
-                ? `Showing ${visibleCount} of ${totalCount} ${totalCount === 1 ? "Hotel" : "Hotels"} on this page.`
-                : isFiltering
-                  ? "Filters applied. URL updated for sharing."
-                  : "Filters update the address bar for shareable searches."}
+    <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          <HugeiconsIcon icon={FilterIcon} size={14} aria-hidden="true" />
+          <span>
+            Filters{" "}
+            {totalCount > 0
+              ? `· ${totalCount} ${totalCount === 1 ? "Hotel" : "Hotels"}`
+              : ""}
           </span>
-          {isFiltering ? (
-            <button
-              type="button"
-              onClick={onResetFilters}
-              className="inline-flex min-h-11 touch-manipulation items-center rounded-full px-4 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <span>Clear all filters</span>
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Mobile: bottom-sheet trigger with active-count badge */}
-      <div className="flex items-center gap-2 md:hidden">
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          aria-haspopup="dialog"
-          className="inline-flex min-h-12 flex-1 touch-manipulation items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          <HugeiconsIcon icon={FilterIcon} size={16} aria-hidden="true" />
-          <span>Filters & sort</span>
-          {activeGroups > 0 ? (
-            <span
-              aria-label={`${activeGroups} refinements active`}
-              className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground tabular-nums"
-            >
-              {activeGroups}
-            </span>
-          ) : null}
-        </button>
+        </p>
         {isFiltering ? (
           <button
             type="button"
             onClick={onResetFilters}
-            className="inline-flex min-h-12 touch-manipulation items-center justify-center rounded-xl px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="inline-flex min-h-11 touch-manipulation items-center rounded-full px-4 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
-            <span>Clear</span>
+            <span>Clear all</span>
           </button>
         ) : null}
       </div>
+      <HotelFilterGroups
+        server={server}
+        isPending={isPending}
+        onServerChange={onServerChange}
+      />
+      <div
+        className="flex items-center gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground"
+        role="status"
+        aria-live="polite"
+      >
+        <span
+          className={cn(
+            "size-1.5 shrink-0 rounded-full transition-colors",
+            isPending
+              ? "animate-ping bg-amber-500"
+              : isFiltering
+                ? "bg-primary"
+                : "bg-muted-foreground/40"
+          )}
+        />
+        <span>
+          {isPending
+            ? "Updating Hotels…"
+            : isFiltering
+              ? "Filters applied. URL updated for sharing."
+              : "Filters update the address bar for shareable searches."}
+        </span>
+      </div>
+    </div>
+  )
+}
 
-      {/* Mobile: bottom sheet with large tap targets + sticky summary */}
+/**
+ * Mobile filter entry: trigger button with active-count badge + bottom sheet
+ * with large tap targets and a sticky summary. Desktop panel stays mounted
+ * separately in the sidebar — this renders nothing on `lg:` and up.
+ */
+export function HotelMobileFilters({
+  server,
+  totalCount,
+  isPending,
+  onServerChange,
+  onResetFilters,
+}: HotelFiltersProps) {
+  const [sheetOpen, setSheetOpen] = React.useState(false)
+  const activeGroups = countActiveHotelFilters(server)
+  const isFiltering = activeGroups > 0
+
+  return (
+    <div className="flex items-center gap-2 lg:hidden">
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        aria-haspopup="dialog"
+        className="inline-flex min-h-12 flex-1 touch-manipulation items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      >
+        <HugeiconsIcon icon={FilterIcon} size={16} aria-hidden="true" />
+        <span>Filters & sort</span>
+        {activeGroups > 0 ? (
+          <span
+            aria-label={`${activeGroups} refinements active`}
+            className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground tabular-nums"
+          >
+            {activeGroups}
+          </span>
+        ) : null}
+      </button>
+      {isFiltering ? (
+        <button
+          type="button"
+          onClick={onResetFilters}
+          className="inline-flex min-h-12 touch-manipulation items-center justify-center rounded-xl px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <span>Clear</span>
+        </button>
+      ) : null}
+
       <DrawerPrimitive.Root open={sheetOpen} onOpenChange={setSheetOpen}>
         <DrawerPrimitive.Portal>
           <DrawerPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-4 md:items-center">
@@ -372,9 +322,8 @@ export function HotelFilters(props: HotelFiltersProps) {
                     <DrawerPrimitive.Title className="text-lg font-bold text-balance text-foreground">
                       Filter & sort Hotels
                     </DrawerPrimitive.Title>
-                    <DrawerPrimitive.Description className="mt-1 text-sm break-words text-muted-foreground">
-                      Price, stars, and sort search again. Amenities refine this
-                      page only.
+                    <DrawerPrimitive.Description className="sr-only">
+                      Filter by price and star rating, or change sorting
                     </DrawerPrimitive.Description>
                   </div>
                   <DrawerPrimitive.Close
@@ -383,37 +332,49 @@ export function HotelFilters(props: HotelFiltersProps) {
                   >
                     <HugeiconsIcon
                       icon={Cancel01Icon}
-                      size={18}
+                      size={20}
                       aria-hidden="true"
                     />
                   </DrawerPrimitive.Close>
                 </div>
-                <div className="mt-4 min-w-0">
-                  <FilterGroups {...props} large />
-                </div>
-                <div className="sticky bottom-0 -mx-6 mt-6 flex items-center gap-2 border-t border-border bg-card px-6 pt-4 pb-1">
-                  <button
-                    type="button"
-                    onClick={() => setSheetOpen(false)}
-                    className="inline-flex min-h-12 flex-1 touch-manipulation items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  >
-                    <span>
-                      Show {visibleCount}{" "}
-                      {visibleCount === 1 ? "Hotel" : "Hotels"}
-                    </span>
-                  </button>
-                  {isFiltering ? (
-                    <button
+
+                <div className="mt-6 flex flex-col gap-6">
+                  <HotelFilterGroups
+                    server={server}
+                    large
+                    isPending={isPending}
+                    onServerChange={onServerChange}
+                  />
+
+                  <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+                    {isFiltering ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onResetFilters()
+                          setSheetOpen(false)
+                        }}
+                        className="inline-flex min-h-12 touch-manipulation items-center rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      >
+                        <span>Reset all</span>
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {totalCount} {totalCount === 1 ? "Hotel" : "Hotels"}{" "}
+                        available
+                      </span>
+                    )}
+
+                    <DrawerPrimitive.Close
                       type="button"
-                      onClick={() => {
-                        onResetFilters()
-                        setSheetOpen(false)
-                      }}
-                      className="inline-flex min-h-12 touch-manipulation items-center justify-center rounded-xl px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      className="inline-flex min-h-12 touch-manipulation items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     >
-                      <span>Clear all</span>
-                    </button>
-                  ) : null}
+                      <span>
+                        Show {totalCount}{" "}
+                        {totalCount === 1 ? "Hotel" : "Hotels"}
+                      </span>
+                    </DrawerPrimitive.Close>
+                  </div>
                 </div>
               </DrawerPrimitive.Content>
             </DrawerPrimitive.Popup>

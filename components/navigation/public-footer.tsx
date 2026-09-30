@@ -4,10 +4,12 @@ import Image from "next/image"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Call02Icon,
+  Clock01Icon,
+  Facebook02Icon,
+  InstagramIcon,
+  Location01Icon,
   Mail01Icon,
   Message01Icon,
-  InstagramIcon,
-  Facebook02Icon,
   TiktokIcon,
   WhatsappIcon,
 } from "@hugeicons/core-free-icons"
@@ -30,16 +32,17 @@ export function PublicFooter() {
               />
             </div>
             <p className="text-sm font-medium text-foreground">
-              Not sure what you need?{" "}
+              Ready to discuss your itinerary?{" "}
               <span className="text-muted-foreground">
-                Tell us the trip — we&apos;ll tell you the next step.
+                Our Abuja travel desk is standing by to assist with live
+                availability, custom packages, and bookings.
               </span>
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/contact"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               <span>Talk to Alphaa</span>
             </Link>
@@ -49,9 +52,9 @@ export function PublicFooter() {
 
       {/* Main Navigation Grid */}
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-10">
           {/* Brand Column */}
-          <div className="flex flex-col gap-4 lg:col-span-2">
+          <div className="flex flex-col gap-4">
             <Link href="/" className="group flex items-center gap-2.5">
               <Image
                 src="/android-chrome-192x192.png"
@@ -66,62 +69,15 @@ export function PublicFooter() {
               </span>
             </Link>
 
-            <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
-              Book flights, hotels, packages, visas, and cars yourself — or get
-              real help from our team.
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Your trusted travel partner. We combine self-service booking for
+              flights, hotels, packages, and car rentals with dedicated human
+              concierge advisory.
             </p>
-
-            {/* Direct Contact Links */}
-            <div className="mt-1 flex flex-col gap-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon
-                  icon={WhatsappIcon}
-                  size={14}
-                  className="shrink-0 text-primary"
-                  aria-hidden="true"
-                />
-                <a
-                  href={getWhatsAppUrl(company.whatsapp.prefills.services)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="transition-colors hover:text-foreground"
-                >
-                  {company.whatsapp.display}
-                </a>
-              </div>
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon
-                  icon={Call02Icon}
-                  size={14}
-                  className="shrink-0 text-primary"
-                  aria-hidden="true"
-                />
-                <a
-                  href={`tel:${company.phone.e164}`}
-                  className="transition-colors hover:text-foreground"
-                >
-                  {company.phone.display}
-                </a>
-              </div>
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon
-                  icon={Mail01Icon}
-                  size={14}
-                  className="shrink-0 text-primary"
-                  aria-hidden="true"
-                />
-                <a
-                  href={`mailto:${company.email}`}
-                  className="transition-colors hover:text-foreground"
-                >
-                  {company.email}
-                </a>
-              </div>
-            </div>
 
             {/* Social Icons */}
             <div
-              className="mt-2 flex items-center gap-2"
+              className="mt-1 flex items-center gap-2"
               aria-label="Social media links"
             >
               <a
@@ -162,31 +118,34 @@ export function PublicFooter() {
             </div>
           </div>
 
-          {/* Column 2: Book */}
+          {/* Column 2: Book Services */}
           <div>
             <h3 className="mb-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Book
+              Services
             </h3>
-            <ul className="space-y-2 text-xs">
+            <ul className="space-y-2.5 text-xs">
               <li>
                 <Link
                   href="/flights"
                   className="text-foreground/80 transition-colors hover:text-primary"
                 >
-                  Flights
+                  Flights & Air Tickets
                 </Link>
               </li>
               <li>
-                <span className="cursor-not-allowed text-muted-foreground/70">
-                  Hotels
-                </span>
+                <Link
+                  href="/hotels"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
+                  Hotels & Resorts
+                </Link>
               </li>
               <li>
                 <Link
                   href="/packages"
                   className="text-foreground/80 transition-colors hover:text-primary"
                 >
-                  Packages
+                  Curated Packages
                 </Link>
               </li>
               <li>
@@ -198,19 +157,22 @@ export function PublicFooter() {
                 </Link>
               </li>
               <li>
-                <span className="cursor-not-allowed text-muted-foreground/70">
-                  Car Rentals
-                </span>
+                <Link
+                  href="/cars"
+                  className="text-foreground/80 transition-colors hover:text-primary"
+                >
+                  Chauffeured Cars
+                </Link>
               </li>
             </ul>
           </div>
 
-          {/* Column 3: Discover */}
+          {/* Column 3: Explore & Company */}
           <div>
             <h3 className="mb-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Discover
+              Company
             </h3>
-            <ul className="space-y-2 text-xs">
+            <ul className="space-y-2.5 text-xs">
               <li>
                 <Link
                   href="/destinations"
@@ -224,7 +186,7 @@ export function PublicFooter() {
                   href="/blog"
                   className="text-foreground/80 transition-colors hover:text-primary"
                 >
-                  Blog
+                  Travel Blog & News
                 </Link>
               </li>
               <li>
@@ -232,7 +194,7 @@ export function PublicFooter() {
                   href="/about"
                   className="text-foreground/80 transition-colors hover:text-primary"
                 >
-                  About
+                  About Alphaa Africa
                 </Link>
               </li>
               <li>
@@ -240,7 +202,7 @@ export function PublicFooter() {
                   href="/faq"
                   className="text-foreground/80 transition-colors hover:text-primary"
                 >
-                  FAQ
+                  Help & FAQs
                 </Link>
               </li>
               <li>
@@ -248,40 +210,110 @@ export function PublicFooter() {
                   href="/contact"
                   className="text-foreground/80 transition-colors hover:text-primary"
                 >
-                  Contact
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/login"
-                  className="text-foreground/80 transition-colors hover:text-primary"
-                >
-                  Sign In
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/privacy"
-                  className="text-foreground/80 transition-colors hover:text-primary"
-                >
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/terms"
-                  className="text-foreground/80 transition-colors hover:text-primary"
-                >
-                  Terms & Conditions
+                  Contact Office
                 </Link>
               </li>
             </ul>
           </div>
+
+          {/* Column 4: Abuja Headquarters & Direct Contact */}
+          <div className="flex flex-col gap-3">
+            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Abuja Headquarters
+            </h3>
+
+            <div className="flex items-start gap-2 text-xs text-muted-foreground">
+              <HugeiconsIcon
+                icon={Location01Icon}
+                size={15}
+                className="mt-0.5 shrink-0 text-primary"
+                aria-hidden="true"
+              />
+              <p className="leading-relaxed">{company.office.address}</p>
+            </div>
+
+            <div className="mt-1 flex flex-col gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon
+                  icon={WhatsappIcon}
+                  size={15}
+                  className="shrink-0 text-emerald-600"
+                  aria-hidden="true"
+                />
+                <a
+                  href={getWhatsAppUrl(company.whatsapp.prefills.services)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-foreground transition-colors hover:text-primary"
+                >
+                  WhatsApp: {company.whatsapp.display}
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon
+                  icon={Call02Icon}
+                  size={15}
+                  className="shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+                <a
+                  href={`tel:${company.phone.e164}`}
+                  className="transition-colors hover:text-foreground"
+                >
+                  {company.phone.display}
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon
+                  icon={Mail01Icon}
+                  size={15}
+                  className="shrink-0 text-primary"
+                  aria-hidden="true"
+                />
+                <a
+                  href={`mailto:${company.email}`}
+                  className="transition-colors hover:text-foreground"
+                >
+                  {company.email}
+                </a>
+              </div>
+            </div>
+
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground/80">
+              <HugeiconsIcon
+                icon={Clock01Icon}
+                size={13}
+                className="shrink-0"
+                aria-hidden="true"
+              />
+              <span>Mon – Sat: 8:00 AM – 6:00 PM (WAT)</span>
+            </div>
+          </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-10 border-t border-border/50 pt-6 text-xs text-muted-foreground">
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/50 pt-6 text-xs text-muted-foreground sm:flex-row">
           <p>© {currentYear} Alphaa Africa Limited. All rights reserved.</p>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+            <Link
+              href="/privacy"
+              className="transition-colors hover:text-primary"
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              href="/terms"
+              className="transition-colors hover:text-primary"
+            >
+              Terms & Conditions
+            </Link>
+            <Link
+              href="/login"
+              className="transition-colors hover:text-primary"
+            >
+              Sign In
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

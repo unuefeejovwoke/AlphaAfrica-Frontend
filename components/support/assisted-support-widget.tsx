@@ -30,6 +30,7 @@ function getServiceContext(pathname: string): string {
   if (pathname.startsWith("/packages")) return "holiday packages"
   if (pathname.startsWith("/visa")) return "visa assistance"
   if (pathname.startsWith("/car-rentals")) return "car rentals"
+  if (pathname.startsWith("/cars")) return "car rentals"
   if (pathname.startsWith("/destinations")) return "destination planning"
   if (pathname.startsWith("/checkout")) return "booking checkout"
   return "travel planning"
@@ -56,12 +57,20 @@ export function AssistedSupportWidget() {
   const supportEmailHref = getEmailHref(`Assistance with ${serviceContext}`)
   // Checkout's full-bleed Pay bar owns the viewport bottom; float above it.
   const onCheckout = pathname.startsWith("/checkout")
+  // The Hotel detail page's stay panel already carries a "Talk to Alphaa"
+  // action in its sticky right rail, and that rail reaches the bottom of the
+  // fold exactly where this pill expands across ~340px. Keep the collapsed
+  // round button there instead of expanding a redundant second help prompt.
+  const onHotelDetail = /^\/hotels\/[^/]+$/.test(pathname)
+  const labelAllowed = showLabel && !onHotelDetail
 
   return (
     <div
       className={cn(
         "fixed right-4 z-50 sm:right-6",
-        onCheckout ? "bottom-24 sm:bottom-24" : "bottom-4 sm:bottom-6"
+        onCheckout || onHotelDetail
+          ? "bottom-24 sm:bottom-24"
+          : "bottom-4 sm:bottom-6"
       )}
     >
       {!isOpen && (
@@ -70,7 +79,7 @@ export function AssistedSupportWidget() {
           onClick={() => setIsOpen(true)}
           className={cn(
             "group flex touch-manipulation items-center rounded-full border border-foreground/20 bg-background/90 text-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/35 hover:bg-background hover:shadow-[0_12px_36px_rgba(0,0,0,0.18)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]",
-            showLabel ? "py-1.5 pr-1.5 pl-4" : "p-1.5"
+            labelAllowed ? "py-1.5 pr-1.5 pl-4" : "p-1.5"
           )}
           aria-expanded={isOpen}
           aria-controls="travel-concierge"
@@ -79,9 +88,9 @@ export function AssistedSupportWidget() {
           <div
             className={cn(
               "flex overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
-              showLabel ? "max-w-[260px] opacity-100" : "max-w-0 opacity-0"
+              labelAllowed ? "max-w-[260px] opacity-100" : "max-w-0 opacity-0"
             )}
-            aria-hidden={!showLabel}
+            aria-hidden={!labelAllowed}
           >
             <div className="flex shrink-0 items-center gap-1.5 pr-3 text-left whitespace-nowrap">
               <span className="text-xs font-semibold tracking-tight text-foreground">

@@ -11,10 +11,10 @@ import {
   Car01Icon,
   ArrowUpRight01Icon,
 } from "@hugeicons/core-free-icons"
-import { ComingSoonHatch } from "@/components/home/coming-soon-hatch"
 import { HomeFlightSearch } from "@/components/home/home-flight-search"
 
-type InteractiveTabId = "flights" | "hotels" | "cars"
+/** Only Flights renders in place; every other tab links to its live route. */
+type InteractiveTabId = "flights"
 
 interface TabItem {
   id: string
@@ -25,35 +25,16 @@ interface TabItem {
 
 const TABS: TabItem[] = [
   { id: "flights", label: "Flights", icon: Airplane01Icon },
-  { id: "hotels", label: "Hotels", icon: Building01Icon },
-  { id: "cars", label: "Car Rentals", icon: Car01Icon },
+  { id: "hotels", label: "Hotels", icon: Building01Icon, href: "/hotels" },
+  { id: "cars", label: "Car Rentals", icon: Car01Icon, href: "/cars" },
   { id: "packages", label: "Packages", icon: Luggage01Icon, href: "/packages" },
   { id: "visa", label: "Visa Assistance", icon: Passport01Icon, href: "/visa" },
 ]
 
-const COMING_SOON: Record<
-  Exclude<InteractiveTabId, "flights">,
-  { service: string; context: string; blurb: string }
-> = {
-  hotels: {
-    service: "Hotel reservations",
-    context: "hotel reservations",
-    blurb:
-      "Self-service hotel search lands in Phase 4. Until then, share your city and dates and we will confirm availability and rates.",
-  },
-  cars: {
-    service: "Car rentals",
-    context: "car rentals",
-    blurb:
-      "Self-service vehicle booking lands in Phase 5. Until then, share pickup, hours, and traveller count for an instant quote.",
-  },
-}
-
 /**
- * Interactive search switcher with Apple-style segmented tabs.
- * Flights renders the compact self-service search; Hotels and Car Rentals
- * switch assisted service previews until their self-service phases land.
- * Packages and Visa Assistance link directly to their dedicated pages.
+ * Search switcher with Apple-style segmented tabs.
+ * Flights renders the compact self-service search in place; Hotels, Car
+ * Rentals, Packages, and Visa Assistance link directly to their live pages.
  */
 export function HomeSearchSwitcher() {
   const [activeTab, setActiveTab] = React.useState<InteractiveTabId>("flights")
@@ -154,15 +135,7 @@ export function HomeSearchSwitcher() {
           id={`search-panel-${activeTab}`}
           aria-labelledby={`search-tab-${activeTab}`}
         >
-          {activeTab === "flights" ? (
-            <HomeFlightSearch />
-          ) : (
-            <ComingSoonHatch
-              service={COMING_SOON[activeTab].service}
-              whatsappContext={COMING_SOON[activeTab].context}
-              blurb={COMING_SOON[activeTab].blurb}
-            />
-          )}
+          <HomeFlightSearch />
         </div>
       </div>
     </div>

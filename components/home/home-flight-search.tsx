@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -8,7 +9,6 @@ import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
-  Message01Icon,
   ArrowRight01Icon,
   Exchange01Icon,
   ArrowLeftRightIcon,
@@ -16,12 +16,11 @@ import {
   UserIcon,
   Airplane01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button, ButtonLink } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { TravellerStepper } from "@/components/ui/traveller-stepper"
 import { AirportAutocomplete } from "@/components/flights/airport-autocomplete"
-import { TrackLink } from "@/components/analytics/track-link"
 import {
   type Airport,
   type FlightSearchFormValues,
@@ -32,11 +31,12 @@ import {
 import { buildFlightSearchQuery } from "@/lib/api/flight-search-url"
 import { isDomesticSearch } from "@/lib/api/domestic"
 import { track } from "@/lib/analytics"
-import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { cn } from "@/lib/utils"
 
 const FROM_INPUT_ID = "home-flight-from"
 const TO_INPUT_ID = "home-flight-to"
+/** Multi-city needs the full editor; its home control hands off with the trip flag. */
+const MULTI_CITY_HREF = "/flights?trip_type=multi_city"
 
 /** Explicit trip choices are remembered; first visit stays predictable (one_way). */
 const TRIP_TYPE_STORAGE_KEY = "alphaa:home-trip-type:v1"
@@ -46,7 +46,8 @@ function readStoredTripType(): HomeTripType {
   if (typeof window === "undefined") return "one_way"
   try {
     const raw = window.localStorage.getItem(TRIP_TYPE_STORAGE_KEY)
-    return raw === "round_trip" || raw === "multi_city" ? raw : "one_way"
+    // Multi-city is never stored here — it always hands off to the full editor.
+    return raw === "round_trip" ? raw : "one_way"
   } catch {
     return "one_way"
   }
@@ -55,7 +56,6 @@ function readStoredTripType(): HomeTripType {
 const TRIP_OPTIONS = [
   { value: "one_way", label: "One way", icon: ArrowRight01Icon },
   { value: "round_trip", label: "Round trip", icon: Exchange01Icon },
-  { value: "multi_city", label: "Multi-city", icon: Airplane01Icon },
 ] as const
 
 const CABIN_OPTIONS = [
@@ -79,8 +79,8 @@ type FocusableField = "origin" | "destination" | "departureDate" | "returnDate"
  * - Validation stays quiet while typing (errors surface on blur and on
  *   submit); invalid submit stays on home, focuses the first error, and
  *   announces it — with no navigation.
- * - Multi-city is a delegate state, not an editor: one explanatory row plus
- *   a continue action carrying the trip flag into the full editor.
+ * - Multi-city is a hand-off, not an editor: its control links straight to the
+ *   full flights editor with the trip flag carried in the URL.
  * - Valid submit fires search-started analytics (trip type, cabin, and
  *   domestic/international route class only — never PII or fare data), then
  *   navigates with shareable URL search state.
@@ -131,7 +131,6 @@ export function HomeFlightSearch() {
   const departureDateValue = form.watch("departureDate") ?? ""
   const isSubmitted = form.formState.isSubmitted
   const travellersLabelId = React.useId()
-  const isMultiCity = tripType === "multi_city"
 
   const adults = form.watch("adults") ?? 1
   const children = form.watch("children") ?? 0
@@ -289,10 +288,6 @@ export function HomeFlightSearch() {
 
   const canSwap = originInput.trim() !== "" || destinationInput.trim() !== ""
 
-  // Multi-city delegates to the full flights editor: one explanatory row plus
-  // a continue action carrying the multi-city trip flag. No leg editing on home.
-  const delegateHref = "/flights?trip_type=multi_city"
-
   const handleFormSubmit = form.handleSubmit(
     (values) => {
       setSubmitAlert(null)
@@ -403,274 +398,251 @@ export function HomeFlightSearch() {
       aria-label="Flight search"
       className="flex flex-col gap-4"
     >
-      <div
-        role="radiogroup"
-        aria-label="Trip type"
-        className="flex w-full items-center gap-1 rounded-2xl border border-border/50 bg-muted/70 p-1 sm:inline-flex sm:w-auto sm:self-start"
-      >
-        {TRIP_OPTIONS.map((option) => {
-          const checked = tripType === option.value
-          return (
-            <label
-              key={option.value}
-              className={cn(
-                "inline-flex flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
-                checked
-                  ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
-                  : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
-              )}
-            >
-              <input
-                type="radio"
-                name="trip_type"
-                value={option.value}
-                checked={checked}
-                onChange={() => handleTripChange(option.value)}
-                className="sr-only"
-              />
-              <HugeiconsIcon
-                icon={option.icon}
-                size={16}
-                aria-hidden="true"
-                className={
-                  checked
-                    ? "shrink-0 text-primary"
-                    : "shrink-0 text-muted-foreground"
-                }
-              />
-              <span>{option.label}</span>
-            </label>
-          )
-        })}
-      </div>
-
-      {isMultiCity ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-muted/30 p-5">
-          <p className="text-sm font-bold tracking-tight text-foreground">
-            Visiting more than one city?
-          </p>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Multi-city trips need 2–6 legs in date order, so the full flights
-            editor handles each leg properly.
-          </p>
-          <ButtonLink
-            href={delegateHref}
-            size="lg"
-            className="w-full justify-center"
-          >
-            <HugeiconsIcon icon={Airplane01Icon} size={18} aria-hidden="true" />
-            <span>Continue in the flights editor</span>
-          </ButtonLink>
-        </div>
-      ) : (
-        <>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-2.5 xl:gap-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2 lg:min-w-0 lg:flex-[2.4]">
-              <div
-                className="w-full min-w-0 flex-1"
-                onBlur={() => setRouteTouched((t) => ({ ...t, origin: true }))}
-              >
-                <AirportAutocomplete
-                  id={FROM_INPUT_ID}
-                  label="From"
-                  placeholder="Lagos, LOS, Murtala Muhammed…"
-                  value={originInput}
-                  selectedAirport={originAirport}
-                  onSelect={handleOriginSelect}
-                  onInputChange={handleOriginInputChange}
-                  error={originError}
-                  formatDisplay={formatAirportDisplay}
-                  showSelectedHint={false}
-                  excludeIata={destinationAirport?.iata_code ?? null}
-                />
-              </div>
-              <div className="flex shrink-0 justify-center sm:mt-[22px]">
-                <button
-                  type="button"
-                  onClick={handleSwap}
-                  disabled={!canSwap}
-                  aria-label="Swap origin and destination"
-                  className="flex size-10 touch-manipulation items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <HugeiconsIcon
-                    icon={ArrowLeftRightIcon}
-                    size={16}
-                    aria-hidden="true"
-                    className="rotate-90 sm:rotate-0"
-                  />
-                </button>
-              </div>
-              <div
-                className="w-full min-w-0 flex-1"
-                onBlur={() =>
-                  setRouteTouched((t) => ({ ...t, destination: true }))
-                }
-              >
-                <AirportAutocomplete
-                  id={TO_INPUT_ID}
-                  label="To"
-                  placeholder="London, LHR, Heathrow…"
-                  value={destinationInput}
-                  selectedAirport={destinationAirport}
-                  onSelect={handleDestinationSelect}
-                  onInputChange={handleDestinationInputChange}
-                  error={destinationError}
-                  formatDisplay={formatAirportDisplay}
-                  showSelectedHint={false}
-                  excludeIata={originAirport?.iata_code ?? null}
-                />
-              </div>
-            </div>
-            <p aria-live="polite" role="status" className="sr-only">
-              {swapAnnouncement}
-            </p>
-
-            <div
-              className={cn(
-                "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:min-w-0 lg:gap-2.5 xl:gap-3",
-                tripType === "round_trip" ? "lg:flex-[2.4]" : "lg:flex-[1.8]"
-              )}
-            >
-              <div className="w-full min-w-0 flex-1">
-                <Input
-                  label="Departure"
-                  type="date"
-                  min={today}
-                  error={departureError}
-                  {...departureRegistration}
-                  onChange={(e) => {
-                    departureRegistration.onChange(e)
-                    form.clearErrors("departureDate")
-                    setSubmitAlert(null)
-                  }}
-                />
-              </div>
-              {tripType === "round_trip" ? (
-                <div className="w-full min-w-0 flex-1">
-                  <Input
-                    label="Return"
-                    type="date"
-                    min={departureDateValue || today}
-                    error={returnError}
-                    {...returnRegistration}
-                    onChange={(e) => {
-                      returnRegistration.onChange(e)
-                      form.clearErrors("returnDate")
-                      setSubmitAlert(null)
-                    }}
-                  />
-                </div>
-              ) : null}
-
-              <div
+      <div className="flex w-full items-center gap-1 rounded-2xl border border-border/50 bg-muted/70 p-1 sm:inline-flex sm:w-auto sm:self-start">
+        <div role="radiogroup" aria-label="Trip type" className="contents">
+          {TRIP_OPTIONS.map((option) => {
+            const checked = tripType === option.value
+            return (
+              <label
+                key={option.value}
                 className={cn(
-                  "w-full min-w-0",
-                  tripType === "round_trip" ? "flex-1" : "flex-[0.9]"
+                  "inline-flex flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
+                  checked
+                    ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
+                    : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
                 )}
               >
-                <div className="w-full space-y-1.5">
-                  <span
-                    id={travellersLabelId}
-                    className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
-                  >
-                    Travellers
-                  </span>
-                  <PopoverPrimitive.Root>
-                    <PopoverPrimitive.Trigger className="flex h-12 w-full touch-manipulation items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-base text-foreground shadow-xs transition-colors hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none sm:h-10 sm:text-sm">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <HugeiconsIcon
-                          icon={UserIcon}
-                          size={16}
-                          aria-hidden="true"
-                          className="shrink-0 text-muted-foreground"
-                        />
-                        <span className="truncate font-medium">
-                          {shortLabel}
-                        </span>
-                        {breakdown ? (
-                          <span className="sr-only">: {breakdown}</span>
-                        ) : null}
-                      </span>
-                      <HugeiconsIcon
-                        icon={ArrowDown01Icon}
-                        size={16}
-                        aria-hidden="true"
-                        className="shrink-0 text-muted-foreground"
-                      />
-                    </PopoverPrimitive.Trigger>
-                    <PopoverPrimitive.Portal>
-                      <PopoverPrimitive.Positioner
-                        sideOffset={4}
-                        className="z-50 outline-none"
-                      >
-                        <PopoverPrimitive.Popup className="w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 text-foreground shadow-lg">
-                          <TravellerStepper
-                            value={composition}
-                            onChange={handleCompositionChange}
-                            error={travellerError}
-                          />
-                        </PopoverPrimitive.Popup>
-                      </PopoverPrimitive.Positioner>
-                    </PopoverPrimitive.Portal>
-                  </PopoverPrimitive.Root>
-                </div>
-                {travellerError ? (
-                  <p className="mt-1 text-xs font-medium text-destructive">
-                    {travellerError}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          </div>
+                <input
+                  type="radio"
+                  name="trip_type"
+                  value={option.value}
+                  checked={checked}
+                  onChange={() => handleTripChange(option.value)}
+                  className="sr-only"
+                />
+                <HugeiconsIcon
+                  icon={option.icon}
+                  size={16}
+                  aria-hidden="true"
+                  className={
+                    checked
+                      ? "shrink-0 text-primary"
+                      : "shrink-0 text-muted-foreground"
+                  }
+                />
+                <span>{option.label}</span>
+              </label>
+            )
+          })}
+        </div>
+        <Link
+          href={MULTI_CITY_HREF}
+          aria-label="Multi-city trips continue in the full flights editor"
+          className="inline-flex flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap text-muted-foreground transition-all hover:bg-card/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm"
+        >
+          <HugeiconsIcon
+            icon={Airplane01Icon}
+            size={16}
+            aria-hidden="true"
+            className="shrink-0 text-muted-foreground"
+          />
+          <span>Multi-city</span>
+        </Link>
+      </div>
 
-          {formAlert ? (
-            <div
-              role="alert"
-              className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-xs leading-relaxed text-foreground"
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-2.5 xl:gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2 lg:min-w-0 lg:flex-[2.4]">
+          <div
+            className="w-full min-w-0 flex-1"
+            onBlur={() => setRouteTouched((t) => ({ ...t, origin: true }))}
+          >
+            <AirportAutocomplete
+              id={FROM_INPUT_ID}
+              label="From"
+              placeholder="Lagos, LOS, Murtala Muhammed…"
+              value={originInput}
+              selectedAirport={originAirport}
+              onSelect={handleOriginSelect}
+              onInputChange={handleOriginInputChange}
+              error={originError}
+              formatDisplay={formatAirportDisplay}
+              showSelectedHint={false}
+              excludeIata={destinationAirport?.iata_code ?? null}
+            />
+          </div>
+          <div className="flex shrink-0 justify-center sm:mt-[22px]">
+            <button
+              type="button"
+              onClick={handleSwap}
+              disabled={!canSwap}
+              aria-label="Swap origin and destination"
+              className="flex size-10 touch-manipulation items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {formAlert}
+              <HugeiconsIcon
+                icon={ArrowLeftRightIcon}
+                size={16}
+                aria-hidden="true"
+                className="rotate-90 sm:rotate-0"
+              />
+            </button>
+          </div>
+          <div
+            className="w-full min-w-0 flex-1"
+            onBlur={() => setRouteTouched((t) => ({ ...t, destination: true }))}
+          >
+            <AirportAutocomplete
+              id={TO_INPUT_ID}
+              label="To"
+              placeholder="London, LHR, Heathrow…"
+              value={destinationInput}
+              selectedAirport={destinationAirport}
+              onSelect={handleDestinationSelect}
+              onInputChange={handleDestinationInputChange}
+              error={destinationError}
+              formatDisplay={formatAirportDisplay}
+              showSelectedHint={false}
+              excludeIata={originAirport?.iata_code ?? null}
+            />
+          </div>
+        </div>
+        <p aria-live="polite" role="status" className="sr-only">
+          {swapAnnouncement}
+        </p>
+
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:min-w-0 lg:gap-2.5 xl:gap-3",
+            tripType === "round_trip" ? "lg:flex-[2.4]" : "lg:flex-[1.8]"
+          )}
+        >
+          <div className="w-full min-w-0 flex-1">
+            <Input
+              label="Departure"
+              type="date"
+              min={today}
+              error={departureError}
+              {...departureRegistration}
+              onChange={(e) => {
+                departureRegistration.onChange(e)
+                form.clearErrors("departureDate")
+                setSubmitAlert(null)
+              }}
+            />
+          </div>
+          {tripType === "round_trip" ? (
+            <div className="w-full min-w-0 flex-1">
+              <Input
+                label="Return"
+                type="date"
+                min={departureDateValue || today}
+                error={returnError}
+                {...returnRegistration}
+                onChange={(e) => {
+                  returnRegistration.onChange(e)
+                  form.clearErrors("returnDate")
+                  setSubmitAlert(null)
+                }}
+              />
             </div>
           ) : null}
 
-          <div className="flex flex-col-reverse gap-4 pt-1 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-center text-xs leading-relaxed text-muted-foreground sm:text-left"></p>
-
-            <div className="flex shrink-0 flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-end">
-              <Controller
-                name="cabin"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Select
-                    label="Cabin"
-                    hideLabel
-                    className="w-full sm:w-36"
-                    options={[...CABIN_OPTIONS]}
-                    value={field.value}
-                    onValueChange={(val) => {
-                      field.onChange(val)
-                      form.clearErrors("cabin")
-                      setSubmitAlert(null)
-                    }}
-                    error={fieldState.error?.message}
-                  />
-                )}
-              />
-              <Button
-                type="submit"
-                size="lg"
-                className="h-12 w-full justify-center px-6 text-base font-semibold sm:h-10 sm:w-auto sm:text-sm"
+          <div
+            className={cn(
+              "w-full min-w-0",
+              tripType === "round_trip" ? "flex-1" : "flex-[0.9]"
+            )}
+          >
+            <div className="w-full space-y-1.5">
+              <span
+                id={travellersLabelId}
+                className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
               >
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  size={18}
-                  aria-hidden="true"
-                />
-                <span>Search flights</span>
-              </Button>
+                Travellers
+              </span>
+              <PopoverPrimitive.Root>
+                <PopoverPrimitive.Trigger className="flex h-12 w-full touch-manipulation items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 py-2 text-base text-foreground shadow-xs transition-colors hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none sm:h-10 sm:text-sm">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <HugeiconsIcon
+                      icon={UserIcon}
+                      size={16}
+                      aria-hidden="true"
+                      className="shrink-0 text-muted-foreground"
+                    />
+                    <span className="truncate font-medium">{shortLabel}</span>
+                    {breakdown ? (
+                      <span className="sr-only">: {breakdown}</span>
+                    ) : null}
+                  </span>
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    size={16}
+                    aria-hidden="true"
+                    className="shrink-0 text-muted-foreground"
+                  />
+                </PopoverPrimitive.Trigger>
+                <PopoverPrimitive.Portal>
+                  <PopoverPrimitive.Positioner
+                    sideOffset={4}
+                    className="z-50 outline-none"
+                  >
+                    <PopoverPrimitive.Popup className="w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 text-foreground shadow-lg">
+                      <TravellerStepper
+                        value={composition}
+                        onChange={handleCompositionChange}
+                        error={travellerError}
+                      />
+                    </PopoverPrimitive.Popup>
+                  </PopoverPrimitive.Positioner>
+                </PopoverPrimitive.Portal>
+              </PopoverPrimitive.Root>
             </div>
+            {travellerError ? (
+              <p className="mt-1 text-xs font-medium text-destructive">
+                {travellerError}
+              </p>
+            ) : null}
           </div>
-        </>
-      )}
+        </div>
+      </div>
+
+      {formAlert ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-xs leading-relaxed text-foreground"
+        >
+          {formAlert}
+        </div>
+      ) : null}
+
+      <div className="flex shrink-0 flex-col gap-2.5 pt-1 sm:flex-row sm:items-center sm:justify-end">
+        <Controller
+          name="cabin"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <Select
+              label="Cabin"
+              hideLabel
+              className="w-full sm:w-36"
+              options={[...CABIN_OPTIONS]}
+              value={field.value}
+              onValueChange={(val) => {
+                field.onChange(val)
+                form.clearErrors("cabin")
+                setSubmitAlert(null)
+              }}
+              error={fieldState.error?.message}
+            />
+          )}
+        />
+        <Button
+          type="submit"
+          size="lg"
+          className="h-12 w-full justify-center px-6 text-base font-semibold sm:h-10 sm:w-auto sm:text-sm"
+        >
+          <HugeiconsIcon icon={Search01Icon} size={18} aria-hidden="true" />
+          <span>Search flights</span>
+        </Button>
+      </div>
     </form>
   )
 }

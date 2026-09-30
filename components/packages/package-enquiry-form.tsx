@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -14,6 +14,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
+import { PhoneField } from "@/components/ui/phone-field"
 import { Textarea } from "@/components/ui/textarea"
 import {
   packageEnquirySchema,
@@ -76,6 +77,7 @@ export function PackageEnquiryForm({
   const {
     register,
     handleSubmit,
+    control,
     setValue,
     watch,
     setError,
@@ -337,21 +339,20 @@ export function PackageEnquiryForm({
         {/* Row 2: Phone & Departure Date */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <label
-              htmlFor="enquiry_phone"
-              className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
-            >
-              Phone / WhatsApp
-            </label>
-            <Input
-              id="enquiry_phone"
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              spellCheck={false}
-              placeholder="0803 123 4567"
-              error={errors.phone?.message}
-              {...register("phone")}
+            <Controller
+              name="phone"
+              control={control}
+              render={({ field, fieldState }) => (
+                <PhoneField
+                  label="Phone / WhatsApp"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  placeholder="803 123 4567"
+                  helperText="Pick your country code, then type your number."
+                  error={fieldState.error?.message ?? errors.phone?.message}
+                />
+              )}
             />
           </div>
 

@@ -13,10 +13,13 @@ import assert from "node:assert/strict"
 
 import {
   formatRoomTypePrice,
+  hasSubstantiveRoomDescription,
   hotelDetailSchema,
+  parsePositiveNaira,
   toHotelDetailDisplay,
 } from "../lib/api/hotels.ts"
 import { hotelDetailJsonLd } from "../lib/listings.ts"
+import { amenityIconFor } from "../components/hotels/hotel-amenity-icon.ts"
 
 function makeDetail(overrides: Record<string, unknown> = {}) {
   return {
@@ -175,6 +178,101 @@ test("Room Type per-night copy is locked; unusable prices fall back", () => {
     )
   )
   assert.equal(zeroCap.rooms[0]?.capacityLabel, "Capacity confirmed at booking")
+})
+
+test("Room Type descriptions that only restate the names are suppressed", () => {
+  // The backend templates most descriptions this way. Printing it under the
+  // Room Type name adds a line of noise and pushes the price below the fold.
+  assert.equal(
+    hasSubstantiveRoomDescription(
+      "Standard Room at Eko Hotels & Suites.",
+      "Standard Room",
+      "Eko Hotels & Suites"
+    ),
+    false
+  )
+  assert.equal(
+    hasSubstantiveRoomDescription(
+      "Deluxe Room at BON Hotel Stratton Asokoro",
+      "Deluxe Room",
+      "BON Hotel Stratton Asokoro"
+    ),
+    false
+  )
+  // Punctuation-only and empty descriptions carry nothing.
+  assert.equal(hasSubstantiveRoomDescription("...", "Suite", "Eko"), false)
+  assert.equal(hasSubstantiveRoomDescription("", "Suite", "Eko"), false)
+  assert.equal(hasSubstantiveRoomDescription("   ", "Suite", "Eko"), false)
+  // A two-letter connector left behind by the template is not content.
+  assert.equal(
+    hasSubstantiveRoomDescription("Suite at Eko", "Suite", "Eko"),
+    false
+  )
+
+  // Real copy is kept, whatever its casing or surrounding punctuation.
+  assert.equal(
+    hasSubstantiveRoomDescription(
+      "King bed, city view, and a work desk.",
+      "Deluxe King",
+      "Radisson Blu Lagos"
+    ),
+    true
+  )
+  assert.equal(
+    hasSubstantiveRoomDescription(
+      "Overlooking the pool.",
+      "Standard Room",
+      "Eko Hotels & Suites"
+    ),
+    true
+  )
+  // Short real words still count: only connectors under three letters are
+  // treated as leftovers from the template.
+  assert.equal(
+    hasSubstantiveRoomDescription("Sea view", "Standard Room", "Eko"),
+    true
+  )
+})
+
+test("Room Type price parsing: only positive amounts count", () => {
+  assert.equal(parsePositiveNaira("85000.00"), 85000)
+  assert.equal(parsePositiveNaira("1,200.00"), 1200)
+  assert.equal(parsePositiveNaira("0.00"), null)
+  assert.equal(parsePositiveNaira(""), null)
+  assert.equal(parsePositiveNaira(null), null)
+  assert.equal(parsePositiveNaira(undefined), null)
+  assert.equal(parsePositiveNaira("not-a-price"), null)
+  assert.equal(parsePositiveNaira("-5000.00"), null)
+})
+
+test("Amenity icons resolve for known copy and stay null for the unknown", () => {
+  // Every keyword the live backend sends today must resolve, or the chip
+  // silently degrades to a neutral tick.
+  const known = [
+    "WiFi",
+    "Pool",
+    "Spa",
+    "Gym",
+    "Restaurant",
+    "Bar",
+    "Airport Shuttle",
+    "Parking",
+  ]
+  for (const amenity of known) {
+    assert.ok(
+      amenityIconFor(amenity) !== null,
+      `Expected an icon for backend amenity "${amenity}"`
+    )
+  }
+
+  // Casing and padding must not change the outcome.
+  assert.equal(amenityIconFor("  wIfI  "), amenityIconFor("WiFi"))
+
+  // Unknown or empty copy returns null so the caller can pick its fallback
+  // instead of the mapper guessing a wrong pictogram.
+  assert.equal(amenityIconFor("Helipad"), null)
+  assert.equal(amenityIconFor(""), null)
+  assert.equal(amenityIconFor("   "), null)
 })
 
 test("Hotel JSON-LD: factual Hotel graph with no fabricated claims", () => {

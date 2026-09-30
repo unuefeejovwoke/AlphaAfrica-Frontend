@@ -15,11 +15,18 @@ import {
   AlertCircleIcon,
   InformationCircleIcon,
   LockIcon,
+  Mail01Icon,
+  PassportIcon,
+  UserIcon,
 } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { PhoneField } from "@/components/ui/phone-field"
+import { CountrySelect } from "@/components/ui/country-select"
+import { getCountryByDial } from "@/lib/data/countries"
+import { splitPhoneValue } from "@/lib/phone"
 import { TrackLink } from "@/components/analytics/track-link"
 import {
   getFlightSupportWhatsAppUrl,
@@ -261,6 +268,9 @@ export function TravellerDetailsForm({
                 label="First name"
                 autoComplete="given-name"
                 placeholder="As on passport or ID"
+                startIcon={
+                  <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
+                }
                 error={getTravellerFieldError(errors, index, "first_name")}
                 {...form.register(`travellers.${index}.first_name`)}
               />
@@ -268,6 +278,9 @@ export function TravellerDetailsForm({
                 label="Last name"
                 autoComplete="family-name"
                 placeholder="As on passport or ID"
+                startIcon={
+                  <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
+                }
                 error={getTravellerFieldError(errors, index, "last_name")}
                 {...form.register(`travellers.${index}.last_name`)}
               />
@@ -302,39 +315,58 @@ export function TravellerDetailsForm({
               type="email"
               autoComplete="email"
               placeholder="traveller@example.com"
+              startIcon={
+                <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
+              }
               error={getTravellerFieldError(errors, index, "email")}
               {...form.register(`travellers.${index}.email`)}
             />
 
-            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-[96px_1fr]">
-              <Input
-                label="Code"
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="234"
-                helperText="Country"
-                error={getTravellerFieldError(
-                  errors,
-                  index,
-                  "phone_country_code"
-                )}
-                {...form.register(`travellers.${index}.phone_country_code`)}
-              />
-              <Input
-                label="Phone"
-                type="tel"
-                autoComplete="tel"
-                placeholder="0803 123 4567"
-                helperText="Nigerian formats accepted."
-                error={getTravellerFieldError(errors, index, "phone")}
-                {...form.register(`travellers.${index}.phone`)}
-              />
-            </div>
+            <Controller
+              name={`travellers.${index}.phone`}
+              control={form.control}
+              render={({ field: phoneField }) => (
+                <>
+                  <input
+                    type="hidden"
+                    {...form.register(`travellers.${index}.phone_country_code`)}
+                  />
+                  <PhoneField
+                    label="Phone / WhatsApp"
+                    value={phoneField.value ?? ""}
+                    defaultCountry={
+                      getCountryByDial(
+                        form.watch(`travellers.${index}.phone_country_code`) ??
+                          "234"
+                      ).code
+                    }
+                    onChange={(e164) => {
+                      phoneField.onChange(e164)
+                      form.setValue(
+                        `travellers.${index}.phone_country_code`,
+                        splitPhoneValue(e164, "234").dial,
+                        { shouldValidate: true }
+                      )
+                    }}
+                    onBlur={phoneField.onBlur}
+                    placeholder="803 123 4567"
+                    helperText="Pick your country code, then type your number."
+                    error={getTravellerFieldError(errors, index, "phone")}
+                  />
+                </>
+              )}
+            />
 
             {isInternational ? (
               <div className="flex flex-col gap-4 rounded-xl border border-dashed border-border p-3.5">
-                <h3 className="text-xs font-semibold tracking-wide text-foreground/80 uppercase">
-                  Passport — required for international travel
+                <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-foreground/80 uppercase">
+                  <HugeiconsIcon
+                    icon={PassportIcon}
+                    size={14}
+                    aria-hidden="true"
+                    className="text-muted-foreground"
+                  />
+                  <span>Passport — required for international travel</span>
                 </h3>
                 <Input
                   label="Passport number"
@@ -359,15 +391,23 @@ export function TravellerDetailsForm({
                     )}
                     {...form.register(`travellers.${index}.passport_expiry`)}
                   />
-                  <Input
-                    label="Nationality"
-                    autoComplete="off"
-                    maxLength={2}
-                    placeholder="NG"
-                    helperText="2-letter code."
-                    className="uppercase"
-                    error={getTravellerFieldError(errors, index, "nationality")}
-                    {...form.register(`travellers.${index}.nationality`)}
+                  <Controller
+                    name={`travellers.${index}.nationality`}
+                    control={form.control}
+                    render={({ field: nationalityField }) => (
+                      <CountrySelect
+                        label="Nationality"
+                        value={nationalityField.value ?? ""}
+                        onValueChange={nationalityField.onChange}
+                        placeholder="Select nationality…"
+                        helperText="Pick your passport country."
+                        error={getTravellerFieldError(
+                          errors,
+                          index,
+                          "nationality"
+                        )}
+                      />
+                    )}
                   />
                 </div>
               </div>
@@ -405,6 +445,9 @@ export function TravellerDetailsForm({
               label="Contact name"
               autoComplete="name"
               placeholder="Full name"
+              startIcon={
+                <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
+              }
               error={
                 typeof customerErrors?.name?.message === "string"
                   ? customerErrors.name.message
@@ -417,6 +460,9 @@ export function TravellerDetailsForm({
               type="email"
               autoComplete="email"
               placeholder="you@example.com"
+              startIcon={
+                <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
+              }
               error={
                 typeof customerErrors?.email?.message === "string"
                   ? customerErrors.email.message
@@ -424,18 +470,24 @@ export function TravellerDetailsForm({
               }
               {...form.register("customer.email")}
             />
-            <Input
-              label="Contact phone"
-              type="tel"
-              autoComplete="tel"
-              placeholder="0803 123 4567"
-              helperText="Nigerian formats accepted."
-              error={
-                typeof customerErrors?.phone?.message === "string"
-                  ? customerErrors.phone.message
-                  : undefined
-              }
-              {...form.register("customer.phone")}
+            <Controller
+              name="customer.phone"
+              control={form.control}
+              render={({ field: customerPhoneField }) => (
+                <PhoneField
+                  label="Contact phone"
+                  value={customerPhoneField.value ?? ""}
+                  onChange={customerPhoneField.onChange}
+                  onBlur={customerPhoneField.onBlur}
+                  placeholder="803 123 4567"
+                  helperText="Pick your country code, then type your number."
+                  error={
+                    typeof customerErrors?.phone?.message === "string"
+                      ? customerErrors.phone.message
+                      : undefined
+                  }
+                />
+              )}
             />
           </div>
         )}

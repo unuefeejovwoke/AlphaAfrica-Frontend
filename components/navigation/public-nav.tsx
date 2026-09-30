@@ -48,7 +48,6 @@ const SERVICES: ServiceItem[] = [
       "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
-    comingSoon: true,
   },
   {
     title: "Destinations",
@@ -72,13 +71,12 @@ const SERVICES: ServiceItem[] = [
   },
   {
     title: "Car Rentals",
-    href: "/car-rentals",
+    href: "/cars",
     description: "Airport pickup or a car for the week — book by the hour.",
     image:
       "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
-    comingSoon: true,
   },
   {
     title: "Packages",

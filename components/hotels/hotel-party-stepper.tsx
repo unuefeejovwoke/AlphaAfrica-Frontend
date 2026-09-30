@@ -118,28 +118,18 @@ export function HotelPartyStepper({
       role="group"
       aria-labelledby={headingId}
       aria-describedby={error ? errorId : undefined}
-      className={cn(
-        "w-full rounded-2xl border border-border bg-card p-4 shadow-xs",
-        className
-      )}
+      className={cn("w-full", className)}
     >
-      <div className="flex items-center justify-between border-b border-border/70 pb-3">
-        <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <HugeiconsIcon icon={UserGroupIcon} size={18} aria-hidden="true" />
-          </div>
-          <div>
-            <h4
-              id={headingId}
-              className="text-sm font-semibold text-foreground"
-            >
-              Guests and rooms
-            </h4>
-            <p className="text-xs text-muted-foreground">
-              A hint for your stay — you can change this before paying.
-            </p>
-          </div>
-        </div>
+      <div className="flex items-center gap-2.5">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <HugeiconsIcon icon={UserGroupIcon} size={15} aria-hidden="true" />
+        </span>
+        <h4
+          id={headingId}
+          className="text-[13px] font-semibold text-foreground"
+        >
+          Guests and rooms
+        </h4>
       </div>
 
       <div className="mt-1 divide-y divide-border/50">
@@ -169,7 +159,7 @@ export function HotelPartyStepper({
         <p
           id={errorId}
           role="alert"
-          className="mt-2 text-xs font-medium text-destructive"
+          className="mt-2 text-[13px] font-medium text-destructive"
         >
           {error}
         </p>

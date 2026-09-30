@@ -6,13 +6,10 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowRight01Icon,
   Clock01Icon,
-  GlobeIcon,
   HeadphonesIcon,
   Luggage01Icon,
   SecurityCheckIcon,
   SparklesIcon,
-  TicketCheckIcon,
-  TravelBagIcon,
   UserIcon,
   Wallet01Icon,
 } from "@hugeicons/core-free-icons"
@@ -20,6 +17,8 @@ import { ButtonLink } from "@/components/ui/button"
 import { CardSkeleton } from "@/components/ui/skeleton"
 import { HomeSearchSwitcher } from "@/components/home/home-search-switcher"
 import { FeaturedPackages } from "@/components/home/featured-packages"
+import { FeaturedHotels } from "@/components/home/featured-hotels"
+import { FeaturedCars } from "@/components/home/featured-cars"
 import { HomeTestimonials } from "@/components/home/home-testimonials"
 import { HomeFaq } from "@/components/home/home-faq"
 import { TerminalCta } from "@/components/shared/terminal-cta"
@@ -65,62 +64,6 @@ function FeaturedSkeletonGrid({ label }: { label: string }) {
     </div>
   )
 }
-
-/**
- * "Why Choose Alphaa.Africa?" reasons — the seven value propositions
- * published on alphaaafrica.com, copied verbatim.
- */
-const WHY_CHOOSE_REASONS = [
-  {
-    id: "e-ticket",
-    icon: TicketCheckIcon,
-    title: "Rapid E-Ticket Delivery",
-    description:
-      "Confirmed bookings are processed immediately, with official e-tickets and PNR boarding documents delivered straight to your inbox.",
-  },
-  {
-    id: "hassle-free",
-    icon: Clock01Icon,
-    title: "Fast, Hassle-Free Bookings",
-    description:
-      "We find the best routes and fares quickly—so you spend less time searching and more time traveling.",
-  },
-  {
-    id: "real-time-pricing",
-    icon: Wallet01Icon,
-    title: "Real-Time Pricing",
-    description:
-      "Live access to airline and travel inventories ensures transparent pricing, eliminating last-minute fare changes or hidden charges.",
-  },
-  {
-    id: "advisory",
-    icon: SecurityCheckIcon,
-    title: "Expert Travel Advisory",
-    description:
-      "Every trip is guided by experienced travel consultants who validate routes, fares, visa requirements, and travel conditions.",
-  },
-  {
-    id: "support",
-    icon: HeadphonesIcon,
-    title: "24/7 Human Support",
-    description:
-      "Enjoy responsive assistance for rebookings, cancellations, rerouting, and urgent travel needs—handled by real professionals, not automated responses.",
-  },
-  {
-    id: "africa-rooted",
-    icon: GlobeIcon,
-    title: "Africa-Rooted. Globally Connected",
-    description:
-      "We blend deep local travel knowledge with international standards, offering guidance that works in real-world African and global environments.",
-  },
-  {
-    id: "busy-travelers",
-    icon: TravelBagIcon,
-    title: "Built for Busy, Modern Travelers",
-    description:
-      "Whether you’re traveling for work, family, or leisure, we keep things simple, reliable, and stress-free.",
-  },
-]
 
 export default function HomePage() {
   // Published traveller figure — single source of truth lives in stats.ts.
@@ -174,19 +117,15 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/35" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/20" />
 
-        <div className="relative mx-auto flex w-full max-w-7xl flex-col items-start gap-5 px-4 pt-24 pb-36 text-left sm:gap-6 sm:px-6 sm:pt-32 lg:px-8 lg:pt-40">
+        <div className="relative mx-auto flex w-full max-w-7xl flex-col items-start gap-5 px-4 pt-20 pb-36 text-left sm:gap-6 sm:px-6 sm:pt-28 sm:pb-44 md:pt-32 md:pb-48 lg:px-8 lg:pt-36">
           <div className="flex max-w-3xl flex-col gap-3">
             <h1 className="text-3xl leading-[1.15] font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
               Travel Beyond <span className="text-primary">Borders</span>
             </h1>
-            <h2 className="max-w-2xl text-base leading-relaxed font-semibold text-white/90 sm:text-lg">
-              Get the Best Flight Deals, Best Hotels, Curated Holidays with the
-              world&apos;s Most Trusted Travel Experts.
-            </h2>
-            <p className="max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">
-              From local trips to global journeys, Alphaa Africa Travels and
-              Tours offers the best and cheapest travel deals with stress-free
-              planning and expert support every step of the way.
+            <p className="max-w-2xl text-base leading-relaxed text-white/90 sm:text-lg">
+              Get the best flight deals, handpicked hotels, and curated holidays
+              with transparent pricing and 24/7 human support every step of the
+              way.
             </p>
           </div>
 
@@ -217,26 +156,31 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Search & Reassurance Section */}
-      <section className="relative z-20 mx-auto -mt-[188px] w-full max-w-7xl px-4 sm:px-6 md:-mt-[216px] lg:px-8">
+      {/* Search & Reassurance Section
+          Pulled up over the hero photo. The margin cancels this page's section
+          gap (gap-16 / md:gap-24) plus the hero's own bottom padding, so the
+          visible space below the hero copy equals the gap between the hero text
+          blocks (gap-5 / sm:gap-6 = 20px / 24px), while still overlapping the
+          photo. Formula: |margin| = hero pb + section gap − hero text gap. */}
+      <section className="relative z-20 mx-auto -mt-[188px] w-full max-w-7xl px-4 sm:-mt-[216px] sm:px-6 md:-mt-[264px] lg:px-8">
         <div id="trip-search" className="scroll-mt-24">
           <HomeSearchSwitcher />
         </div>
       </section>
 
-      {/* Why Choose Alphaa.Africa Section */}
+      {/* Why Choose Alphaa Africa Section */}
       <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-10 flex max-w-3xl flex-col items-start gap-3 sm:mb-12">
+        <div className="mb-10 flex max-w-3xl flex-col items-start gap-4 sm:mb-12">
+          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
+            Why Alphaa Africa
+          </span>
           <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-            Why Choose{" "}
-            <span className="font-normal text-primary italic">
-              Alphaa.Africa?
-            </span>
+            The smarter way to travel across Africa and beyond
           </h2>
-          <span
-            className="h-0.5 w-16 rounded-full bg-primary"
-            aria-hidden="true"
-          />
+          <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
+            Everything you need for seamless travel — transparent pricing, live
+            airline inventory, and expert human support whenever you need it.
+          </p>
         </div>
 
         {/* Asymmetrical Bento Grid */}
@@ -400,38 +344,114 @@ export default function HomePage() {
       {/* Featured Packages (live) */}
       <section
         aria-labelledby="home-featured-packages"
-        className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
+        className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 sm:grid-cols-[1fr_auto] sm:items-end sm:px-6 lg:px-8"
       >
-        <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div className="flex max-w-2xl flex-col items-start gap-4">
-            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
-              Holiday Packages
-            </span>
-            <h2
-              id="home-featured-packages"
-              className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl"
-            >
-              Holidays you can actually book
-            </h2>
-            <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
-              Pick a package, send an enquiry, and we&apos;ll handle the rest.
-              Nothing to pay until you&apos;ve seen the plan.
-            </p>
-          </div>
-          <ButtonLink
-            href="/packages"
-            variant="outline"
-            className="shrink-0 rounded-full px-5 py-2 font-medium"
+        <div className="flex max-w-2xl flex-col items-start gap-4 sm:col-start-1 sm:row-start-1">
+          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
+            Holiday Packages
+          </span>
+          <h2
+            id="home-featured-packages"
+            className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl"
           >
-            <span>See all packages</span>
-            <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-          </ButtonLink>
+            Holidays you can actually book
+          </h2>
+          <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
+            Pick a package, send an enquiry, and we&apos;ll handle the rest.
+            Nothing to pay until you&apos;ve seen the plan.
+          </p>
         </div>
-        <React.Suspense
-          fallback={<FeaturedSkeletonGrid label="Loading featured packages" />}
+        <div className="sm:col-span-2 sm:row-start-2">
+          <React.Suspense
+            fallback={
+              <FeaturedSkeletonGrid label="Loading featured packages" />
+            }
+          >
+            <FeaturedPackages />
+          </React.Suspense>
+        </div>
+        <ButtonLink
+          href="/packages"
+          variant="outline"
+          className="justify-self-start rounded-full px-5 py-2 font-medium sm:col-start-2 sm:row-start-1"
         >
-          <FeaturedPackages />
-        </React.Suspense>
+          <span>See all packages</span>
+          <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+        </ButtonLink>
+      </section>
+
+      {/* Featured Hotels (live) */}
+      <section
+        aria-labelledby="home-featured-hotels"
+        className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 border-t border-border/60 px-4 pt-12 sm:grid-cols-[1fr_auto] sm:items-end sm:px-6 md:pt-16 lg:px-8"
+      >
+        <div className="flex max-w-2xl flex-col items-start gap-4 sm:col-start-1 sm:row-start-1">
+          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
+            Hotels & Stays
+          </span>
+          <h2
+            id="home-featured-hotels"
+            className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl"
+          >
+            Handpicked stays with verified rates
+          </h2>
+          <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
+            Verified hotels with upfront per-night prices in NGN. Select your
+            room and confirm your stay with zero surprise fees.
+          </p>
+        </div>
+        <div className="sm:col-span-2 sm:row-start-2">
+          <React.Suspense
+            fallback={<FeaturedSkeletonGrid label="Loading featured hotels" />}
+          >
+            <FeaturedHotels />
+          </React.Suspense>
+        </div>
+        <ButtonLink
+          href="/hotels"
+          variant="outline"
+          className="justify-self-start rounded-full px-5 py-2 font-medium sm:col-start-2 sm:row-start-1"
+        >
+          <span>See all hotels</span>
+          <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+        </ButtonLink>
+      </section>
+
+      {/* Featured Cars (live) */}
+      <section
+        aria-labelledby="home-featured-cars"
+        className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 border-t border-border/60 px-4 pt-12 sm:grid-cols-[1fr_auto] sm:items-end sm:px-6 md:pt-16 lg:px-8"
+      >
+        <div className="flex max-w-2xl flex-col items-start gap-4 sm:col-start-1 sm:row-start-1">
+          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
+            Chauffeur & Car Hire
+          </span>
+          <h2
+            id="home-featured-cars"
+            className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl"
+          >
+            Professional chauffeur service by the hour
+          </h2>
+          <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
+            Executive sedans, SUVs, and coasters with vetted drivers and
+            transparent hourly rates across major Nigerian cities.
+          </p>
+        </div>
+        <div className="sm:col-span-2 sm:row-start-2">
+          <React.Suspense
+            fallback={<FeaturedSkeletonGrid label="Loading featured cars" />}
+          >
+            <FeaturedCars />
+          </React.Suspense>
+        </div>
+        <ButtonLink
+          href="/cars"
+          variant="outline"
+          className="justify-self-start rounded-full px-5 py-2 font-medium sm:col-start-2 sm:row-start-1"
+        >
+          <span>See all cars</span>
+          <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+        </ButtonLink>
       </section>
 
       {/* Verified Customer Testimonials Slider */}

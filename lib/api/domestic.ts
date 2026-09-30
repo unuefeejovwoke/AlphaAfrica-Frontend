@@ -226,113 +226,534 @@ function pickCardPrice(record: Record<string, unknown>): string {
  * Field extraction reads the raw record directly (with snake_case and
  * camelCase aliases) so one unexpected field type never discards the whole
  * card — missing data must never hide a bookable option.
+ *
+ * QuickAir carries route/times inside `itineraries[].segments[]` (guide §9)
+ * with no flat origin/destination/departure fields on search results, while
+ * the booking `raw_offer` uses flat `departure`/`destination`/`departureTime`
+ * /`arrivalTime` + `providerCode`/`providerName`/`flightNumber` keys. Both
+ * shapes are supported: flat fields win when present, itinerary segments
+ * fill every gap, and journeys are built from real segments when available.
  */
 export function normalizeDomesticCard(
   raw: unknown,
   index: number
 ): FlightOfferDisplay {
   const record = asRecord(raw)
+  const nested = asRecord(
+    record.raw_offer ?? record.rawOffer ?? record.flight_offer
+  )
   const read = (...keys: string[]) =>
-    pickString(...keys.map((key) => record[key]))
+    pickString(
+      ...keys.map((key) => record[key]),
+      ...keys.map((key) => nested[key])
+    )
+
+  const isIataLike = (value: string): boolean =>
+    /^[A-Z]{3}$/.test(value.trim().toUpperCase())
+  const isTimeLike = (value: string): boolean =>
+    /(\d{1,2}:\d{2})/.test(value) || /^\d{4}-\d{2}-\d{2}T/.test(value.trim())
+
+  const formatClock = (iso: string): string => {
+    if (!iso || iso === "—") return "—"
+    const m = iso.match(/[T ](\d{1,2}:\d{2})/) ?? iso.match(/^(\d{1,2}:\d{2})/)
+    if (m) return m[1]
+    try {
+      const d = new Date(iso)
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleTimeString("en-NG", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        })
+      }
+    } catch {
+      // fall through to raw
+    }
+    return iso
+  }
+  const formatDomesticDuration = (value: string): string => {
+    if (!value || value === "—") return "—"
+    if (value.startsWith("PT")) {
+      const m = value.match(/PT(?:(\d+)H)?(?:(\d+)M)?/)
+      if (m) {
+        const h = m[1] ? `${m[1]}h` : ""
+        const min = m[2] ? `${m[2]}m` : ""
+        return [h, min].filter(Boolean).join(" ") || value
+      }
+    }
+    return value
+  }
+  const datePartOf = (value: string): string =>
+    value.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? ""
+  const dayOffsetBetween = (dep: string, arr: string): number => {
+    const depDate = datePartOf(dep)
+    const arrDate = datePartOf(arr)
+    if (depDate && arrDate) {
+      const depT = Date.parse(`${depDate}T00:00:00Z`)
+      const arrT = Date.parse(`${arrDate}T00:00:00Z`)
+      if (Number.isFinite(depT) && Number.isFinite(arrT)) {
+        return Math.max(0, Math.round((arrT - depT) / 86_400_000))
+      }
+    }
+    const clock = (v: string): number | null => {
+      const m = v.match(/(\d{1,2}):(\d{2})/)
+      if (!m) return null
+      const h = Number(m[1])
+      const mins = Number(m[2])
+      if (h > 23 || mins > 59) return null
+      return h * 60 + mins
+    }
+    const depM = clock(dep)
+    const arrM = clock(arr)
+    if (depM !== null && arrM !== null && arrM < depM) return 1
+    return 0
+  }
+  const layoverMinutes = (arrIso: string, depIso: string): number | null => {
+    if (!arrIso || !depIso) return null
+    const a = Date.parse(arrIso)
+    const d = Date.parse(depIso)
+    if (!Number.isFinite(a) || !Number.isFinite(d)) return null
+    const diff = Math.round((d - a) / 60000)
+    return diff >= 0 ? diff : null
+  }
+  const formatLayover = (minutes: number | null): string => {
+    if (minutes === null || !Number.isFinite(minutes) || minutes < 0) return "—"
+    const total = Math.round(minutes)
+    const h = Math.floor(total / 60)
+    const m = total % 60
+    if (h <= 0) return `${m}m`
+    if (m <= 0) return `${h}h`
+    return `${h}h ${m}m`
+  }
+
+  // Flat time candidates reject bare IATA codes: `departure: "LOS"` is an
+  // origin, never a clock time.
+  const readTime = (...keys: string[]): string => {
+    for (const key of keys) {
+      for (const source of [record, nested]) {
+        const v = source[key]
+        if (typeof v === "string" && v.trim()) {
+          const trimmed = v.trim()
+          if (isIataLike(trimmed) && !isTimeLike(trimmed)) continue
+          return trimmed
+        }
+      }
+    }
+    return ""
+  }
+
+  // `pickNodeValue` returns a bare string node verbatim — a `"LOS"` departure
+  // node would otherwise leak into clock times. Only time-like values survive.
+  const readNodeTime = (node: unknown, keys: readonly string[]): string => {
+    const v = pickNodeValue(node, keys)
+    if (!v) return ""
+    if (isIataLike(v) && !isTimeLike(v)) return ""
+    return v
+  }
 
   const id =
-    read("id", "card_id", "offer_id", "flight_id") || `domestic-${index}`
+    read("id", "card_id", "offer_id", "offerId", "flight_id") ||
+    `domestic-${index}`
   const airline =
-    read("airline", "airline_name", "airlineName", "carrier", "carrier_name") ||
-    "Airline"
-  const origin =
-    (
-      read(
-        "origin",
-        "from",
-        "origin_code",
-        "departure_airport",
-        "departureAirport"
-      ) ||
-      pickNodeValue(record.departure, [
-        "iataCode",
-        "iata_code",
-        "code",
-        "airport",
-      ])
-    ).toUpperCase() || "—"
-  const destination =
-    (
-      read(
-        "destination",
-        "to",
-        "destination_code",
-        "arrival_airport",
-        "arrivalAirport"
-      ) ||
-      pickNodeValue(record.arrival, [
-        "iataCode",
-        "iata_code",
-        "code",
-        "airport",
-      ])
-    ).toUpperCase() || "—"
-  const departureAt =
     read(
+      "airline",
+      "airline_name",
+      "airlineName",
+      "carrier",
+      "carrier_name",
+      "carrierName",
+      "providerName",
+      "provider_name"
+    ) || "Airline"
+  // Flat route first; itinerary segments fill the gaps below.
+  let origin = (
+    read(
+      "origin",
+      "Origin",
+      "from",
+      "From",
+      "origin_code",
+      "originCode",
+      "departure_airport",
+      "departureAirport",
+      "departure_code",
+      "departureCode"
+    ) ||
+    pickNodeValue(record.departure, [
+      "iataCode",
+      "iata_code",
+      "code",
+      "airport",
+      "airportCode",
+      "airport_code",
+    ]) ||
+    pickNodeValue(nested.departure, [
+      "iataCode",
+      "iata_code",
+      "code",
+      "airport",
+    ]) ||
+    ""
+  ).toUpperCase()
+  // `departure: "LOS"` (QuickAir booking shape) is an origin when it looks
+  // like an IATA code rather than a timestamp.
+  if (!origin) {
+    const depFlat = read("departure", "Departure")
+    if (depFlat && isIataLike(depFlat) && !isTimeLike(depFlat)) {
+      origin = depFlat.toUpperCase()
+    }
+  }
+  let destination = (
+    read(
+      "destination",
+      "Destination",
+      "to",
+      "To",
+      "destination_code",
+      "destinationCode",
+      "arrival_airport",
+      "arrivalAirport",
+      "arrival_code",
+      "arrivalCode"
+    ) ||
+    pickNodeValue(record.arrival, [
+      "iataCode",
+      "iata_code",
+      "code",
+      "airport",
+      "airportCode",
+      "airport_code",
+    ]) ||
+    pickNodeValue(nested.arrival, [
+      "iataCode",
+      "iata_code",
+      "code",
+      "airport",
+    ]) ||
+    ""
+  ).toUpperCase()
+  let departureAtRaw =
+    readTime(
       "departureAt",
       "departure_at",
       "departureTime",
       "departure_time",
-      "departure",
-      "departureDate",
-      "departure_date"
+      "depart_at",
+      "departAt",
+      "departureDateTime",
+      "departure_date_time"
     ) ||
-    pickNodeValue(record.departure, [
+    readNodeTime(record.departure, [
       "at",
       "time",
       "dateTime",
       "datetime",
       "date_time",
+      "departure_time",
+      "departureTime",
     ]) ||
-    "—"
-  const arrivalAt =
-    read(
+    readNodeTime(nested.departure, ["at", "time", "dateTime", "datetime"]) ||
+    ""
+  // `departure` itself may carry the timestamp when it is not an IATA code.
+  if (!departureAtRaw) {
+    const depFlat = read("departure", "Departure")
+    if (depFlat && isTimeLike(depFlat)) departureAtRaw = depFlat
+  }
+  let arrivalAtRaw =
+    readTime(
       "arrivalAt",
       "arrival_at",
       "arrivalTime",
       "arrival_time",
-      "arrival",
-      "arrivalDate",
-      "arrival_date"
+      "arrive_at",
+      "arriveAt",
+      "arrivalDateTime",
+      "arrival_date_time"
     ) ||
-    pickNodeValue(record.arrival, [
+    readNodeTime(record.arrival, [
       "at",
       "time",
       "dateTime",
       "datetime",
       "date_time",
+      "arrival_time",
+      "arrivalTime",
     ]) ||
-    "—"
-  const stops = readNumber(record.stops) ?? readNumber(record.max_stops_in_trip) ?? readNumber(record.maxStopsInTrip) ?? 0
-  // QuickAir serves single-leg domestic hops, but stop counts may ride
-  // inside `itineraries[]` (per the guide) instead of a flat `stops` —
-  // the worst across itineraries wins so nothing reads as non-stop wrongly.
-  const itineraryStops: number[] = []
-  const itinerariesRaw = Array.isArray(record.itineraries)
+    readNodeTime(nested.arrival, ["at", "time", "dateTime", "datetime"]) ||
+    ""
+  if (!arrivalAtRaw) {
+    const arrFlat = read("arrival", "Arrival")
+    if (arrFlat && isTimeLike(arrFlat)) arrivalAtRaw = arrFlat
+  }
+  // Top-level flight number (QuickAir booking shape) for the synthetic
+  // fallback segment when no itinerary segments exist.
+  const topFlightNumber =
+    read("flightNumber", "flight_number", "flight_no", "flightNo") || ""
+  let durationFlat =
+    read(
+      "duration",
+      "flightDuration",
+      "flight_duration",
+      "totalDuration",
+      "total_duration"
+    ) || ""
+  let cabin = read("cabin", "cabinClass", "cabin_class", "Cabin") || "ECONOMY"
+  const flatStops =
+    readNumber(record.stops) ??
+    readNumber(nested.stops) ??
+    readNumber(record.max_stops_in_trip) ??
+    readNumber(record.maxStopsInTrip) ??
+    readNumber(nested.max_stops_in_trip) ??
+    0
+
+  // Itineraries ride top-level on search results (guide §9) and may also be
+  // nested under `raw_offer` on some shapes — collect whichever exists.
+  const itinerariesRaw: unknown[] = Array.isArray(record.itineraries)
     ? (record.itineraries as unknown[])
-    : []
+    : Array.isArray(nested.itineraries)
+      ? (nested.itineraries as unknown[])
+      : []
+  const getSegmentsOf = (itin: Record<string, unknown>): unknown[] => {
+    for (const key of [
+      "segments",
+      "flightSegments",
+      "flight_segments",
+      "flights",
+      "legs",
+    ]) {
+      const v = itin[key]
+      if (Array.isArray(v)) return v as unknown[]
+    }
+    return []
+  }
+
+  // QuickAir segment endpoints across snake_case / camelCase / booking-shape
+  // aliases (`departure_airport` + `departure_time` on search segments,
+  // `from`/`to` + `depart_at`/`arrive_at` variants in the wild).
+  const segmentEndpoints = (segment: unknown) => {
+    const seg = asRecord(segment)
+    const depNode = seg.departure
+    const arrNode = seg.arrival
+    const pickAirport = (...candidates: unknown[]): string =>
+      pickString(...candidates).toUpperCase()
+    let depAirport = pickAirport(
+      seg.departure_airport,
+      seg.departureAirport,
+      seg.departure_code,
+      seg.departureCode,
+      seg.origin,
+      seg.Origin,
+      seg.from,
+      seg.From,
+      seg.departure_airport_code
+    )
+    if (!depAirport) {
+      const depStr = pickString(seg.departure, seg.Departure)
+      if (depStr && isIataLike(depStr) && !isTimeLike(depStr)) {
+        depAirport = depStr.toUpperCase()
+      } else {
+        depAirport = pickNodeValue(depNode, [
+          "iataCode",
+          "iata_code",
+          "code",
+          "airport",
+          "airportCode",
+          "airport_code",
+        ]).toUpperCase()
+      }
+    }
+    let arrAirport = pickAirport(
+      seg.arrival_airport,
+      seg.arrivalAirport,
+      seg.arrival_code,
+      seg.arrivalCode,
+      seg.destination,
+      seg.Destination,
+      seg.to,
+      seg.To,
+      seg.arrival_airport_code
+    )
+    if (!arrAirport) {
+      const arrStr = pickString(seg.arrival, seg.Arrival)
+      if (arrStr && isIataLike(arrStr) && !isTimeLike(arrStr)) {
+        arrAirport = arrStr.toUpperCase()
+      } else {
+        arrAirport = pickNodeValue(arrNode, [
+          "iataCode",
+          "iata_code",
+          "code",
+          "airport",
+          "airportCode",
+          "airport_code",
+        ]).toUpperCase()
+      }
+    }
+    const depTimeCandidates: unknown[] = [
+      seg.departureAt,
+      seg.departure_at,
+      seg.departureTime,
+      seg.departure_time,
+      seg.depart_at,
+      seg.departAt,
+      seg.departureDateTime,
+      seg.time,
+      seg.depart,
+    ]
+    let depTime = ""
+    for (const c of depTimeCandidates) {
+      if (typeof c === "string" && c.trim()) {
+        const t = c.trim()
+        if (isIataLike(t) && !isTimeLike(t)) continue
+        depTime = t
+        break
+      }
+    }
+    if (!depTime) {
+      const depStr = pickString(seg.departure, seg.Departure)
+      if (depStr && isTimeLike(depStr)) depTime = depStr
+      else {
+        const nodeTime = pickNodeValue(depNode, [
+          "at",
+          "time",
+          "dateTime",
+          "datetime",
+          "date_time",
+          "departure_time",
+          "departureTime",
+        ])
+        depTime =
+          nodeTime && !(isIataLike(nodeTime) && !isTimeLike(nodeTime))
+            ? nodeTime
+            : ""
+      }
+    }
+    const arrTimeCandidates: unknown[] = [
+      seg.arrivalAt,
+      seg.arrival_at,
+      seg.arrivalTime,
+      seg.arrival_time,
+      seg.arrive_at,
+      seg.arriveAt,
+      seg.arrivalDateTime,
+      seg.time,
+      seg.arrive,
+    ]
+    let arrTime = ""
+    for (const c of arrTimeCandidates) {
+      if (typeof c === "string" && c.trim()) {
+        const t = c.trim()
+        if (isIataLike(t) && !isTimeLike(t)) continue
+        arrTime = t
+        break
+      }
+    }
+    if (!arrTime) {
+      const arrStr = pickString(seg.arrival, seg.Arrival)
+      if (arrStr && isTimeLike(arrStr)) arrTime = arrStr
+      else {
+        const nodeTime = pickNodeValue(arrNode, [
+          "at",
+          "time",
+          "dateTime",
+          "datetime",
+          "date_time",
+          "arrival_time",
+          "arrivalTime",
+        ])
+        arrTime =
+          nodeTime && !(isIataLike(nodeTime) && !isTimeLike(nodeTime))
+            ? nodeTime
+            : ""
+      }
+    }
+    return {
+      depAirport,
+      arrAirport,
+      depTime,
+      arrTime,
+      carrierCode: pickString(
+        seg.carrier_code,
+        seg.carrierCode,
+        seg.carrier,
+        seg.marketingCarrierCode,
+        seg.marketing_carrier_code,
+        seg.airline_code,
+        seg.airlineCode,
+        seg.providerCode,
+        seg.provider_code
+      ),
+      carrierName: pickString(
+        seg.carrier_name,
+        seg.carrierName,
+        seg.airline,
+        seg.airline_name,
+        seg.airlineName,
+        seg.providerName,
+        seg.provider_name
+      ),
+      flightNumber: pickString(
+        seg.flight_number,
+        seg.flightNumber,
+        seg.flight_no,
+        seg.flightNo,
+        seg.number
+      ),
+      duration: pickString(
+        seg.duration,
+        seg.flightDuration,
+        seg.flight_duration
+      ),
+      cabin: pickString(seg.cabin, seg.cabinClass, seg.cabin_class),
+      bookingClass: pickString(
+        seg.fare_code,
+        seg.fareCode,
+        seg.class,
+        seg.bookingClass,
+        seg.booking_class
+      ),
+      brandedFare: pickString(
+        seg.fare_name,
+        seg.fareName,
+        seg.brandedFare,
+        seg.branded_fare
+      ),
+    }
+  }
+
+  // Per-itinerary stop counts: explicit `stops` wins, otherwise segments-1.
+  // The worst across itineraries wins trip-wide so nothing reads non-stop
+  // wrongly.
+  const itineraryStops: number[] = []
+  const parsedItineraries: {
+    duration: string
+    stops: number
+    rawSegments: unknown[]
+  }[] = []
   for (const item of itinerariesRaw) {
     const itin = asRecord(item)
-    const segments = Array.isArray(itin.segments)
-      ? itin.segments
-      : Array.isArray(itin.flightSegments)
-        ? itin.flightSegments
-        : []
+    const rawSegments = getSegmentsOf(itin)
     const itinStops =
       readNumber(itin.stops) ??
-      (segments.length > 0 ? segments.length - 1 : null)
-    if (itinStops !== null) itineraryStops.push(Math.max(0, Math.floor(itinStops)))
+      (rawSegments.length > 0 ? rawSegments.length - 1 : null)
+    const safeStops =
+      itinStops !== null ? Math.max(0, Math.floor(itinStops)) : 0
+    itineraryStops.push(safeStops)
+    parsedItineraries.push({
+      duration: pickString(
+        itin.duration,
+        itin.totalDuration,
+        itin.total_duration
+      ),
+      stops: safeStops,
+      rawSegments,
+    })
   }
   const maxStops =
     itineraryStops.length > 0
-      ? Math.max(stops, ...itineraryStops)
-      : Math.max(0, Math.floor(stops))
-  const backendDirect = record.is_direct ?? record.isDirect
+      ? Math.max(flatStops, ...itineraryStops)
+      : Math.max(0, Math.floor(flatStops))
+  const backendDirect =
+    record.is_direct ?? record.isDirect ?? nested.is_direct ?? nested.isDirect
   const isDirect =
     typeof backendDirect === "boolean" ? backendDirect : maxStops === 0
   const airlineCode =
@@ -341,31 +762,194 @@ export function normalizeDomesticCard(
       "airlineCode",
       "carrier_code",
       "carrierCode",
-      "validating_airline"
+      "validating_airline",
+      "providerCode",
+      "provider_code"
     ) || null
-  const fareCode = read("fare_code", "fareCode") || null
+  const fareCode = read("fare_code", "fareCode", "FareCode", "farecode") || null
   const fareName =
-    read("fare_name", "fareName", "fare_class_name") || null
-  const airlineLogo =
-    read("airline_logo", "airlineLogo", "logo") || null
+    read("fare_name", "fareName", "FareName", "fare_class_name") || null
+  const airlineLogo = read("airline_logo", "airlineLogo", "logo") || null
   const seatsAvailable =
     readNumber(
       record.seats_available ??
         record.seatsAvailable ??
-        record.numberOfBookableSeats
+        record.numberOfBookableSeats ??
+        nested.seats_available ??
+        nested.seatsAvailable
     ) ?? null
-  const duration = read("duration", "flightDuration", "flight_duration") || "—"
-  const cabin = read("cabin", "cabinClass", "cabin_class") || "ECONOMY"
+  // Itinerary duration fills the gap when no flat duration exists (the
+  // common QuickAir search shape).
+  if (!durationFlat && parsedItineraries.length > 0) {
+    durationFlat = parsedItineraries[0]?.duration ?? ""
+  }
+  // Itinerary endpoints fill route/times when flat fields are absent.
+  if (
+    parsedItineraries.length > 0 &&
+    parsedItineraries[0]?.rawSegments.length
+  ) {
+    const firstSeg = segmentEndpoints(parsedItineraries[0].rawSegments[0])
+    const lastSeg = segmentEndpoints(
+      parsedItineraries[0].rawSegments[
+        parsedItineraries[0].rawSegments.length - 1
+      ]
+    )
+    if (!origin && firstSeg.depAirport) origin = firstSeg.depAirport
+    if (!destination && lastSeg.arrAirport) destination = lastSeg.arrAirport
+    if (!departureAtRaw && firstSeg.depTime) departureAtRaw = firstSeg.depTime
+    if (!arrivalAtRaw && lastSeg.arrTime) arrivalAtRaw = lastSeg.arrTime
+    if (!cabin || cabin === "ECONOMY") {
+      const segCabin = firstSeg.cabin
+      if (segCabin) cabin = segCabin
+    }
+  }
+  const originFinal = origin || "—"
+  const destinationFinal = destination || "—"
+  const departureRawFinal = departureAtRaw || ""
+  const arrivalRawFinal = arrivalAtRaw || ""
+  const duration = formatDomesticDuration(durationFlat) || "—"
+  const departureAt = departureRawFinal ? formatClock(departureRawFinal) : "—"
+  const arrivalAt = arrivalRawFinal ? formatClock(arrivalRawFinal) : "—"
   const departureDate =
     read("departure_date", "departureDate", "date") ||
-    (departureAt !== "—"
-      ? (departureAt.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "")
-      : "")
+    (departureRawFinal ? datePartOf(departureRawFinal) : "")
   const arrivalDate =
     read("arrival_date", "arrivalDate") ||
-    (arrivalAt !== "—" ? (arrivalAt.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "") : "")
+    (arrivalRawFinal ? datePartOf(arrivalRawFinal) : "")
   const stopsLabel =
-    maxStops === 0 ? "Non-stop" : `${maxStops} ${maxStops === 1 ? "stop" : "stops"}`
+    maxStops === 0
+      ? "Non-stop"
+      : `${maxStops} ${maxStops === 1 ? "stop" : "stops"}`
+  const airportsLabel =
+    originFinal !== "—" && destinationFinal !== "—"
+      ? `${originFinal} → ${destinationFinal}`
+      : "—"
+
+  // Full journey timeline: one journey per itinerary with real segments when
+  // available; otherwise a single synthetic segment from flat fields.
+  const buildPrice = (): string => {
+    const merged: Record<string, unknown> = { ...nested, ...record }
+    return pickCardPrice(merged)
+  }
+  const journeys: FlightOfferDisplay["journeys"] =
+    parsedItineraries.length > 0 &&
+    parsedItineraries.some((p) => p.rawSegments.length > 0)
+      ? parsedItineraries.map((parsed, journeyIndex) => {
+          const segments = parsed.rawSegments.map((s) => {
+            const e = segmentEndpoints(s)
+            const segDepRaw = e.depTime || ""
+            const segArrRaw = e.arrTime || ""
+            return {
+              departureAirport: e.depAirport || originFinal,
+              arrivalAirport: e.arrAirport || destinationFinal,
+              departureAt: segDepRaw ? formatClock(segDepRaw) : "—",
+              arrivalAt: segArrRaw ? formatClock(segArrRaw) : "—",
+              carrierCode: e.carrierCode || airlineCode || "",
+              ...(e.flightNumber || (journeyIndex === 0 ? topFlightNumber : "")
+                ? {
+                    flightNumber:
+                      e.flightNumber ||
+                      (journeyIndex === 0 ? topFlightNumber : ""),
+                  }
+                : {}),
+              ...(e.duration || (journeyIndex === 0 ? durationFlat : "")
+                ? {
+                    duration: formatDomesticDuration(
+                      e.duration || durationFlat
+                    ),
+                  }
+                : {}),
+              ...(e.cabin || cabin ? { cabin: e.cabin || cabin } : {}),
+              departureAtRaw: segDepRaw || null,
+              arrivalAtRaw: segArrRaw || null,
+              ...(e.bookingClass || (journeyIndex === 0 ? fareCode : null)
+                ? {
+                    bookingClass:
+                      e.bookingClass || (journeyIndex === 0 ? fareCode : null),
+                  }
+                : {}),
+              ...(e.brandedFare || (journeyIndex === 0 ? fareName : null)
+                ? {
+                    brandedFare:
+                      e.brandedFare || (journeyIndex === 0 ? fareName : null),
+                  }
+                : {}),
+            }
+          })
+          const first = segments[0]
+          const last = segments[segments.length - 1]
+          const jOrigin = first?.departureAirport ?? originFinal
+          const jDestination = last?.arrivalAirport ?? destinationFinal
+          const jStops =
+            parsed.rawSegments.length > 0
+              ? Math.max(parsed.stops, parsed.rawSegments.length - 1)
+              : parsed.stops
+          const jStopsLabel =
+            jStops === 0
+              ? "Non-stop"
+              : `${jStops} ${jStops === 1 ? "stop" : "stops"}`
+          const jDuration = formatDomesticDuration(parsed.duration) || "—"
+          const layovers: FlightOfferDisplay["journeys"][number]["layovers"] =
+            []
+          for (let i = 0; i < segments.length - 1; i++) {
+            const arrivalR = segments[i]?.arrivalAtRaw ?? ""
+            const departureR = segments[i + 1]?.departureAtRaw ?? ""
+            const minutes = layoverMinutes(arrivalR, departureR)
+            const airport = segments[i]?.arrivalAirport ?? "—"
+            layovers.push({
+              airport,
+              durationMinutes: minutes,
+              durationLabel: formatLayover(minutes),
+              overnight:
+                datePartOf(arrivalR) !== "" &&
+                datePartOf(departureR) !== "" &&
+                datePartOf(arrivalR) !== datePartOf(departureR),
+              terminalChange: null,
+            })
+          }
+          return {
+            index: journeyIndex,
+            duration: jDuration,
+            stops: jStops,
+            stopsLabel: jStopsLabel,
+            origin: jOrigin,
+            destination: jDestination,
+            airportsLabel:
+              jOrigin !== "—" && jDestination !== "—"
+                ? `${jOrigin} → ${jDestination}`
+                : "—",
+            segments,
+            layovers,
+          }
+        })
+      : [
+          {
+            index: 0,
+            duration,
+            stops: maxStops,
+            stopsLabel,
+            origin: originFinal,
+            destination: destinationFinal,
+            airportsLabel,
+            segments: [
+              {
+                departureAirport: originFinal,
+                arrivalAirport: destinationFinal,
+                departureAt,
+                arrivalAt,
+                carrierCode: airlineCode || "",
+                ...(topFlightNumber ? { flightNumber: topFlightNumber } : {}),
+                ...(duration !== "—" ? { duration } : {}),
+                ...(cabin ? { cabin } : {}),
+                departureAtRaw: departureRawFinal || null,
+                arrivalAtRaw: arrivalRawFinal || null,
+                ...(fareCode ? { bookingClass: fareCode } : {}),
+                ...(fareName ? { brandedFare: fareName } : {}),
+              },
+            ],
+            layovers: [],
+          },
+        ]
 
   return {
     id,
@@ -376,19 +960,16 @@ export function normalizeDomesticCard(
     arrivalAt,
     departureDate: departureDate || null,
     arrivalDate: arrivalDate || null,
-    arrivalDayOffset: 0,
+    arrivalDayOffset: dayOffsetBetween(departureRawFinal, arrivalRawFinal),
     duration,
     stops: maxStops,
     stopsLabel,
     maxStopsInTrip: maxStops,
     stopsPerItinerary: itineraryStops.length > 0 ? itineraryStops : null,
     isDirect,
-    origin,
-    destination,
-    airportsLabel:
-      origin !== "—" && destination !== "—"
-        ? `${origin} → ${destination}`
-        : "—",
+    origin: originFinal,
+    destination: destinationFinal,
+    airportsLabel,
     cabin,
     bookingClass: fareCode,
     fareBrand: fareName,
@@ -398,42 +979,14 @@ export function normalizeDomesticCard(
     baggage: read("baggage", "checked_baggage", "checkedBaggage") || null,
     checkedBags: null,
     cabinBags: null,
-    price: pickCardPrice(record),
+    price: buildPrice(),
     currency: "NGN",
     priceBreakdown: null,
     fareRules: null,
     amenities: [],
     seatsAvailable,
     lastTicketingDate: null,
-    journeys: [
-      {
-        index: 0,
-        duration,
-        stops: maxStops,
-        stopsLabel,
-        origin,
-        destination,
-        airportsLabel:
-          origin !== "—" && destination !== "—"
-            ? `${origin} → ${destination}`
-            : "—",
-        segments: [
-          {
-            departureAirport: origin,
-            arrivalAirport: destination,
-            departureAt,
-            arrivalAt,
-            carrierCode: airline,
-            ...(duration !== "—" ? { duration } : {}),
-            departureAtRaw: departureAt !== "—" ? departureAt : null,
-            arrivalAtRaw: arrivalAt !== "—" ? arrivalAt : null,
-            ...(fareCode ? { bookingClass: fareCode } : {}),
-            ...(fareName ? { brandedFare: fareName } : {}),
-          },
-        ],
-        layovers: [],
-      },
-    ],
+    journeys,
     raw: { ...record, id },
   }
 }

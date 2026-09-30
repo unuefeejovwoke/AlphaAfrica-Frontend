@@ -102,24 +102,6 @@ export default async function HotelsPage({
         </>
       ) : null}
 
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pt-10 sm:px-6 lg:px-8">
-        <header className="flex max-w-3xl flex-col gap-3">
-          <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            Hotels
-          </span>
-          <h1 className="text-4xl font-extrabold tracking-tight text-balance text-foreground sm:text-5xl">
-            Find your stay with confidence
-          </h1>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Search by city or Hotel name and compare from-prices per night in
-            Naira. Every search stays in the address bar so you can share it,
-            refresh it, or come back to it. Add your dates and party on the
-            Hotel page when you are ready to book. No account needed, and human
-            help is one tap away.
-          </p>
-        </header>
-      </div>
-
       <React.Suspense fallback={<HotelsPageFallback />}>
         <HotelSearchPageClient />
       </React.Suspense>
@@ -175,9 +157,12 @@ export default async function HotelsPage({
  */
 function HotelsPageFallback() {
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 md:py-8 lg:px-8">
+      <div className="h-12 w-full animate-pulse rounded-2xl border border-border/60 bg-muted/30" />
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-foreground">Hotel results</h2>
+        <h1 className="text-xl font-extrabold tracking-tight text-foreground sm:text-2xl">
+          All Hotels
+        </h1>
         <ButtonLink
           href={getHotelSupportWhatsAppUrl("finding a Hotel for my stay")}
           target="_blank"

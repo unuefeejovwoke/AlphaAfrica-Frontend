@@ -40,18 +40,21 @@ const cardLinkClassName =
 /**
  * Shared crawlable card shell: image with alt + body. Keeps destination
  * and package cards visually consistent without duplicating markup.
+ * Optional `badge` overlays the image top-left (e.g. vehicle type).
  */
 export function ListingCardShell({
   href,
   imageSrc,
   imageAlt,
   isFeatured,
+  badge,
   children,
 }: {
   href: string
   imageSrc: string
   imageAlt: string
   isFeatured?: boolean
+  badge?: ReactNode
   children: ReactNode
 }) {
   return (
@@ -66,6 +69,7 @@ export function ListingCardShell({
             decoding="async"
             className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           />
+          {badge}
           {isFeatured === true && <FeaturedBadge />}
         </div>
         <div className="flex flex-1 flex-col gap-2.5 p-5 sm:p-6">

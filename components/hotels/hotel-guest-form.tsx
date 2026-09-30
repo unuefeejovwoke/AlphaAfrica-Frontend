@@ -1,17 +1,20 @@
 "use client"
 
 import * as React from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
   ArrowLeft01Icon,
   LockIcon,
+  Mail01Icon,
   Message01Icon,
+  UserIcon,
 } from "@hugeicons/core-free-icons"
 import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneField } from "@/components/ui/phone-field"
 import { track } from "@/lib/analytics"
 import {
   ApiError,
@@ -271,6 +274,9 @@ export function HotelGuestForm({
         label="Full name"
         placeholder="e.g. Adaeze Okonkwo"
         autoComplete="name"
+        startIcon={
+          <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
+        }
         error={form.formState.errors.guest_name?.message}
         {...form.register("guest_name")}
       />
@@ -279,17 +285,26 @@ export function HotelGuestForm({
         placeholder="you@example.com"
         type="email"
         autoComplete="email"
+        startIcon={
+          <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
+        }
         error={form.formState.errors.guest_email?.message}
         {...form.register("guest_email")}
       />
-      <Input
-        label="Phone number"
-        placeholder="0803 123 4567"
-        type="tel"
-        autoComplete="tel"
-        helperText="Nigerian formats like 0803… or +234… accepted, and international numbers too."
-        error={form.formState.errors.guest_phone?.message}
-        {...form.register("guest_phone")}
+      <Controller
+        name="guest_phone"
+        control={form.control}
+        render={({ field }) => (
+          <PhoneField
+            label="Phone number"
+            value={field.value ?? ""}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            placeholder="803 123 4567"
+            helperText="Pick your country code, then type your number — WhatsApp-ready."
+            error={form.formState.errors.guest_phone?.message}
+          />
+        )}
       />
 
       {rootError || failure ? (

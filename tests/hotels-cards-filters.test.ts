@@ -16,6 +16,7 @@ import {
   HOTEL_ORDERINGS,
   buildHotelSearchParams,
   collectAmenityOptions,
+  countActiveHotelFilters,
   filterHotelsByAmenities,
   formatHotelFromPrice,
   hasHotelSearchParams,
@@ -343,5 +344,20 @@ test("Client-side amenity refinement filters the fetched page without a new sear
     collectAmenityOptions([]).length,
     0,
     "Empty page yields no options"
+  )
+})
+
+test("countActiveHotelFilters counts price, star, and sort groups", () => {
+  assert.equal(countActiveHotelFilters({}), 0)
+  assert.equal(countActiveHotelFilters({ max_price: 100000 }), 1)
+  assert.equal(countActiveHotelFilters({ min_stars: 4 }), 1)
+  assert.equal(countActiveHotelFilters({ ordering: "price" }), 1)
+  assert.equal(
+    countActiveHotelFilters({
+      max_price: 150000,
+      min_stars: 4,
+      ordering: "-price",
+    }),
+    3
   )
 })

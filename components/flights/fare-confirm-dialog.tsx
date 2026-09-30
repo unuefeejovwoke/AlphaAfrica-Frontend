@@ -33,16 +33,6 @@ type ConfirmPhase = "confirming" | "changed" | "expired" | "error" | "domestic"
 
 type ChangedOutcome = Extract<PriceConfirmOutcome, { status: "changed" }>
 
-/** "PREMIUM_ECONOMY" → "Premium Economy" for display pills. */
-function prettifyCabinLabel(cabin: string): string {
-  return cabin
-    .split("_")
-    .map((part) =>
-      part ? part.charAt(0).toUpperCase() + part.slice(1).toLowerCase() : part
-    )
-    .join(" ")
-}
-
 export interface FareConfirmDialogProps {
   open: boolean
   /** Raw selected Flight Offer / Domestic Flight Card (opaque blob included). */
@@ -50,7 +40,6 @@ export interface FareConfirmDialogProps {
   /** Normalized display for the summary — never used as the request payload. */
   display: FlightOfferDisplay | null
   branch: BookingBranch
-  trip?: FlightTripContext
   onOpenChange: (open: boolean) => void
   /** Parent persists the Confirmed Offer and navigates to Traveller entry. */
   onContinue: (confirmedOffer: FlightOffer | null) => void
@@ -80,8 +69,7 @@ const PHASE_COPY: Record<ConfirmPhase, { title: string; description: string }> =
     },
     domestic: {
       title: "Confirm your domestic flight",
-      description:
-        "Domestic fares are confirmed directly with the airline at booking — no separate revalidation step is needed.",
+      description: "",
     },
   }
 
@@ -100,7 +88,6 @@ export function FareConfirmDialog({
   offer,
   display,
   branch,
-  trip,
   onOpenChange,
   onContinue,
 }: FareConfirmDialogProps) {
@@ -350,34 +337,43 @@ export function FareConfirmDialog({
       />
     )
   } else {
+    // Domestic branch: no Amadeus revalidation — the card already carries
+    // live QuickAir facts. Flight summary + total fare only, then straight
+    // to checkout. No process notes, no support links.
+    const firstSegment = display.journeys[0]?.segments[0]
+    const routeMeta = [
+      display.duration !== "—" ? display.duration : null,
+      display.stopsLabel,
+    ]
+      .filter((part): part is string => Boolean(part))
+      .join(" · ")
     body = (
       <div className="flex flex-col gap-4">
-        <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          Domestic flight · {prettifyCabinLabel(display.cabin)}
-        </span>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {display.airline} {display.airportsLabel} · {display.departureAt} →{" "}
-          {display.arrivalAt} · {display.stopsLabel}. Nothing has been booked or
-          charged yet.
-        </p>
-        <dl className="grid min-w-0 grid-cols-1 gap-3 rounded-xl bg-muted/50 p-4 sm:grid-cols-2">
-          <div className="min-w-0">
-            <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+        <div className="rounded-xl bg-muted/50 p-4">
+          <p className="text-sm font-bold text-foreground">
+            {display.airline}
+            {firstSegment?.flightNumber ? (
+              <span className="font-semibold text-muted-foreground">
+                {" "}
+                · {firstSegment.flightNumber}
+              </span>
+            ) : null}
+          </p>
+          <p className="font-variant-numeric mt-1 text-2xl font-extrabold text-foreground tabular-nums">
+            {display.departureAt} → {display.arrivalAt}
+          </p>
+          <p className="mt-1 text-xs font-medium text-muted-foreground">
+            {display.origin} → {display.destination} · {routeMeta}
+          </p>
+          <div className="mt-3 border-t border-border/60 pt-3">
+            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
               Total fare
-            </dt>
-            <dd className="font-variant-numeric mt-1 text-base font-extrabold text-foreground tabular-nums">
+            </p>
+            <p className="font-variant-numeric mt-1 text-lg font-extrabold text-foreground tabular-nums">
               {formatNaira(display.price)} · {display.currency}
-            </dd>
+            </p>
           </div>
-          <div className="min-w-0">
-            <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-              Route
-            </dt>
-            <dd className="mt-1 text-base font-bold text-foreground">
-              {display.airportsLabel}
-            </dd>
-          </div>
-        </dl>
+        </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             type="button"
@@ -385,7 +381,7 @@ export function FareConfirmDialog({
             onClick={() => onContinue(null)}
             className="flex-1 justify-center"
           >
-            <span>Continue to traveller details</span>
+            <span>Continue to checkout</span>
           </Button>
           <Button
             type="button"
@@ -394,29 +390,9 @@ export function FareConfirmDialog({
             onClick={() => onOpenChange(false)}
             className="flex-1 justify-center"
           >
-            <span>Back to results</span>
+            <span>Cancel</span>
           </Button>
         </div>
-        <TrackLink
-          event="support_click"
-          eventProps={{
-            context: "a domestic flight I want to book",
-            channel: "whatsapp",
-          }}
-          href={getFlightSupportWhatsAppUrl(
-            "a domestic flight I want to book",
-            trip
-          )}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "lg" }),
-            "w-full justify-center"
-          )}
-        >
-          <HugeiconsIcon icon={Message01Icon} size={16} aria-hidden="true" />
-          <span>Ask Alphaa</span>
-        </TrackLink>
       </div>
     )
   }
@@ -447,9 +423,11 @@ export function FareConfirmDialog({
                   </span>
                   {copy.title}
                 </DialogPrimitive.Title>
-                <DialogPrimitive.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {copy.description}
-                </DialogPrimitive.Description>
+                {copy.description ? (
+                  <DialogPrimitive.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {copy.description}
+                  </DialogPrimitive.Description>
+                ) : null}
               </div>
               <DialogPrimitive.Close
                 aria-label="Close fare confirmation"

@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
   ArrowRight01Icon,
+  BedDoubleIcon,
   Message01Icon,
 } from "@hugeicons/core-free-icons"
 import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
@@ -15,6 +16,7 @@ import { TrackLink } from "@/components/analytics/track-link"
 import { track } from "@/lib/analytics"
 import { HotelPartyStepper } from "@/components/hotels/hotel-party-stepper"
 import { HotelRoomChoice } from "@/components/hotels/hotel-room-choice"
+import { HotelMobileBar } from "@/components/hotels/hotel-mobile-bar"
 import {
   DEFAULT_HOTEL_GUESTS,
   DEFAULT_HOTEL_ROOMS,
@@ -46,31 +48,54 @@ function todayString(): string {
 }
 
 /**
- * Room Type choice plus stay editing with live preview (Phase 4, ticket 04).
+ * Hotel detail interactive shell: Room Type choice plus the stay panel.
  *
- * Exactly one Room Type per Hotel Booking via an accessible radio choice;
- * capacity enforced as guests ≤ per-room capacity × rooms with inline
- * guidance (zero-capacity rows pass through); date changes preserve the
- * chosen Room Type while re-deriving nights and preview totals; the only
- * chargeable total is the backend-computed amount returned at creation.
+ * The ordering is the redesign. The Room Type choice is the page's only
+ * conversion action, so it sits directly under the hero instead of below
+ * About, Location and Amenities, and the stay panel mirrors the current
+ * selection instead of pointing at a list further down the page. That removes
+ * the "choose a Room Type below" dead end where the control and its target
+ * were never in the same visual field.
  *
- * Static detail content (overview, location, amenities) arrives as RSC
- * children so it stays server-rendered; this leaf owns only the interactive
- * choice, dates, party, and preview. Stay hints (`?check_in=` etc.) are read
- * from the URL so search context and back-navigation survive.
+ * This component returns a fragment: the page owns the grid and renders the
+ * hero as a sibling outside the Suspense boundary, because the hero photo is
+ * the LCP element and must be present in the initial HTML. Only the genuinely
+ * interactive regions are behind `useSearchParams`, so only they need the
+ * client bailout and the skeleton.
+ *
+ * `details` is a server-rendered slot so static Hotel content stays out of the
+ * client bundle; this leaf owns only the choice, the dates, the party, and the
+ * live preview. On mobile the panel sits between the Room Types and the
+ * supporting detail, so the guest picks a room, then dates, then reads the fine
+ * print.
+ *
+ * Stay-date rules reuse the shared search validation (both-or-neither, real
+ * calendar dates, check-out after check-in, neither in the past). Blank dates
+ * are "add dates" guidance, not an error. The only chargeable total is the
+ * backend-computed amount returned at booking.
  */
 export function HotelBookingFlow({
   hotel,
   rooms,
-  children,
+  details,
+  startingPrice,
 }: {
   hotel: HotelBookingFlowHotel
   rooms: RoomType[]
-  children: React.ReactNode
+  /** Server-rendered About, Location, and deferred amenity regions. */
+  details: React.ReactNode
+  /**
+   * Hotel-level starting price as the backend decimal string. Formatted with
+   * `formatRoomTypePrice` so the panel header and the Room Type rows share one
+   * "₦X per night" shape instead of stacking "From" on a label that already
+   * says "from".
+   */
+  startingPrice: string | null
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const today = React.useMemo(todayString, [])
+  const staySentinelRef = React.useRef<HTMLDivElement>(null)
 
   // One-shot hint hydration: search context or a return from the
   // guest-details step pre-fills dates, party, and the Room Type choice.
@@ -109,9 +134,6 @@ export function HotelBookingFlow({
     [checkIn, checkOut]
   )
 
-  // Stay-date rules reuse the shared search validation (both-or-neither,
-  // real calendar dates, check-out after check-in, neither in the past).
-  // Blank dates are "add dates" guidance, not an error.
   const hasAnyDate = checkIn.trim() !== "" || checkOut.trim() !== ""
   const dateError = React.useMemo(() => {
     if (!hasAnyDate) return null
@@ -152,6 +174,10 @@ export function HotelBookingFlow({
     [room, nights, roomsCount]
   )
   const roomPriceLabel = room ? formatRoomTypePrice(room.price_per_night) : null
+  const fromPriceLabel = React.useMemo(
+    () => formatRoomTypePrice(startingPrice),
+    [startingPrice]
+  )
 
   const canContinue = room !== null && datesValid && (verdict?.ok ?? false)
 
@@ -203,229 +229,312 @@ export function HotelBookingFlow({
   const nightWord = nights === 1 ? "night" : "nights"
   const roomWord = roomsCount === 1 ? "room" : "rooms"
 
+  // The one thing standing between the guest and the CTA, phrased as the
+  // single next action rather than a stack of possibilities.
+  const blockedReason = React.useMemo(() => {
+    if (room === null) return "Pick a room to see your total."
+    if (!hasAnyDate) return "Add your check-in and check-out dates."
+    if (!datesValid) return "Check your dates, then continue."
+    if (!(verdict?.ok ?? false))
+      return "Adjust rooms or room type so every guest fits."
+    return null
+  }, [room, hasAnyDate, datesValid, verdict])
+
+  // Placement is owned by the page-level grid. Returning a fragment (rather
+  // than a wrapper) puts these three regions directly into that grid, which is
+  // what lets the hero render server-side outside this Suspense boundary
+  // while the interactive regions keep their column and row.
   return (
-    <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_380px] lg:gap-14">
-      <div className="flex min-w-0 flex-col gap-12 sm:gap-14">
-        {children}
-
-        {/* Room Types: the one-Room-Type radio choice. */}
-        <section
-          id="room-types"
-          aria-labelledby="hotel-rooms-heading"
-          className="flex scroll-mt-24 flex-col gap-5"
-        >
-          <div className="flex flex-col gap-1">
-            <h2
-              id="hotel-rooms-heading"
-              className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-            >
-              Room Types
-            </h2>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Choose exactly one Room Type for this Hotel Booking. Every price
-              below is per night in Naira — the charged total is confirmed
-              before you pay.
-            </p>
-          </div>
-          {rooms.length > 0 ? (
-            <HotelRoomChoice
-              rooms={rooms}
-              value={roomTypeId}
-              onChange={setRoomTypeId}
-              guidance={capacityGuidance}
-            />
-          ) : (
-            <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs sm:p-6">
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Room Types for this Hotel are being updated. Talk to Alphaa and
-                a specialist will confirm availability and per-night prices for
-                your dates.
-              </p>
-              <div>
-                <ButtonLink
-                  href={supportHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="outline"
-                  size="sm"
-                >
-                  <HugeiconsIcon
-                    icon={Message01Icon}
-                    size={14}
-                    aria-hidden="true"
-                  />
-                  <span>Ask about Room Types</span>
-                </ButtonLink>
-              </div>
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* Sticky stay panel: dates, party, per-night preview, one action. */}
-      <aside aria-label={`Book ${hotel.name}`} className="min-w-0">
-        <div className="flex flex-col gap-5 rounded-2xl border border-border/80 bg-card p-5 shadow-xs sm:p-6 lg:sticky lg:top-24">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-base font-bold text-foreground">Your stay</h2>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {room ? room.name : "Choose a Room Type below"} · {hotel.city}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <DatePicker
-              label="Check-in"
-              min={today}
-              value={checkIn}
-              onChange={(event) => setCheckIn(event.target.value)}
-              error={
-                checkIn.trim() !== "" ? (dateError ?? undefined) : undefined
-              }
-            />
-            <DatePicker
-              label="Check-out"
-              min={checkIn || today}
-              value={checkOut}
-              onChange={(event) => setCheckOut(event.target.value)}
-              error={
-                checkOut.trim() !== "" ? (dateError ?? undefined) : undefined
-              }
-            />
-          </div>
-
-          <HotelPartyStepper
-            value={{ guests, rooms: roomsCount }}
-            onChange={(next) => {
-              setGuests(next.guests)
-              setRoomsCount(next.rooms)
-            }}
+    <>
+      {/* Room Types: the conversion action, directly under the hero. */}
+      <section
+        id="room-types"
+        aria-labelledby="hotel-rooms-heading"
+        className="flex scroll-mt-24 flex-col gap-4 lg:col-start-1 lg:row-start-2"
+      >
+        <div className="flex flex-col gap-1.5">
+          <h2
+            id="hotel-rooms-heading"
+            className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
+          >
+            Choose your room
+          </h2>
+          <p className="max-w-[62ch] text-sm leading-relaxed text-muted-foreground">
+            Every price is per night in Naira, and your total is confirmed
+            before you pay anything.
+          </p>
+        </div>{" "}
+        {rooms.length > 0 ? (
+          <HotelRoomChoice
+            rooms={rooms}
+            value={roomTypeId}
+            onChange={setRoomTypeId}
+            guidance={capacityGuidance}
+            hotelName={hotel.name}
           />
-
-          <dl className="flex flex-col gap-2 rounded-xl border border-border/60 bg-muted/30 p-4 text-sm">
-            <div className="flex items-center justify-between gap-2">
-              <dt className="text-xs text-muted-foreground">Per night</dt>
-              <dd className="text-xs font-semibold text-foreground">
-                {roomPriceLabel ?? "Confirmed at booking"}
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <dt className="text-xs text-muted-foreground">Nights</dt>
-              <dd className="text-xs font-semibold text-foreground tabular-nums">
-                {nights !== null ? `${nights} ${nightWord}` : "Add dates"}
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2">
-              <dt className="text-xs font-semibold text-foreground">
-                Preview total
-              </dt>
-              <dd className="text-base font-extrabold tracking-tight text-foreground tabular-nums">
-                {preview !== null ? formatNaira(String(preview)) : "—"}
-              </dd>
-            </div>
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {preview !== null
-                ? `Preview for ${nights} ${nightWord} × ${roomsCount} ${roomWord}. The backend total is what you're charged.`
-                : "Exact total confirmed before you pay — the backend total is what you're charged."}
+        ) : (
+          <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs sm:p-6">
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Room Types for this Hotel are being updated. Talk to Alphaa and a
+              specialist will confirm availability and per-night prices for your
+              dates.
             </p>
-          </dl>
+            <div>
+              <ButtonLink
+                href={supportHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outline"
+                size="sm"
+              >
+                <HugeiconsIcon
+                  icon={Message01Icon}
+                  size={14}
+                  aria-hidden="true"
+                />
+                <span>Ask about Room Types</span>
+              </ButtonLink>
+            </div>
+          </div>
+        )}
+      </section>
 
-          {!canContinue ? (
-            <p
-              role="status"
-              className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground"
-            >
+      {/* Stay panel. Sticky in the right column on desktop; inline between the
+          Room Types and the supporting detail on mobile. */}
+      <aside
+        id="stay-panel"
+        aria-label={`Book ${hotel.name}`}
+        className="relative min-w-0 scroll-mt-24 lg:col-start-2 lg:row-span-3 lg:row-start-1"
+      >
+        {/* Zero-height marker at the panel's own top edge. The mobile bar
+            observes it, so the bar appears exactly when this panel leaves the
+            top of the viewport. Absolute so it never takes a grid cell. */}
+        <div
+          ref={staySentinelRef}
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-px lg:hidden"
+        />
+        <div className="flex flex-col overflow-hidden rounded-2xl bg-card shadow-xs ring-1 ring-border/80 lg:sticky lg:top-24">
+          {/* From-price header. The panel answers "what does this cost"
+              before it asks for anything. */}
+          <div className="flex flex-col gap-1 border-b border-border/70 bg-muted/40 px-5 py-4">
+            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              {room ? "Your room" : "From"}
+            </span>
+            <span className="text-2xl font-extrabold tracking-tight text-foreground tabular-nums">
+              {room
+                ? (roomPriceLabel ?? "Price confirmed at booking")
+                : (fromPriceLabel ?? "Price confirmed at booking")}
+            </span>
+            <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
               <HugeiconsIcon
-                icon={AlertCircleIcon}
-                size={14}
-                className="mt-0.5 shrink-0"
+                icon={BedDoubleIcon}
+                size={13}
                 aria-hidden="true"
               />
-              <span>
-                {room === null
-                  ? "Choose one Room Type to continue — each Hotel Booking covers exactly one."
-                  : !hasAnyDate
-                    ? "Add your check-in and check-out dates to continue."
-                    : !datesValid
-                      ? "Review your stay dates to continue."
-                      : "Adjust rooms or Room Type so every guest fits."}
-              </span>
-            </p>
-          ) : null}
+              <span className="truncate">{room ? room.name : hotel.city}</span>
+            </span>
+          </div>
 
-          <Button
-            type="button"
-            size="lg"
-            disabled={!canContinue}
-            onClick={handleContinue}
-            className="w-full justify-center"
-          >
-            <span>Continue with this stay</span>
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
-              size={16}
-              aria-hidden="true"
+          <div className="flex flex-col gap-5 p-5">
+            <div className="grid grid-cols-2 gap-3">
+              <DatePicker
+                label="Check-in"
+                labelClassName="text-[13px] normal-case tracking-normal"
+                min={today}
+                value={checkIn}
+                onChange={(event) => setCheckIn(event.target.value)}
+                error={
+                  checkIn.trim() !== "" ? (dateError ?? undefined) : undefined
+                }
+              />
+              <DatePicker
+                label="Check-out"
+                labelClassName="text-[13px] normal-case tracking-normal"
+                min={checkIn || today}
+                value={checkOut}
+                onChange={(event) => setCheckOut(event.target.value)}
+                error={
+                  checkOut.trim() !== "" ? (dateError ?? undefined) : undefined
+                }
+              />
+            </div>
+
+            <HotelPartyStepper
+              value={{ guests, rooms: roomsCount }}
+              onChange={(next) => {
+                setGuests(next.guests)
+                setRoomsCount(next.rooms)
+              }}
             />
-          </Button>
 
-          <TrackLink
-            event="support_click"
-            eventProps={{
-              context: `hotel stay at ${hotel.name}`,
-              channel: "whatsapp",
-            }}
-            href={supportHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "sm" }),
-              "w-full justify-center"
-            )}
-          >
-            <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
-            <span>Talk to Alphaa</span>
-          </TrackLink>
+            {/* Total. An auditable breakdown beats a bare figure, and every
+                row is a live placeholder rather than a dash that reads as
+                broken. The panel does not also print a "what to do next"
+                line: the Total slot, the date fields, and the Room Type
+                guidance each already name the missing step where it applies,
+                so a fourth restatement was pure noise. */}
+            <div className="flex flex-col gap-2 rounded-xl bg-muted/50 p-4">
+              <div className="flex items-center justify-between gap-3 text-[13px]">
+                <span className="text-muted-foreground">Stay length</span>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {nights !== null
+                    ? `${nights} ${nightWord} × ${roomsCount} ${roomWord}`
+                    : "Add your dates"}
+                </span>
+              </div>
+              <div className="flex items-end justify-between gap-3 border-t border-border/70 pt-2.5">
+                <span className="text-sm font-semibold text-foreground">
+                  Total
+                </span>
+                <span className="text-right">
+                  {preview !== null ? (
+                    <span className="block text-2xl font-extrabold tracking-tight text-foreground tabular-nums">
+                      {formatNaira(String(preview))}
+                    </span>
+                  ) : (
+                    <span className="block text-sm font-semibold text-muted-foreground">
+                      Pick a room
+                    </span>
+                  )}
+                </span>
+              </div>
+              {/* The single, authoritative caveat. It used to appear three
+                  times on this page. */}
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {preview !== null
+                  ? "An estimate, confirmed by our team before you pay."
+                  : "Your total is confirmed before you pay."}
+              </p>
+            </div>
+
+            {/* The removed status line still needs to reach assistive tech
+                when the guest changes a date, a party size, or the room. */}
+            <p className="sr-only" role="status" aria-live="polite">
+              {blockedReason ??
+                (preview !== null
+                  ? `${nights} ${nightWord} in ${roomsCount} ${roomWord}, total ${formatNaira(String(preview))}. Ready to continue.`
+                  : "")}
+            </p>
+
+            <Button
+              type="button"
+              size="lg"
+              disabled={!canContinue}
+              onClick={handleContinue}
+              className="h-12 w-full justify-center"
+            >
+              <span>Continue</span>
+              {/* Nested trailing icon: the arrow reads as part of the
+                  control rather than floating beside the label. */}
+              <span
+                aria-hidden="true"
+                data-icon="inline-end"
+                className="flex size-6 items-center justify-center rounded-full bg-primary-foreground/20"
+              >
+                <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
+              </span>
+            </Button>
+
+            <TrackLink
+              event="support_click"
+              eventProps={{
+                context: `hotel stay at ${hotel.name}`,
+                channel: "whatsapp",
+              }}
+              href={supportHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "h-12 w-full justify-center"
+              )}
+            >
+              <HugeiconsIcon
+                icon={Message01Icon}
+                size={16}
+                aria-hidden="true"
+              />
+              <span>Talk to Alphaa</span>
+            </TrackLink>
+          </div>
         </div>
       </aside>
-    </div>
+
+      {/* Supporting detail: About, Location, and any amenities the hero
+          strip deferred. Read after the guest has chosen a room. */}
+      <div className="flex min-w-0 flex-col gap-10 sm:gap-12 lg:col-start-1 lg:row-start-3">
+        {details}
+      </div>
+
+      {/* Out of flow (`fixed`), so it never takes a grid cell. Mirrors the
+          panel's live selection on small screens. */}
+      <HotelMobileBar
+        priceLabel={
+          roomPriceLabel ??
+          fromPriceLabel ??
+          (room === null ? null : "Price confirmed at booking")
+        }
+        roomLabel={room?.name ?? null}
+        sentinelRef={staySentinelRef}
+      />
+    </>
   )
 }
 
 /**
- * Suspense fallback while stay hints hydrate: skeleton shape mirrors the
- * rooms section plus the stay panel so the detail page never flashes blank.
+ * Suspense fallback while stay hints hydrate.
+ *
+ * The hero is already server-rendered outside this boundary, so the skeleton
+ * only stands in for the three interactive regions. It returns a fragment with
+ * the same grid placement as the real component, so nothing shifts when the
+ * client leaf takes over.
  */
 export function HotelBookingFlowFallback() {
+  const shimmer = "animate-pulse bg-muted/80 motion-reduce:animate-none"
+
   return (
     <div
-      className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_380px] lg:gap-14"
       role="status"
       aria-live="polite"
       aria-label="Loading Room Types and stay options"
+      className="contents"
     >
-      <div className="flex min-w-0 flex-col gap-5">
-        <div className="h-8 w-40 animate-pulse rounded-xl bg-muted/80 motion-reduce:animate-none" />
-        <div className="h-4 w-3/4 animate-pulse rounded-xl bg-muted/80 motion-reduce:animate-none" />
-        {[0, 1].map((card) => (
+      <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
+        <div className={cn("h-8 w-48 rounded-xl", shimmer)} />
+        {[0, 1, 2].map((card) => (
           <div
             key={card}
             aria-hidden="true"
-            className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5"
+            className="flex items-center gap-4 rounded-2xl border border-border/80 bg-card p-3"
           >
-            <div className="h-5 w-1/2 animate-pulse rounded-lg bg-muted/80 motion-reduce:animate-none" />
-            <div className="h-4 w-full animate-pulse rounded-lg bg-muted/80 motion-reduce:animate-none" />
-            <div className="h-4 w-2/3 animate-pulse rounded-lg bg-muted/80 motion-reduce:animate-none" />
+            <div className={cn("size-24 shrink-0 rounded-xl", shimmer)} />
+            <div className="flex flex-1 flex-col gap-2">
+              <div className={cn("h-4 w-1/3 rounded-lg", shimmer)} />
+              <div className={cn("h-3.5 w-1/2 rounded-lg", shimmer)} />
+            </div>
+            <div className={cn("h-5 w-20 rounded-lg", shimmer)} />
           </div>
         ))}
       </div>
-      <div className="min-w-0">
+
+      <div className="min-w-0 lg:col-start-2 lg:row-span-3 lg:row-start-1">
         <div
           aria-hidden="true"
-          className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-card p-5"
+          className="flex flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border/80"
         >
-          <div className="h-5 w-24 animate-pulse rounded-lg bg-muted/80 motion-reduce:animate-none" />
-          <div className="h-10 w-full animate-pulse rounded-xl bg-muted/80 motion-reduce:animate-none" />
-          <div className="h-12 w-full animate-pulse rounded-xl bg-muted/80 motion-reduce:animate-none" />
+          <div className={cn("h-24", shimmer)} />
+          <div className="flex flex-col gap-4 p-5">
+            <div className={cn("h-11 w-full rounded-xl", shimmer)} />
+            <div className={cn("h-28 w-full rounded-xl", shimmer)} />
+            <div className={cn("h-12 w-full rounded-xl", shimmer)} />
+          </div>
         </div>
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-3 lg:col-start-1 lg:row-start-3">
+        <div className={cn("h-8 w-40 rounded-xl", shimmer)} />
+        <div className={cn("h-20 w-full rounded-xl", shimmer)} />
       </div>
     </div>
   )

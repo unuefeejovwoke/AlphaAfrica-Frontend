@@ -27,9 +27,7 @@ import {
   parseDepartureMinutes,
 } from "@/lib/api/flight-filters"
 import { useComparisonBadges } from "@/components/flights/use-comparison-badges"
-import {
-  FlightOfferSkeleton,
-} from "@/components/flights/flight-offer-card"
+import { FlightOfferSkeleton } from "@/components/flights/flight-offer-card"
 import { GroupedFlightOffers } from "@/components/flights/grouped-flight-offers"
 import { TrackLink } from "@/components/analytics/track-link"
 import { useFilteredOffers } from "@/components/flights/use-filtered-offers"
@@ -47,26 +45,10 @@ export interface DomesticStreamResultsProps {
   isCancelled: boolean
   searchId: string | null
   error: unknown | null
-  startedAt: number | null
   onRetry: () => void
   onCancel: () => void
   onSelect: (offer: FlightOfferDisplay) => void
   trip?: FlightTripContext
-}
-
-function useElapsedSeconds(
-  startedAt: number | null,
-  active: boolean
-): number | null {
-  const [now, setNow] = React.useState(() => Date.now())
-  React.useEffect(() => {
-    if (!active || startedAt === null) return
-    setNow(Date.now())
-    const id = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(id)
-  }, [active, startedAt])
-  if (startedAt === null) return null
-  return Math.max(0, Math.floor((now - startedAt) / 1000))
 }
 
 export function DomesticStreamResults({
@@ -78,7 +60,6 @@ export function DomesticStreamResults({
   isCancelled,
   searchId,
   error,
-  startedAt,
   onRetry,
   onCancel,
   onSelect,
@@ -107,13 +88,11 @@ export function DomesticStreamResults({
   )
 
   const streamingActive = isStreaming || isFallingBack
-  const elapsedSec = useElapsedSeconds(startedAt, streamingActive)
-  const elapsedLabel = elapsedSec === null ? null : `${elapsedSec}s elapsed`
   const progressCopy = isFallingBack
     ? "Streaming was slow — loading full domestic results…"
     : displays.length > 0
       ? `${displays.length} ${displays.length === 1 ? "flight" : "flights"} so far… airlines still checking…`
-      : "Finding domestic flights… live airline checks underway (usually 30–60 seconds)…"
+      : "Finding domestic flights…"
 
   // Quick-sort metrics
   const sortMetrics = React.useMemo(() => {
@@ -163,7 +142,6 @@ export function DomesticStreamResults({
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card p-4">
           <p className="text-sm font-medium text-muted-foreground">
             {progressCopy}
-            {elapsedLabel ? ` · ${elapsedLabel}` : null}
           </p>
           <div className="flex items-center gap-2">
             {searchId ? (
@@ -313,7 +291,7 @@ export function DomesticStreamResults({
             </div>
 
             {/* Quick Sorter Pills */}
-            <div className="no-scrollbar -mx-1 flex w-full items-center gap-2 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+            <div className="-mx-1 no-scrollbar flex w-full items-center gap-2 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
               <button
                 type="button"
                 onClick={() => filtered.changeSort("cheapest")}
@@ -379,21 +357,21 @@ export function DomesticStreamResults({
             </div>
           </div>
 
-          {/* Streaming status details */}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
-            <p aria-live="polite">
-              {isStreaming
-                ? `Airlines still responding… ${elapsedLabel || ""}`
-                : isComplete
-                  ? "Live domestic search completed."
-                  : ""}
-            </p>
-            {searchId ? (
-              <p className="font-mono text-[11px] tabular-nums">
-                Ref: {searchId}
-              </p>
-            ) : null}
-          </div>
+          {/* Streaming status details — live indicator while airlines respond;
+              the completed message was removed per design (no post-search
+              status line); the support ref stays for tracing. */}
+          {isStreaming || searchId ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+              {isStreaming ? (
+                <p aria-live="polite">Airlines still responding…</p>
+              ) : null}
+              {searchId ? (
+                <p className="font-mono text-[11px] tabular-nums">
+                  Ref: {searchId}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* Best fares by airline */}
           <BestDealsAirline
@@ -485,7 +463,9 @@ export function DomesticStreamResults({
                 href={supportUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" })
+                )}
               >
                 <HugeiconsIcon
                   icon={Message01Icon}

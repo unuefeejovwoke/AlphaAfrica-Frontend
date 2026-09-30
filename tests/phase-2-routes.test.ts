@@ -241,19 +241,20 @@ test("Featured sections cover empty and error states with a support hatch", () =
   }
 })
 
-test("Future-phase search tabs hatch to support instead of 404ing", () => {
+test("Search tabs link to live routes instead of 404ing", () => {
   const content = readRoute("components/home/home-search-switcher.tsx")
   assert.match(content, /role="tablist"/, "Tabs must use the tablist pattern")
   assert.match(content, /aria-selected/, "Active tab must be announced")
   assert.match(
     content,
-    /ComingSoonHatch/,
-    "Flights/Hotels/Cars must hatch to support"
+    /\/hotels/,
+    "Hotels tab must link to the live /hotels route"
   )
+  assert.match(content, /\/cars/, "Cars tab must link to the live /cars route")
   assert.doesNotMatch(
     content,
-    /href="\/flights"|href="\/hotels"|href="\/car-rentals"/,
-    "No dead links to unbuilt routes"
+    /\/car-rentals/,
+    "No dead links to the legacy /car-rentals path"
   )
 })
 

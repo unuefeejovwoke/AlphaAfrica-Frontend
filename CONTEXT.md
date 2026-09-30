@@ -99,3 +99,23 @@ _Avoid_: Index, outline
 **Related Posts**:
 Up to 3 other live Posts in the same Category as the current Post, falling back to recent Posts.
 _Avoid_: Similar articles, recommended reads
+
+**Vehicle**:
+A sellable hire with name/slug, type plus display label, hourly rate in Naira, passenger capacity, base city, and image.
+_Avoid_: Car, ride
+
+**Vehicle Type**:
+`sedan_executive`, `suv_executive`, `sedan_normal`, `suv_normal`, `coaster`, `others`.
+_Avoid_: Free-text car class
+
+**Hourly Rate**:
+Per-hour price in Naira, displayed as `₦X/hr`.
+_Avoid_: Daily rate, estimated total
+
+**Car Booking**:
+A Vehicle plus pickup/drop-off free-text, future pickup datetime, hours (≥1), and guest contact, paid via Paystack reference and verified to pending/confirmed/cancelled/failed.
+_Avoid_: Car order, ride request
+
+**Hire Preview**:
+Display-only `hourly_rate × hours` estimate. The charged total is backend-authoritative only.
+_Avoid_: Quote, final price

@@ -3,12 +3,7 @@
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  AlertCircleIcon,
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
-  Message01Icon,
-} from "@hugeicons/core-free-icons"
+import { Message01Icon } from "@hugeicons/core-free-icons"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ErrorState } from "@/components/feedback/error-state"
@@ -19,8 +14,10 @@ import { HotelCard } from "@/components/hotels/hotel-card"
 import { HotelEmptyState } from "@/components/hotels/hotel-empty-state"
 import {
   HotelFilters,
+  HotelMobileFilters,
   type HotelServerFilterValue,
 } from "@/components/hotels/hotel-filters"
+import { HotelPagination } from "@/components/hotels/hotel-pagination"
 import { ApiError } from "@/lib/api/client"
 import { track } from "@/lib/analytics"
 import { formatNaira } from "@/lib/format"
@@ -28,8 +25,8 @@ import {
   DEFAULT_HOTEL_GUESTS,
   DEFAULT_HOTEL_ROOMS,
   buildHotelSearchParams,
-  collectAmenityOptions,
-  filterHotelsByAmenities,
+  countActiveHotelFilters,
+  getHotelPagination,
   getHotelSupportWhatsAppUrl,
   getHotels,
   hasHotelSearchParams,
@@ -68,24 +65,18 @@ function describeServerFilters(query: HotelSearchQuery): string | null {
 }
 
 /**
- * Hotel listing shell (Phase 4, tickets 01 + 02).
+ * Hotel listing shell — auto-loading sidebar catalogue mirroring the cars
+ * listing.
  *
  * URL listing state is the single source of truth: parsing it drives the
  * backend query, so back, refresh, and shared links restore exactly what the
  * guest saw. A bare `/hotels` auto-loads browse-all without writing the URL;
  * submitting a destination (empty still means browse-all) writes it plus any
- * server filters. Stay dates and party are listing-external — collected on
- * the Hotel detail, where they shape the Room Type choice and booking.
+ * server filters.
  *
- * Filter split (ADR-0005): max per-night price, min stars, ordering, and
- * pagination are server query parameters reflected in the URL; amenity
- * multi-select refines the fetched page instantly with no new search; the
- * backend count stays authoritative; location is display-only place context.
- *
- * States are explicit and never render a blank container: loading
- * (skeletons), success (Hotel cards), empty (widening actions), refined-empty
- * (amenities match nothing on this page), and error with retry — each
- * offering Talk to Alphaa.
+ * Filter transitions keep previous results visible under a pending dim
+ * instead of flashing skeletons; pagination is numbered with an honest
+ * `Showing A–B of N` range derived from the observed full-page length.
  */
 export function HotelSearchPageClient() {
   const router = useRouter()
@@ -119,11 +110,6 @@ export function HotelSearchPageClient() {
   const [pageData, setPageData] = React.useState<PaginatedHotels | null>(null)
   const [error, setError] = React.useState<unknown | null>(null)
 
-  // Client-side amenity refinement over the fetched page. Never in the URL,
-  // never a new search — a new result set resets it so a stale selection
-  // cannot silently empty the next page.
-  const [selectedAmenities, setSelectedAmenities] = React.useState<string[]>([])
-
   // Server-filter transitions keep input responsive: the previous results
   // stay visible with a pending indicator instead of flashing skeletons.
   const [isFilterPending, startFilterTransition] = React.useTransition()
@@ -132,44 +118,59 @@ export function HotelSearchPageClient() {
   const requestIdRef = React.useRef(0)
   // Last URL search state that was hydrated, so each change searches once.
   const lastSearchedParamsRef = React.useRef<string | null>(null)
+  // Observed full-page length — first full page wins so the last-page range
+  // never reads `11–20 of 13`. Falls back to the current page length.
+  const pageSizeRef = React.useRef<number>(0)
+  const resultsHeadingRef = React.useRef<HTMLHeadingElement | null>(null)
+  const pendingScrollRef = React.useRef(false)
 
   const runSearch = React.useCallback(async (query: HotelSearchQuery) => {
     const requestId = ++requestIdRef.current
-    setStatus("loading")
     setError(null)
     try {
       const page = await getHotels(query)
       if (requestId !== requestIdRef.current) return
+      if (query.page === 1 && page.results.length > 0) {
+        pageSizeRef.current = page.results.length
+      } else if (pageSizeRef.current === 0 && page.results.length > 0) {
+        pageSizeRef.current = page.results.length
+      }
       setPageData(page)
       setStatus(page.results.length > 0 ? "success" : "empty")
+      if (pendingScrollRef.current) {
+        pendingScrollRef.current = false
+        requestAnimationFrame(() => {
+          resultsHeadingRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          })
+          resultsHeadingRef.current?.focus({ preventScroll: true })
+        })
+      }
     } catch (caught) {
       if (requestId !== requestIdRef.current) return
+      pendingScrollRef.current = false
       setError(caught)
       setPageData(null)
       setStatus("error")
     }
   }, [])
 
-  // Hydrate from the URL: a change in listing state (submit, back/forward,
-  // shared link, filter change, pagination) triggers exactly one backend
-  // search. The clean entry auto-loads browse-all once without writing the
-  // URL. URL state is untrusted — invalid values surface a human error
-  // instead of a request; invalid filter values were already dropped at parse.
+  // Hydrate from the URL: a change in listing state triggers exactly one backend search.
   React.useEffect(() => {
     if (!hasSearch) {
       if (lastSearchedParamsRef.current === AUTO_BROWSE_KEY) return
       lastSearchedParamsRef.current = AUTO_BROWSE_KEY
-      setSelectedAmenities([])
       void runSearch(DEFAULT_LISTING_QUERY)
       return
     }
     if (lastSearchedParamsRef.current === paramsString) return
     lastSearchedParamsRef.current = paramsString
-    setSelectedAmenities([])
 
     const validation = validateHotelSearchQuery(parsedQuery)
     if (!validation.success) {
       requestIdRef.current += 1
+      pendingScrollRef.current = false
       setPageData(null)
       setError(
         new ApiError(validation.message, { status: 400, code: "validation" })
@@ -185,19 +186,6 @@ export function HotelSearchPageClient() {
     [parsedQuery.destination]
   )
 
-  // Narrow subscription: amenity options derive from the fetched page only,
-  // and refinement defers so checking boxes never blocks input (vercel:
-  // rerender-use-deferred-value, rerender-transitions).
-  const amenityOptions = React.useMemo(
-    () => collectAmenityOptions(pageData?.results ?? []),
-    [pageData]
-  )
-  const deferredAmenities = React.useDeferredValue(selectedAmenities)
-  const visibleHotels = React.useMemo(
-    () => filterHotelsByAmenities(pageData?.results ?? [], deferredAmenities),
-    [pageData, deferredAmenities]
-  )
-
   const serverFilters = React.useMemo<HotelServerFilterValue>(
     () => ({
       max_price: parsedQuery.max_price,
@@ -210,9 +198,11 @@ export function HotelSearchPageClient() {
     parsedQuery.max_price !== undefined ||
     parsedQuery.min_stars !== undefined ||
     parsedQuery.ordering !== undefined
+  const activeFilterCount = countActiveHotelFilters(serverFilters)
 
   const pushQuery = React.useCallback(
-    (params: string) => {
+    (params: string, options?: { scrollToResults?: boolean }) => {
+      if (options?.scrollToResults) pendingScrollRef.current = true
       startFilterTransition(() => {
         router.push(params ? `${pathname}?${params}` : pathname, {
           scroll: false,
@@ -224,8 +214,6 @@ export function HotelSearchPageClient() {
 
   const handleSearch = React.useCallback(
     (destination: string) => {
-      // Funnel: coarse listing shape only — never destination text or
-      // anything personal (ticket 07).
       track("hotel_search", {
         has_destination: destination.trim().length > 0,
         has_filters:
@@ -233,9 +221,6 @@ export function HotelSearchPageClient() {
           parsedQuery.min_stars !== undefined ||
           parsedQuery.ordering !== undefined,
       })
-      // The listing collects destination only — dates and party live on the
-      // Hotel detail, so a new search strips them to defaults instead of
-      // carrying stale stay state. Active server filters survive.
       const merged: HotelSearchQuery = {
         destination: destination.trim(),
         check_in: "",
@@ -251,7 +236,6 @@ export function HotelSearchPageClient() {
       if (params !== paramsString) {
         pushQuery(params)
       } else {
-        // Same URL (e.g. retry) — run directly so an unchanged link re-searches.
         void runSearch(merged)
       }
     },
@@ -270,7 +254,6 @@ export function HotelSearchPageClient() {
   )
 
   const handleResetFilters = React.useCallback(() => {
-    setSelectedAmenities([])
     pushQuery(
       buildHotelSearchParams({
         ...parsedQuery,
@@ -283,12 +266,15 @@ export function HotelSearchPageClient() {
   }, [parsedQuery, pushQuery])
 
   const handleRetry = React.useCallback(() => {
+    setStatus("loading")
     void runSearch(parsedQuery)
   }, [parsedQuery, runSearch])
 
   const handlePageChange = React.useCallback(
     (nextPage: number) => {
-      pushQuery(buildHotelSearchParams({ ...parsedQuery, page: nextPage }))
+      pushQuery(buildHotelSearchParams({ ...parsedQuery, page: nextPage }), {
+        scrollToResults: true,
+      })
     },
     [parsedQuery, pushQuery]
   )
@@ -311,10 +297,39 @@ export function HotelSearchPageClient() {
     form?.querySelector<HTMLInputElement>("input")?.focus()
   }, [])
 
-  const isSearching = status === "loading"
+  const isSearching = status === "loading" && pageData === null
+  const isUpdating = isFilterPending
+
+  const count = pageData?.count ?? 0
+  const hotels = pageData?.results ?? []
+  const pageSize =
+    pageSizeRef.current > 0 ? pageSizeRef.current : Math.max(hotels.length, 1)
+  const { totalPages, start, end } = getHotelPagination({
+    page: parsedQuery.page,
+    totalCount: count,
+    pageSize,
+    visibleCount: hotels.length,
+  })
+  const filterLine = describeServerFilters(parsedQuery)
+  const summary =
+    status === "success"
+      ? [`${count} ${count === 1 ? "Hotel" : "Hotels"}`, filterLine]
+          .filter(Boolean)
+          .join(" · ")
+      : null
+
+  const filtersPanel = (
+    <HotelFilters
+      server={serverFilters}
+      totalCount={count}
+      isPending={isFilterPending}
+      onServerChange={handleServerFilterChange}
+      onResetFilters={handleResetFilters}
+    />
+  )
 
   const resultsContent = (() => {
-    if (status === "loading") {
+    if (isSearching) {
       return <HotelResultsSkeleton />
     }
 
@@ -379,126 +394,35 @@ export function HotelSearchPageClient() {
 
     if (status === "empty") {
       return (
-        <div className="flex flex-col gap-4">
-          {hasServerFilters || amenityOptions.length > 0 ? (
-            <HotelFilters
-              server={serverFilters}
-              amenityOptions={[]}
-              selectedAmenities={[]}
-              onAmenitiesChange={() => {}}
-              visibleCount={0}
-              totalCount={pageData?.count ?? 0}
-              isPending={isFilterPending}
-              onServerChange={handleServerFilterChange}
-              onResetFilters={handleResetFilters}
-            />
-          ) : null}
-          <HotelEmptyState
-            stayContext={stayContext}
-            hasPriceCap={parsedQuery.max_price !== undefined}
-            hasStarFloor={parsedQuery.min_stars !== undefined}
-            onRaisePriceCap={handleRaisePriceCap}
-            onLowerStars={handleLowerStars}
-            onStartOver={handleStartOver}
-          />
-        </div>
+        <HotelEmptyState
+          stayContext={stayContext}
+          hasPriceCap={parsedQuery.max_price !== undefined}
+          hasStarFloor={parsedQuery.min_stars !== undefined}
+          onRaisePriceCap={handleRaisePriceCap}
+          onLowerStars={handleLowerStars}
+          onStartOver={handleStartOver}
+        />
       )
     }
 
-    // success — backend total stays authoritative; amenities refine the page.
-    const count = pageData?.count ?? 0
-    const countLabel = `${count} ${count === 1 ? "Hotel" : "Hotels"}`
-    const filterLine = describeServerFilters(parsedQuery)
-    const summary = [
-      parsedQuery.destination.trim().length > 0
-        ? `${countLabel} matching “${parsedQuery.destination.trim()}”`
-        : `${countLabel} available`,
-      filterLine,
-    ]
-      .filter(Boolean)
-      .join(" · ")
-    const currentPage = parsedQuery.page
-    const refinedEmpty = visibleHotels.length === 0
-
     return (
-      <div className="flex flex-col gap-4">
-        <p
-          className="text-sm font-medium text-muted-foreground"
-          aria-live="polite"
-        >
-          {summary}
-        </p>
-
-        <HotelFilters
-          server={serverFilters}
-          amenityOptions={amenityOptions}
-          selectedAmenities={selectedAmenities}
-          onAmenitiesChange={setSelectedAmenities}
-          visibleCount={visibleHotels.length}
-          totalCount={count}
-          isPending={isFilterPending}
-          onServerChange={handleServerFilterChange}
-          onResetFilters={handleResetFilters}
-        />
-
-        {refinedEmpty ? (
-          <div
-            role="status"
+      <div className="flex flex-col gap-5" aria-busy={isUpdating || undefined}>
+        {summary ? (
+          <p
+            className="text-sm font-medium text-muted-foreground"
             aria-live="polite"
-            className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs"
           >
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-              <HugeiconsIcon
-                icon={AlertCircleIcon}
-                size={24}
-                aria-hidden="true"
-              />
-            </div>
-            <h3 className="text-base font-bold text-foreground">
-              No Hotels on this page match those amenities
-            </h3>
-            <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-              Amenities refine only the Hotels on this page. Clear them to see
-              every Hotel, or turn the page for more options.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedAmenities([])}
-              >
-                <span>Clear amenities</span>
-              </Button>
-              <TrackLink
-                event="support_click"
-                eventProps={{
-                  context: "finding a hotel for my stay",
-                  channel: "whatsapp",
-                }}
-                href={getHotelSupportWhatsAppUrl(
-                  "finding a hotel for my stay",
-                  stayContext
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-              >
-                <HugeiconsIcon
-                  icon={Message01Icon}
-                  size={14}
-                  aria-hidden="true"
-                />
-                <span>Talk to Alphaa</span>
-              </TrackLink>
-            </div>
-          </div>
-        ) : (
+            {summary}
+            {isUpdating ? " · Updating…" : ""}
+          </p>
+        ) : null}
+
+        <div className={cn(isUpdating && "pointer-events-none opacity-60")}>
           <ul
             aria-label="Hotel results"
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2"
           >
-            {visibleHotels.map((hotel) => (
+            {hotels.map((hotel) => (
               <li
                 key={hotel.id}
                 className="[contain-intrinsic-size:auto_480px] [content-visibility:auto]"
@@ -507,53 +431,29 @@ export function HotelSearchPageClient() {
               </li>
             ))}
           </ul>
-        )}
-
-        <div className="flex items-center justify-between gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={!pageData?.previous}
-            aria-label="Go to previous Hotels page"
-          >
-            <HugeiconsIcon
-              icon={ArrowLeft01Icon}
-              size={14}
-              aria-hidden="true"
-            />
-            <span>Previous</span>
-          </Button>
-          <span
-            className="text-xs font-medium text-muted-foreground"
-            aria-live="polite"
-          >
-            Showing {visibleHotels.length} of {count}{" "}
-            {count === 1 ? "Hotel" : "Hotels"} · Page {currentPage}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={!pageData?.next}
-            aria-label="Go to next Hotels page"
-          >
-            <span>Next</span>
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
-              size={14}
-              aria-hidden="true"
-            />
-          </Button>
         </div>
+
+        {isUpdating ? <HotelResultsSkeleton count={2} dimmed /> : null}
+        <HotelPagination
+          page={parsedQuery.page}
+          totalPages={totalPages}
+          start={start}
+          end={end}
+          totalCount={count}
+          isPending={isFilterPending}
+          onPageChange={handlePageChange}
+        />
       </div>
     )
   })()
 
+  const resultsHeading =
+    parsedQuery.destination.trim().length > 0
+      ? `Hotels in ${parsedQuery.destination.trim()}`
+      : "All Hotels"
+
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 md:py-8 lg:px-8">
       <HotelSearchForm
         defaultValues={{ destination: deferredDestination }}
         onSearch={handleSearch}
@@ -561,73 +461,60 @@ export function HotelSearchPageClient() {
         isSearching={isSearching}
       />
 
-      <section
-        aria-labelledby="hotel-results-heading"
-        className="flex flex-col gap-4"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <h2
-            id="hotel-results-heading"
-            className="text-lg font-bold text-foreground"
-          >
-            {parsedQuery.destination.trim().length > 0
-              ? `Hotels in ${parsedQuery.destination.trim()}`
-              : "Hotel results"}
-          </h2>
-          <TrackLink
-            event="support_click"
-            eventProps={{
-              context: "choosing a hotel",
-              channel: "whatsapp",
-            }}
-            href={getHotelSupportWhatsAppUrl(
-              "choosing a hotel",
-              stayContext
-            )}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-          >
-            <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
-            <span>Talk to Alphaa</span>
-          </TrackLink>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h1
+          ref={resultsHeadingRef}
+          id="hotel-results-heading"
+          tabIndex={-1}
+          className="text-xl font-extrabold tracking-tight text-foreground focus-visible:outline-none sm:text-2xl"
+        >
+          {resultsHeading}
+          {activeFilterCount > 0 ? (
+            <span className="ml-2 text-sm font-medium text-muted-foreground">
+              ({activeFilterCount}{" "}
+              {activeFilterCount === 1 ? "filter" : "filters"})
+            </span>
+          ) : null}
+        </h1>
+        <TrackLink
+          event="support_click"
+          eventProps={{
+            context: "choosing a hotel",
+            channel: "whatsapp",
+          }}
+          href={getHotelSupportWhatsAppUrl("choosing a hotel", stayContext)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+        >
+          <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
+          <span>Talk to Alphaa</span>
+        </TrackLink>
+      </div>
 
-        {resultsContent}
-      </section>
+      <HotelMobileFilters
+        server={serverFilters}
+        totalCount={count}
+        isPending={isFilterPending}
+        onServerChange={handleServerFilterChange}
+        onResetFilters={handleResetFilters}
+      />
 
-      <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-6 text-xs leading-relaxed text-muted-foreground">
-        <h3 className="text-sm font-semibold text-foreground">
-          How hotel pricing works
-        </h3>
-        <p>
-          From-prices are per night in Naira and reflect the lowest Room Type at
-          each Hotel. Open a Hotel to choose your dates, party, and Room Type —
-          the exact amount is confirmed before you pay.
-        </p>
-        <div>
-          <TrackLink
-            event="support_click"
-            eventProps={{
-              context: "hotel pricing explainer",
-              channel: "whatsapp",
-            }}
-            href={getHotelSupportWhatsAppUrl(
-              "hotel prices for my stay",
-              stayContext
-            )}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "w-fit"
-            )}
-          >
-            <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
-            <span>Ask Alphaa about prices</span>
-          </TrackLink>
-        </div>
-      </section>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <aside
+          aria-label="Hotel filters"
+          className="hidden w-72 shrink-0 lg:block"
+        >
+          <div className="sticky top-24">{filtersPanel}</div>
+        </aside>
+
+        <section
+          aria-labelledby="hotel-results-heading"
+          className="flex min-w-0 flex-1 flex-col gap-4"
+        >
+          {resultsContent}
+        </section>
+      </div>
     </div>
   )
 }

@@ -306,3 +306,90 @@ test("Domestic normalize: stops inside itineraries count even without a flat sto
   assert.equal(card.isDirect, false)
   assert.equal(card.stopsLabel, "1 stop")
 })
+
+test("Domestic normalize: itinerary-only QuickAir cards resolve route, times, duration, and flight number", () => {
+  // Guide §9 search shape: no flat origin/destination/departure fields —
+  // route and times live only inside itineraries[].segments[].
+  const card = normalizeDomesticCard(
+    {
+      offer_id: "VM1640-R",
+      provider: "quickair",
+      airline: "Max Air",
+      airline_code: "VM",
+      cabin: "ECONOMY",
+      fare_code: "P",
+      fare_name: "Economy",
+      price: "145000.00",
+      is_direct: true,
+      itineraries: [
+        {
+          duration: "1h 00m",
+          stops: 0,
+          segments: [
+            {
+              departure_airport: "LOS",
+              departure_time: "2026-09-15T09:25:00Z",
+              arrival_airport: "ABV",
+              arrival_time: "2026-09-15T10:25:00Z",
+              carrier_code: "VM",
+              flight_number: "VM1640",
+            },
+          ],
+        },
+      ],
+    },
+    0
+  )
+  assert.equal(card.origin, "LOS")
+  assert.equal(card.destination, "ABV")
+  assert.equal(card.airportsLabel, "LOS → ABV")
+  assert.equal(card.departureAt, "09:25")
+  assert.equal(card.arrivalAt, "10:25")
+  assert.equal(card.duration, "1h 00m")
+  assert.equal(card.airlineCode, "VM")
+  assert.equal(card.journeys.length, 1)
+  assert.equal(card.journeys[0]?.segments[0]?.departureAirport, "LOS")
+  assert.equal(card.journeys[0]?.segments[0]?.arrivalAirport, "ABV")
+  assert.equal(card.journeys[0]?.segments[0]?.flightNumber, "VM1640")
+  assert.equal(card.journeys[0]?.segments[0]?.carrierCode, "VM")
+})
+
+test("Domestic normalize: QuickAir booking-shape flat keys resolve provider fields without IATA leaking into times", () => {
+  const card = normalizeDomesticCard(
+    {
+      offer_id: "VM1640-R2",
+      providerName: "Max Air",
+      providerCode: "VM",
+      flightNumber: "VM1640",
+      departure: "LOS",
+      destination: "ABV",
+      departureTime: "2026-09-15T09:25:00Z",
+      arrivalTime: "2026-09-15T10:25:00Z",
+      fareCode: "R",
+      fareName: "Economy",
+      price: 128000,
+    },
+    1
+  )
+  assert.equal(card.airline, "Max Air")
+  assert.equal(card.airlineCode, "VM")
+  assert.equal(card.origin, "LOS")
+  assert.equal(card.destination, "ABV")
+  assert.equal(card.departureAt, "09:25")
+  assert.equal(card.arrivalAt, "10:25")
+  assert.equal(card.journeys[0]?.segments[0]?.flightNumber, "VM1640")
+
+  // A bare IATA `departure` is an origin, never a clock time.
+  const iataOnly = normalizeDomesticCard(
+    {
+      offer_id: "L",
+      airline: "A",
+      departure: "LOS",
+      destination: "ABV",
+      price: "1",
+    },
+    2
+  )
+  assert.equal(iataOnly.origin, "LOS")
+  assert.equal(iataOnly.departureAt, "—")
+})

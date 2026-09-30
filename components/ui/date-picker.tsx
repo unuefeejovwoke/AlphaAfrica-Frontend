@@ -10,6 +10,12 @@ export interface DatePickerProps extends Omit<
   label: string
   error?: string
   helperText?: string
+  /**
+   * Extra classes for the label. Callers with a tight layout (for example the
+   * Hotel booking rail) can raise the label size locally instead of changing
+   * the shared default for every date field on the site.
+   */
+  labelClassName?: string
 }
 
 export function DatePicker({
@@ -18,6 +24,7 @@ export function DatePicker({
   helperText,
   id,
   className,
+  labelClassName,
   ...props
 }: DatePickerProps) {
   const inputId = id || React.useId()
@@ -25,7 +32,10 @@ export function DatePicker({
     <div className="w-full space-y-1.5">
       <label
         htmlFor={inputId}
-        className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
+        className={cn(
+          "block text-xs font-semibold tracking-wider text-foreground/80 uppercase",
+          labelClassName
+        )}
       >
         {label}
       </label>

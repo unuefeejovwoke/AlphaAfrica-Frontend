@@ -403,3 +403,60 @@ export function hotelDetailJsonLd(input: HotelDetailJsonLdInput) {
       : {}),
   }
 }
+
+export interface VehicleDetailJsonLdInput {
+  name: string
+  slug: string
+  description?: string
+  vehicle_type_display?: string
+  main_image: string
+  city?: string
+  capacity?: number
+  hourly_rate: string
+}
+
+/**
+ * Car graph for `/cars/[slug]` (GEO/AI-SEO): factual Vehicle facts only —
+ * type, city, capacity, hourly Naira offer. Never fabricates reviews,
+ * availability, or certifications.
+ */
+export function vehicleDetailJsonLd(input: VehicleDetailJsonLdInput) {
+  const url = canonicalUrl(`/cars/${input.slug}`)
+  const price = parsePriceAmount(input.hourly_rate)
+  const city = input.city?.trim() ?? ""
+  const typeLabel = input.vehicle_type_display?.trim() ?? ""
+  return {
+    "@context": "https://schema.org",
+    "@type": "Car",
+    name: input.name,
+    description:
+      input.description && input.description.length > 0
+        ? input.description
+        : `${input.name}${typeLabel ? ` — ${typeLabel}` : ""} with driver, bookable by the hour from Alphaa Africa.`,
+    image: resolveListingImageUrl(input.main_image),
+    url,
+    ...(typeLabel.length > 0 ? { vehicleConfiguration: typeLabel } : {}),
+    ...(city.length > 0
+      ? {
+          areaServed: {
+            "@type": "City",
+            name: city,
+          },
+        }
+      : {}),
+    ...(input.capacity !== undefined && input.capacity > 0
+      ? { vehicleSeatingCapacity: input.capacity }
+      : {}),
+    ...(price !== null
+      ? {
+          offers: {
+            "@type": "Offer",
+            price: String(price),
+            priceCurrency: "NGN",
+            availability: "https://schema.org/InStock",
+            url,
+          },
+        }
+      : {}),
+  }
+}

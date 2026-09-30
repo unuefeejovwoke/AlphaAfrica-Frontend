@@ -1,4 +1,6 @@
 import * as React from "react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { AlertCircleIcon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -59,9 +61,15 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {error ? (
           <p
             id={`${inputId}-error`}
-            className="text-xs font-medium text-destructive"
+            className="flex items-start gap-1.5 text-xs font-medium text-destructive"
           >
-            {error}
+            <HugeiconsIcon
+              icon={AlertCircleIcon}
+              size={13}
+              aria-hidden="true"
+              className="mt-0.5 shrink-0"
+            />
+            <span>{error}</span>
           </p>
         ) : helperText ? (
           <p id={`${inputId}-helper`} className="text-xs text-muted-foreground">

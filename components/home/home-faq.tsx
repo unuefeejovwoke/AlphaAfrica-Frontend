@@ -91,9 +91,9 @@ export function HomeFaq() {
               Frequently Asked Questions
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
-              Everything you need to know about booking domestic &amp;
-              international flights, payments, and travel guidelines with
-              Alphaa.Africa.
+              Clear answers about booking domestic &amp; international flights,
+              hotel reservations, Paystack payment methods, and travel
+              guidelines with Alphaa Africa.
             </p>
           </div>
 
