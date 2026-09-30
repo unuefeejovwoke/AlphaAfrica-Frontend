@@ -184,15 +184,15 @@ test("Hotel URL round-trip preserves shareable search state and drops invalid va
   assert.equal(reparsed.rooms, original.rooms)
   assert.equal(reparsed.page, original.page)
 
-  // Browse-all (empty destination, no dates) writes the party so the search
-  // is separable from the idle landing and survives refresh/share.
+  // Browse-all (empty destination) is the clean entry: the listing no
+  // longer collects dates or a party, so defaults are omitted and the URL
+  // stays shareable without implying filters that do not exist.
   const browseAll = hotelSearchQuerySchema.parse({})
   const browseParams = buildHotelSearchParams(browseAll)
-  assert.match(browseParams, /guests=2/)
-  assert.match(browseParams, /rooms=1/)
+  assert.equal(browseParams, "", "Browse-all must be the clean entry")
   assert.ok(
-    !/destination|check_in|check_out|page/.test(browseParams),
-    "Browse-all must omit empty fields"
+    !/destination|check_in|check_out|guests|rooms|page/.test(browseParams),
+    "Browse-all must omit empty fields and default party"
   )
   const reparsedBrowse = parseHotelSearchParams(
     Object.fromEntries(new URLSearchParams(browseParams))
@@ -202,7 +202,9 @@ test("Hotel URL round-trip preserves shareable search state and drops invalid va
   assert.equal(reparsedBrowse.rooms, 1)
   assert.equal(reparsedBrowse.page, 1)
 
-  // Idle landing (no params at all) is distinguishable from a browse-all search.
+  // Idle landing (no params at all) is the clean entry too. Only listing
+  // state (destination, server filters, page) marks a results view —
+  // legacy party-only URLs carry no listing state.
   assert.equal(
     hasHotelSearchParams({}),
     false,
@@ -210,8 +212,8 @@ test("Hotel URL round-trip preserves shareable search state and drops invalid va
   )
   assert.equal(
     hasHotelSearchParams({ guests: "2", rooms: "1" }),
-    true,
-    "A browse-all search must read as active"
+    false,
+    "Party-only URLs are not listing state"
   )
   assert.equal(
     hasHotelSearchParams({ destination: "  " }),

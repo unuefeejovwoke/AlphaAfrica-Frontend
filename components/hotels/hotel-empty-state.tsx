@@ -10,10 +10,8 @@ import {
 
 export interface HotelEmptyStateProps {
   stayContext: HotelStayContext
-  hasDates: boolean
   hasPriceCap: boolean
   hasStarFloor: boolean
-  onWidenDates: () => void
   onRaisePriceCap: () => void
   onLowerStars: () => void
   onStartOver: () => void
@@ -21,22 +19,19 @@ export interface HotelEmptyStateProps {
 
 /**
  * Composed zero-results state (ticket 02): zero results never feel dead.
- * Every active constraint gets a one-tap widening action — widen dates,
- * raise the price cap, lower the star floor — plus starting over and always
- * having Talk to Alphaa one tap away.
+ * Every active constraint gets a one-tap widening action — raise the price
+ * cap, lower the star floor — plus starting over and always having Talk to
+ * Alphaa one tap away.
  */
 export function HotelEmptyState({
   stayContext,
-  hasDates,
   hasPriceCap,
   hasStarFloor,
-  onWidenDates,
   onRaisePriceCap,
   onLowerStars,
   onStartOver,
 }: HotelEmptyStateProps) {
   const suggestions: string[] = []
-  if (hasDates) suggestions.push("widening your dates")
   if (hasPriceCap) suggestions.push("raising your price cap")
   if (hasStarFloor) suggestions.push("lowering the star floor")
   if (suggestions.length === 0)
@@ -59,16 +54,6 @@ export function HotelEmptyState({
         specialists can also check options for you.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        {hasDates ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onWidenDates}
-          >
-            <span>Widen dates</span>
-          </Button>
-        ) : null}
         {hasPriceCap ? (
           <Button
             type="button"

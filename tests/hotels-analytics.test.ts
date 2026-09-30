@@ -29,9 +29,7 @@ test("Analytics allowlist covers the hotel funnel events", () => {
 test("Hotel analytics props carry no personal, reference, or payment data", () => {
   const clean = sanitizeProps({
     has_destination: true,
-    has_dates: true,
-    guests: 2,
-    rooms: 1,
+    has_filters: true,
     city: "Lagos",
     stars: 5,
     nights: 3,
@@ -45,7 +43,7 @@ test("Hotel analytics props carry no personal, reference, or payment data", () =
     authorization_url: "https://paystack.test/pay/abc123",
     total_amount: "510000.00",
   })
-  assert.equal(clean.guests, 2)
+  assert.equal(clean.has_filters, true)
   assert.equal(clean.nights, 3)
   assert.equal(clean.city, "Lagos")
   assert.equal(clean.outcome, "confirmed")

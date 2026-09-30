@@ -227,16 +227,13 @@ export function validateHotelSearchQuery(
 export type RawSearchParams = Record<string, string | string[] | undefined>
 
 /** Param keys that make `/hotels` a dynamic result view rather than the
- *  stable search landing (drives both auto-search and noindex). Server-side
- *  filters (max price, min stars, ordering) are part of that result state;
- *  amenity refinement stays client-side over the fetched page and never
- *  appears here (ADR-0005). */
+ *  stable search landing (drives both auto-search and noindex). Only listing
+ *  state travels here: destination plus the server filters and page.
+ *  Stay dates and party live on the Hotel detail (`HotelBookingFlow`) and
+ *  booking handoff — never on the listing — while amenity refinement stays
+ *  client-side over the fetched page and never appears here (ADR-0005). */
 export const HOTEL_SEARCH_PARAM_KEYS = [
   "destination",
-  "check_in",
-  "check_out",
-  "guests",
-  "rooms",
   "max_price",
   "min_stars",
   "ordering",
@@ -249,9 +246,10 @@ function firstString(value: string | string[] | undefined): string | undefined {
 }
 
 /**
- * True when the query carries any search state. The form always writes the
- * party, so a browse-all search is distinguishable from the idle landing.
- * Mirrors `hasFlightSearchParams` for consistent listing SEO semantics.
+ * True when the query carries any listing state. A bare `/hotels` is the
+ * landing (which auto-loads browse-all client-side); any destination,
+ * server filter, or page marks a results view. Mirrors
+ * `hasFlightSearchParams` for consistent listing SEO semantics.
  */
 export function hasHotelSearchParams(input: RawSearchParams): boolean {
   for (const key of HOTEL_SEARCH_PARAM_KEYS) {
@@ -331,12 +329,13 @@ function parseHotelOrdering(
 }
 
 /**
- * Single source for which stay values travel in the URL and the backend
- * query. The party is always written so a submitted search is separable from
- * the idle landing and survives back/refresh/share, including the
- * empty-destination browse-all case. Empty destination/dates, unset filters,
- * and the default page are omitted to keep links clean. Request and link
- * derive from the same entries so they can never drift apart (ADR-0005
+ * Single source for which listing values travel in the URL and the backend
+ * query. Destination, server filters, and non-default pages are written;
+ * empty destination/dates, unset filters, and the default page are omitted
+ * to keep links clean. The party is listing-external now (collected on the
+ * Hotel detail): default values are omitted, while non-default values still
+ * round-trip so legacy shared links survive. Request and link derive from
+ * the same entries so they can never drift apart (ADR-0005
  * centralization). Only non-personal stay state appears.
  */
 function hotelQueryEntries(query: HotelSearchQuery): [string, string][] {
@@ -348,8 +347,10 @@ function hotelQueryEntries(query: HotelSearchQuery): [string, string][] {
     entries.push(["check_in", query.check_in.trim()])
   if (query.check_out.trim().length > 0)
     entries.push(["check_out", query.check_out.trim()])
-  entries.push(["guests", String(query.guests)])
-  entries.push(["rooms", String(query.rooms)])
+  if (query.guests !== DEFAULT_HOTEL_GUESTS)
+    entries.push(["guests", String(query.guests)])
+  if (query.rooms !== DEFAULT_HOTEL_ROOMS)
+    entries.push(["rooms", String(query.rooms)])
   if (query.max_price !== undefined)
     entries.push(["max_price", String(query.max_price)])
   if (query.min_stars !== undefined)
@@ -465,6 +466,22 @@ export interface HotelCardDisplay {
 }
 
 /**
+ * Parse a backend decimal string into a positive whole-Naira number, or null
+ * when the input is missing, zero, or non-numeric. Shared by card and Room
+ * Type price copy so neither invents a "₦0" label.
+ */
+function parsePositiveNaira(
+  value: string | null | undefined
+): number | null {
+  if (value === null || value === undefined) return null
+  const trimmed = value.replace(/,/g, "").trim()
+  if (trimmed.length === 0) return null
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
+  return parsed
+}
+
+/**
  * Locked from-price copy for Hotel cards: "from ₦X per night".
  * Returns null for missing, zero, or non-numeric prices so the card can
  * render fallback copy instead of a fabricated "from ₦0 per night".
@@ -472,12 +489,9 @@ export interface HotelCardDisplay {
 export function formatHotelFromPrice(
   startingPrice: string | null | undefined
 ): string | null {
-  if (startingPrice === null || startingPrice === undefined) return null
-  const trimmed = startingPrice.replace(/,/g, "").trim()
-  if (trimmed.length === 0) return null
-  const parsed = Number(trimmed)
-  if (!Number.isFinite(parsed) || parsed <= 0) return null
-  return `from ${formatNaira(trimmed)} per night`
+  const amount = parsePositiveNaira(startingPrice)
+  if (amount === null) return null
+  return `from ${formatNaira(amount)} per night`
 }
 
 /**
@@ -774,12 +788,9 @@ export interface HotelDetailDisplay {
 export function formatRoomTypePrice(
   pricePerNight: string | null | undefined
 ): string | null {
-  if (pricePerNight === null || pricePerNight === undefined) return null
-  const trimmed = pricePerNight.replace(/,/g, "").trim()
-  if (trimmed.length === 0) return null
-  const parsed = Number(trimmed)
-  if (!Number.isFinite(parsed) || parsed <= 0) return null
-  return `${formatNaira(trimmed)} per night`
+  const amount = parsePositiveNaira(pricePerNight)
+  if (amount === null) return null
+  return `${formatNaira(amount)} per night`
 }
 
 /** Capacity guidance for a Room Type row. Zero capacity means unknown —
@@ -1075,9 +1086,52 @@ export type HotelBookingCreateResult = z.infer<
 >
 
 /**
+ * Either live shape: flat (apidoc) or the `{ booking, payment }` envelope
+ * the guide documents for `POST /api/hotels/bookings/create/`. Mirrors the
+ * visa/flight normalizers so hotels accept both.
+ */
+const hotelBookingCreateEnvelopeSchema = z
+  .object({
+    reference: z.string().optional(),
+    authorization_url: z.string().optional(),
+    booking: z
+      .object({ reference: z.string().optional() })
+      .passthrough()
+      .optional(),
+    payment: z
+      .object({
+        reference: z.string().optional(),
+        authorization_url: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough()
+
+/**
+ * Normalize either create response shape into the Paystack-handoff contract.
+ * Returns null when no usable reference plus checkout link exists — the form
+ * then surfaces an error instead of redirecting to a broken URL.
+ */
+export function normalizeHotelBookingCreateResult(
+  raw: unknown
+): HotelBookingCreateResult | null {
+  const parsed = hotelBookingCreateEnvelopeSchema.safeParse(raw)
+  if (!parsed.success) return null
+  const { booking, payment } = parsed.data
+  const reference =
+    payment?.reference ?? booking?.reference ?? parsed.data.reference
+  const authorization_url =
+    payment?.authorization_url ?? parsed.data.authorization_url
+  if (!reference || !authorization_url) return null
+  return { reference, authorization_url }
+}
+
+/**
  * Create one Hotel Booking (Guest Booking — no login required). Validates
  * the payload against the backend contract first; the response is parsed as
- * untrusted input. Never cached.
+ * untrusted input and normalized from either the flat or the
+ * `{ booking, payment }` envelope. Never cached.
  */
 export async function createHotelBooking(
   payload: HotelBookingCreatePayload
@@ -1086,7 +1140,14 @@ export async function createHotelBooking(
     "/api/hotels/bookings/create/",
     payload as Record<string, unknown>
   )
-  return hotelBookingCreateResultSchema.parse(raw)
+  const normalized = normalizeHotelBookingCreateResult(raw)
+  if (!normalized) {
+    throw new ApiError("Invalid response from the hotel service.", {
+      status: 201,
+      code: "server",
+    })
+  }
+  return normalized
 }
 
 // ---------------------------------------------------------------------------
@@ -1220,8 +1281,11 @@ export function readHotelPaymentReference(): string | null {
 /**
  * Terminal verification outcome derived from a Hotel Booking status
  * (apidoc Status8eeEnum: pending, confirmed, cancelled, failed).
- * Unrecognized states stay pending so the guest keeps checking instead of
- * assuming success — or assuming failure and paying twice.
+ * The universal order lookup reports money movement as `success`/`paid`;
+ * those count as confirmed here so an order-first flow never renders a paid
+ * booking as "still processing". Unrecognized states stay pending so the
+ * guest keeps checking instead of assuming success — or assuming failure
+ * and paying twice.
  */
 export type HotelVerificationOutcome =
   "confirmed" | "pending" | "cancelled" | "failed"
@@ -1230,7 +1294,8 @@ export function resolveHotelVerificationState(booking: {
   status?: string | null
 }): HotelVerificationOutcome {
   const status = (booking.status ?? "").trim().toLowerCase()
-  if (status === "confirmed") return "confirmed"
+  if (status === "confirmed" || status === "success" || status === "paid")
+    return "confirmed"
   if (status === "cancelled") return "cancelled"
   if (status === "failed") return "failed"
   return "pending"
@@ -1264,7 +1329,8 @@ export type HotelBooking = z.infer<typeof hotelBookingSchema>
 /**
  * Verify the Paystack payment for a reference and fetch the final Hotel
  * Booking. Never cached: verification must reflect the live payment state,
- * not a stale pending snapshot. Guest Booking — no login required.
+ * not a stale pending snapshot. Guest Booking — no login required. A shape
+ * violation throws a typed, customer-safe error instead of a raw ZodError.
  */
 export async function verifyHotelBooking(
   reference: string
@@ -1273,7 +1339,39 @@ export async function verifyHotelBooking(
     `/api/hotels/bookings/verify/${encodeURIComponent(reference)}/`,
     { noStore: true }
   )
-  return hotelBookingSchema.parse(raw)
+  const parsed = hotelBookingSchema.safeParse(raw)
+  if (!parsed.success) {
+    throw new ApiError("Invalid response from the hotel service.", {
+      status: 200,
+      code: "server",
+    })
+  }
+  return parsed.data
+}
+
+/**
+ * Build a renderable Hotel Booking from the universal order's embedded
+ * details when the module verify call fails (e.g. transient backend error
+ * after a confirmed payment). Only the reference is guaranteed; everything
+ * else is read defensively by renderers.
+ */
+export function hotelBookingFromOrder(
+  reference: string,
+  order: { order?: unknown } | null | undefined
+): HotelBooking | null {
+  const details =
+    order && typeof order === "object" && "order" in order
+      ? (order as { order?: unknown }).order
+      : null
+  if (typeof details !== "object" || details === null) {
+    return hotelBookingSchema.parse({ reference })
+  }
+  const parsed = hotelBookingSchema.safeParse({
+    ...(details as Record<string, unknown>),
+    reference,
+  })
+  if (parsed.success) return parsed.data
+  return hotelBookingSchema.parse({ reference })
 }
 
 /**

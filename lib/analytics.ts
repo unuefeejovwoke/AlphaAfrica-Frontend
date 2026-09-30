@@ -14,7 +14,7 @@
  * - support_click { context, channel }
  *
  * Hotel funnel (Phase 4, ticket 07 — all props coarse, never PII):
- * - hotel_search { has_destination, has_dates, guests, rooms }
+ * - hotel_search { has_destination, has_filters }
  * - hotel_viewed { city, stars }
  * - hotel_booking_started { nights, rooms, guests }
  * - hotel_payment_initiated { currency, nights }
@@ -65,6 +65,12 @@ export const ANALYTICS_EVENTS = [
   "hotel_payment_initiated",
   "hotel_payment_completed",
   "hotel_confirmation_viewed",
+  "car_search",
+  "car_viewed",
+  "car_booking_started",
+  "car_payment_initiated",
+  "car_payment_completed",
+  "car_confirmation_viewed",
   "blog_viewed",
   "blog_search",
 ] as const

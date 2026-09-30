@@ -216,18 +216,18 @@ interface TravelActionJsonLd {
 
 // ---------------------------------------------------------------------------
 // Hotels discoverability (Phase 4, ticket 01; PRD §18 + ADR-0005)
-// - Only the stable `/hotels` entry is indexable. Any URL carrying search
-//   state (destination/dates/party/page) is a dynamic result view and must be
+// - Only the stable `/hotels` entry is indexable. Any URL carrying listing
+//   state (destination/filters/page) is a dynamic result view and must be
 //   noindex/nofollow with a canonical back to `/hotels` — never a thin
 //   indexable page per query combination.
 // ---------------------------------------------------------------------------
 
 /** Stable, indexable hotel search landing metadata (single source for the route). */
 export const HOTELS_LANDING_TITLE =
-  "Search Hotels — City, Hotel Name, Dates & Party | Alphaa Africa"
+  "Search Hotels by City or Hotel Name | Alphaa Africa"
 
 export const HOTELS_LANDING_DESCRIPTION =
-  "Search Hotels by city or Hotel name, add optional stay dates and party, and browse from-prices per night in Naira. No account needed, with human help one tap away."
+  "Search Hotels by city or Hotel name and browse from-prices per night in Naira. No account needed, with human help one tap away."
 
 /**
  * TravelAction graph for the stable `/hotels` entry (GEO/AI-SEO).
@@ -291,6 +291,53 @@ export function flightTravelActionJsonLd(): TravelActionJsonLd {
     result: {
       "@type": "WebPage",
       name: FLIGHTS_LANDING_TITLE,
+      url,
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cars discoverability (Phase 5; PRD §18)
+// - Only the stable `/cars` entry is indexable. Any URL carrying search
+//   state (vehicle_type/max_rate/ordering/page) is a dynamic result view and
+//   must be noindex/nofollow with a canonical back to `/cars`.
+// ---------------------------------------------------------------------------
+
+/** Stable, indexable car rental landing metadata (single source). */
+export const CARS_LANDING_TITLE =
+  "Rent a Car with Driver — Hourly Hire | Alphaa Africa"
+
+export const CARS_LANDING_DESCRIPTION =
+  "Browse vehicles with driver by hourly rate in Naira — executive and standard sedans, SUVs, and Coaster buses. Pick pickup, hours, and pay securely. No account needed."
+
+/**
+ * TravelAction graph for the stable `/cars` entry (GEO/AI-SEO).
+ * Describes the bookable action without inventing vehicles, prices, or
+ * availability — dynamic result combinations are never embedded.
+ */
+export function carTravelActionJsonLd(): TravelActionJsonLd {
+  const url = canonicalUrl("/cars")
+  return {
+    "@context": "https://schema.org",
+    "@type": "TravelAction",
+    name: "Rent vehicles with driver by the hour",
+    description: CARS_LANDING_DESCRIPTION,
+    url,
+    agent: {
+      "@type": "TravelAgency",
+      name: company.brandName,
+      url: getSiteUrl(),
+      telephone: company.phone.e164,
+      email: company.email,
+    },
+    object: {
+      "@type": "Car",
+      name: "Hourly vehicle hire with driver in NGN",
+      url,
+    },
+    result: {
+      "@type": "WebPage",
+      name: CARS_LANDING_TITLE,
       url,
     },
   }

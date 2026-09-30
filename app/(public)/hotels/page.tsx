@@ -23,10 +23,10 @@ import {
  * Hotels discoverability (Phase 4, ticket 01; PRD §18 + ADR-0005).
  * - `/hotels` is the only indexable hotel search surface: unique title, meta
  *   description, canonical URL, Open Graph data, and TravelAction JSON-LD.
- * - Any URL carrying search state (`?destination=…`, dates, party, page) is a
- *   dynamic result view: noindex/nofollow with a canonical back to `/hotels`,
- *   and structured data is withheld so result URLs are never indexed as thin
- *   landing variants.
+ * - Any URL carrying listing state (`?destination=…`, server filters, page)
+ *   is a dynamic result view: noindex/nofollow with a canonical back to
+ *   `/hotels`, and structured data is withheld so result URLs are never
+ *   indexed as thin landing variants.
  * - The listing is fully dynamic with no static pre-rendering and opt-out
  *   caching, since every query combination is request-time state (ADR-0005).
  * - Crawlable internal links render server-side so bots see them without JS.
@@ -48,7 +48,7 @@ export async function generateMetadata({
     openGraph: {
       title: HOTELS_LANDING_TITLE,
       description:
-        "Search Hotels by city or Hotel name, add optional stay dates and party, and compare from-prices per night in Naira. No account required.",
+        "Search Hotels by city or Hotel name and compare from-prices per night in Naira. No account required.",
       url: canonicalUrl("/hotels"),
       siteName: "Alphaa Africa",
       locale: "en_NG",
@@ -111,10 +111,11 @@ export default async function HotelsPage({
             Find your stay with confidence
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Search by city or Hotel name, add optional stay dates and party, and
-            compare from-prices per night in Naira. Every search stays in the
-            address bar so you can share it, refresh it, or come back to it. No
-            account needed, and human help is one tap away.
+            Search by city or Hotel name and compare from-prices per night in
+            Naira. Every search stays in the address bar so you can share it,
+            refresh it, or come back to it. Add your dates and party on the
+            Hotel page when you are ready to book. No account needed, and human
+            help is one tap away.
           </p>
         </header>
       </div>

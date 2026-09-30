@@ -129,6 +129,10 @@ test("Hotel filter URL round-trip: server filters survive share/back/refresh wit
   assert.match(params, /ordering=-price/)
   assert.match(params, /page=2/)
   assert.ok(
+    !/guests|rooms|check_in|check_out/.test(params),
+    "Default party and empty dates stay out of listing links"
+  )
+  assert.ok(
     !/token|password|card|payment|secret|pnr|reference/i.test(params),
     "URL must not leak sensitive keys"
   )

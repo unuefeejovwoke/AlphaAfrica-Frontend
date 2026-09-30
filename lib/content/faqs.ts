@@ -140,7 +140,7 @@ export const faqs: FaqContent = {
         draft(
           "hotels-search-how",
           "How do I find a hotel?",
-          "Search by city or hotel name, then filter by dates, guests, rooms, star rating, and price. Each card shows the starting nightly rate so you can compare quickly."
+          "Search by city or hotel name, then filter by star rating and price. Each card shows the starting nightly rate so you can compare quickly. You choose your dates and party on the hotel page when you are ready to book."
         ),
         draft(
           "hotels-guest-booking",

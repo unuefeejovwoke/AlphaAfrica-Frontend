@@ -7,7 +7,6 @@ import {
   AlertCircleIcon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  Hotel01Icon,
   Message01Icon,
 } from "@hugeicons/core-free-icons"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -42,9 +41,9 @@ import {
   type PaginatedHotels,
 } from "@/lib/api/hotels"
 
-type SearchStatus = "idle" | "loading" | "success" | "empty" | "error"
+type SearchStatus = "loading" | "success" | "empty" | "error"
 
-const BROWSE_ALL_QUERY: HotelSearchQuery = {
+const DEFAULT_LISTING_QUERY: HotelSearchQuery = {
   destination: "",
   check_in: "",
   check_out: "",
@@ -52,6 +51,8 @@ const BROWSE_ALL_QUERY: HotelSearchQuery = {
   rooms: DEFAULT_HOTEL_ROOMS,
   page: 1,
 }
+/** Sentinel marking the one automatic browse-all load on the clean entry. */
+const AUTO_BROWSE_KEY = "auto:browse-all"
 
 /** Human line for the active server filters, e.g. "up to ₦150,000 · 4+ stars". */
 function describeServerFilters(query: HotelSearchQuery): string | null {
@@ -69,18 +70,19 @@ function describeServerFilters(query: HotelSearchQuery): string | null {
 /**
  * Hotel listing shell (Phase 4, tickets 01 + 02).
  *
- * URL search state is the single source of truth: parsing it drives the
+ * URL listing state is the single source of truth: parsing it drives the
  * backend query, so back, refresh, and shared links restore exactly what the
- * guest saw. A bare `/hotels` is the idle search landing; submitting a search
- * (including an empty destination, which browses every Hotel) writes the
- * party plus any destination/dates to the URL and fetches with `no-store`.
+ * guest saw. A bare `/hotels` auto-loads browse-all without writing the URL;
+ * submitting a destination (empty still means browse-all) writes it plus any
+ * server filters. Stay dates and party are listing-external — collected on
+ * the Hotel detail, where they shape the Room Type choice and booking.
  *
  * Filter split (ADR-0005): max per-night price, min stars, ordering, and
  * pagination are server query parameters reflected in the URL; amenity
  * multi-select refines the fetched page instantly with no new search; the
  * backend count stays authoritative; location is display-only place context.
  *
- * States are explicit and never render a blank container: idle, loading
+ * States are explicit and never render a blank container: loading
  * (skeletons), success (Hotel cards), empty (widening actions), refined-empty
  * (amenities match nothing on this page), and error with retry — each
  * offering Talk to Alphaa.
@@ -109,13 +111,11 @@ export function HotelSearchPageClient() {
     [rawParams]
   )
 
-  // Deferred defaults keep the form in step with the URL without blocking
+  // Deferred default keeps the field in step with the URL without blocking
   // typing on navigation (vercel: rerender-use-deferred-value).
-  const deferredDefaults = React.useDeferredValue(parsedQuery)
+  const deferredDestination = React.useDeferredValue(parsedQuery.destination)
 
-  const [status, setStatus] = React.useState<SearchStatus>(
-    hasSearch ? "loading" : "idle"
-  )
+  const [status, setStatus] = React.useState<SearchStatus>("loading")
   const [pageData, setPageData] = React.useState<PaginatedHotels | null>(null)
   const [error, setError] = React.useState<unknown | null>(null)
 
@@ -150,17 +150,17 @@ export function HotelSearchPageClient() {
     }
   }, [])
 
-  // Hydrate from the URL: a change in search state (submit, back/forward,
+  // Hydrate from the URL: a change in listing state (submit, back/forward,
   // shared link, filter change, pagination) triggers exactly one backend
-  // search. URL state is untrusted — invalid dates surface a human error
+  // search. The clean entry auto-loads browse-all once without writing the
+  // URL. URL state is untrusted — invalid values surface a human error
   // instead of a request; invalid filter values were already dropped at parse.
   React.useEffect(() => {
     if (!hasSearch) {
-      lastSearchedParamsRef.current = null
-      setStatus("idle")
-      setPageData(null)
-      setError(null)
+      if (lastSearchedParamsRef.current === AUTO_BROWSE_KEY) return
+      lastSearchedParamsRef.current = AUTO_BROWSE_KEY
       setSelectedAmenities([])
+      void runSearch(DEFAULT_LISTING_QUERY)
       return
     }
     if (lastSearchedParamsRef.current === paramsString) return
@@ -181,14 +181,8 @@ export function HotelSearchPageClient() {
   }, [hasSearch, paramsString, parsedQuery, runSearch])
 
   const stayContext = React.useMemo<HotelStayContext>(
-    () => ({
-      destination: parsedQuery.destination,
-      check_in: parsedQuery.check_in,
-      check_out: parsedQuery.check_out,
-      guests: parsedQuery.guests,
-      rooms: parsedQuery.rooms,
-    }),
-    [parsedQuery]
+    () => ({ destination: parsedQuery.destination }),
+    [parsedQuery.destination]
   )
 
   // Narrow subscription: amenity options derive from the fetched page only,
@@ -229,19 +223,25 @@ export function HotelSearchPageClient() {
   )
 
   const handleSearch = React.useCallback(
-    (query: HotelSearchQuery) => {
-      // Funnel: coarse search shape only — never destination text, dates,
-      // or anything personal (ticket 07).
+    (destination: string) => {
+      // Funnel: coarse listing shape only — never destination text or
+      // anything personal (ticket 07).
       track("hotel_search", {
-        has_destination: query.destination.trim().length > 0,
-        has_dates: query.check_in !== "" && query.check_out !== "",
-        guests: query.guests,
-        rooms: query.rooms,
+        has_destination: destination.trim().length > 0,
+        has_filters:
+          parsedQuery.max_price !== undefined ||
+          parsedQuery.min_stars !== undefined ||
+          parsedQuery.ordering !== undefined,
       })
-      // The search form owns destination, dates, and party only — active
-      // server filters survive a new search instead of being dropped.
+      // The listing collects destination only — dates and party live on the
+      // Hotel detail, so a new search strips them to defaults instead of
+      // carrying stale stay state. Active server filters survive.
       const merged: HotelSearchQuery = {
-        ...query,
+        destination: destination.trim(),
+        check_in: "",
+        check_out: "",
+        guests: DEFAULT_HOTEL_GUESTS,
+        rooms: DEFAULT_HOTEL_ROOMS,
         max_price: parsedQuery.max_price,
         min_stars: parsedQuery.min_stars,
         ordering: parsedQuery.ordering,
@@ -293,9 +293,9 @@ export function HotelSearchPageClient() {
     [parsedQuery, pushQuery]
   )
 
-  const handleClearDates = React.useCallback(() => {
-    handleSearch({ ...parsedQuery, check_in: "", check_out: "", page: 1 })
-  }, [parsedQuery, handleSearch])
+  const handleStartOver = React.useCallback(() => {
+    pushQuery("")
+  }, [pushQuery])
 
   const handleRaisePriceCap = React.useCallback(() => {
     handleServerFilterChange({ max_price: undefined })
@@ -304,10 +304,6 @@ export function HotelSearchPageClient() {
   const handleLowerStars = React.useCallback(() => {
     handleServerFilterChange({ min_stars: undefined })
   }, [handleServerFilterChange])
-
-  const handleStartOver = React.useCallback(() => {
-    pushQuery("")
-  }, [pushQuery])
 
   const handleReviewSearch = React.useCallback(() => {
     const form = document.getElementById("hotel-search-form")
@@ -318,51 +314,6 @@ export function HotelSearchPageClient() {
   const isSearching = status === "loading"
 
   const resultsContent = (() => {
-    if (status === "idle") {
-      return (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 p-8 text-center">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <HugeiconsIcon icon={Hotel01Icon} size={24} aria-hidden="true" />
-          </div>
-          <h3 className="text-base font-bold text-foreground">
-            Where would you like to stay?
-          </h3>
-          <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
-            Type a city or Hotel name and add your dates, or browse every Hotel
-            Alphaa has to offer. Everything stays shareable in the address bar.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => handleSearch(BROWSE_ALL_QUERY)}
-            >
-              <HugeiconsIcon icon={Hotel01Icon} size={16} aria-hidden="true" />
-              <span>Browse all Hotels</span>
-            </Button>
-            <TrackLink
-              event="support_click"
-              eventProps={{
-                context: "planning a hotel stay",
-                channel: "whatsapp",
-              }}
-              href={getHotelSupportWhatsAppUrl("planning a hotel stay")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-            >
-              <HugeiconsIcon
-                icon={Message01Icon}
-                size={14}
-                aria-hidden="true"
-              />
-              <span>Talk to Alphaa</span>
-            </TrackLink>
-          </div>
-        </div>
-      )
-    }
-
     if (status === "loading") {
       return <HotelResultsSkeleton />
     }
@@ -386,7 +337,7 @@ export function HotelSearchPageClient() {
             supportContext="finding a Hotel for my stay"
           />
           {isValidationError ? (
-            <div className="flex justify-center">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -394,6 +345,14 @@ export function HotelSearchPageClient() {
                 onClick={handleReviewSearch}
               >
                 <span>Review search</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleStartOver}
+              >
+                <span>Start over</span>
               </Button>
             </div>
           ) : (
@@ -436,12 +395,8 @@ export function HotelSearchPageClient() {
           ) : null}
           <HotelEmptyState
             stayContext={stayContext}
-            hasDates={
-              parsedQuery.check_in !== "" || parsedQuery.check_out !== ""
-            }
             hasPriceCap={parsedQuery.max_price !== undefined}
             hasStarFloor={parsedQuery.min_stars !== undefined}
-            onWidenDates={handleClearDates}
             onRaisePriceCap={handleRaisePriceCap}
             onLowerStars={handleLowerStars}
             onStartOver={handleStartOver}
@@ -600,7 +555,7 @@ export function HotelSearchPageClient() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
       <HotelSearchForm
-        defaultValues={deferredDefaults}
+        defaultValues={{ destination: deferredDestination }}
         onSearch={handleSearch}
         onClear={handleStartOver}
         isSearching={isSearching}
@@ -647,9 +602,8 @@ export function HotelSearchPageClient() {
         </h3>
         <p>
           From-prices are per night in Naira and reflect the lowest Room Type at
-          each Hotel. Your stay dates and party travel in the address bar, so
-          you can share or revisit this search. The exact amount is confirmed
-          before you pay.
+          each Hotel. Open a Hotel to choose your dates, party, and Room Type —
+          the exact amount is confirmed before you pay.
         </p>
         <div>
           <TrackLink
