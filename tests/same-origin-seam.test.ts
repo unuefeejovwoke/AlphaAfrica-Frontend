@@ -195,8 +195,55 @@ test("server calls stay absolute against the backend host", async (t) => {
   )
 })
 
-test("proxy passes status + no-store through, encodes segments, abort answers 499", async (t) => {
+test("proxy forwards method, query, headers and body; passes status through un-cached; abort answers 499", async (t) => {
   asServer(t)
+  let upstreamUrl = ""
+  let upstreamInit: RequestInit | undefined
+  stubFetch(t, (url, init) => {
+    upstreamUrl = String(url)
+    upstreamInit = init
+    return Promise.resolve(
+      new Response(JSON.stringify({ reference: "ALPHAA-H" }), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      })
+    )
+  })
+  const body = JSON.stringify({ hotel_id: 1, guest_email: "ada@example.com" })
+  const created = await proxyToBackend(
+    new Request("http://localhost/api/hotels/bookings/create/?next=1", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        authorization: "Bearer test-token",
+      },
+      body,
+    }),
+    "/api/hotels/bookings/create/"
+  )
+  assert.equal(
+    upstreamUrl,
+    `${getApiBaseUrl()}/api/hotels/bookings/create/?next=1`,
+    "method target plus query must reach the backend"
+  )
+  assert.equal(upstreamInit?.method, "POST")
+  const upstreamHeaders = new Headers(upstreamInit?.headers)
+  assert.equal(upstreamHeaders.get("accept"), "application/json")
+  assert.equal(upstreamHeaders.get("content-type"), "application/json")
+  assert.equal(upstreamHeaders.get("authorization"), "Bearer test-token")
+  assert.equal(await upstreamInit?.body, body)
+  assert.equal(created.status, 201, "upstream status must pass through")
+  assert.equal(created.headers.get("Cache-Control"), "no-store")
+  assert.equal(
+    created.headers.get("X-Content-Type-Options"),
+    "nosniff"
+  )
+  assert.equal(
+    (await created.json() as { reference: string }).reference,
+    "ALPHAA-H"
+  )
+
   stubFetch(t, (_url, init) => {
     assert.equal(init?.method, "GET")
     assert.ok(init?.signal instanceof AbortSignal)
@@ -240,22 +287,50 @@ test("proxy passes status + no-store through, encodes segments, abort answers 49
 })
 
 test("new handlers are shaped like the flight/payment handlers", () => {
-  const routes = [
-    "app/api/hotels/bookings/create/route.ts",
-    "app/api/hotels/bookings/verify/[reference]/route.ts",
-    "app/api/cars/bookings/create/route.ts",
-    "app/api/cars/bookings/verify/[reference]/route.ts",
-    "app/api/visa/apply/route.ts",
-    "app/api/visa/verify/[reference]/route.ts",
-    "app/api/packages/[slug]/enquire/route.ts",
-  ]
-  for (const route of routes) {
+  // Route file → [HTTP method, exact upstream path wired to proxyToBackend].
+  // The forwarding itself is executed against the shared proxy above; this
+  // pins each handler's wiring so a wrong path can never ship unnoticed.
+  const routes: Record<string, [string, string]> = {
+    "app/api/hotels/bookings/create/route.ts": [
+      "POST",
+      "/api/hotels/bookings/create/",
+    ],
+    "app/api/hotels/bookings/verify/[reference]/route.ts": [
+      "GET",
+      "/api/hotels/bookings/verify/${encodeURIComponent(reference)}/",
+    ],
+    "app/api/cars/bookings/create/route.ts": [
+      "POST",
+      "/api/cars/bookings/create/",
+    ],
+    "app/api/cars/bookings/verify/[reference]/route.ts": [
+      "GET",
+      "/api/cars/bookings/verify/${encodeURIComponent(reference)}/",
+    ],
+    "app/api/visa/apply/route.ts": ["POST", "/api/visa/apply/"],
+    "app/api/visa/verify/[reference]/route.ts": [
+      "GET",
+      "/api/visa/verify/${encodeURIComponent(reference)}/",
+    ],
+    "app/api/packages/[slug]/enquire/route.ts": [
+      "POST",
+      "/api/packages/${encodeURIComponent(slug)}/enquire/",
+    ],
+  }
+  for (const [route, [method, upstream]] of Object.entries(routes)) {
     const src = readFileSync(join(ROOT, route), "utf8")
     assert.match(src, /proxyToBackend/, `${route}: must proxy`)
     assert.match(src, /force-dynamic/, `${route}: must stay dynamic`)
-  }
-  for (const route of routes.filter((r) => r.includes("["))) {
-    const src = readFileSync(join(ROOT, route), "utf8")
-    assert.match(src, /encodeURIComponent/, `${route}: must encode segments`)
+    assert.ok(
+      src.includes(`function ${method}`),
+      `${route}: must export ${method}`
+    )
+    assert.ok(
+      src.includes(upstream),
+      `${route}: must forward to ${upstream}`
+    )
+    if (route.includes("[")) {
+      assert.match(src, /encodeURIComponent/, `${route}: must encode segments`)
+    }
   }
 })
