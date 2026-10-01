@@ -1,12 +1,30 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS, type PaginatedResponse } from "./client.ts"
-import { digestKey } from "./booking-key.ts"
 import {
   clearSessionKeys,
   resolveBookingOutcome,
   VERIFICATION_REQUEST,
   type VerificationOutcome,
 } from "./verification.ts"
+import {
+  countActiveFilters,
+  extractSlugs,
+  findReusableBookingRecord,
+  firstSearchParam,
+  getPageItems,
+  getPagination,
+  hasListingSearchParams,
+  hashPayloadKey,
+  normalizeBookingCreateResult,
+  parseBoundedInt,
+  parseOrderingValue,
+  parsePriceCeiling,
+  readSessionRecord,
+  readSessionString,
+  saveSessionRecord,
+  saveSessionString,
+  selectFeaturedItems,
+} from "./shared.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
 import { resolveListingImageUrl } from "../listings.ts"
@@ -247,11 +265,6 @@ export const HOTEL_SEARCH_PARAM_KEYS = [
   "page",
 ] as const
 
-function firstString(value: string | string[] | undefined): string | undefined {
-  if (Array.isArray(value)) return value[0]
-  return value
-}
-
 /**
  * True when the query carries any listing state. A bare `/hotels` is the
  * landing (which auto-loads browse-all client-side); any destination,
@@ -259,31 +272,15 @@ function firstString(value: string | string[] | undefined): string | undefined {
  * `hasFlightSearchParams` for consistent listing SEO semantics.
  */
 export function hasHotelSearchParams(input: RawSearchParams): boolean {
-  for (const key of HOTEL_SEARCH_PARAM_KEYS) {
-    const value = firstString(input[key])
-    if (typeof value === "string" && value.trim() !== "") return true
-  }
-  return false
-}
-
-/** Parse a bounded integer, or undefined when absent/out of range. */
-function parseBoundedInt(
-  value: string | string[] | undefined,
-  min: number,
-  max?: number
-): number | undefined {
-  const raw = firstString(value)?.trim()
-  if (!raw) return undefined
-  const parsed = Number(raw)
-  if (!Number.isInteger(parsed) || parsed < min) return undefined
-  if (max !== undefined && parsed > max) return undefined
-  return parsed
+  return hasListingSearchParams(input, HOTEL_SEARCH_PARAM_KEYS)
 }
 
 /**
  * Parse the shareable `?destination=&…&max_price=&min_stars=&ordering=&page=`
  * query into a search query. Invalid values are dropped, never thrown — the
  * caller runs `validateHotelSearchQuery` for strict human-readable errors.
+ * Bounded integers, the whole-Naira ceiling, and the ordering vocabulary all
+ * come from the shared listing module so every domain parses alike.
  */
 export function parseHotelSearchParams(
   input: RawSearchParams
@@ -291,48 +288,21 @@ export function parseHotelSearchParams(
   // Preserve date strings verbatim (trimmed) so the form can surface
   // human-readable errors; invalid dates are not coerced, only trimmed.
   const query: HotelSearchQuery = {
-    destination: firstString(input.destination)?.trim() ?? "",
-    check_in: firstString(input.check_in)?.trim() ?? "",
-    check_out: firstString(input.check_out)?.trim() ?? "",
+    destination: firstSearchParam(input.destination)?.trim() ?? "",
+    check_in: firstSearchParam(input.check_in)?.trim() ?? "",
+    check_out: firstSearchParam(input.check_out)?.trim() ?? "",
     guests:
       parseBoundedInt(input.guests, 1, MAX_HOTEL_GUESTS) ??
       DEFAULT_HOTEL_GUESTS,
     rooms:
       parseBoundedInt(input.rooms, 1, MAX_HOTEL_ROOMS) ?? DEFAULT_HOTEL_ROOMS,
-    max_price: parseHotelMaxPrice(input.max_price),
+    max_price: parsePriceCeiling(input.max_price, MAX_HOTEL_MAX_PRICE),
     min_stars: parseBoundedInt(input.min_stars, 1, 5),
-    ordering: parseHotelOrdering(input.ordering),
+    ordering: parseOrderingValue(input.ordering, HOTEL_ORDERINGS),
     page: parseBoundedInt(input.page, 1) ?? 1,
   }
   const parsed = hotelSearchQuerySchema.safeParse(query)
   return parsed.success ? parsed.data : query
-}
-
-/**
- * Parse the max per-night price ceiling. Whole Naira only; zero, negative,
- * fractional, non-numeric, and absurd values all mean "no cap" (identical to
- * omitting max_price backend-side).
- */
-function parseHotelMaxPrice(
-  value: string | string[] | undefined
-): number | undefined {
-  const raw = firstString(value)?.trim().replace(/,/g, "")
-  if (!raw) return undefined
-  const parsed = Number(raw)
-  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > MAX_HOTEL_MAX_PRICE)
-    return undefined
-  return parsed
-}
-
-/** Parse server-side ordering, or undefined when absent/unknown. */
-function parseHotelOrdering(
-  value: string | string[] | undefined
-): HotelOrdering | undefined {
-  const raw = firstString(value)?.trim()
-  if (!raw) return undefined
-  return (HOTEL_ORDERINGS as readonly string[]).includes(raw)
-    ? (raw as HotelOrdering)
-    : undefined
 }
 
 /**
@@ -458,7 +428,7 @@ export async function getFeaturedHotels(limit = 3): Promise<HotelList[]> {
       code: "server",
     })
   }
-  return parsed.data.results.slice(0, Math.max(1, limit))
+  return selectFeaturedItems(parsed.data.results, limit)
 }
 
 // ---------------------------------------------------------------------------
@@ -764,7 +734,7 @@ export async function listHotelSlugs(): Promise<string[]> {
   })
   const parsed = paginatedHotelListSchema.safeParse(raw)
   if (!parsed.success) return []
-  return parsed.data.results.map((hotel) => hotel.slug)
+  return extractSlugs(parsed.data.results)
 }
 
 // ---------------------------------------------------------------------------
@@ -1054,13 +1024,13 @@ export function buildHotelBookingParams(stay: HotelBookingStay): string {
 export function parseHotelBookingParams(
   input: RawSearchParams
 ): ParsedHotelBookingStay {
-  const roomRaw = firstString(input.room_type)?.trim() ?? ""
+  const roomRaw = firstSearchParam(input.room_type)?.trim() ?? ""
   const roomId =
     /^\d+$/.test(roomRaw) && Number(roomRaw) >= 1 ? Number(roomRaw) : undefined
   return {
     room_type_id: roomId,
-    check_in: firstString(input.check_in)?.trim() ?? "",
-    check_out: firstString(input.check_out)?.trim() ?? "",
+    check_in: firstSearchParam(input.check_in)?.trim() ?? "",
+    check_out: firstSearchParam(input.check_out)?.trim() ?? "",
     guests: parseBoundedInt(input.guests, 1, MAX_HOTEL_GUESTS),
     rooms: parseBoundedInt(input.rooms, 1, MAX_HOTEL_ROOMS),
   }
@@ -1142,26 +1112,9 @@ export type HotelBookingCreateResult = z.infer<
 
 /**
  * Either live shape: flat (apidoc) or the `{ booking, payment }` envelope
- * the guide documents for `POST /api/hotels/bookings/create/`. Mirrors the
- * visa/flight normalizers so hotels accept both.
+ * the guide documents for `POST /api/hotels/bookings/create/`. Normalization
+ * is owned by the shared module so every booking type accepts both.
  */
-const hotelBookingCreateEnvelopeSchema = z
-  .object({
-    reference: z.string().optional(),
-    authorization_url: z.string().optional(),
-    booking: z
-      .object({ reference: z.string().optional() })
-      .passthrough()
-      .optional(),
-    payment: z
-      .object({
-        reference: z.string().optional(),
-        authorization_url: z.string().optional(),
-      })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough()
 
 /**
  * Normalize either create response shape into the Paystack-handoff contract.
@@ -1171,15 +1124,7 @@ const hotelBookingCreateEnvelopeSchema = z
 export function normalizeHotelBookingCreateResult(
   raw: unknown
 ): HotelBookingCreateResult | null {
-  const parsed = hotelBookingCreateEnvelopeSchema.safeParse(raw)
-  if (!parsed.success) return null
-  const { booking, payment } = parsed.data
-  const reference =
-    payment?.reference ?? booking?.reference ?? parsed.data.reference
-  const authorization_url =
-    payment?.authorization_url ?? parsed.data.authorization_url
-  if (!reference || !authorization_url) return null
-  return { reference, authorization_url }
+  return normalizeBookingCreateResult(raw)
 }
 
 /**
@@ -1219,26 +1164,11 @@ export interface PendingHotelBookingRecord {
   authorization_url: string
 }
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value) ?? "null"
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(",")}]`
-  }
-  const record = value as Record<string, unknown>
-  const keys = Object.keys(record).sort()
-  const parts = keys.map(
-    (key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`
-  )
-  return `{${parts.join(",")}}`
-}
-
 /** Identity of one creation attempt: a digest of the full payload, key-order normalized. */
 export function hashHotelBookingKey(
   payload: HotelBookingCreatePayload
 ): string {
-  return digestKey(stableStringify(payload))
+  return hashPayloadKey(payload)
 }
 
 /**
@@ -1249,12 +1179,7 @@ export function findReusableHotelBooking(
   stored: PendingHotelBookingRecord | null,
   key: string
 ): { reference: string; authorization_url: string } | null {
-  if (!stored || stored.key !== key) return null
-  if (!stored.reference || !stored.authorization_url) return null
-  return {
-    reference: stored.reference,
-    authorization_url: stored.authorization_url,
-  }
+  return findReusableBookingRecord(stored, key)
 }
 
 export const PENDING_HOTEL_BOOKING_SESSION_KEY =
@@ -1266,64 +1191,22 @@ export const HOTEL_PAYMENT_REFERENCE_SESSION_KEY =
 export function savePendingHotelBooking(
   record: PendingHotelBookingRecord
 ): void {
-  if (typeof window === "undefined") return
-  try {
-    window.sessionStorage.setItem(
-      PENDING_HOTEL_BOOKING_SESSION_KEY,
-      JSON.stringify(record)
-    )
-  } catch {
-    // sessionStorage may throw in private mode — the creation still ran
-  }
+  saveSessionRecord(PENDING_HOTEL_BOOKING_SESSION_KEY, record)
 }
 
 /** Read back the stored Hotel Booking, or null when absent/corrupt. */
 export function readPendingHotelBooking(): PendingHotelBookingRecord | null {
-  if (typeof window === "undefined") return null
-  try {
-    const raw = window.sessionStorage.getItem(PENDING_HOTEL_BOOKING_SESSION_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as unknown
-    if (typeof parsed !== "object" || parsed === null) return null
-    const record = parsed as Record<string, unknown>
-    if (
-      typeof record.key !== "string" ||
-      typeof record.reference !== "string" ||
-      typeof record.authorization_url !== "string"
-    ) {
-      return null
-    }
-    return {
-      key: record.key,
-      reference: record.reference,
-      authorization_url: record.authorization_url,
-    }
-  } catch {
-    return null
-  }
+  return readSessionRecord(PENDING_HOTEL_BOOKING_SESSION_KEY)
 }
 
 /** Persist the Payment Reference so refresh, back, and new tabs survive. */
 export function saveHotelPaymentReference(reference: string): void {
-  if (typeof window === "undefined") return
-  try {
-    window.sessionStorage.setItem(
-      HOTEL_PAYMENT_REFERENCE_SESSION_KEY,
-      reference
-    )
-  } catch {
-    // sessionStorage may throw in private mode — the URL copy still works
-  }
+  saveSessionString(HOTEL_PAYMENT_REFERENCE_SESSION_KEY, reference)
 }
 
 /** Read back the persisted Payment Reference, or null when absent. */
 export function readHotelPaymentReference(): string | null {
-  if (typeof window === "undefined") return null
-  try {
-    return window.sessionStorage.getItem(HOTEL_PAYMENT_REFERENCE_SESSION_KEY)
-  } catch {
-    return null
-  }
+  return readSessionString(HOTEL_PAYMENT_REFERENCE_SESSION_KEY)
 }
 
 /**
@@ -1460,11 +1343,7 @@ export function countActiveHotelFilters(query: {
   min_stars?: number
   ordering?: HotelOrdering
 }): number {
-  return (
-    (query.max_price !== undefined ? 1 : 0) +
-    (query.min_stars !== undefined ? 1 : 0) +
-    (query.ordering !== undefined ? 1 : 0)
-  )
+  return countActiveFilters(query)
 }
 
 export interface HotelPaginationInput {
@@ -1489,21 +1368,7 @@ export interface HotelPagination {
 export function getHotelPagination(
   input: HotelPaginationInput
 ): HotelPagination {
-  const { page, totalCount, visibleCount } = input
-  const pageSize =
-    Number.isInteger(input.pageSize) && input.pageSize > 0
-      ? input.pageSize
-      : visibleCount > 0
-        ? visibleCount
-        : 1
-  if (totalCount <= 0 || visibleCount <= 0) {
-    return { totalPages: 0, start: 0, end: 0 }
-  }
-  const safePage = Number.isInteger(page) && page > 0 ? page : 1
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const start = (safePage - 1) * pageSize + 1
-  const end = Math.min(totalCount, start + visibleCount - 1)
-  return { totalPages, start, end }
+  return getPagination(input)
 }
 
 export type HotelPageItem = number | "ellipsis"
@@ -1518,23 +1383,5 @@ export function getHotelPageItems(
   totalPages: number,
   sibling = 1
 ): HotelPageItem[] {
-  if (!Number.isInteger(totalPages) || totalPages <= 0) return []
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1)
-  }
-  const safePage = Math.min(Math.max(1, page), totalPages)
-  const near = new Set<number>([1, totalPages, safePage])
-  for (let i = 1; i <= Math.max(0, sibling); i++) {
-    if (safePage - i > 1) near.add(safePage - i)
-    if (safePage + i < totalPages) near.add(safePage + i)
-  }
-  const sorted = [...near].sort((a, b) => a - b)
-  const items: HotelPageItem[] = []
-  for (let i = 0; i < sorted.length; i++) {
-    const current = sorted[i]
-    const prev = sorted[i - 1]
-    if (i > 0 && current - prev > 1) items.push("ellipsis")
-    items.push(current)
-  }
-  return items
+  return getPageItems(page, totalPages, sibling)
 }
