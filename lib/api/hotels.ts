@@ -1,6 +1,12 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS, type PaginatedResponse } from "./client.ts"
 import { digestKey } from "./booking-key.ts"
+import {
+  clearSessionKeys,
+  resolveBookingOutcome,
+  VERIFICATION_REQUEST,
+  type VerificationOutcome,
+} from "./verification.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
 import { resolveListingImageUrl } from "../listings.ts"
@@ -1320,6 +1326,19 @@ export function readHotelPaymentReference(): string | null {
   }
 }
 
+/**
+ * Drop the stored Hotel Booking and Payment Reference once a payment is
+ * verified as paid. Back/forward can then never re-enter checkout with a
+ * completed stay; the confirmation page keeps rendering from its fetched
+ * booking, and the reference stays in the URL for refreshes.
+ */
+export function clearHotelBookingSession(): void {
+  clearSessionKeys([
+    PENDING_HOTEL_BOOKING_SESSION_KEY,
+    HOTEL_PAYMENT_REFERENCE_SESSION_KEY,
+  ])
+}
+
 // ---------------------------------------------------------------------------
 // Reference-only verification with confirmation and recovery (ticket 06).
 // A return from Paystack proves nothing by itself: the live Hotel Booking is
@@ -1330,25 +1349,20 @@ export function readHotelPaymentReference(): string | null {
 
 /**
  * Terminal verification outcome derived from a Hotel Booking status
- * (apidoc Status8eeEnum: pending, confirmed, cancelled, failed).
- * The universal order lookup reports money movement as `success`/`paid`;
- * those count as confirmed here so an order-first flow never renders a paid
- * booking as "still processing". Unrecognized states stay pending so the
- * guest keeps checking instead of assuming success — or assuming failure
- * and paying twice.
+ * (apidoc Status8eeEnum: pending, confirmed, cancelled, failed). Delegates to
+ * the shared verification seam so every booking type resolves the same
+ * vocabulary: the universal order lookup reports money movement as
+ * `success`/`paid`, and those count as confirmed so an order-first flow never
+ * renders a paid booking as "still processing". Unrecognized states stay
+ * pending so the guest keeps checking instead of assuming success — or
+ * assuming failure and paying twice.
  */
-export type HotelVerificationOutcome =
-  "confirmed" | "pending" | "cancelled" | "failed"
+export type HotelVerificationOutcome = VerificationOutcome
 
 export function resolveHotelVerificationState(booking: {
   status?: string | null
 }): HotelVerificationOutcome {
-  const status = (booking.status ?? "").trim().toLowerCase()
-  if (status === "confirmed" || status === "success" || status === "paid")
-    return "confirmed"
-  if (status === "cancelled") return "cancelled"
-  if (status === "failed") return "failed"
-  return "pending"
+  return resolveBookingOutcome("hotel", booking.status)
 }
 
 /**
@@ -1387,7 +1401,7 @@ export async function verifyHotelBooking(
 ): Promise<HotelBooking> {
   const raw = await apiGet<unknown>(
     `/api/hotels/bookings/verify/${encodeURIComponent(reference)}/`,
-    { noStore: true, sameOrigin: true }
+    { ...VERIFICATION_REQUEST }
   )
   const parsed = hotelBookingSchema.safeParse(raw)
   if (!parsed.success) {

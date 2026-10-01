@@ -12,7 +12,6 @@ import {
 } from "@hugeicons/core-free-icons"
 import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { CardSkeleton } from "@/components/ui/skeleton"
-import { ViewTracker } from "@/components/analytics/view-tracker"
 import { FlightETicket } from "@/components/flights/flight-e-ticket"
 import {
   buildFlightVerifyUrl,
@@ -27,18 +26,18 @@ import { clearFlightCheckoutSession } from "@/lib/api/flights"
 import { clearSelectedDomesticCard } from "@/lib/api/domestic"
 import {
   extractOrderDetails,
-  getPaymentOrder,
-  isOrderPaid,
-  isOrderPending,
-  resolveOrderPaymentStatus,
   type PaymentOrder,
 } from "@/lib/api/payments"
+import {
+  emitVerificationEventOnce,
+  fetchOrderWithSettleRetry,
+  isPaidOrder,
+} from "@/lib/api/verification"
 import {
   ApiError,
   getHumanErrorMessage,
   getPaymentSafetyCopy,
 } from "@/lib/api/client"
-import { track } from "@/lib/analytics"
 import { formatNaira } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { pluralize } from "@/lib/schemas/travel"
@@ -85,10 +84,6 @@ function bookingFromOrder(
   return flightBookingSchema.parse({ reference })
 }
 
-function waitForWebhook(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 /**
  * Paystack return handler for flight Bookings. A return from payment proves
  * nothing by itself: this client reads the Payment Reference from the return
@@ -104,9 +99,6 @@ export function FlightVerifyClient() {
   const [savedReference] = React.useState<string | null>(readPaymentReference)
   const [state, setState] = React.useState<VerifyState>({ kind: "verifying" })
   const [attempt, setAttempt] = React.useState(0)
-  // Payment-completed fires once per verified booking (ticket 10). The
-  // reference/amount stay out of analytics — coarse type only.
-  const paymentCompletedRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
     if (!reference) return
@@ -114,11 +106,13 @@ export function FlightVerifyClient() {
     ;(async () => {
       setState({ kind: "verifying" })
       try {
-        // Primary: the universal order is the final word on money movement.
+        // Primary: the universal order is the final word on money movement,
+        // fetched through the shared seam (authoritative `payment_status`
+        // read plus one settle retry while the webhook lands).
         let order: PaymentOrder | null = null
         let orderForbidden = false
         try {
-          order = await getPaymentOrder(
+          order = await fetchOrderWithSettleRetry(
             reference,
             guestToken ? { token: guestToken } : undefined
           )
@@ -134,25 +128,6 @@ export function FlightVerifyClient() {
             "This confirmation link is invalid or has expired. Ask Alphaa to resend your receipt link.",
             { status: 403, code: "forbidden" }
           )
-        }
-        // Still settling (webhook may not have run): wait ~2s and retry
-        // ONCE, per the guide. No continuous polling.
-        if (
-          order &&
-          !isOrderPaid(resolveOrderPaymentStatus(order)) &&
-          isOrderPending(resolveOrderPaymentStatus(order))
-        ) {
-          await waitForWebhook(2000)
-          if (cancelled) return
-          try {
-            order = await getPaymentOrder(
-              reference,
-              guestToken ? { token: guestToken } : undefined
-            )
-          } catch {
-            // Keep the first result — verify below still gets its chance.
-          }
-          if (cancelled) return
         }
         // Fallback/detail: the flight verify call carries the full Booking.
         let booking: FlightBooking | null = null
@@ -174,12 +149,21 @@ export function FlightVerifyClient() {
         setState({ kind: "resolved", booking, order })
         const paid =
           resolveFlightVerificationState(booking) === "paid" ||
-          (order !== null && isOrderPaid(resolveOrderPaymentStatus(order)))
-        if (paid && paymentCompletedRef.current !== booking.reference) {
-          paymentCompletedRef.current = booking.reference
-          track("flight_payment_completed", { type: "flight" })
-        }
+          isPaidOrder(order)
         if (paid) {
+          // Confirmation analytics fire exactly once per verified booking —
+          // the reference stays out of analytics, coarse type only, and
+          // retries or back navigation never double-fire.
+          emitVerificationEventOnce(
+            `${booking.reference}::flight_payment_completed`,
+            "flight_payment_completed",
+            { type: "flight" }
+          )
+          emitVerificationEventOnce(
+            `${booking.reference}::flight_confirmation_viewed`,
+            "flight_confirmation_viewed",
+            { type: "flight" }
+          )
           // Payment is final: drop every session-backed checkout input so
           // back/forward can never re-enter checkout with a completed trip.
           // The verify page keeps rendering from its fetched booking, and the
@@ -369,20 +353,11 @@ export function FlightVerifyClient() {
   const bookingStatus = booking.status.trim().toLowerCase()
   const paid =
     resolveFlightVerificationState(booking) === "paid" ||
-    (order !== null && isOrderPaid(resolveOrderPaymentStatus(order)))
+    isPaidOrder(order)
 
   if (paid) {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5 py-4 sm:gap-6 sm:py-8 print:max-w-2xl print:px-0 print:py-6">
-        <ViewTracker
-          event="booking_confirmation_viewed"
-          props={{ type: "flight" }}
-        />
-        <ViewTracker
-          event="flight_confirmation_viewed"
-          props={{ type: "flight" }}
-        />
-
         {/* Verification Status Header (matches official e-ticket layout) */}
         <div className="flex flex-col items-center gap-1.5 text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-0.5 text-[10px] font-black tracking-wider text-emerald-600 uppercase sm:text-[11px]">

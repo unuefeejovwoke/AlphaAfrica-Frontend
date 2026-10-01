@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost, type PaginatedResponse } from "./client.ts"
+import { VERIFICATION_REQUEST } from "./verification.ts"
 import {
   emailSchema,
   fullNameSchema,
@@ -218,10 +219,7 @@ export async function verifyVisaPayment(
   // Never cached: verification must reflect the live payment state (PRD §13).
   const raw = await apiGet<unknown>(
     `/api/visa/verify/${encodeURIComponent(reference)}/`,
-    {
-      noStore: true,
-      sameOrigin: true,
-    }
+    { ...VERIFICATION_REQUEST }
   )
   return visaApplicationSchema.parse(raw)
 }

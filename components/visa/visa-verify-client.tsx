@@ -11,18 +11,18 @@ import {
 import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { CardSkeleton } from "@/components/ui/skeleton"
-import { ViewTracker } from "@/components/analytics/view-tracker"
 import { verifyVisaPayment, type VisaApplication } from "@/lib/api/visa"
 import {
-  getPaymentOrder,
-  isOrderPaid,
-  isVisaApplicationPaid,
-  type PaymentOrder,
-} from "@/lib/api/payments"
+  emitVerificationEventOnce,
+  fetchOrderWithSettleRetry,
+  isPaidOrder,
+  resolveBookingOutcome,
+  type VerificationOutcome,
+} from "@/lib/api/verification"
+import type { PaymentOrder } from "@/lib/api/payments"
 import { getHumanErrorMessage, getPaymentSafetyCopy } from "@/lib/api/client"
 import { formatNaira } from "@/lib/format"
 import { getSupportWhatsAppUrl, getWhatsAppUrl } from "@/lib/content/company"
-import { track } from "@/lib/analytics"
 import { TrackLink } from "@/components/analytics/track-link"
 
 type VerifyState =
@@ -57,21 +57,33 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
         const application = await verifyVisaPayment(reference)
         // The visa verification is authoritative for the consultation, but
         // the universal order is the final word on money movement — fetch
-        // it too, tolerating its absence.
+        // it too, tolerating its absence. The shared seam retries once while
+        // the payment settles and reads the authoritative `payment_status`
+        // field (legacy `status` is only a fallback), so a paid order can
+        // never render as unpaid.
         let order: PaymentOrder | null = null
         try {
-          order = await getPaymentOrder(reference)
+          order = await fetchOrderWithSettleRetry(reference)
         } catch {
           order = null
         }
         if (cancelled) return
-        const paid =
-          isOrderPaid(order?.status) ||
-          isVisaApplicationPaid(application.status)
+        const outcome: VerificationOutcome = resolveBookingOutcome(
+          "visa",
+          application.status
+        )
+        const paid = isPaidOrder(order) || outcome === "confirmed"
         if (paid) {
-          track("visa_payment_completed", {
-            applicants: String(application.num_applicants ?? 1),
-          })
+          emitVerificationEventOnce(
+            `${reference}::visa_payment_completed`,
+            "visa_payment_completed",
+            { applicants: String(application.num_applicants ?? 1) }
+          )
+          emitVerificationEventOnce(
+            `${reference}::visa_confirmation_viewed`,
+            "booking_confirmation_viewed",
+            { type: "visa" }
+          )
           setState({ kind: "verified", application, order })
         } else {
           setState({ kind: "unresolved", application, order })
@@ -122,10 +134,6 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
     const { application } = state
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6">
-        <ViewTracker
-          event="booking_confirmation_viewed"
-          props={{ type: "visa" }}
-        />
         <div
           role="status"
           aria-live="polite"

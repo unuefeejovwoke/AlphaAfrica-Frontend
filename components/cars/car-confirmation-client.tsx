@@ -11,14 +11,15 @@ import {
   Tick01Icon,
 } from "@hugeicons/core-free-icons"
 import { Button, ButtonLink } from "@/components/ui/button"
-import { track } from "@/lib/analytics"
 import { getHumanErrorMessage, getPaymentSafetyCopy } from "@/lib/api/client"
+import type { PaymentOrder } from "@/lib/api/payments"
 import {
-  getPaymentOrder,
-  isOrderPaid,
-  isOrderPending,
-} from "@/lib/api/payments"
+  emitVerificationEventOnce,
+  fetchOrderWithSettleRetry,
+  isPaidOrder,
+} from "@/lib/api/verification"
 import {
+  clearCarBookingSession,
   getCarSupportWhatsAppUrl,
   readCarPaymentReference,
   resolveCarVerificationState,
@@ -39,6 +40,7 @@ export function CarConfirmationClient() {
     searchParams.get("reference") ?? readCarPaymentReference() ?? ""
 
   const [outcome, setOutcome] = React.useState<Outcome>("loading")
+  const [attempt, setAttempt] = React.useState(0)
   const [detail, setDetail] = React.useState<{
     vehicle?: string
     pickup?: string
@@ -54,35 +56,34 @@ export function CarConfirmationClient() {
       return
     }
     let cancelled = false
+    setOutcome("loading")
+    setError(null)
     void (async () => {
       try {
-        const order = await getPaymentOrder(reference)
-        if (cancelled) return
-        const status =
-          order.payment_status?.trim() || order.status?.trim() || ""
-        if (isOrderPaid(status)) {
-          setOutcome("confirmed")
-          track("car_payment_completed", { type: "order" })
-          track("car_confirmation_viewed", { type: "confirmed" })
-          return
+        // Primary: the universal order is the final word on money movement,
+        // fetched through the shared seam (authoritative `payment_status`
+        // read plus one settle retry while the webhook lands).
+        let order: PaymentOrder | null = null
+        try {
+          order = await fetchOrderWithSettleRetry(reference)
+        } catch {
+          order = null
         }
-        if (isOrderPending(status)) {
-          await new Promise((resolve) => setTimeout(resolve, 2000))
-          if (cancelled) return
-          try {
-            const retry = await getPaymentOrder(reference)
-            if (cancelled) return
-            const retryStatus =
-              retry.payment_status?.trim() || retry.status?.trim() || ""
-            if (isOrderPaid(retryStatus)) {
-              setOutcome("confirmed")
-              track("car_payment_completed", { type: "order-retry" })
-              track("car_confirmation_viewed", { type: "confirmed" })
-              return
-            }
-          } catch {
-            // Fall through to module verify.
-          }
+        if (cancelled) return
+        if (order && isPaidOrder(order)) {
+          setOutcome("confirmed")
+          emitVerificationEventOnce(
+            `${reference}::car_payment_completed`,
+            "car_payment_completed",
+            { type: "order" }
+          )
+          emitVerificationEventOnce(
+            `${reference}::car_confirmation_viewed:confirmed`,
+            "car_confirmation_viewed",
+            { type: "confirmed" }
+          )
+          clearCarBookingSession()
+          return
         }
         const booking = await verifyCarBooking(reference)
         if (cancelled) return
@@ -96,14 +97,31 @@ export function CarConfirmationClient() {
         })
         if (state === "confirmed") {
           setOutcome("confirmed")
-          track("car_payment_completed", { type: "verify" })
-          track("car_confirmation_viewed", { type: "confirmed" })
+          emitVerificationEventOnce(
+            `${reference}::car_payment_completed`,
+            "car_payment_completed",
+            { type: "verify" }
+          )
+          emitVerificationEventOnce(
+            `${reference}::car_confirmation_viewed:confirmed`,
+            "car_confirmation_viewed",
+            { type: "confirmed" }
+          )
+          clearCarBookingSession()
         } else if (state === "pending") {
           setOutcome("pending")
-          track("car_confirmation_viewed", { type: "pending" })
+          emitVerificationEventOnce(
+            `${reference}::car_confirmation_viewed:pending`,
+            "car_confirmation_viewed",
+            { type: "pending" }
+          )
         } else {
           setOutcome("failed")
-          track("car_confirmation_viewed", { type: state })
+          emitVerificationEventOnce(
+            `${reference}::car_confirmation_viewed:${state}`,
+            "car_confirmation_viewed",
+            { type: state }
+          )
         }
       } catch (caught) {
         if (cancelled) return
@@ -114,7 +132,7 @@ export function CarConfirmationClient() {
     return () => {
       cancelled = true
     }
-  }, [reference])
+  }, [reference, attempt])
 
   const supportHref = getCarSupportWhatsAppUrl("confirming a car hire")
 
@@ -231,7 +249,7 @@ export function CarConfirmationClient() {
           retry. {getPaymentSafetyCopy()}
         </p>
         <div className="flex flex-wrap justify-center gap-3">
-          <Button type="button" onClick={() => window.location.reload()}>
+          <Button type="button" onClick={() => setAttempt((n) => n + 1)}>
             <span>Retry confirmation</span>
           </Button>
           <ButtonLink

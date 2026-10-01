@@ -1,6 +1,12 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS, type PaginatedResponse } from "./client.ts"
 import { digestKey } from "./booking-key.ts"
+import {
+  clearSessionKeys,
+  resolveBookingOutcome,
+  VERIFICATION_REQUEST,
+  type VerificationOutcome,
+} from "./verification.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
 import { resolveListingImageUrl } from "../listings.ts"
@@ -743,21 +749,37 @@ export function readCarPaymentReference(): string | null {
   }
 }
 
+/**
+ * Drop the stored Car Booking and Payment Reference once a payment is
+ * verified as paid. Back/forward can then never re-enter checkout with a
+ * completed hire; the confirmation page keeps rendering from its fetched
+ * booking, and the reference stays in the URL for refreshes.
+ */
+export function clearCarBookingSession(): void {
+  clearSessionKeys([
+    PENDING_CAR_BOOKING_SESSION_KEY,
+    CAR_PAYMENT_REFERENCE_SESSION_KEY,
+  ])
+}
+
 // ---------------------------------------------------------------------------
 // Verification
 // ---------------------------------------------------------------------------
 
-export type CarVerificationOutcome =
-  "confirmed" | "pending" | "cancelled" | "failed"
+/**
+ * Terminal verification outcome for a Car Booking. Delegates to the shared
+ * verification seam so every booking type resolves the same vocabulary:
+ * `confirmed` — plus the order lookup's money-movement synonyms
+ * (`paid`/`success`) — counts as confirmed so an order-first flow never
+ * renders a paid hire as "still processing". Unrecognized states stay
+ * pending so the customer keeps checking instead of assuming failure.
+ */
+export type CarVerificationOutcome = VerificationOutcome
 
 export function resolveCarVerificationState(booking: {
   status?: string | null
 }): CarVerificationOutcome {
-  const status = (booking.status ?? "").trim().toLowerCase()
-  if (status === "confirmed") return "confirmed"
-  if (status === "cancelled") return "cancelled"
-  if (status === "failed") return "failed"
-  return "pending"
+  return resolveBookingOutcome("car", booking.status)
 }
 
 export const carBookingSchema = z.object({
@@ -781,7 +803,7 @@ export type CarBooking = z.infer<typeof carBookingSchema>
 export async function verifyCarBooking(reference: string): Promise<CarBooking> {
   const raw = await apiGet<unknown>(
     `/api/cars/bookings/verify/${encodeURIComponent(reference)}/`,
-    { noStore: true, sameOrigin: true }
+    { ...VERIFICATION_REQUEST }
   )
   return carBookingSchema.parse(raw)
 }

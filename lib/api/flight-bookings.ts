@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost } from "./client.ts"
 import { digestKey } from "./booking-key.ts"
+import { resolveBookingOutcome, VERIFICATION_REQUEST } from "./verification.ts"
 import { emailSchema } from "./validation.ts"
 import { moneyToKobo, resolveMoneyChange, type MoneyChange } from "../money.ts"
 import {
@@ -366,9 +367,10 @@ export async function createFlightBooking(
 /**
  * Terminal verification outcome derived from a FlightBooking status
  * (apidoc FlightBookingStatusEnum: pending, paid, confirmed, cancelled,
- * failed). `confirmed` means the airline order exists, so it counts as paid;
- * anything unrecognized stays pending so the customer keeps checking instead
- * of assuming failure — a return from Paystack proves nothing by itself.
+ * failed). Delegates to the shared verification seam: `confirmed` means the
+ * airline order exists, so it counts as paid; anything unrecognized stays
+ * pending so the customer keeps checking instead of assuming failure — a
+ * return from Paystack proves nothing by itself.
  */
 export type FlightVerificationOutcome =
   "paid" | "pending" | "failed" | "cancelled"
@@ -376,11 +378,8 @@ export type FlightVerificationOutcome =
 export function resolveFlightVerificationState(booking: {
   status?: string | null
 }): FlightVerificationOutcome {
-  const status = (booking.status ?? "").trim().toLowerCase()
-  if (status === "paid" || status === "confirmed") return "paid"
-  if (status === "cancelled") return "cancelled"
-  if (status === "failed") return "failed"
-  return "pending"
+  const outcome = resolveBookingOutcome("flight", booking.status)
+  return outcome === "confirmed" ? "paid" : outcome
 }
 
 /**
@@ -423,7 +422,7 @@ export async function verifyFlightBooking(
 ): Promise<FlightBooking> {
   const raw = await apiGet<unknown>(
     `/api/flights/bookings/verify/${encodeURIComponent(reference)}/`,
-    { noStore: true, sameOrigin: true }
+    { ...VERIFICATION_REQUEST }
   )
   return flightBookingSchema.parse(raw)
 }
