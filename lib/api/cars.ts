@@ -1,12 +1,30 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS, type PaginatedResponse } from "./client.ts"
-import { digestKey } from "./booking-key.ts"
 import {
   clearSessionKeys,
   resolveBookingOutcome,
   VERIFICATION_REQUEST,
   type VerificationOutcome,
 } from "./verification.ts"
+import {
+  countActiveFilters,
+  extractSlugs,
+  findReusableBookingRecord,
+  firstSearchParam,
+  getPageItems,
+  getPagination,
+  hasListingSearchParams,
+  hashPayloadKey,
+  normalizeBookingCreateResult,
+  parseBoundedInt,
+  parseOrderingValue,
+  parsePriceCeiling,
+  readSessionRecord,
+  readSessionString,
+  saveSessionRecord,
+  saveSessionString,
+  selectFeaturedItems,
+} from "./shared.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
 import { resolveListingImageUrl } from "../listings.ts"
@@ -106,68 +124,15 @@ export const CAR_SEARCH_PARAM_KEYS = [
   "page",
 ] as const
 
-function firstString(value: string | string[] | undefined): string | undefined {
-  if (Array.isArray(value)) return value[0]
-  return value
-}
-
 export function hasCarSearchParams(input: RawSearchParams): boolean {
-  for (const key of CAR_SEARCH_PARAM_KEYS) {
-    const value = firstString(input[key])
-    if (typeof value === "string" && value.trim() !== "") return true
-  }
-  return false
-}
-
-function parseBoundedInt(
-  value: string | string[] | undefined,
-  min: number,
-  max?: number
-): number | undefined {
-  const raw = firstString(value)?.trim()
-  if (!raw) return undefined
-  const parsed = Number(raw)
-  if (!Number.isInteger(parsed) || parsed < min) return undefined
-  if (max !== undefined && parsed > max) return undefined
-  return parsed
-}
-
-function parseCarMaxRate(
-  value: string | string[] | undefined
-): number | undefined {
-  const raw = firstString(value)?.trim().replace(/,/g, "")
-  if (!raw) return undefined
-  const parsed = Number(raw)
-  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > MAX_CAR_HOURLY_RATE)
-    return undefined
-  return parsed
-}
-
-function parseVehicleType(
-  value: string | string[] | undefined
-): VehicleType | undefined {
-  const raw = firstString(value)?.trim()
-  if (!raw) return undefined
-  return (VEHICLE_TYPES as readonly string[]).includes(raw)
-    ? (raw as VehicleType)
-    : undefined
-}
-
-function parseCarOrdering(
-  value: string | string[] | undefined
-): CarOrdering | undefined {
-  const raw = firstString(value)?.trim()
-  if (!raw) return undefined
-  return (CAR_ORDERINGS as readonly string[]).includes(raw)
-    ? (raw as CarOrdering)
-    : undefined
+  return hasListingSearchParams(input, CAR_SEARCH_PARAM_KEYS)
 }
 
 export function parseCarSearchParams(input: RawSearchParams): CarSearchQuery {
   const query: CarSearchQuery = {
-    vehicle_type: parseVehicleType(input.vehicle_type),
-    max_rate: parseCarMaxRate(input.max_rate),
-    ordering: parseCarOrdering(input.ordering),
+    vehicle_type: parseOrderingValue(input.vehicle_type, VEHICLE_TYPES),
+    max_rate: parsePriceCeiling(input.max_rate, MAX_CAR_HOURLY_RATE),
+    ordering: parseOrderingValue(input.ordering, CAR_ORDERINGS),
     page: parseBoundedInt(input.page, 1) ?? 1,
   }
   const parsed = carSearchQuerySchema.safeParse(query)
@@ -255,7 +220,7 @@ export async function getFeaturedVehicles(limit = 3): Promise<VehicleList[]> {
       code: "server",
     })
   }
-  return parsed.data.results.slice(0, Math.max(1, limit))
+  return selectFeaturedItems(parsed.data.results, limit)
 }
 
 export const vehicleDetailSchema = z.object({
@@ -294,7 +259,7 @@ export async function listVehicleSlugs(): Promise<string[]> {
   })
   const parsed = paginatedVehicleListSchema.safeParse(raw)
   if (!parsed.success) return []
-  return parsed.data.results.map((vehicle) => vehicle.slug)
+  return extractSlugs(parsed.data.results)
 }
 
 // ---------------------------------------------------------------------------
@@ -487,7 +452,7 @@ export function buildCarHireParams(stay: CarHireStay): string {
 }
 
 export function parseCarHireParams(input: RawSearchParams): ParsedCarHireStay {
-  const hoursRaw = firstString(input.num_hours)?.trim() ?? ""
+  const hoursRaw = firstSearchParam(input.num_hours)?.trim() ?? ""
   const hours =
     /^\d+$/.test(hoursRaw) &&
     Number(hoursRaw) >= MIN_HIRE_HOURS &&
@@ -495,10 +460,10 @@ export function parseCarHireParams(input: RawSearchParams): ParsedCarHireStay {
       ? Number(hoursRaw)
       : undefined
   return {
-    pickup_location: firstString(input.pickup_location)?.trim() ?? "",
-    dropoff_location: firstString(input.dropoff_location)?.trim() ?? "",
-    pickup_date: firstString(input.pickup_date)?.trim() ?? "",
-    pickup_time: firstString(input.pickup_time)?.trim() ?? "",
+    pickup_location: firstSearchParam(input.pickup_location)?.trim() ?? "",
+    dropoff_location: firstSearchParam(input.dropoff_location)?.trim() ?? "",
+    pickup_date: firstSearchParam(input.pickup_date)?.trim() ?? "",
+    pickup_time: firstSearchParam(input.pickup_time)?.trim() ?? "",
     num_hours: hours,
   }
 }
@@ -600,38 +565,10 @@ export type CarBookingCreateResult = z.infer<
 >
 
 /** Either live shape: flat (apidoc) or `{ booking, payment }` envelope. */
-const carBookingCreateEnvelopeSchema = z
-  .object({
-    reference: z.string().optional(),
-    authorization_url: z.string().optional(),
-    booking: z
-      .object({ reference: z.string().optional() })
-      .passthrough()
-      .optional(),
-    payment: z
-      .object({
-        reference: z.string().optional(),
-        authorization_url: z.string().optional(),
-      })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough()
-
 export function normalizeCarBookingCreateResult(
   raw: unknown
 ): CarBookingCreateResult | null {
-  const direct = carBookingCreateResultSchema.safeParse(raw)
-  if (direct.success) return direct.data
-  const parsed = carBookingCreateEnvelopeSchema.safeParse(raw)
-  if (!parsed.success) return null
-  const { booking, payment } = parsed.data
-  const reference =
-    payment?.reference ?? booking?.reference ?? parsed.data.reference
-  const authorization_url =
-    payment?.authorization_url ?? parsed.data.authorization_url
-  if (!reference || !authorization_url) return null
-  return { reference, authorization_url }
+  return normalizeBookingCreateResult(raw)
 }
 
 export async function createCarBooking(
@@ -662,32 +599,15 @@ export interface PendingCarBookingRecord {
   authorization_url: string
 }
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value) ?? "null"
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(",")}]`
-  }
-  const record = value as Record<string, unknown>
-  const keys = Object.keys(record).sort()
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`
-}
-
 export function hashCarBookingKey(payload: CarBookingCreatePayload): string {
-  return digestKey(stableStringify(payload))
+  return hashPayloadKey(payload)
 }
 
 export function findReusableCarBooking(
   stored: PendingCarBookingRecord | null,
   key: string
 ): { reference: string; authorization_url: string } | null {
-  if (!stored || stored.key !== key) return null
-  if (!stored.reference || !stored.authorization_url) return null
-  return {
-    reference: stored.reference,
-    authorization_url: stored.authorization_url,
-  }
+  return findReusableBookingRecord(stored, key)
 }
 
 export const PENDING_CAR_BOOKING_SESSION_KEY = "alphaa:pending-car-booking:v1"
@@ -695,58 +615,19 @@ export const CAR_PAYMENT_REFERENCE_SESSION_KEY =
   "alphaa:car-payment-reference:v1"
 
 export function savePendingCarBooking(record: PendingCarBookingRecord): void {
-  if (typeof window === "undefined") return
-  try {
-    window.sessionStorage.setItem(
-      PENDING_CAR_BOOKING_SESSION_KEY,
-      JSON.stringify(record)
-    )
-  } catch {
-    // private mode — creation still ran
-  }
+  saveSessionRecord(PENDING_CAR_BOOKING_SESSION_KEY, record)
 }
 
 export function readPendingCarBooking(): PendingCarBookingRecord | null {
-  if (typeof window === "undefined") return null
-  try {
-    const raw = window.sessionStorage.getItem(PENDING_CAR_BOOKING_SESSION_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as unknown
-    if (typeof parsed !== "object" || parsed === null) return null
-    const record = parsed as Record<string, unknown>
-    if (
-      typeof record.key !== "string" ||
-      typeof record.reference !== "string" ||
-      typeof record.authorization_url !== "string"
-    ) {
-      return null
-    }
-    return {
-      key: record.key,
-      reference: record.reference,
-      authorization_url: record.authorization_url,
-    }
-  } catch {
-    return null
-  }
+  return readSessionRecord(PENDING_CAR_BOOKING_SESSION_KEY)
 }
 
 export function saveCarPaymentReference(reference: string): void {
-  if (typeof window === "undefined") return
-  try {
-    window.sessionStorage.setItem(CAR_PAYMENT_REFERENCE_SESSION_KEY, reference)
-  } catch {
-    // URL copy still works
-  }
+  saveSessionString(CAR_PAYMENT_REFERENCE_SESSION_KEY, reference)
 }
 
 export function readCarPaymentReference(): string | null {
-  if (typeof window === "undefined") return null
-  try {
-    return window.sessionStorage.getItem(CAR_PAYMENT_REFERENCE_SESSION_KEY)
-  } catch {
-    return null
-  }
+  return readSessionString(CAR_PAYMENT_REFERENCE_SESSION_KEY)
 }
 
 /**
@@ -879,11 +760,7 @@ export function countActiveCarFilters(query: {
   max_rate?: number
   ordering?: CarOrdering
 }): number {
-  return (
-    (query.vehicle_type !== undefined ? 1 : 0) +
-    (query.max_rate !== undefined ? 1 : 0) +
-    (query.ordering !== undefined ? 1 : 0)
-  )
+  return countActiveFilters(query)
 }
 
 export interface CarPaginationInput {
@@ -906,21 +783,7 @@ export interface CarPagination {
  * honest (`Showing 11–13 of 13`, never `11–20 of 13`).
  */
 export function getCarPagination(input: CarPaginationInput): CarPagination {
-  const { page, totalCount, visibleCount } = input
-  const pageSize =
-    Number.isInteger(input.pageSize) && input.pageSize > 0
-      ? input.pageSize
-      : visibleCount > 0
-        ? visibleCount
-        : 1
-  if (totalCount <= 0 || visibleCount <= 0) {
-    return { totalPages: 0, start: 0, end: 0 }
-  }
-  const safePage = Number.isInteger(page) && page > 0 ? page : 1
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const start = (safePage - 1) * pageSize + 1
-  const end = Math.min(totalCount, start + visibleCount - 1)
-  return { totalPages, start, end }
+  return getPagination(input)
 }
 
 export type CarPageItem = number | "ellipsis"
@@ -935,23 +798,5 @@ export function getCarPageItems(
   totalPages: number,
   sibling = 1
 ): CarPageItem[] {
-  if (!Number.isInteger(totalPages) || totalPages <= 0) return []
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1)
-  }
-  const safePage = Math.min(Math.max(1, page), totalPages)
-  const near = new Set<number>([1, totalPages, safePage])
-  for (let i = 1; i <= Math.max(0, sibling); i++) {
-    if (safePage - i > 1) near.add(safePage - i)
-    if (safePage + i < totalPages) near.add(safePage + i)
-  }
-  const sorted = [...near].sort((a, b) => a - b)
-  const items: CarPageItem[] = []
-  for (let i = 0; i < sorted.length; i++) {
-    const current = sorted[i]
-    const prev = sorted[i - 1]
-    if (i > 0 && current - prev > 1) items.push("ellipsis")
-    items.push(current)
-  }
-  return items
+  return getPageItems(page, totalPages, sibling)
 }
