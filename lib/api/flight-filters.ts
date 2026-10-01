@@ -559,3 +559,45 @@ export function countActiveFilterGroups(
     (sort !== DEFAULT_SORT ? 1 : 0)
   )
 }
+
+// ---------------------------------------------------------------------------
+// Screen-reader + keyboard decisions (ticket 18). Pure: what selected state
+// a control is in, and what the live region announces. Components render;
+// these decide — the seam tests cover them, nothing is rendered in tests.
+// ---------------------------------------------------------------------------
+
+/** Display labels for the sort pills — single source for UI copy. */
+export const SORT_LABELS: Record<FlightSortKey, string> = {
+  recommended: "Recommended",
+  cheapest: "Cheapest",
+  fastest: "Fastest",
+  earliest: "Earliest",
+}
+
+/** Pressed state for a sort pill — the single source for `aria-pressed`. */
+export function isSortPressed(
+  sort: FlightSortKey,
+  key: FlightSortKey
+): boolean {
+  return sort === key
+}
+
+/** Pressed state for a toggle filter (airline, cabin, ceiling, window). */
+export function isFilterPressed(
+  selected: readonly (string | number)[] | null | undefined,
+  value: string | number
+): boolean {
+  return selected?.includes(value) ?? false
+}
+
+/** Live-region line announcing the active sort together with the count. */
+export function describeSortSelection(
+  sort: FlightSortKey,
+  visibleCount: number
+): string {
+  const noun = visibleCount === 1 ? "flight" : "flights"
+  if (sort === "recommended") {
+    return `Showing ${visibleCount} ${noun} in recommended order.`
+  }
+  return `Sorted by ${SORT_LABELS[sort].toLowerCase()} — ${visibleCount} ${noun} shown.`
+}

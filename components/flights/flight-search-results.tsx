@@ -33,6 +33,7 @@ import { GroupedFlightOffers } from "@/components/flights/grouped-flight-offers"
 import { TrackLink } from "@/components/analytics/track-link"
 import { useFilteredOffers } from "@/components/flights/use-filtered-offers"
 import { FlightSidebarFilters } from "@/components/flights/flight-sidebar-filters"
+import { FlightSortPills } from "@/components/flights/flight-sort-pills"
 import { BestDealsAirline } from "@/components/flights/best-deals-airline"
 import { formatNaira } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -211,7 +212,7 @@ export function FlightSearchResults({
         </aside>
 
         {/* Right Column: Search summary, Quick Sort pills, Best deals matrix & Flight cards */}
-        <main className="flex min-w-0 flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           {/* Top Bar for Results: Flight Count + Quick Sort Pills (Cheapest / Fastest / Earliest) + Mobile Filters Trigger */}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card p-3 shadow-2xs sm:p-4">
             <div className="flex items-center gap-2">
@@ -225,70 +226,22 @@ export function FlightSearchResults({
               ) : null}
             </div>
 
-            {/* Quick Sorter Pills (Wakanow style: Cheapest / Fastest / Earliest) */}
+            {/* Quick Sorter Pills (Wakanow style: Cheapest / Fastest / Earliest) + Mobile Filter Button */}
             <div className="no-scrollbar -mx-1 flex w-full items-center gap-2 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-              {/* Cheapest */}
-              <button
-                type="button"
-                onClick={() => filtered.changeSort("cheapest")}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all active:scale-[0.98]",
-                  filtered.sort === "cheapest"
-                    ? "bg-secondary text-secondary-foreground shadow-xs"
-                    : "border border-border bg-card text-foreground hover:bg-muted/60"
-                )}
-              >
-                <span>Cheapest</span>
-                {sortMetrics.cheapest ? (
-                  <span className="tabular-nums opacity-90">
-                    {sortMetrics.cheapest}
-                  </span>
-                ) : null}
-              </button>
-
-              {/* Fastest */}
-              <button
-                type="button"
-                onClick={() => filtered.changeSort("fastest")}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all active:scale-[0.98]",
-                  filtered.sort === "fastest"
-                    ? "bg-secondary text-secondary-foreground shadow-xs"
-                    : "border border-border bg-card text-foreground hover:bg-muted/60"
-                )}
-              >
-                <span>Fastest</span>
-                {sortMetrics.fastest ? (
-                  <span className="tabular-nums opacity-90">
-                    {sortMetrics.fastest}
-                  </span>
-                ) : null}
-              </button>
-
-              {/* Earliest */}
-              <button
-                type="button"
-                onClick={() => filtered.changeSort("earliest")}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all active:scale-[0.98]",
-                  filtered.sort === "earliest"
-                    ? "bg-secondary text-secondary-foreground shadow-xs"
-                    : "border border-border bg-card text-foreground hover:bg-muted/60"
-                )}
-              >
-                <span>Earliest</span>
-                {sortMetrics.earliest ? (
-                  <span className="tabular-nums opacity-90">
-                    {sortMetrics.earliest}
-                  </span>
-                ) : null}
-              </button>
-
+              <FlightSortPills
+                sort={filtered.sort}
+                visibleCount={visibleCount}
+                cheapest={sortMetrics.cheapest}
+                fastest={sortMetrics.fastest}
+                earliest={sortMetrics.earliest}
+                onChange={filtered.changeSort}
+              />
               {/* Mobile Filter Button */}
               <button
                 type="button"
                 onClick={() => setMobileDrawerOpen(true)}
-                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-bold whitespace-nowrap text-foreground transition-colors hover:bg-muted lg:hidden"
+                aria-haspopup="dialog"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-bold whitespace-nowrap text-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:hidden"
               >
                 <HugeiconsIcon icon={FilterIcon} size={14} aria-hidden="true" />
                 <span>Filters</span>
@@ -425,7 +378,7 @@ export function FlightSearchResults({
               </ButtonLink>
             </div>
           </div>
-        </main>
+        </div>
       </div>
 
       {/* Mobile Filters Drawer */}
@@ -443,7 +396,7 @@ export function FlightSearchResults({
                 </DrawerPrimitive.Title>
                 <DrawerPrimitive.Close
                   aria-label="Close filters"
-                  className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   <HugeiconsIcon
                     icon={Cancel01Icon}

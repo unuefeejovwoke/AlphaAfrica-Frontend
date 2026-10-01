@@ -239,8 +239,10 @@ export function BestDealsAirline({
                   key={deal.airline}
                   type="button"
                   onClick={() => onSelectAirline?.(deal.airline)}
+                  aria-pressed={isSelected}
+                  aria-label={`Filter by ${deal.airline}`}
                   className={cn(
-                    "flex w-36 shrink-0 flex-col items-center px-2 py-1 text-center transition-colors hover:bg-muted/40",
+                    "flex w-36 shrink-0 flex-col items-center px-2 py-1 text-center transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                     isSelected && "bg-primary/5 ring-1 ring-primary/30"
                   )}
                 >
@@ -304,8 +306,9 @@ export function BestDealsAirline({
               key={deal.airline}
               type="button"
               onClick={() => onSelectAirline?.(deal.airline)}
+              aria-pressed={isSelected}
               className={cn(
-                "flex items-center justify-between rounded-xl border border-border/70 bg-card p-3 text-left transition-colors hover:border-primary/40 active:scale-[0.99]",
+                "flex items-center justify-between rounded-xl border border-border/70 bg-card p-3 text-left transition-colors hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.99]",
                 isSelected && "border-primary bg-primary/5"
               )}
             >
@@ -316,9 +319,9 @@ export function BestDealsAirline({
                   size="sm"
                 />
                 <div>
-                  <h4 className="text-xs font-bold text-foreground">
+                  <span className="block text-xs font-bold text-foreground">
                     {deal.airline}
-                  </h4>
+                  </span>
                   <p className="text-[11px] text-muted-foreground">
                     {deal.primaryStops}
                   </p>
@@ -337,7 +340,8 @@ export function BestDealsAirline({
           <button
             type="button"
             onClick={() => setShowAllMobile(!showAllMobile)}
-            className="mt-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+            aria-expanded={showAllMobile}
+            className="mt-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:text-primary/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             <span>
               {showAllMobile

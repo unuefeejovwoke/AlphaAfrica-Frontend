@@ -302,6 +302,17 @@ export function FlightSearchPageClient() {
   // so the search itself collapses the form.
   const [formExpanded, setFormExpanded] = React.useState(true)
   const formSectionRef = React.useRef<HTMLDivElement | null>(null)
+  // Focus target for the modification panel. Set only by an explicit user
+  // action (Modify/Edit) — never on first paint — so replacing the form body
+  // moves keyboard and screen-reader focus to the new heading.
+  const modifyHeadingRef = React.useRef<HTMLHeadingElement | null>(null)
+  const expandFocusRef = React.useRef(false)
+  React.useEffect(() => {
+    if (formExpanded && expandFocusRef.current) {
+      expandFocusRef.current = false
+      modifyHeadingRef.current?.focus()
+    }
+  }, [formExpanded])
   // Ref-based scroll that honors reduced motion (never smooth-scrolls users
   // who asked for less motion).
   const scrollToForm = React.useCallback(() => {
@@ -316,6 +327,7 @@ export function FlightSearchPageClient() {
     })
   }, [])
   const expandForm = React.useCallback(() => {
+    expandFocusRef.current = true
     setFormExpanded(true)
     scrollToForm()
   }, [scrollToForm])
@@ -744,6 +756,7 @@ export function FlightSearchPageClient() {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
+      <h1 className="sr-only">Search flights</h1>
       <FlightJourneyHeader current={hasSearched ? 2 : 1} />
 
       <div
@@ -772,8 +785,12 @@ export function FlightSearchPageClient() {
               </div>
               <button
                 type="button"
-                onClick={() => setFormExpanded(!formExpanded)}
-                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 active:scale-[0.98] sm:text-sm"
+                onClick={() => {
+                  if (!formExpanded) expandFocusRef.current = true
+                  setFormExpanded(!formExpanded)
+                }}
+                aria-expanded={formExpanded}
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.98] sm:text-sm"
               >
                 {formExpanded ? (
                   <>
@@ -795,7 +812,11 @@ export function FlightSearchPageClient() {
               <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6">
                 <div className="mb-4 flex items-center justify-between border-b border-border/60 pb-3">
                   <div>
-                    <h2 className="text-base font-bold text-foreground">
+                    <h2
+                      ref={modifyHeadingRef}
+                      tabIndex={-1}
+                      className="text-base font-bold text-foreground focus:outline-none"
+                    >
                       Modify your flight search
                     </h2>
                     <p className="text-xs text-muted-foreground">

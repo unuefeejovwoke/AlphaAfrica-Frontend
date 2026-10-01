@@ -14,6 +14,7 @@ import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import {
   confirmFlightPrice,
+  describePriceOutcome,
   extractOpaqueOfferBlob,
   getFlightSupportWhatsAppUrl,
   isOfferExpiredError,
@@ -99,6 +100,17 @@ export function FareConfirmDialog({
   const [error, setError] = React.useState<unknown>(null)
   const [retryKey, setRetryKey] = React.useState(0)
 
+  // When the dialog body is replaced (fare changed, expired, or errored),
+  // move focus to the new heading so keyboard and screen-reader Customers
+  // land on the news instead of the stale confirming copy.
+  const titleRef = React.useRef<HTMLHeadingElement | null>(null)
+  React.useEffect(() => {
+    if (!open) return
+    if (phase === "changed" || phase === "expired" || phase === "error") {
+      titleRef.current?.focus()
+    }
+  }, [open, phase])
+
   React.useEffect(() => {
     if (!open || !offer || !display) return
     if (branch === "domestic") {
@@ -159,6 +171,12 @@ export function FareConfirmDialog({
   if (!display) return null
 
   const copy = PHASE_COPY[phase]
+  const fareAnnouncement =
+    phase === "changed" && changedOutcome
+      ? describePriceOutcome(changedOutcome)
+      : phase === "expired"
+        ? describePriceOutcome({ status: "expired" })
+        : null
   const tripContext: FlightTripContext = {
     origin: display.origin,
     destination: display.destination,
@@ -413,7 +431,11 @@ export function FareConfirmDialog({
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <DialogPrimitive.Title className="flex items-center gap-2 text-lg font-bold text-balance text-foreground">
+                <DialogPrimitive.Title
+                  ref={titleRef}
+                  tabIndex={-1}
+                  className="flex items-center gap-2 text-lg font-bold text-balance text-foreground focus:outline-none"
+                >
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <HugeiconsIcon
                       icon={Airplane01Icon}
@@ -440,7 +462,14 @@ export function FareConfirmDialog({
                 />
               </DialogPrimitive.Close>
             </div>
-            <div className="mt-4 min-w-0">{body}</div>
+            <div className="mt-4 min-w-0">
+              {fareAnnouncement ? (
+                <p role="alert" className="sr-only">
+                  {fareAnnouncement}
+                </p>
+              ) : null}
+              {body}
+            </div>
           </DialogPrimitive.Popup>
         </DialogPrimitive.Viewport>
       </DialogPrimitive.Portal>

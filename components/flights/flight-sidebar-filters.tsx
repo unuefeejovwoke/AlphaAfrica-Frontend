@@ -9,12 +9,14 @@ import {
   MoonStarIcon,
   Clock01Icon,
   FilterIcon,
+  Tick01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { formatNaira } from "@/lib/format"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   DEPARTURE_WINDOW_SLOTS,
+  isFilterPressed,
   type DepartureWindow,
   type DurationCeilingOption,
   type FlightFilters,
@@ -126,7 +128,7 @@ export function FlightSidebarFilters({
           <button
             type="button"
             onClick={onReset}
-            className="text-xs font-semibold text-primary hover:underline focus-visible:outline-none"
+            className="rounded text-xs font-semibold text-primary transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             Clear all
           </button>
@@ -134,7 +136,7 @@ export function FlightSidebarFilters({
       </div>
 
       {/* 1. Stops */}
-      <div className="space-y-2.5">
+      <div role="group" aria-label="Stops" className="space-y-2.5">
         <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
           Stops
         </p>
@@ -183,7 +185,7 @@ export function FlightSidebarFilters({
       <hr className="border-border/60" />
 
       {/* 2. Price Filter */}
-      <div className="space-y-2.5">
+      <div role="group" aria-label="Maximum price" className="space-y-2.5">
         <div className="flex items-center justify-between">
           <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
             Price
@@ -204,13 +206,22 @@ export function FlightSidebarFilters({
                   key={`${option.label}-${option.value ?? "all"}`}
                   type="button"
                   onClick={() => onFiltersChange({ maxPriceNgn: option.value })}
+                  aria-pressed={filters.maxPriceNgn === option.value}
                   className={cn(
-                    "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors",
+                    "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                     isSelected
                       ? "border-primary bg-primary font-bold text-primary-foreground"
                       : "border-border bg-muted/40 text-foreground hover:bg-muted"
                   )}
                 >
+                  {isSelected ? (
+                    <HugeiconsIcon
+                      icon={Tick01Icon}
+                      size={12}
+                      aria-hidden="true"
+                      className="mr-1 inline-block"
+                    />
+                  ) : null}
                   {option.label}
                 </button>
               )
@@ -222,7 +233,7 @@ export function FlightSidebarFilters({
       <hr className="border-border/60" />
 
       {/* 4. Duration */}
-      <div className="space-y-2.5">
+      <div role="group" aria-label="Maximum duration" className="space-y-2.5">
         <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
           Duration
         </p>
@@ -237,13 +248,22 @@ export function FlightSidebarFilters({
                   onClick={() =>
                     onFiltersChange({ maxDurationMin: option.value })
                   }
+                  aria-pressed={filters.maxDurationMin === option.value}
                   className={cn(
-                    "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors",
+                    "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                     isSelected
                       ? "border-primary bg-primary font-bold text-primary-foreground"
                       : "border-border bg-muted/40 text-foreground hover:bg-muted"
                   )}
                 >
+                  {isSelected ? (
+                    <HugeiconsIcon
+                      icon={Tick01Icon}
+                      size={12}
+                      aria-hidden="true"
+                      className="mr-1 inline-block"
+                    />
+                  ) : null}
                   {option.label}
                 </button>
               )
@@ -255,7 +275,7 @@ export function FlightSidebarFilters({
       <hr className="border-border/60" />
 
       {/* 5. Departure Time */}
-      <div className="space-y-2.5">
+      <div role="group" aria-label="Departure time" className="space-y-2.5">
         <div className="flex items-center gap-1.5">
           <HugeiconsIcon
             icon={Clock01Icon}
@@ -269,8 +289,10 @@ export function FlightSidebarFilters({
         </div>
         <div className="grid grid-cols-2 gap-2">
           {DEPARTURE_WINDOW_SLOTS.map((slot) => {
-            const isSelected =
-              filters.departureWindows?.includes(slot.key) ?? false
+            const isSelected = isFilterPressed(
+              filters.departureWindows,
+              slot.key
+            )
             const Icon = DEPARTURE_WINDOW_ICONS[slot.key]
 
             return (
@@ -285,13 +307,22 @@ export function FlightSidebarFilters({
                     ),
                   })
                 }
+                aria-pressed={isSelected}
                 className={cn(
-                  "flex flex-col items-center justify-center rounded-xl border p-2.5 text-center transition-all",
+                  "relative flex flex-col items-center justify-center rounded-xl border p-2.5 text-center transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                   isSelected
                     ? "border-primary bg-primary/10 font-bold text-primary ring-1 ring-primary/40"
                     : "border-border bg-card text-foreground hover:bg-muted/50"
                 )}
               >
+                {isSelected ? (
+                  <HugeiconsIcon
+                    icon={Tick01Icon}
+                    size={13}
+                    aria-hidden="true"
+                    className="absolute top-1.5 right-1.5 text-primary"
+                  />
+                ) : null}
                 <HugeiconsIcon
                   icon={Icon}
                   size={18}
@@ -312,7 +343,7 @@ export function FlightSidebarFilters({
         <>
           <hr className="border-border/60" />
           {/* 5. Airlines */}
-          <div className="space-y-2.5">
+          <div role="group" aria-label="Airlines" className="space-y-2.5">
             <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
               Airlines
             </p>
@@ -347,7 +378,7 @@ export function FlightSidebarFilters({
       <hr className="border-border/60" />
 
       {/* 6. Cabin */}
-      <div className="space-y-2.5">
+      <div role="group" aria-label="Cabin class" className="space-y-2.5">
         <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
           Cabin Class
         </p>
@@ -359,13 +390,22 @@ export function FlightSidebarFilters({
                 key={opt.label}
                 type="button"
                 onClick={() => onFiltersChange({ cabin: opt.value })}
+                aria-pressed={isSelected}
                 className={cn(
-                  "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors",
+                  "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                   isSelected
                     ? "border-primary bg-primary font-bold text-primary-foreground"
                     : "border-border bg-card text-foreground hover:bg-muted"
                 )}
               >
+                {isSelected ? (
+                  <HugeiconsIcon
+                    icon={Tick01Icon}
+                    size={12}
+                    aria-hidden="true"
+                    className="mr-1 inline-block"
+                  />
+                ) : null}
                 {opt.label}
               </button>
             )
