@@ -54,7 +54,17 @@ import { FILTER_PARAM_KEYS, parseNairaAmount } from "@/lib/api/flight-filters"
 import { useDomesticStream } from "@/components/flights/use-domestic-stream"
 import { FlightJourneyHeader } from "@/components/flights/flight-journey-header"
 import { NearbyDatesBar } from "@/components/flights/nearby-dates-bar"
-import { FareConfirmDialog } from "@/components/flights/fare-confirm-dialog"
+
+// Interaction-only interface (ticket 22): the fare confirmation dialog is
+// loaded on first open, not on first paint. Rendered only while a selection
+// is pending, so the chunk is never fetched on the critical search path.
+const FareConfirmDialog = dynamic(
+  () =>
+    import("@/components/flights/fare-confirm-dialog").then(
+      (m) => m.FareConfirmDialog
+    ),
+  { ssr: false }
+)
 
 // Heavy result component — dynamic import for bundle size (vercel: bundle-dynamic-imports)
 const FlightSearchResults = dynamic(
@@ -992,16 +1002,20 @@ export function FlightSearchPageClient() {
         )}
       </section>
 
-      <FareConfirmDialog
-        open={pendingSelection !== null}
-        offer={pendingSelection?.offer ?? null}
-        display={pendingSelection?.display ?? null}
-        branch={pendingSelection?.branch ?? "international"}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) setPendingSelection(null)
-        }}
-        onContinue={handleFareContinue}
-      />
+      {/* Mounted only while a selection is pending, so the dialog's chunk
+          loads on first open rather than on first paint. */}
+      {pendingSelection !== null ? (
+        <FareConfirmDialog
+          open
+          offer={pendingSelection.offer}
+          display={pendingSelection.display}
+          branch={pendingSelection.branch}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setPendingSelection(null)
+          }}
+          onContinue={handleFareContinue}
+        />
+      ) : null}
     </div>
   )
 }

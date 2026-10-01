@@ -178,13 +178,21 @@ export const paginatedVehicleListSchema = z.object({
 
 export type PaginatedVehicles = PaginatedResponse<VehicleList>
 
+/**
+ * Search vehicles via `GET /api/cars/` with centralized validation.
+ * - `noStore: true` — every query is request-time state, never cached.
+ * - `signal` (ticket 22): superseded searches and unmounting abort the
+ *   in-flight request instead of letting it finish unseen.
+ */
 export async function getVehicles(
-  query: CarSearchQuery
+  query: CarSearchQuery,
+  options?: { signal?: AbortSignal }
 ): Promise<PaginatedVehicles> {
   const raw = await apiGet<unknown>("/api/cars/", {
     query: toCarApiQuery(query),
     noStore: true,
     timeoutMs: SEARCH_TIMEOUT_MS,
+    signal: options?.signal,
   })
   const parsed = paginatedVehicleListSchema.safeParse(raw)
   if (!parsed.success) {

@@ -179,7 +179,7 @@ function extractDetail(payload: unknown): string | null {
 }
 
 /** Caller cancellation (AbortError, or a caller-owned TimeoutError). */
-function isAbortError(error: unknown): boolean {
+export function isAbortError(error: unknown): boolean {
   if (error instanceof DOMException) {
     return error.name === "AbortError" || error.name === "TimeoutError"
   }

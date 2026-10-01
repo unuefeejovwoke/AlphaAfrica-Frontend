@@ -351,16 +351,20 @@ export type PaginatedHotels = PaginatedResponse<HotelList>
 /**
  * Search hotels via `GET /api/hotels/` with centralized validation.
  * - `noStore: true` — every query is request-time state, never cached (ADR-0005).
+ * - `signal` (ticket 22): superseded searches and unmounting abort the
+ *   in-flight request instead of letting it finish unseen.
  * - The response is validated against the backend contract; a shape violation
  *   throws a typed, customer-safe error instead of a partial result.
  */
 export async function getHotels(
-  query: HotelSearchQuery
+  query: HotelSearchQuery,
+  options?: { signal?: AbortSignal }
 ): Promise<PaginatedHotels> {
   const raw = await apiGet<unknown>("/api/hotels/", {
     query: toHotelApiQuery(query),
     noStore: true,
     timeoutMs: SEARCH_TIMEOUT_MS,
+    signal: options?.signal,
   })
 
   const parsed = paginatedHotelListSchema.safeParse(raw)

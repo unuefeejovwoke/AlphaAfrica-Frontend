@@ -13,7 +13,7 @@ import {
   CarSortSelect,
 } from "@/components/cars/car-filters"
 import { CarPagination } from "@/components/cars/car-pagination"
-import { ApiError } from "@/lib/api/client"
+import { ApiError, isAbortError } from "@/lib/api/client"
 import { track } from "@/lib/analytics"
 import { formatNaira } from "@/lib/format"
 import {
@@ -97,7 +97,11 @@ export function CarSearchPageClient({
   )
   const [error, setError] = React.useState<unknown | null>(seeded.error)
   const [isFilterPending, startFilterTransition] = React.useTransition()
+  // Ignore stale responses when a newer search supersedes an in-flight one,
+  // and abort that superseded request outright (ticket 22) — rapid filtering
+  // must not spend server work on answers nobody sees. Unmounting aborts too.
   const requestIdRef = React.useRef(0)
+  const searchAbortRef = React.useRef<AbortController | null>(null)
   // Last URL search state that was hydrated, so each change searches once.
   // A server payload (document load) already covers the entry URL, so it
   // counts as searched from the first render — never a duplicate fetch.
@@ -123,12 +127,15 @@ export function CarSearchPageClient({
 
   const runSearch = React.useCallback(async (query: CarSearchQuery) => {
     const requestId = ++requestIdRef.current
+    searchAbortRef.current?.abort()
+    const controller = new AbortController()
+    searchAbortRef.current = controller
     // Background refetches (filter/page transitions) keep previous results
     // visible — the pending dim comes from `isFilterPending`. Only fresh
     // loads without data enter the skeleton state.
     setError(null)
     try {
-      const page = await getVehicles(query)
+      const page = await getVehicles(query, { signal: controller.signal })
       if (requestId !== requestIdRef.current) return
       if (query.page === 1 && page.results.length > 0) {
         pageSizeRef.current = page.results.length
@@ -149,10 +156,19 @@ export function CarSearchPageClient({
       }
     } catch (caught) {
       if (requestId !== requestIdRef.current) return
+      // Our own abort (superseded search or unmount) is not an error state.
+      if (isAbortError(caught)) return
       pendingScrollRef.current = false
       setError(caught)
       setPageData(null)
       setStatus("error")
+    }
+  }, [])
+
+  // Cancel in-flight work when the listing unmounts.
+  React.useEffect(() => {
+    return () => {
+      searchAbortRef.current?.abort()
     }
   }, [])
 
