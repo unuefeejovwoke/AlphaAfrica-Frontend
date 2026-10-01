@@ -93,14 +93,14 @@ export interface GuestBookingCopy {
 
 /**
  * The booking-specific behaviour supplied to the shared form. The payload
- * is opaque between {@link GuestBookingMachine.buildPayload} and
- * {@link GuestBookingMachine.createBooking} (and is digested for reuse
+ * is opaque between {@link GuestBookingAdapter.buildPayload} and
+ * {@link GuestBookingAdapter.createBooking} (and is digested for reuse
  * identity), so adapters keep their concrete payload types internally.
  */
-export interface GuestBookingMachine {
+export interface GuestBookingAdapter {
   /** Build the creation payload from validated guest contact values. */
   buildPayload(values: GuestContactInput): object
-  /** Create the booking from a payload this machine's buildPayload built. */
+  /** Create the booking from a payload this adapter's buildPayload built. */
   createBooking(payload: object): Promise<BookingCreateResult>
   /** Stored-creation session key for identical-retry reuse. */
   pendingSessionKey: string
@@ -137,7 +137,7 @@ export interface CarGuestBookingData {
 
 /** Everything the shared form renders one booking type with. */
 export interface GuestBookingSetup {
-  booking: GuestBookingMachine
+  booking: GuestBookingAdapter
   copy: GuestBookingCopy
   /** Stay/hire-aware WhatsApp escape hatch (non-personal context only). */
   supportHref: string

@@ -198,23 +198,12 @@ export interface TravellerFormValues {
 
 /**
  * Form-side input shape: every field is typed text until the schema parses —
- * the gender select reads raw, and phones normalize on parse. Passport keys
- * stay optional because the domestic path hides them entirely.
+ * the gender select reads raw, and phones normalize on parse. Derived from
+ * {@link TravellerFormTraveller} with only the parsed-on-submit fields
+ * widened; passport keys stay optional because the domestic path hides them.
  */
 export interface TravellerFormInput {
-  travellers: {
-    first_name: string
-    last_name: string
-    date_of_birth: string
-    gender: string
-    email: string
-    phone_country_code: string
-    phone: string
-    traveler_type: TravelerType
-    passport_number?: string
-    passport_expiry?: string
-    nationality?: string
-  }[]
+  travellers: (Omit<TravellerFormTraveller, "gender"> & { gender: string })[]
   contactIsFirstTraveller: boolean
   customer: { name: string; email: string; phone: string }
 }

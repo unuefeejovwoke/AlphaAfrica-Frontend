@@ -88,11 +88,6 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Resolve the backend base URL from the environment (see `lib/env.ts`).
- * Callers that need it import `apiBaseUrl` from `lib/env.ts` directly.
- */
-
 function buildQueryString(
   query?: Record<string, string | number | boolean | null | undefined>
 ): string {

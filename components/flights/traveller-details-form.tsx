@@ -118,7 +118,7 @@ function getTravellerFieldError(
 const AgeBandWarnings = React.memo(function AgeBandWarnings({
   control,
 }: {
-  control: Control<TravellerFormInput, any, TravellerFormValues>
+  control: Control<TravellerFormInput, unknown, TravellerFormValues>
 }) {
   const travellers = useWatch({ control, name: "travellers" })
   const warnings = React.useMemo(
@@ -195,7 +195,7 @@ export function TravellerDetailsForm({
   // TInput carries the raw form state (the gender select reads typed text
   // until parse); TTransformedValues is the schema-parsed output that submit
   // receives — phones normalized, gender narrowed.
-  const form = useForm<TravellerFormInput, any, TravellerFormValues>({
+  const form = useForm<TravellerFormInput, unknown, TravellerFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
     mode: "onTouched",
