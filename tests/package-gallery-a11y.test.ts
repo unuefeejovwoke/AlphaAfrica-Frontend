@@ -2,6 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import {
   buildGalleryPhotos,
+  clampGalleryIndex,
   describeGalleryPhoto,
   galleryOpenerLabel,
   nextPhotoIndex,
@@ -43,6 +44,14 @@ test("Photo navigation wraps around both ends", () => {
   assert.equal(nextPhotoIndex(0, 1), 0)
   assert.equal(prevPhotoIndex(0, 1), 0)
   assert.equal(nextPhotoIndex(0, 0), 0)
+})
+
+test("Open transition lands on a valid photo even if the list shrank", () => {
+  assert.equal(clampGalleryIndex(0, 3), 0)
+  assert.equal(clampGalleryIndex(2, 3), 2)
+  assert.equal(clampGalleryIndex(5, 3), 2)
+  assert.equal(clampGalleryIndex(-1, 3), 0)
+  assert.equal(clampGalleryIndex(0, 0), 0)
 })
 
 test("Photo descriptions name the photo and its place", () => {

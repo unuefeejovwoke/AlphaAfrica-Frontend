@@ -10,6 +10,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import {
   describeGalleryPhoto,
+  clampGalleryIndex,
   nextPhotoIndex,
   prevPhotoIndex,
   resolveListingImageUrl,
@@ -45,14 +46,15 @@ export function PackageLightbox({
   returnRef,
 }: PackageLightboxProps) {
   const count = photos.length
-  const active = photos[Math.min(index, Math.max(count - 1, 0))] ?? null
+  const safeIndex = clampGalleryIndex(index, count)
+  const active = photos[safeIndex] ?? null
 
   const next = React.useCallback(() => {
-    onIndexChange(nextPhotoIndex(index, count))
-  }, [index, count, onIndexChange])
+    onIndexChange(nextPhotoIndex(safeIndex, count))
+  }, [safeIndex, count, onIndexChange])
   const prev = React.useCallback(() => {
-    onIndexChange(prevPhotoIndex(index, count))
-  }, [index, count, onIndexChange])
+    onIndexChange(prevPhotoIndex(safeIndex, count))
+  }, [safeIndex, count, onIndexChange])
 
   React.useEffect(() => {
     if (!open) return
@@ -154,7 +156,7 @@ export function PackageLightbox({
                   type="button"
                   onClick={() => onIndexChange(i)}
                   aria-label={`Go to photo ${i + 1}`}
-                  aria-current={i === index}
+                  aria-current={i === index ? true : undefined}
                   className={cn(
                     "relative size-14 shrink-0 overflow-hidden rounded-lg border-2 opacity-60 transition-all hover:opacity-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none",
                     i === index

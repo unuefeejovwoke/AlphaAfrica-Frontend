@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import {
   describeSortSelection,
   isSortPressed,
+  SORT_LABELS,
   type FlightSortKey,
 } from "@/lib/api/flight-filters"
 
@@ -20,12 +21,11 @@ export interface FlightSortPillsProps {
 
 const PILLS: {
   key: Exclude<FlightSortKey, "recommended">
-  label: string
   metric: keyof Omit<FlightSortPillsProps, "sort" | "visibleCount" | "onChange">
 }[] = [
-  { key: "cheapest", label: "Cheapest", metric: "cheapest" },
-  { key: "fastest", label: "Fastest", metric: "fastest" },
-  { key: "earliest", label: "Earliest", metric: "earliest" },
+  { key: "cheapest", metric: "cheapest" },
+  { key: "fastest", metric: "fastest" },
+  { key: "earliest", metric: "earliest" },
 ]
 
 /**
@@ -70,7 +70,7 @@ export function FlightSortPills({
                 className="shrink-0"
               />
             ) : null}
-            <span>{pill.label}</span>
+            <span>{SORT_LABELS[pill.key]}</span>
             {metric ? (
               <span className="tabular-nums opacity-90">{metric}</span>
             ) : null}

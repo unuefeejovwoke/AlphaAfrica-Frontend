@@ -7,6 +7,7 @@ import {
   ArrowRight01Icon,
   ChevronDownIcon,
   ChevronUpIcon,
+  Tick01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { formatNaira } from "@/lib/format"
@@ -160,6 +161,8 @@ export function BestDealsAirline({
 
   return (
     <div
+      role="group"
+      aria-labelledby="fares-by-airline-heading"
       className={cn(
         "flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-4 shadow-xs sm:p-5",
         className
@@ -167,7 +170,10 @@ export function BestDealsAirline({
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-bold text-foreground sm:text-lg">
+          <h3
+            id="fares-by-airline-heading"
+            className="text-base font-bold text-foreground sm:text-lg"
+          >
             Fares by airline
           </h3>
           <p className="text-xs text-muted-foreground">
@@ -181,7 +187,7 @@ export function BestDealsAirline({
             type="button"
             onClick={scrollLeft}
             aria-label="Scroll airlines left"
-            className="flex size-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+            className="flex size-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95"
           >
             <HugeiconsIcon
               icon={ArrowLeft01Icon}
@@ -193,7 +199,7 @@ export function BestDealsAirline({
             type="button"
             onClick={scrollRight}
             aria-label="Scroll airlines right"
-            className="flex size-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+            className="flex size-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95"
           >
             <HugeiconsIcon
               icon={ArrowRight01Icon}
@@ -253,7 +259,15 @@ export function BestDealsAirline({
                       logoUrl={deal.logoUrl}
                       size="sm"
                     />
-                    <span className="line-clamp-1 w-full text-[11px] font-bold text-foreground">
+                    <span className="line-clamp-1 flex w-full items-center justify-center gap-1 text-[11px] font-bold text-foreground">
+                      {isSelected ? (
+                        <HugeiconsIcon
+                          icon={Tick01Icon}
+                          size={11}
+                          aria-hidden="true"
+                          className="shrink-0 text-primary"
+                        />
+                      ) : null}
                       {deal.airline}
                     </span>
                   </div>
@@ -328,7 +342,15 @@ export function BestDealsAirline({
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-extrabold text-foreground tabular-nums">
+                <span className="flex items-center justify-end gap-1 text-xs font-extrabold text-foreground tabular-nums">
+                  {isSelected ? (
+                    <HugeiconsIcon
+                      icon={Tick01Icon}
+                      size={12}
+                      aria-hidden="true"
+                      className="shrink-0 text-primary"
+                    />
+                  ) : null}
                   {deal.overallMin ? formatNaira(deal.overallMin) : "—"}
                 </span>
               </div>

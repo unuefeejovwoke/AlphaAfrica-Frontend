@@ -157,6 +157,16 @@ export function prevPhotoIndex(active: number, count: number): number {
   return count <= 0 ? 0 : (active - 1 + count) % count
 }
 
+/**
+ * Clamp an incoming photo index to the open dialog (ticket 19): the open
+ * transition lands on a valid photo even if the list shrank mid-session.
+ */
+export function clampGalleryIndex(index: number, count: number): number {
+  if (count <= 0) return 0
+  if (index < 0) return 0
+  return Math.min(index, count - 1)
+}
+
 /** Alt text / caption line: always names the photo and its place. */
 export function describeGalleryPhoto(
   title: string,
