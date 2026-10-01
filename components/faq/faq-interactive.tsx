@@ -61,7 +61,7 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search topics, questions, or keywords…"
-            className="w-full rounded-full border border-foreground/15 bg-background/80 py-3.5 pr-11 pl-11 text-sm text-foreground shadow-[0_4px_20px_rgba(0,0,0,0.04)] backdrop-blur-md transition-all duration-200 placeholder:text-muted-foreground/70 hover:border-foreground/25 focus:border-foreground/40 focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            className="w-full rounded-full border border-foreground/15 bg-background/80 py-3.5 pr-11 pl-11 text-sm text-foreground shadow-[0_4px_20px_rgba(0,0,0,0.04)] backdrop-blur-md transition-all duration-200 placeholder:text-muted-foreground hover:border-foreground/25 focus:border-foreground/40 focus:ring-2 focus:ring-primary/20 focus:outline-none"
             aria-label="Search frequently asked questions"
           />
           {searchQuery && (

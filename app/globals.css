@@ -47,6 +47,15 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* WCAG AA contrast pass (ticket 04): the success green ships one step darker
+   than the Tailwind default, so every existing `emerald-600` usage — white
+   text on green buttons, green text on light surfaces — meets 4.5:1 at once
+   with no per-component edits. Do not "restore" this to #059669; the token
+   test asserts the ratio. */
+@theme {
+  --color-emerald-600: #047857;
+}
+
 :root {
   color-scheme: light;
   --background: #faf9f7;
@@ -55,7 +64,7 @@
   --card-foreground: #171217;
   --popover: #ffffff;
   --popover-foreground: #171217;
-  --primary: #ff6738;
+  --primary: #c2410c;
   --primary-foreground: #ffffff;
   --secondary: #571563;
   --secondary-foreground: #ffffff;
@@ -66,7 +75,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: #e9e3e7;
   --input: #e9e3e7;
-  --ring: #ff6738;
+  --ring: #c2410c;
   --chart-1: #ff6738;
   --chart-2: #571563;
   --chart-3: oklch(0.439 0 0);
@@ -75,12 +84,12 @@
   --radius: 0.625rem;
   --sidebar: #faf9f7;
   --sidebar-foreground: #171217;
-  --sidebar-primary: #ff6738;
+  --sidebar-primary: #c2410c;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #f4eff2;
   --sidebar-accent-foreground: #571563;
   --sidebar-border: #e9e3e7;
-  --sidebar-ring: #ff6738;
+  --sidebar-ring: #c2410c;
 }
 
 @layer base {
