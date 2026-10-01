@@ -1,5 +1,5 @@
 import { canonicalUrl, getSiteUrl } from "./seo.ts"
-import { resolveListingImageUrl } from "./listings.ts"
+import { LISTING_IMAGE_FALLBACK, resolveListingImageUrl } from "./listings.ts"
 import type {
   BlogFilters,
   BlogOrdering,
@@ -85,7 +85,14 @@ export function buildBlogSearchParams(filters: BlogFilters): string {
 
 /** True when the query carries any blog search state (drives noindex + status). */
 export function hasBlogSearchParams(input: RawSearchParams): boolean {
-  for (const key of ["search", "category", "tag", "featured", "ordering", "page"] as const) {
+  for (const key of [
+    "search",
+    "category",
+    "tag",
+    "featured",
+    "ordering",
+    "page",
+  ] as const) {
     const value = firstString(input[key])
     if (typeof value === "string" && value.trim() !== "") return true
   }
@@ -127,7 +134,8 @@ function isSafeHttpUrl(value: string): boolean {
 
 function sanitizeAttributes(tag: string, attrs: string): string {
   const out: string[] = []
-  const attrPattern = /([a-zA-Z:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g
+  const attrPattern =
+    /([a-zA-Z:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g
   let match: RegExpExecArray | null
   while ((match = attrPattern.exec(attrs)) !== null) {
     const name = match[1].toLowerCase()
@@ -167,16 +175,22 @@ export function sanitizeBlogHtml(html: string | null | undefined): string {
     /<(script|style|iframe|object|embed|form|input|button|select|textarea|noscript|template)[^>]*>[\s\S]*?<\/\1\s*>/gi,
     ""
   )
-  clean = clean.replace(/<(script|style|iframe|object|embed|link|meta)[^>]*\/?>/gi, "")
+  clean = clean.replace(
+    /<(script|style|iframe|object|embed|link|meta)[^>]*\/?>/gi,
+    ""
+  )
   // Unwrap disallowed tags but keep inner text.
-  clean = clean.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>/g, (full, tagName: string, attrs: string) => {
-    const tag = tagName.toLowerCase()
-    const isClosing = full.startsWith("</")
-    if (!ALLOWED_TAGS.has(tag)) return ""
-    if (isClosing) return `</${tag}>`
-    if (tag === "br" || tag === "hr") return `<${tag}>`
-    return `<${tag}${sanitizeAttributes(tag, attrs ?? "")}>`
-  })
+  clean = clean.replace(
+    /<\/?([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>/g,
+    (full, tagName: string, attrs: string) => {
+      const tag = tagName.toLowerCase()
+      const isClosing = full.startsWith("</")
+      if (!ALLOWED_TAGS.has(tag)) return ""
+      if (isClosing) return `</${tag}>`
+      if (tag === "br" || tag === "hr") return `<${tag}>`
+      return `<${tag}${sanitizeAttributes(tag, attrs ?? "")}>`
+    }
+  )
   return clean.trim()
 }
 
@@ -188,7 +202,10 @@ export function deriveTocFromBody(body: string): BlogTocItem[] {
   while ((match = pattern.exec(body)) !== null) {
     const level = Number(match[1])
     const id = match[2].trim()
-    const text = match[3].replace(/<[^>]+>/g, "").trim().slice(0, 160)
+    const text = match[3]
+      .replace(/<[^>]+>/g, "")
+      .trim()
+      .slice(0, 160)
     if (id && text) items.push({ id, text, level })
     if (items.length >= 20) break
   }
@@ -205,7 +222,9 @@ export function resolveBlogToc(post: BlogPostDetail): BlogTocItem[] {
 // Display + SEO
 // ---------------------------------------------------------------------------
 
-export function formatBlogDate(value: string | null | undefined): string | null {
+export function formatBlogDate(
+  value: string | null | undefined
+): string | null {
   if (!value) return null
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
@@ -218,7 +237,7 @@ export function formatBlogDate(value: string | null | undefined): string | null 
 
 export function blogImageSrc(
   src: string | null | undefined,
-  fallback = "/android-chrome-512x512.png"
+  fallback: string = LISTING_IMAGE_FALLBACK
 ): string {
   if (!src || src.trim().length === 0) return fallback
   return resolveListingImageUrl(src)
@@ -230,7 +249,9 @@ export function blogExcerpt(
 ): string {
   const text = (excerpt ?? "").trim()
   if (text.length === 0) return ""
-  return text.length > fallbackLength ? `${text.slice(0, fallbackLength).trim()}…` : text
+  return text.length > fallbackLength
+    ? `${text.slice(0, fallbackLength).trim()}…`
+    : text
 }
 
 /** ItemList graph for `/blog` — one node per card, no thin pages. */

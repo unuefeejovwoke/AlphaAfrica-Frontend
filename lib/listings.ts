@@ -88,13 +88,19 @@ export function parsePriceAmount(
 }
 
 /**
+ * Used when a backend record carries no image. The 1200x630 share card
+ * crops cleanly to any card aspect, so a missing image reads as an
+ * intentional brand panel instead of a stretched app icon.
+ */
+export const LISTING_IMAGE_FALLBACK = "/images/og-share-card.webp"
+
+/**
  * Resolve backend imagery (absolute URL or relative `/media/` path) to an
  * absolute URL. Empty input falls back to a local brand asset so cards
  * never render a broken image.
  */
 export function resolveListingImageUrl(src: string | null | undefined): string {
-  const fallback = "/android-chrome-512x512.png"
-  if (!src || src.trim().length === 0) return fallback
+  if (!src || src.trim().length === 0) return LISTING_IMAGE_FALLBACK
   const trimmed = src.trim()
   if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith("data:"))
     return trimmed

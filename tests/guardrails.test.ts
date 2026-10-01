@@ -8,10 +8,7 @@ import {
   securityHeaders,
 } from "../lib/guardrails.ts"
 import { isLoopbackUrl, resolveBaseUrl } from "../lib/env.ts"
-import {
-  MAX_PROXY_BODY_BYTES,
-  proxyToBackend,
-} from "../lib/api/proxy.ts"
+import { MAX_PROXY_BODY_BYTES, proxyToBackend } from "../lib/api/proxy.ts"
 import { DOMESTIC_STREAM_TIMEOUT_MS } from "../lib/api/domestic.ts"
 import { SEARCH_TIMEOUT_MS } from "../lib/api/client.ts"
 
@@ -43,10 +40,6 @@ test("Guardrails: site-wide headers block token leaks via Referer plus transport
 test("Guardrails: loopback image hosts work in development only", () => {
   const prod = imageRemotePatterns(true)
   assert.ok(
-    prod.some((p) => p.hostname === "images.unsplash.com"),
-    "Production keeps the editorial image host"
-  )
-  assert.ok(
     prod.some((p) => p.hostname === "api.alphaaafrica.com"),
     "Production keeps the backend media host"
   )
@@ -59,9 +52,7 @@ test("Guardrails: loopback image hosts work in development only", () => {
   }
   const dev = imageRemotePatterns(false)
   assert.equal(
-    dev.some(
-      (p) => p.hostname === "localhost" && p.protocol === "http"
-    ),
+    dev.some((p) => p.hostname === "localhost" && p.protocol === "http"),
     true,
     "Development keeps local image optimisation working"
   )
@@ -99,7 +90,9 @@ function snapshotRuntime(): Record<RuntimeKey, string | undefined> {
   }
 }
 
-function restoreRuntime(snapshot: Record<RuntimeKey, string | undefined>): void {
+function restoreRuntime(
+  snapshot: Record<RuntimeKey, string | undefined>
+): void {
   const env = process.env as Record<string, string | undefined>
   for (const key of RUNTIME_KEYS) {
     const value = snapshot[key]
@@ -223,11 +216,7 @@ test("Guardrails: proxy rejects oversized bodies before touching upstream", asyn
     })
     const rejected = await proxyToBackend(oversized, "/api/flights/search/")
     assert.equal(rejected.status, 413)
-    assert.equal(
-      calls.length,
-      0,
-      "Oversized bodies never reach the backend"
-    )
+    assert.equal(calls.length, 0, "Oversized bodies never reach the backend")
 
     const small = new Request("http://localhost/api/flights/search/", {
       method: "POST",
@@ -260,10 +249,7 @@ test("Guardrails: proxy error answers carry content-type protection", async () =
     })
     const response = await proxyToBackend(request, "/api/flights/search/")
     assert.equal(response.status, 502)
-    assert.equal(
-      response.headers.get("X-Content-Type-Options"),
-      "nosniff"
-    )
+    assert.equal(response.headers.get("X-Content-Type-Options"), "nosniff")
   } finally {
     ;(globalThis as { fetch?: unknown }).fetch = originalFetch
   }

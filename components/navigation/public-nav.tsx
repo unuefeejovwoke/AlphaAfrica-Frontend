@@ -16,6 +16,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { ButtonLink } from "@/components/ui/button"
 import { UnderConstructionBadge } from "@/components/shared/under-construction-badge"
+import { SERVICE_IMAGES } from "@/lib/images"
 import { cn } from "@/lib/utils"
 
 type ServiceItem = {
@@ -23,6 +24,8 @@ type ServiceItem = {
   href: string
   description: string
   image: string
+  /** Descriptive alt text — the tile is decorative only in the mobile drawer. */
+  imageAlt: string
   span: string
   sizes: string
   /** Renders the card as a disabled, non-linkable surface. */
@@ -34,8 +37,8 @@ const SERVICES: ServiceItem[] = [
     title: "Flights",
     href: "/flights",
     description: "Compare live fares and book in minutes — no account needed.",
-    image:
-      "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=800&q=80",
+    image: SERVICE_IMAGES.flights,
+    imageAlt: "Passenger jet climbing after takeoff at dusk",
     span: "col-span-2",
     sizes: "(max-width: 1280px) 50vw, 600px",
   },
@@ -43,8 +46,8 @@ const SERVICES: ServiceItem[] = [
     title: "Hotels",
     href: "/hotels",
     description: "Find a place to stay, check the price, book it. Done.",
-    image:
-      "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    image: SERVICE_IMAGES.hotels,
+    imageAlt: "Hotel exterior and lit swimming pool at blue hour",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
   },
@@ -53,8 +56,8 @@ const SERVICES: ServiceItem[] = [
     href: "/destinations",
     description:
       "See where you can go, what trips are available, and what they cost.",
-    image:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+    image: SERVICE_IMAGES.destinations,
+    imageAlt: "City skyline beside the water at sunset",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
   },
@@ -63,8 +66,8 @@ const SERVICES: ServiceItem[] = [
     href: "/visa",
     description:
       "Unsure about your visa? A specialist reviews your documents and guides you.",
-    image:
-      "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
+    image: SERVICE_IMAGES.visa,
+    imageAlt: "Passport, stamped documents and reading glasses on a desk",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
   },
@@ -72,8 +75,8 @@ const SERVICES: ServiceItem[] = [
     title: "Car Rentals",
     href: "/cars",
     description: "Airport pickup or a car for the week — book by the hour.",
-    image:
-      "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+    image: SERVICE_IMAGES.cars,
+    imageAlt: "SUV waiting at an airport terminal curb with its driver",
     span: "col-span-1",
     sizes: "(max-width: 1280px) 25vw, 300px",
   },
@@ -82,8 +85,9 @@ const SERVICES: ServiceItem[] = [
     href: "/packages",
     description:
       "Ready-made holidays with flights and stays included. Tell us what you want.",
-    image:
-      "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=800&q=80",
+    image: SERVICE_IMAGES.packages,
+    imageAlt:
+      "Family walking through a resort garden toward the ocean at sunset",
     span: "col-span-2",
     sizes: "(max-width: 1280px) 50vw, 600px",
   },
@@ -258,7 +262,7 @@ export function PublicNav() {
                     <>
                       <Image
                         src={service.image}
-                        alt={service.title}
+                        alt={service.imageAlt}
                         fill
                         sizes={service.sizes}
                         className={cn(
@@ -399,7 +403,7 @@ export function PublicNav() {
                         <>
                           <Image
                             src={item.image}
-                            alt={item.title}
+                            alt={item.imageAlt}
                             fill
                             sizes="180px"
                             className={cn(

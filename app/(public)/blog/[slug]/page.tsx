@@ -12,7 +12,11 @@ import { BlogToc } from "@/components/blog/blog-toc"
 import { BlogShareButton } from "@/components/blog/blog-share-button"
 import { ViewTracker } from "@/components/analytics/view-tracker"
 import { TerminalCta } from "@/components/shared/terminal-cta"
-import { getBlogPostDetail, getRelatedBlogPosts, listBlogSlugs } from "@/lib/api/blog"
+import {
+  getBlogPostDetail,
+  getRelatedBlogPosts,
+  listBlogSlugs,
+} from "@/lib/api/blog"
 import { ApiError } from "@/lib/api/client"
 import {
   blogDetailJsonLd,
@@ -25,6 +29,7 @@ import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 import { serializeJsonLd } from "@/lib/structured-data"
 import { humanizeSlug } from "@/lib/listings"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
+import { CTA_BLOG_POST } from "@/lib/images"
 
 export const revalidate = 3600
 export const dynamicParams = true
@@ -47,7 +52,10 @@ export async function generateMetadata({
     const post = await getBlogPostDetail(slug)
     const seoTitle = post.seo?.meta_title?.trim()
     const seoDescription = post.seo?.meta_description?.trim()
-    const title = seoTitle && seoTitle.length > 0 ? seoTitle : `${post.title} | Alphaa Africa`
+    const title =
+      seoTitle && seoTitle.length > 0
+        ? seoTitle
+        : `${post.title} | Alphaa Africa`
     const description =
       seoDescription && seoDescription.length > 0
         ? seoDescription
@@ -55,13 +63,16 @@ export async function generateMetadata({
           `A practical Alphaa Africa blog post: ${post.title}.`
     const canonical = post.seo?.canonical_url?.trim() || url
     const noindex = post.seo?.noindex === true
-    const ogImage = post.seo?.og_image?.trim() || blogImageSrc(post.featured_image)
+    const ogImage =
+      post.seo?.og_image?.trim() || blogImageSrc(post.featured_image)
     return {
       metadataBase: new URL(getSiteUrl()),
       title,
       description,
       alternates: { canonical },
-      robots: noindex ? { index: false, follow: false } : { index: true, follow: true },
+      robots: noindex
+        ? { index: false, follow: false }
+        : { index: true, follow: true },
       openGraph: {
         title,
         description,
@@ -124,7 +135,8 @@ export default async function BlogDetailPage({
   const jsonLd = blogDetailJsonLd(post)
   const date = formatBlogDate(post.published_at)
   const heroSrc = blogImageSrc(post.featured_image)
-  const heroAlt = post.featured_image_alt?.trim() || `${post.title} — Alphaa Africa blog post`
+  const heroAlt =
+    post.featured_image_alt?.trim() || `${post.title} — Alphaa Africa blog post`
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-10 px-4 py-8 pb-24 sm:gap-14 sm:px-6 sm:pb-32 md:py-12 lg:px-8">
@@ -206,11 +218,18 @@ export default async function BlogDetailPage({
             </span>
             {date && (
               <span className="inline-flex items-center gap-1.5">
-                <HugeiconsIcon icon={Calendar01Icon} size={14} aria-hidden="true" />
+                <HugeiconsIcon
+                  icon={Calendar01Icon}
+                  size={14}
+                  aria-hidden="true"
+                />
                 <time dateTime={post.published_at ?? undefined}>{date}</time>
               </span>
             )}
-            <BlogMeta readingTime={post.reading_time} viewCount={post.view_count} />
+            <BlogMeta
+              readingTime={post.reading_time}
+              viewCount={post.view_count}
+            />
           </div>
         </div>
 
@@ -239,7 +258,10 @@ export default async function BlogDetailPage({
 
       {/* 4. Related */}
       {related.length > 0 && (
-        <section aria-labelledby="blog-related-heading" className="flex flex-col gap-5">
+        <section
+          aria-labelledby="blog-related-heading"
+          className="flex flex-col gap-5"
+        >
           <div className="flex flex-col gap-1">
             <span className="text-xs font-bold tracking-wider text-primary uppercase">
               Keep reading
@@ -265,7 +287,7 @@ export default async function BlogDetailPage({
           title="Need help with this trip?"
           description={`Reading about "${post.title}" is a strong start. Tell us your dates and destination — a specialist will help with documents, visas, flights, and stays.`}
           eyebrow="Talk to Alphaa"
-          backgroundImage="https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=2000&q=80"
+          backgroundImage={CTA_BLOG_POST}
           primaryHref={getSupportWhatsAppUrl(`help with: ${post.title}`)}
           primaryLabel="Chat on WhatsApp"
         />

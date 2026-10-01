@@ -112,7 +112,7 @@ test("Hotel detail display: gallery alt text names the Hotel and the photo", () 
     hotelDetailSchema.parse(makeDetail({ images: [], main_image: "" }))
   )
   assert.equal(noImages.gallery.length, 1)
-  assert.equal(noImages.gallery[0]?.src, "/android-chrome-512x512.png")
+  assert.equal(noImages.gallery[0]?.src, "/images/og-share-card.webp")
   assert.equal(noImages.gallery[0]?.alt, "Radisson Blu Lagos — Lagos, Nigeria")
 })
 

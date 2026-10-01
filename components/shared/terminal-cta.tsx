@@ -3,6 +3,7 @@ import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { SparklesIcon } from "@hugeicons/core-free-icons"
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
+import { CTA_DEFAULT } from "@/lib/images"
 import { cn } from "@/lib/utils"
 
 /**
@@ -29,7 +30,7 @@ export function TerminalCta({
   primaryHref = "/contact",
   primaryLabel = "Contact Us",
   eyebrow = "Direct Travel Concierge",
-  backgroundImage = "https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=2000&q=80",
+  backgroundImage = CTA_DEFAULT,
   className,
 }: TerminalCtaProps) {
   // Retain company and WhatsApp context resolution for platform consistency (§22)

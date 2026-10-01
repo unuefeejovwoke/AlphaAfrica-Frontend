@@ -7,11 +7,7 @@ import { RetryButton } from "@/components/home/retry-button"
 import { BlogCard } from "@/components/blog/blog-card"
 import { BlogFilters } from "@/components/blog/blog-filters"
 import { TerminalCta } from "@/components/shared/terminal-cta"
-import {
-  getBlogCategories,
-  getBlogPosts,
-  getBlogTags,
-} from "@/lib/api/blog"
+import { getBlogCategories, getBlogPosts, getBlogTags } from "@/lib/api/blog"
 import {
   blogListJsonLd,
   buildBlogSearchParams,
@@ -21,6 +17,7 @@ import {
 import { canonicalUrl, getSiteUrl, robotsForSearchParams } from "@/lib/seo"
 import { serializeJsonLd } from "@/lib/structured-data"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
+import { CTA_BLOG_LISTING, OG_SHARE_CARD } from "@/lib/images"
 
 export const revalidate = 3600
 
@@ -47,7 +44,7 @@ export async function generateMetadata({
       type: "website",
       images: [
         {
-          url: `${getSiteUrl()}/android-chrome-512x512.png`,
+          url: `${getSiteUrl()}${OG_SHARE_CARD}`,
           alt: "Alphaa Africa — travel guides and tips",
         },
       ],
@@ -146,9 +143,9 @@ export default async function BlogPage({
             Travel clear, not stressed.
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-pretty text-muted-foreground sm:text-base">
-            Practical posts for Nigerian travellers — documents, visas,
-            flights, and trip planning. Written plainly, kept current, with a
-            specialist one message away.
+            Practical posts for Nigerian travellers — documents, visas, flights,
+            and trip planning. Written plainly, kept current, with a specialist
+            one message away.
           </p>
         </div>
       </section>
@@ -195,12 +192,17 @@ export default async function BlogPage({
                 No posts match these filters
               </h2>
               <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-                Try a different keyword or clear the category filter. Or tell
-                us what you are planning — a specialist will point you to the
-                right post.
+                Try a different keyword or clear the category filter. Or tell us
+                what you are planning — a specialist will point you to the right
+                post.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <ButtonLink href="/blog" scroll={false} variant="outline" size="sm">
+                <ButtonLink
+                  href="/blog"
+                  scroll={false}
+                  variant="outline"
+                  size="sm"
+                >
                   <span>Clear filters</span>
                 </ButtonLink>
                 <ButtonLink
@@ -210,7 +212,11 @@ export default async function BlogPage({
                   size="sm"
                   className="bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
                 >
-                  <HugeiconsIcon icon={WhatsappIcon} size={16} aria-hidden="true" />
+                  <HugeiconsIcon
+                    icon={WhatsappIcon}
+                    size={16}
+                    aria-hidden="true"
+                  />
                   <span>Ask Alphaa</span>
                 </ButtonLink>
               </div>
@@ -244,7 +250,9 @@ export default async function BlogPage({
                   aria-live="polite"
                 >
                   Page {currentPage}
-                  {total > 0 ? ` · ${total} ${total === 1 ? "post" : "posts"}` : ""}
+                  {total > 0
+                    ? ` · ${total} ${total === 1 ? "post" : "posts"}`
+                    : ""}
                 </span>
                 {hasNext ? (
                   <ButtonLink
@@ -268,7 +276,7 @@ export default async function BlogPage({
           title="Planning a trip the posts don't cover?"
           description="Tell us where you're going and what feels confusing — documents, visas, flights, or stays. A specialist will walk you through the next step."
           eyebrow="Human Help"
-          backgroundImage="https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=2000&q=80"
+          backgroundImage={CTA_BLOG_LISTING}
           primaryHref="/contact"
           primaryLabel="Contact Us"
         />

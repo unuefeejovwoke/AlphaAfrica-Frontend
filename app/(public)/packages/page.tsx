@@ -16,6 +16,7 @@ import {
   sortFeaturedFirst,
 } from "@/lib/listings"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
+import { CTA_PACKAGES_PAGE, OG_SHARE_CARD } from "@/lib/images"
 
 export const revalidate = 3600
 
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: `${getSiteUrl()}/android-chrome-512x512.png`,
+        url: `${getSiteUrl()}${OG_SHARE_CARD}`,
         alt: "Alphaa Africa — curated holiday packages",
       },
     ],
@@ -187,7 +188,7 @@ export default async function PackagesPage({
           title="Need a bespoke itinerary?"
           description="Honeymoon, family vacation, or multi-city tour not listed here? Tell us your dates, group size, and preferred budget — our destination specialists will craft a custom trip for you."
           eyebrow="Tailored Itineraries"
-          backgroundImage="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=80"
+          backgroundImage={CTA_PACKAGES_PAGE}
           primaryHref="/contact"
           primaryLabel="Contact Us"
         />

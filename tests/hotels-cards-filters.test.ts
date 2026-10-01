@@ -209,10 +209,7 @@ test("Hotel filter URL round-trip: server filters survive share/back/refresh wit
 
   // Filter-only URLs still read as an active search (results view, noindex).
   assert.equal(
-    hasListingSearchParams(
-      { max_price: "150000" },
-      HOTEL_SEARCH_PARAM_KEYS
-    ),
+    hasListingSearchParams({ max_price: "150000" }, HOTEL_SEARCH_PARAM_KEYS),
     true
   )
   assert.equal(
@@ -242,7 +239,7 @@ test("Hotel card display mapping: missing-image and empty-amenity fallbacks with
 
   // Missing image falls back to a local brand asset, never a broken image.
   const noImage = toHotelCardDisplay(makeHotel({ main_image: "" }))
-  assert.equal(noImage.imageSrc, "/android-chrome-512x512.png")
+  assert.equal(noImage.imageSrc, "/images/og-share-card.webp")
   const absolute = toHotelCardDisplay(makeHotel())
   assert.equal(absolute.imageSrc, "https://cdn.example.com/hotels/radisson.jpg")
 

@@ -88,7 +88,7 @@ test("Listing images resolve relative /media paths against the API host", () => 
     "https://cdn.example.com/x.jpg"
   )
   assert.match(resolveListingImageUrl("/media/dubai.jpg"), /^https?:\/\//)
-  assert.equal(resolveListingImageUrl(""), "/android-chrome-512x512.png")
+  assert.equal(resolveListingImageUrl(""), "/images/og-share-card.webp")
 })
 
 test("Destination list JSON-LD stays non-thin with one node per card", () => {

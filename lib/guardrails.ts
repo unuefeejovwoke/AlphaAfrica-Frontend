@@ -41,14 +41,14 @@ export interface RemoteImagePattern {
 }
 
 const PRODUCTION_IMAGE_PATTERNS: RemoteImagePattern[] = [
-  { protocol: "https", hostname: "images.unsplash.com" },
   { protocol: "https", hostname: "api.alphaaafrica.com" },
 ]
 
 /**
- * Image hosts for `next/image` optimisation. Loopback hosts (localhost,
- * 127.0.0.1) work in development only — a production deployment must never
- * advertise or optimise localhost imagery.
+ * Image hosts for `next/image` optimisation — backend media only. Site-owned
+ * imagery lives in `public/images/` and needs no host allowlist entry.
+ * Loopback hosts (localhost, 127.0.0.1) work in development only — a
+ * production deployment must never advertise or optimise localhost imagery.
  */
 export function imageRemotePatterns(
   isProduction: boolean

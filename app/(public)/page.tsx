@@ -24,6 +24,7 @@ import { HomeFaq } from "@/components/home/home-faq"
 import { TerminalCta } from "@/components/shared/terminal-cta"
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
 import { stats } from "@/lib/content/stats"
+import { HERO, HOME_BENTO } from "@/lib/images"
 import {
   canonicalUrl,
   getSiteUrl,
@@ -108,8 +109,8 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative w-full overflow-hidden bg-zinc-950 text-white">
         <Image
-          src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=2400&q=85"
-          alt="Scenic travel destination"
+          src={HERO}
+          alt="Aircraft wing above the West African coastline at sunset"
           fill
           priority
           sizes="100vw"
@@ -266,8 +267,8 @@ export default function HomePage() {
           <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-7 lg:col-span-8">
             <div className="relative flex min-h-[360px] flex-1 flex-col justify-between overflow-hidden rounded-[calc(1.5rem-2px)] border border-white/20 p-6 text-white shadow-xl sm:min-h-[400px] sm:p-8">
               <Image
-                src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1600&q=85"
-                alt="Turquoise ocean and white sand beach"
+                src={HOME_BENTO}
+                alt="A couple walking along the waterline of a white sand tropical beach"
                 fill
                 sizes="(max-width: 768px) 100vw, 66vw"
                 className="object-cover object-center transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105"

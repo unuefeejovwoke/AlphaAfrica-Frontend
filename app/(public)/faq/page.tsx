@@ -5,6 +5,7 @@ import { canonicalUrl, faqPageJsonLd, getSiteUrl } from "@/lib/seo"
 import { serializeJsonLd } from "@/lib/structured-data"
 import { FaqInteractive } from "@/components/faq/faq-interactive"
 import { TerminalCta } from "@/components/shared/terminal-cta"
+import { CTA_FAQ } from "@/lib/images"
 
 export const revalidate = 3600
 
@@ -72,7 +73,7 @@ export default function FaqPage() {
           description="Our team is always ready to guide you with flights, stays, holiday packages, and visa advice."
           context="a question from the FAQ page"
           eyebrow="Direct Concierge Help"
-          backgroundImage="https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?auto=format&fit=crop&w=2000&q=80"
+          backgroundImage={CTA_FAQ}
         />
       </section>
     </div>
