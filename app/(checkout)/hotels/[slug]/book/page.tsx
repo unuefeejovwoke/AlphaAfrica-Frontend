@@ -8,10 +8,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
-import {
-  HotelGuestForm,
-  buildHotelBackHref,
-} from "@/components/hotels/hotel-guest-form"
+import { HotelGuestForm } from "@/components/hotels/hotel-guest-form"
 import { ApiError } from "@/lib/api/client"
 import {
   calculateNights,
@@ -254,16 +251,7 @@ export default async function HotelBookPage({
             guests,
             rooms: roomsCount,
           }}
-          backHref={buildHotelBackHref(
-            slug,
-            {
-              check_in: stay.check_in,
-              check_out: stay.check_out,
-              guests,
-              rooms: roomsCount,
-            },
-            room.id
-          )}
+          backHref={backHref(slug, stay)}
         />
       </div>
 

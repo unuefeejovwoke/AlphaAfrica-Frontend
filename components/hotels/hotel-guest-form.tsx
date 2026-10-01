@@ -22,7 +22,6 @@ import {
   getPaymentSafetyCopy,
 } from "@/lib/api/client"
 import {
-  buildHotelBookingParams,
   buildHotelBookingPayload,
   calculateNights,
   checkRoomCapacity,
@@ -374,17 +373,4 @@ export function HotelGuestForm({
   )
 }
 
-/** Stay handoff back to the Hotel detail, preserving the choice. */
-export function buildHotelBackHref(
-  slug: string,
-  stay: HotelGuestStay,
-  roomTypeId: number
-): string {
-  return `/hotels/${slug}?${buildHotelBookingParams({
-    room_type_id: roomTypeId,
-    check_in: stay.check_in,
-    check_out: stay.check_out,
-    guests: stay.guests,
-    rooms: stay.rooms,
-  })}`
-}
+
