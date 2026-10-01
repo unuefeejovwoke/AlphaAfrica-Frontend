@@ -108,6 +108,77 @@ export function humanizeSlug(slug: string): string {
   return slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+export interface GalleryPhotoInput {
+  id: number | string
+  image: string
+  caption?: string
+}
+
+export interface GalleryPhoto {
+  id: number | string
+  image: string
+  caption: string
+}
+
+/**
+ * Consolidate the main image plus secondary images into one photo list
+ * (ticket 19). The main image leads; duplicates of it are dropped; every
+ * photo leaves with a non-empty caption so alt text always names what the
+ * photo shows.
+ */
+export function buildGalleryPhotos(
+  title: string,
+  destinationName: string,
+  mainImage: string,
+  images: GalleryPhotoInput[] = []
+): GalleryPhoto[] {
+  const fallback = `${title} — ${destinationName}`
+  const photos: GalleryPhoto[] = [
+    { id: "main", image: mainImage, caption: fallback },
+  ]
+  for (const img of images) {
+    if (img.image === mainImage) continue
+    photos.push({
+      id: img.id,
+      image: img.image,
+      caption: img.caption || fallback,
+    })
+  }
+  return photos
+}
+
+/** Wrap-around photo navigation — the single source for next. */
+export function nextPhotoIndex(active: number, count: number): number {
+  return count <= 0 ? 0 : (active + 1) % count
+}
+
+/** Wrap-around photo navigation — the single source for previous. */
+export function prevPhotoIndex(active: number, count: number): number {
+  return count <= 0 ? 0 : (active - 1 + count) % count
+}
+
+/** Alt text / caption line: always names the photo and its place. */
+export function describeGalleryPhoto(
+  title: string,
+  caption: string,
+  index: number,
+  count: number
+): string {
+  const named = caption || title
+  return count > 1 ? `${named} (photo ${index + 1} of ${count})` : named
+}
+
+/** Accessible name for a photo opener button. */
+export function galleryOpenerLabel(
+  caption: string,
+  index: number,
+  count: number
+): string {
+  return count > 1
+    ? `Open photo ${index + 1} of ${count}: ${caption}`
+    : `Open photo: ${caption}`
+}
+
 export interface DestinationListJsonLdInput {
   name: string
   slug: string
