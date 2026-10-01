@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { ApiError, apiGet, apiPost } from "./client.ts"
+import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS } from "./client.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { futureDateStringSchema } from "./validation.ts"
 import { moneyToKobo, koboToMoneyString, resolveMoneyChange } from "../money.ts"
@@ -141,6 +141,7 @@ export async function searchAirports(
         query: { q: trimmed },
         noStore: true,
         sameOrigin: true,
+        timeoutMs: SEARCH_TIMEOUT_MS,
         ...(options.signal ? { signal: options.signal } : {}),
       })
       // Backend returns array of airports
@@ -1913,6 +1914,7 @@ export async function searchFlights(
     body,
     {
       sameOrigin: true,
+      timeoutMs: SEARCH_TIMEOUT_MS,
       ...(options.signal ? { signal: options.signal } : {}),
     }
   )

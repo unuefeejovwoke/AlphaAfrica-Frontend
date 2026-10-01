@@ -3,6 +3,7 @@ import {
   apiGet,
   apiPost,
   pickFeatured,
+  SEARCH_TIMEOUT_MS,
   type PaginatedResponse,
 } from "./client.ts"
 import {
@@ -131,6 +132,7 @@ export async function getPackages(
       page: filters.page,
     },
     tags: ["packages"],
+    timeoutMs: SEARCH_TIMEOUT_MS,
   })
 }
 

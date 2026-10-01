@@ -14,6 +14,20 @@ import { apiBaseUrl } from "../env.ts"
 
 export const API_REVALIDATE_SECONDS = 3600
 
+/**
+ * Per-operation request deadlines (ticket 05). Every backend read and write
+ * carries one: search and streaming wait longest, booking writes less, and
+ * verification/detail reads least — a slow upstream fails honestly instead
+ * of hanging. Streaming keeps its own long budget
+ * (`DOMESTIC_STREAM_TIMEOUT_MS` in `lib/api/domestic.ts`).
+ */
+export const DEFAULT_READ_TIMEOUT_MS = 15_000
+export const WRITE_TIMEOUT_MS = 20_000
+export const SEARCH_TIMEOUT_MS = 30_000
+
+export const TIMEOUT_MESSAGE =
+  "The travel service took too long to respond. No booking was made and no payment was taken."
+
 export interface PaginatedResponse<T> {
   count: number
   next: string | null
@@ -163,6 +177,57 @@ function extractDetail(payload: unknown): string | null {
   return typeof detail === "string" && detail.length > 0 ? detail : null
 }
 
+/** Caller cancellation (AbortError, or a caller-owned TimeoutError). */
+export function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException) {
+    return error.name === "AbortError" || error.name === "TimeoutError"
+  }
+  const name = (error as { name?: unknown } | null)?.name
+  return name === "AbortError" || name === "TimeoutError"
+}
+
+interface Deadline {
+  signal: AbortSignal
+  /** True only when our own timer fired — never for caller cancellation. */
+  timedOut: () => boolean
+  cleanup: () => void
+}
+
+/**
+ * Link a caller signal with our own deadline. The caller's abort propagates
+ * untouched (run-guards rely on AbortError); our timer firing marks the
+ * deadline so the caller maps it to an honest timeout instead.
+ */
+function createDeadline(
+  callerSignal: AbortSignal | undefined,
+  timeoutMs: number
+): Deadline {
+  const controller = new AbortController()
+  let fired = false
+  const onCallerAbort = () => {
+    controller.abort(callerSignal?.reason)
+  }
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      controller.abort(callerSignal.reason)
+    } else {
+      callerSignal.addEventListener("abort", onCallerAbort, { once: true })
+    }
+  }
+  const timer = setTimeout(() => {
+    fired = true
+    controller.abort()
+  }, timeoutMs)
+  return {
+    signal: controller.signal,
+    timedOut: () => fired,
+    cleanup: () => {
+      clearTimeout(timer)
+      callerSignal?.removeEventListener("abort", onCallerAbort)
+    },
+  }
+}
+
 async function throwForResponse(
   response: Response,
   path: string
@@ -197,6 +262,11 @@ export interface ApiGetOptions {
   /** AbortSignal for request cancellation — stale responses never commit. */
   signal?: AbortSignal
   /**
+   * Per-operation deadline in ms. Defaults to {@link DEFAULT_READ_TIMEOUT_MS};
+   * pass {@link SEARCH_TIMEOUT_MS} for search reads.
+   */
+  timeoutMs?: number
+  /**
    * Browser calls go through the same-origin Next proxy route instead of the
    * backend host (no CORS, identical local/production behaviour).
    */
@@ -224,6 +294,10 @@ export async function apiGet<T>(
   if (options.authToken && options.authToken.trim()) {
     headers.Authorization = `Bearer ${options.authToken.trim()}`
   }
+  const deadline = createDeadline(
+    options.signal,
+    options.timeoutMs ?? DEFAULT_READ_TIMEOUT_MS
+  )
   let response: Response
   try {
     response = await fetch(
@@ -233,7 +307,7 @@ export async function apiGet<T>(
             method: "GET",
             headers,
             cache: "no-store",
-            ...(options.signal ? { signal: options.signal } : {}),
+            signal: deadline.signal,
           }
         : {
             method: "GET",
@@ -242,16 +316,21 @@ export async function apiGet<T>(
               revalidate: options.revalidate ?? API_REVALIDATE_SECONDS,
               ...(options.tags ? { tags: options.tags } : {}),
             },
-            ...(options.signal ? { signal: options.signal } : {}),
+            signal: deadline.signal,
           }
     )
   } catch (error) {
-    // Abort must propagate so run-guards can ignore stale responses —
-    // never convert cancellation into a retryable network error.
-    if (
-      (error instanceof DOMException && error.name === "AbortError") ||
-      (error instanceof Error && error.name === "AbortError")
-    ) {
+    // A fired deadline surfaces the honest timeout copy; caller cancellation
+    // propagates untouched so run-guards can ignore stale responses — never
+    // converted into a retryable network failure.
+    if (deadline.timedOut()) {
+      throw new ApiError(TIMEOUT_MESSAGE, {
+        status: null,
+        code: "timeout",
+        cause: error,
+      })
+    }
+    if (isAbortError(error)) {
       throw error
     }
     throw new ApiError("Network request failed.", {
@@ -259,6 +338,8 @@ export async function apiGet<T>(
       code: "network",
       cause: error,
     })
+  } finally {
+    deadline.cleanup()
   }
 
   if (!response.ok) {
@@ -281,6 +362,11 @@ export interface ApiPostOptions {
   /** AbortSignal for request cancellation — stale responses never commit. */
   signal?: AbortSignal
   /**
+   * Per-operation deadline in ms. Defaults to {@link WRITE_TIMEOUT_MS};
+   * pass {@link SEARCH_TIMEOUT_MS} for search writes.
+   */
+  timeoutMs?: number
+  /**
    * Browser calls go through the same-origin Next proxy route instead of the
    * backend host (no CORS, identical local/production behaviour).
    */
@@ -296,6 +382,10 @@ export async function apiPost<
   TBody extends Record<string, unknown> | unknown,
 >(path: string, body: TBody, options: ApiPostOptions = {}): Promise<TResponse> {
   const url = buildRequestUrl(path, options.query, options.sameOrigin)
+  const deadline = createDeadline(
+    options.signal,
+    options.timeoutMs ?? WRITE_TIMEOUT_MS
+  )
   let response: Response
   try {
     response = await fetch(url, {
@@ -306,13 +396,17 @@ export async function apiPost<
       },
       cache: "no-store",
       body: JSON.stringify(body ?? {}),
-      ...(options.signal ? { signal: options.signal } : {}),
+      signal: deadline.signal,
     })
   } catch (error) {
-    if (
-      (error instanceof DOMException && error.name === "AbortError") ||
-      (error instanceof Error && error.name === "AbortError")
-    ) {
+    if (deadline.timedOut()) {
+      throw new ApiError(TIMEOUT_MESSAGE, {
+        status: null,
+        code: "timeout",
+        cause: error,
+      })
+    }
+    if (isAbortError(error)) {
       throw error
     }
     throw new ApiError("Network request failed.", {
@@ -320,6 +414,8 @@ export async function apiPost<
       code: "network",
       cause: error,
     })
+  } finally {
+    deadline.cleanup()
   }
 
   if (!response.ok) {

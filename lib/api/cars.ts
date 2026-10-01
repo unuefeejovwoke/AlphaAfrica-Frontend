@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { ApiError, apiGet, apiPost, type PaginatedResponse } from "./client.ts"
+import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS, type PaginatedResponse } from "./client.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
 import { resolveListingImageUrl } from "../listings.ts"
@@ -219,6 +219,7 @@ export async function getVehicles(
   const raw = await apiGet<unknown>("/api/cars/", {
     query: toCarApiQuery(query),
     noStore: true,
+    timeoutMs: SEARCH_TIMEOUT_MS,
   })
   const parsed = paginatedVehicleListSchema.safeParse(raw)
   if (!parsed.success) {

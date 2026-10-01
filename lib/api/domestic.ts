@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { apiGet } from "./client.ts"
+import { apiGet, SEARCH_TIMEOUT_MS } from "./client.ts"
 import { asRecord, pickNodeValue, pickString } from "./flights.ts"
 import type { Airport } from "./flights.ts"
 import type { FlightOfferDisplay } from "./flights.ts"
@@ -1138,6 +1138,7 @@ export async function fetchDomesticBlocking(
     query: toDomesticQuery(params),
     noStore: true,
     sameOrigin: true,
+    timeoutMs: SEARCH_TIMEOUT_MS,
     ...(options.signal ? { signal: options.signal } : {}),
   })
   if (Array.isArray(raw)) return raw as DomesticFlightCard[]

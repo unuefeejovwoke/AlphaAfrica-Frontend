@@ -2,6 +2,17 @@ import { getApiBaseUrl } from "./client.ts"
 
 const METHODS_WITHOUT_BODY = new Set(["GET", "HEAD", "OPTIONS"])
 
+/** Server-side ceiling for a proxied upstream call (client fires first). */
+export const PROXY_TIMEOUT_MS = 35_000
+
+export interface ProxyOptions {
+  /**
+   * Upstream deadline in ms. The client deadline travels via
+   * `request.signal`; this ceiling only guards a client that never aborts.
+   */
+  timeoutMs?: number
+}
+
 /**
  * Same-origin proxy for browser API calls. Forwards method, query, body, and
  * safe headers to the backend and passes the upstream status
@@ -15,7 +26,8 @@ const METHODS_WITHOUT_BODY = new Set(["GET", "HEAD", "OPTIONS"])
  */
 export async function proxyToBackend(
   request: Request,
-  path: string
+  path: string,
+  options: ProxyOptions = {}
 ): Promise<Response> {
   const incoming = new URL(request.url)
   const backendUrl = `${getApiBaseUrl()}${path}${incoming.search}`
@@ -28,6 +40,23 @@ export async function proxyToBackend(
   if (contentType) headers.set("content-type", contentType)
   if (authorization) headers.set("authorization", authorization)
 
+  // Forward the client deadline (disconnect/cancellation aborts upstream)
+  // alongside a server-side ceiling so a hung backend cannot hold the
+  // handler open. Any abort still answers 499.
+  const controller = new AbortController()
+  const onClientAbort = () => {
+    controller.abort(request.signal.reason)
+  }
+  if (request.signal.aborted) {
+    controller.abort(request.signal.reason)
+  } else {
+    request.signal.addEventListener("abort", onClientAbort, { once: true })
+  }
+  const timer = setTimeout(
+    () => controller.abort(),
+    options.timeoutMs ?? PROXY_TIMEOUT_MS
+  )
+
   let upstream: Response
   try {
     upstream = await fetch(backendUrl, {
@@ -37,7 +66,7 @@ export async function proxyToBackend(
         ? undefined
         : await request.text(),
       cache: "no-store",
-      signal: request.signal,
+      signal: controller.signal,
     })
   } catch (error) {
     if ((error as Error)?.name === "AbortError") {
@@ -47,6 +76,9 @@ export async function proxyToBackend(
       { message: "The travel service is temporarily unavailable." },
       { status: 502 }
     )
+  } finally {
+    clearTimeout(timer)
+    request.signal.removeEventListener("abort", onClientAbort)
   }
 
   const responseHeaders = new Headers()
