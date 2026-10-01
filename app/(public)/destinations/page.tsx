@@ -9,6 +9,7 @@ import { TerminalCta } from "@/components/shared/terminal-cta"
 import { getDestinations } from "@/lib/api/destinations"
 import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 import { destinationListJsonLd, sortFeaturedFirst } from "@/lib/listings"
+import { serializeJsonLd } from "@/lib/structured-data"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 
 export const revalidate = 3600
@@ -69,7 +70,7 @@ export default async function DestinationsPage() {
     <div className="mx-auto flex max-w-7xl flex-col gap-12 px-4 py-12 sm:px-6 md:gap-16 lg:px-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="flex max-w-3xl flex-col gap-4">

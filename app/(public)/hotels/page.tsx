@@ -18,6 +18,7 @@ import {
   hotelTravelActionJsonLd,
   robotsForSearchParams,
 } from "@/lib/seo"
+import { serializeJsonLd } from "@/lib/structured-data"
 
 /**
  * Hotels discoverability (Phase 4, ticket 01; PRD §18 + ADR-0005).
@@ -79,13 +80,13 @@ export default async function HotelsPage({
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
-              __html: JSON.stringify(hotelTravelActionJsonLd()),
+              __html: serializeJsonLd(hotelTravelActionJsonLd()),
             }}
           />
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
-              __html: JSON.stringify({
+              __html: serializeJsonLd({
                 "@context": "https://schema.org",
                 "@type": "WebPage",
                 name: HOTELS_LANDING_TITLE,

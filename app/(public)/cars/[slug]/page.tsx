@@ -27,6 +27,7 @@ import {
   resolveListingImageUrl,
   vehicleDetailJsonLd,
 } from "@/lib/listings"
+import { serializeJsonLd } from "@/lib/structured-data"
 import { formatNaira } from "@/lib/format"
 
 /**
@@ -151,7 +152,7 @@ export default async function CarDetailPage({
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4">

@@ -11,6 +11,7 @@ import {
   hasFlightSearchParams,
   robotsForSearchParams,
 } from "@/lib/seo"
+import { serializeJsonLd } from "@/lib/structured-data"
 
 /**
  * Flights discoverability (Phase 3, ticket 10; PRD §18 + spec §61).
@@ -78,11 +79,11 @@ export default function FlightsPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(travelAction) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(travelAction) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(webPage) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(webPage) }}
       />
       <React.Suspense
         fallback={

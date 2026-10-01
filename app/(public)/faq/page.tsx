@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { faqs } from "@/lib/content/faqs"
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
 import { canonicalUrl, faqPageJsonLd, getSiteUrl } from "@/lib/seo"
+import { serializeJsonLd } from "@/lib/structured-data"
 import { FaqInteractive } from "@/components/faq/faq-interactive"
 import { TerminalCta } from "@/components/shared/terminal-cta"
 
@@ -30,7 +31,7 @@ export default function FaqPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(faqPageJsonLd(faqs.groups)),
+          __html: serializeJsonLd(faqPageJsonLd(faqs.groups)),
         }}
       />
 

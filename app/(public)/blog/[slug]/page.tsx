@@ -22,6 +22,7 @@ import {
   resolveBlogToc,
 } from "@/lib/blog"
 import { canonicalUrl } from "@/lib/seo"
+import { serializeJsonLd } from "@/lib/structured-data"
 import { humanizeSlug } from "@/lib/listings"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 
@@ -132,7 +133,7 @@ export default async function BlogDetailPage({
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       {/* 1. Breadcrumb + share */}

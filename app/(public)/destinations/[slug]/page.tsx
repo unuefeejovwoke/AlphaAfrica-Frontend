@@ -26,6 +26,7 @@ import {
   parsePriceAmount,
   resolveListingImageUrl,
 } from "@/lib/listings"
+import { serializeJsonLd } from "@/lib/structured-data"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 
 export const revalidate = 3600
@@ -165,7 +166,7 @@ export default async function DestinationDetailPage({
     <div className="mx-auto flex max-w-7xl flex-col gap-12 px-4 py-12 sm:px-6 md:gap-16 lg:px-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       {/* 1. Hero */}

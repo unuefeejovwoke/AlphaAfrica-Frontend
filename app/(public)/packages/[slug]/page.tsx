@@ -23,6 +23,7 @@ import { getPackages, getPackageDetail } from "@/lib/api/packages"
 import { ApiError } from "@/lib/api/client"
 import { formatNaira } from "@/lib/format"
 import { canonicalUrl } from "@/lib/seo"
+import { serializeJsonLd } from "@/lib/structured-data"
 import {
   humanizeSlug,
   packageDetailJsonLd,
@@ -151,7 +152,7 @@ export default async function PackageDetailPage({
       <ViewTracker event="package_viewed" props={{ slug: pkg.slug }} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       {/* 1. Breadcrumb & Share Action */}

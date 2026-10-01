@@ -39,6 +39,7 @@ import {
   resolveListingImageUrl,
   visaCountryDetailJsonLd,
 } from "@/lib/listings"
+import { serializeJsonLd } from "@/lib/structured-data"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { faqs } from "@/lib/content/faqs"
 import { cn } from "@/lib/utils"
@@ -173,18 +174,18 @@ export default async function VisaCountryDetailPage({
       <ViewTracker event="visa_country_viewed" props={{ slug: country.slug }} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(organizationJsonLd()),
+          __html: serializeJsonLd(organizationJsonLd()),
         }}
       />
       {faqJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }}
         />
       )}
 

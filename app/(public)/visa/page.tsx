@@ -10,6 +10,7 @@ import { TrackLink } from "@/components/analytics/track-link"
 import { getVisaCountries } from "@/lib/api/visa"
 import { canonicalUrl, getSiteUrl, organizationJsonLd } from "@/lib/seo"
 import { sortFeaturedFirst, visaCountryListJsonLd } from "@/lib/listings"
+import { serializeJsonLd } from "@/lib/structured-data"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { cn } from "@/lib/utils"
 
@@ -79,12 +80,12 @@ export default async function VisaPage() {
     <div className="flex flex-col gap-14 pb-20 sm:gap-18 sm:pb-28">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(organizationJsonLd()),
+          __html: serializeJsonLd(organizationJsonLd()),
         }}
       />
 

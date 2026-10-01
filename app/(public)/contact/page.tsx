@@ -14,6 +14,7 @@ import { company, getOfficeMapEmbedUrl } from "@/lib/content/company"
 import { contact } from "@/lib/content/contact"
 import { faqs } from "@/lib/content/faqs"
 import { canonicalUrl, getSiteUrl, organizationJsonLd } from "@/lib/seo"
+import { serializeJsonLd } from "@/lib/structured-data"
 
 export const revalidate = 3600
 
@@ -52,7 +53,7 @@ export default function ContactPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(organizationJsonLd()),
+          __html: serializeJsonLd(organizationJsonLd()),
         }}
       />
 

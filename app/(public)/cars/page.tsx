@@ -15,6 +15,7 @@ import {
   getSiteUrl,
   robotsForSearchParams,
 } from "@/lib/seo"
+import { serializeJsonLd } from "@/lib/structured-data"
 
 /**
  * `/cars` — indexable landing + dynamic result view.
@@ -68,13 +69,13 @@ export default async function CarsPage({
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
-              __html: JSON.stringify(carTravelActionJsonLd()),
+              __html: serializeJsonLd(carTravelActionJsonLd()),
             }}
           />
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
-              __html: JSON.stringify({
+              __html: serializeJsonLd({
                 "@context": "https://schema.org",
                 "@type": "WebPage",
                 name: CARS_LANDING_TITLE,

@@ -30,6 +30,7 @@ import {
   organizationJsonLd,
   websiteJsonLd,
 } from "@/lib/seo"
+import { serializeJsonLd } from "@/lib/structured-data"
 
 export const revalidate = 3600
 
@@ -96,12 +97,12 @@ export default function HomePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(organizationJsonLd()),
+          __html: serializeJsonLd(organizationJsonLd()),
         }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd()) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteJsonLd()) }}
       />
 
       {/* Hero Section */}

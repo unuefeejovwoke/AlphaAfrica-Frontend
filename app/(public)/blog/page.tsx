@@ -19,6 +19,7 @@ import {
   parseBlogSearchParams,
 } from "@/lib/blog"
 import { canonicalUrl, getSiteUrl, robotsForSearchParams } from "@/lib/seo"
+import { serializeJsonLd } from "@/lib/structured-data"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 
 export const revalidate = 3600
@@ -131,7 +132,7 @@ export default async function BlogPage({
       {!hasSearch && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
         />
       )}
 

@@ -28,6 +28,7 @@ import {
 } from "@/lib/api/hotels"
 import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 import { hotelDetailJsonLd, humanizeSlug } from "@/lib/listings"
+import { serializeJsonLd } from "@/lib/structured-data"
 
 /**
  * `/hotels/[slug]` (RSC, ISR 3600, open-ended fallback).
@@ -181,7 +182,7 @@ export default async function HotelDetailPage({
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       {/* Breadcrumb (crawlable internal links) plus a way back to search. */}
