@@ -4,5 +4,5 @@ import { RouteError, type RouteErrorProps } from "@/components/feedback/route-er
 
 /** Booking/checkout segment failures stay on an Alphaa screen (ticket 09). */
 export default function CheckoutRouteError(props: RouteErrorProps) {
-  return <RouteError {...props} flow="Booking" />
+  return <RouteError {...props} flow="booking" />
 }

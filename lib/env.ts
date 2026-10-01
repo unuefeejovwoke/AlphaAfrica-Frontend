@@ -176,3 +176,36 @@ export function analyticsIds(): AnalyticsIds {
     gaId: (process.env.NEXT_PUBLIC_GA_ID ?? "").trim(),
   }
 }
+
+/**
+ * Error reporter identifier (ticket 10). Blank means disabled — the reporter
+ * stays inert so local and preview runs never emit. Read lazily like every
+ * other env accessor so tests can override `process.env` freely.
+ */
+export function errorReporterId(): string {
+  return (process.env.NEXT_PUBLIC_ERROR_REPORTER_ID ?? "").trim()
+}
+
+export type EnvConfigState = "configured" | "misconfigured"
+
+export interface EnvConfigStatus {
+  apiBaseUrl: EnvConfigState
+  siteUrl: EnvConfigState
+}
+
+/**
+ * Configuration validity for the health probe (ticket 10), separate from
+ * liveness. A key is `configured` when it resolves to a servable URL;
+ * production-runtime guardrail throws (malformed, loopback) surface as
+ * `misconfigured` instead of crashing the probe.
+ */
+export function envConfigStatus(): EnvConfigStatus {
+  const check = (read: () => string): EnvConfigState => {
+    try {
+      return read().length > 0 ? "configured" : "misconfigured"
+    } catch {
+      return "misconfigured"
+    }
+  }
+  return { apiBaseUrl: check(apiBaseUrl), siteUrl: check(siteUrl) }
+}

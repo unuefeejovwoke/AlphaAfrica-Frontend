@@ -3,6 +3,7 @@
 import * as React from "react"
 import { ErrorState } from "@/components/feedback/error-state"
 import { resolveRouteErrorPreset } from "@/lib/route-error"
+import { reportError } from "@/lib/error-reporter"
 
 /**
  * Global boundary for failures outside a route group (ticket 09).
@@ -23,6 +24,10 @@ export default function GlobalError({
   React.useEffect(() => {
     regionRef.current?.focus({ preventScroll: true })
   }, [])
+
+  React.useEffect(() => {
+    reportError(error, { flow: "site" })
+  }, [error])
 
   return (
     <html lang="en">

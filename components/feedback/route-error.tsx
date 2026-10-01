@@ -7,11 +7,15 @@ import {
   resolveRouteErrorPreset,
   shouldResetRouteError,
 } from "@/lib/route-error"
+import { reportError } from "@/lib/error-reporter"
 
 export interface RouteErrorProps {
   error: Error & { digest?: string }
   reset: () => void
-  /** Human section name for the region label (never rendered from the error). */
+  /**
+   * Report flow tag (`browse`, `booking`). Doubles as the region label —
+   * never rendered from the error itself.
+   */
   flow: string
 }
 
@@ -40,6 +44,12 @@ export function RouteError({ error, reset, flow }: RouteErrorProps) {
   React.useEffect(() => {
     regionRef.current?.focus({ preventScroll: true })
   }, [])
+
+  // One report per failure, after paint — the import is side-effect free so
+  // reporting never delays hydration.
+  React.useEffect(() => {
+    reportError(error, { flow, route: pathname ?? undefined })
+  }, [error, flow, pathname])
 
   React.useEffect(() => {
     if (shouldResetRouteError(failedPathRef.current, pathname)) reset()

@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "./client.ts"
+import { extractBookingReference, reportError } from "../error-reporter.ts"
 
 const METHODS_WITHOUT_BODY = new Set(["GET", "HEAD", "OPTIONS"])
 
@@ -97,6 +98,14 @@ export async function proxyToBackend(
     if ((error as Error)?.name === "AbortError") {
       return new Response(null, { status: 499 })
     }
+    // Server-side failure, one reporter: flow plus the booking reference
+    // where the path carries one (verify/order segments), never request
+    // bodies, tokens, or blobs.
+    reportError(error, {
+      flow: "proxy",
+      route: path,
+      bookingReference: extractBookingReference(path),
+    })
     return proxyJsonError("The travel service is temporarily unavailable.", 502)
   } finally {
     clearTimeout(timer)
