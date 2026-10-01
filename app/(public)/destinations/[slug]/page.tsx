@@ -19,7 +19,7 @@ import type { DestinationDetail } from "@/lib/api/destinations"
 import type { PackageList } from "@/lib/api/packages"
 import { ApiError } from "@/lib/api/client"
 import { formatNaira } from "@/lib/format"
-import { canonicalUrl } from "@/lib/seo"
+import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 import {
   destinationDetailJsonLd,
   humanizeSlug,
@@ -82,6 +82,7 @@ export async function generateMetadata({
         ? destination.description.slice(0, 155)
         : `${destination.name}, ${destination.country} — curated holiday packages with starting prices and human planning help.`
     return {
+      metadataBase: new URL(getSiteUrl()),
       title: `${destination.name}, ${destination.country} Holiday Packages | Alphaa Africa`,
       description,
       alternates: { canonical: url },

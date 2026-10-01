@@ -38,9 +38,59 @@ function isHttpUrl(value: string): boolean {
 }
 
 /**
+ * True for loopback hosts: `localhost`, all `127.x`, `::1`, `0.0.0.0`.
+ * Pure seam so the production guardrail (and its tests) can name the exact
+ * hosts a deployment must never point at.
+ */
+export function isLoopbackUrl(value: string): boolean {
+  try {
+    const host = new URL(value).hostname.toLowerCase()
+    if (host === "localhost" || host === "0.0.0.0") return true
+    if (host === "::1" || host === "[::1]") return true
+    if (/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return true
+    return false
+  } catch {
+    return false
+  }
+}
+
+/** True only at production request runtime — never during `next build`. */
+function isProductionRuntime(): boolean {
+  return (
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PHASE !== "phase-production-build"
+  )
+}
+
+/** Build-phase fallbacks already reported (module-scoped so one bad value
+ * logs once per build instead of once per prerendered page). */
+const reportedBuildFallbacks = new Set<string>()
+
+/** Loudly report a build-phase fallback exactly once per bad value. */
+function reportBuildFallback(
+  label: string,
+  raw: string,
+  reason: string,
+  fallback: string
+): void {
+  const key = `${label}:${raw}`
+  if (reportedBuildFallbacks.has(key)) return
+  reportedBuildFallbacks.add(key)
+  console.error(
+    `[alphaa] Invalid ${label} "${raw}" (${reason}) — falling back to ${fallback} for this build only.`
+  )
+}
+
+/**
  * Resolve the first non-blank candidate into a normalized base URL.
- * Returns `fallback` (with a dev-only warning) when nothing usable is set or
- * the value is not an http(s) URL.
+ *
+ * An explicitly configured value that is malformed or points at loopback
+ * fails loudly at production runtime (throw) instead of silently falling
+ * back to the production default — a deployment talking to the wrong place
+ * must be impossible to miss. During `next build` the same misconfiguration
+ * is loudly reported (`console.error`) but still falls back, so local
+ * production-mode builds with loopback `.env.local` values keep working;
+ * in development it keeps the existing warn-with-fallback behaviour.
  */
 export function resolveBaseUrl(
   label: string,
@@ -51,11 +101,33 @@ export function resolveBaseUrl(
   if (raw.length === 0) return fallback
   const normalized = normalizeBaseUrl(raw)
   if (!isHttpUrl(normalized)) {
-    if (process.env.NODE_ENV !== "production") {
+    // Malformed values can never work anywhere: loud in production, a
+    // warning elsewhere, fallback everywhere except production runtime.
+    if (isProductionRuntime()) {
+      throw new Error(
+        `[alphaa] Invalid ${label} "${raw}" (malformed) — refusing to serve production traffic against the ${fallback} fallback.`
+      )
+    }
+    if (process.env.NODE_ENV === "production") {
+      reportBuildFallback(label, raw, "malformed", fallback)
+    } else {
       console.warn(
         `[alphaa] Invalid ${label} "${raw}" — falling back to ${fallback}.`
       )
     }
+    return fallback
+  }
+  if (!isLoopbackUrl(normalized)) return normalized
+  // Loopback is the normal local setup — accepted silently outside
+  // production. A production deployment pointing at localhost fails loudly
+  // at runtime instead of silently serving the production fallback.
+  if (isProductionRuntime()) {
+    throw new Error(
+      `[alphaa] Invalid ${label} "${raw}" (points at loopback) — refusing to serve production traffic against the ${fallback} fallback.`
+    )
+  }
+  if (process.env.NODE_ENV === "production") {
+    reportBuildFallback(label, raw, "points at loopback", fallback)
     return fallback
   }
   return normalized

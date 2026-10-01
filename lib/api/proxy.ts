@@ -5,6 +5,13 @@ const METHODS_WITHOUT_BODY = new Set(["GET", "HEAD", "OPTIONS"])
 /** Server-side ceiling for a proxied upstream call (client fires first). */
 export const PROXY_TIMEOUT_MS = 35_000
 
+/**
+ * Largest proxied request body the server will buffer (1MB). Flight offer
+ * blobs and traveller payloads are kilobytes; anything larger is rejected
+ * with 413 before an unbounded body is ever buffered or forwarded.
+ */
+export const MAX_PROXY_BODY_BYTES = 1_000_000
+
 export interface ProxyOptions {
   /**
    * Upstream deadline in ms. The client deadline travels via
@@ -57,14 +64,32 @@ export async function proxyToBackend(
     options.timeoutMs ?? PROXY_TIMEOUT_MS
   )
 
+  // Bound the buffered body: a declared length over the cap is rejected
+  // before anything is read; a missing or lying length is caught after the
+  // read. Either way nothing oversized is forwarded upstream.
+  const declaredLength = Number(request.headers.get("content-length") ?? "")
+  if (
+    !METHODS_WITHOUT_BODY.has(request.method) &&
+    Number.isFinite(declaredLength) &&
+    declaredLength > MAX_PROXY_BODY_BYTES
+  ) {
+    clearTimeout(timer)
+    request.signal.removeEventListener("abort", onClientAbort)
+    return proxyJsonError("The request was too large to process.", 413)
+  }
+
   let upstream: Response
   try {
+    const text = METHODS_WITHOUT_BODY.has(request.method)
+      ? undefined
+      : await request.text()
+    if (text !== undefined && text.length > MAX_PROXY_BODY_BYTES) {
+      return proxyJsonError("The request was too large to process.", 413)
+    }
     upstream = await fetch(backendUrl, {
       method: request.method,
       headers,
-      body: METHODS_WITHOUT_BODY.has(request.method)
-        ? undefined
-        : await request.text(),
+      body: text,
       cache: "no-store",
       signal: controller.signal,
     })
@@ -72,10 +97,7 @@ export async function proxyToBackend(
     if ((error as Error)?.name === "AbortError") {
       return new Response(null, { status: 499 })
     }
-    return Response.json(
-      { message: "The travel service is temporarily unavailable." },
-      { status: 502 }
-    )
+    return proxyJsonError("The travel service is temporarily unavailable.", 502)
   } finally {
     clearTimeout(timer)
     request.signal.removeEventListener("abort", onClientAbort)
@@ -87,8 +109,17 @@ export async function proxyToBackend(
     upstream.headers.get("content-type") ?? "application/json"
   )
   responseHeaders.set("Cache-Control", "no-store")
+  responseHeaders.set("X-Content-Type-Options", "nosniff")
   return new Response(upstream.body, {
     status: upstream.status,
     headers: responseHeaders,
+  })
+}
+
+/** JSON error answer carrying the content-type protection header. */
+function proxyJsonError(message: string, status: number): Response {
+  return Response.json({ message }, {
+    status,
+    headers: { "X-Content-Type-Options": "nosniff" },
   })
 }

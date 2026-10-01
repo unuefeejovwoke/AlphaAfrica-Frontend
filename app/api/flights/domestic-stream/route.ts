@@ -13,6 +13,10 @@ import { parseDomesticParams, toDomesticQuery } from "@/lib/api/domestic"
  */
 
 export const dynamic = "force-dynamic"
+// Duration budget: 90s covers the 75s client stream wait plus a 15s margin
+// (see DOMESTIC_STREAM_MAX_DURATION_SECONDS in lib/guardrails.ts — kept as
+// a literal here because route segment config must be statically analyzable).
+export const maxDuration = 90
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url)

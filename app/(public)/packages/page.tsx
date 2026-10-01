@@ -20,6 +20,7 @@ import { getSupportWhatsAppUrl } from "@/lib/content/company"
 export const revalidate = 3600
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: "Holiday Packages | Alphaa Africa",
   description:
     "Curated holiday packages with durations, inclusions, and from-prices in Naira. Filter by destination and budget, then send a no-payment enquiry.",

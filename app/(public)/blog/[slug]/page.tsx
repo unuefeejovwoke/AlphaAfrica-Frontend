@@ -21,7 +21,7 @@ import {
   formatBlogDate,
   resolveBlogToc,
 } from "@/lib/blog"
-import { canonicalUrl } from "@/lib/seo"
+import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 import { serializeJsonLd } from "@/lib/structured-data"
 import { humanizeSlug } from "@/lib/listings"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
@@ -57,6 +57,7 @@ export async function generateMetadata({
     const noindex = post.seo?.noindex === true
     const ogImage = post.seo?.og_image?.trim() || blogImageSrc(post.featured_image)
     return {
+      metadataBase: new URL(getSiteUrl()),
       title,
       description,
       alternates: { canonical },

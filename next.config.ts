@@ -1,26 +1,17 @@
 import type { NextConfig } from "next"
+import { imageRemotePatterns, securityHeaders } from "./lib/guardrails"
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "api.alphaaafrica.com",
-      },
-      {
-        protocol: "http",
-        hostname: "localhost",
-      },
-      {
-        protocol: "http",
-        hostname: "127.0.0.1",
-      },
-    ],
+    remotePatterns: imageRemotePatterns(process.env.NODE_ENV === "production"),
   },
+  headers: () =>
+    Promise.resolve([
+      {
+        source: "/(.*)",
+        headers: securityHeaders(),
+      },
+    ]),
 }
 
 export default nextConfig

@@ -15,6 +15,7 @@ import { getSupportWhatsAppUrl } from "@/lib/content/company"
 export const revalidate = 3600
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: "Destinations | Alphaa Africa",
   description:
     "Browse Alphaa Africa destinations with curated holiday packages, package counts, and starting prices in Naira. Plan with a specialist on WhatsApp.",

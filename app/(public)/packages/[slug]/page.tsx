@@ -22,7 +22,7 @@ import { ViewTracker } from "@/components/analytics/view-tracker"
 import { getPackages, getPackageDetail } from "@/lib/api/packages"
 import { ApiError } from "@/lib/api/client"
 import { formatNaira } from "@/lib/format"
-import { canonicalUrl } from "@/lib/seo"
+import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 import { serializeJsonLd } from "@/lib/structured-data"
 import {
   humanizeSlug,
@@ -58,6 +58,7 @@ export async function generateMetadata({
         ? pkg.summary.slice(0, 155)
         : `${pkg.title} — a ${pkg.duration_days}-day curated itinerary to ${pkg.destination_name} from ${formatNaira(pkg.price)} per person.`
     return {
+      metadataBase: new URL(getSiteUrl()),
       title: `${pkg.title} | Alphaa Africa`,
       description,
       alternates: { canonical: url },
