@@ -2,6 +2,18 @@ import { z } from "zod"
 import { apiGet } from "./client.ts"
 
 /**
+ * Never-cached, same-origin request options shared by every post-payment
+ * verification read — this universal order lookup and every module verify
+ * call. Verification must reflect the live payment state, so a cached
+ * "pending" snapshot can never mask a completed payment. Re-exported by the
+ * verification seam so it stays one documented read policy.
+ */
+export const VERIFICATION_REQUEST = {
+  noStore: true,
+  sameOrigin: true,
+} as const
+
+/**
  * Post-payment order lookup (guide §12, PRD §13, §8.4).
  *
  * After a Paystack redirect, the frontend must never assume success from
@@ -55,8 +67,7 @@ export async function getPaymentOrder(
   const raw = await apiGet<unknown>(
     `/api/payments/order/${encodeURIComponent(reference)}/`,
     {
-      noStore: true,
-      sameOrigin: true,
+      ...VERIFICATION_REQUEST,
       ...(options.token ? { query: { token: options.token } } : {}),
       ...(options.authToken ? { authToken: options.authToken } : {}),
     }

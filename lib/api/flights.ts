@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS } from "./client.ts"
+import { clearSessionKeys } from "./verification.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { futureDateStringSchema } from "./validation.ts"
 import { moneyToKobo, koboToMoneyString, resolveMoneyChange } from "../money.ts"
@@ -2185,12 +2186,7 @@ export function readSelectedOffer(): FlightOffer | null {
 /** Drop the selected Flight Offer from memory and session (branch switches). */
 export function clearSelectedOffer(): void {
   memorySelectedOffer = null
-  if (typeof window === "undefined") return
-  try {
-    window.sessionStorage.removeItem(SELECTED_OFFER_SESSION_KEY)
-  } catch {
-    // ignore — memory copy already cleared
-  }
+  clearSessionKeys([SELECTED_OFFER_SESSION_KEY])
 }
 
 /** Copy the Confirmed Offer into session for ticket 06 (traveller entry). */
@@ -2210,13 +2206,7 @@ export function readConfirmedOffer(): FlightOffer | null {
 /** Drop the Confirmed Offer from memory and session (checkout teardown). */
 export function clearConfirmedOffer(): void {
   memoryConfirmedOffer = null
-  if (typeof window === "undefined") return
-  try {
-    window.sessionStorage.removeItem(CONFIRMED_OFFER_SESSION_KEY)
-    window.sessionStorage.removeItem(CONFIRMED_OFFER_SAVED_AT_KEY)
-  } catch {
-    // ignore — memory copy already cleared
-  }
+  clearSessionKeys([CONFIRMED_OFFER_SESSION_KEY, CONFIRMED_OFFER_SAVED_AT_KEY])
 }
 
 /**
@@ -2338,12 +2328,7 @@ export function buildCheckoutPartyQuery(party: SelectedFlightParty): string {
 /** Drop the selected party from memory and session (checkout teardown). */
 export function clearSelectedParty(): void {
   memorySelectedParty = null
-  if (typeof window === "undefined") return
-  try {
-    window.sessionStorage.removeItem(SELECTED_PARTY_SESSION_KEY)
-  } catch {
-    // ignore — memory copy already cleared
-  }
+  clearSessionKeys([SELECTED_PARTY_SESSION_KEY])
 }
 
 export const TRAVELLERS_DRAFT_SESSION_KEY = "alphaa:travellers-draft:v1"
@@ -2423,12 +2408,7 @@ export function readTravellersDraft(): TravellersDraft | null {
 
 /** Drop the Travellers draft from session (cleared or completed checkout). */
 export function clearTravellersDraft(): void {
-  if (typeof window === "undefined") return
-  try {
-    window.sessionStorage.removeItem(TRAVELLERS_DRAFT_SESSION_KEY)
-  } catch {
-    // ignore — nothing left to clear
-  }
+  clearSessionKeys([TRAVELLERS_DRAFT_SESSION_KEY])
 }
 
 /**

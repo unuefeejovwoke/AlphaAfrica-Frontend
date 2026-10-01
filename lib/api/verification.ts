@@ -3,6 +3,7 @@ import {
   isOrderPaid,
   isOrderPending,
   resolveOrderPaymentStatus,
+  VERIFICATION_REQUEST,
   type GetPaymentOrderOptions,
   type PaymentOrder,
 } from "./payments.ts"
@@ -15,7 +16,8 @@ import { track, type AnalyticsEvent, type AnalyticsProps } from "../analytics.ts
  * This module owns four things, and every verify client delegates instead of
  * re-implementing:
  * - the status vocabulary (`VerificationOutcome` + resolvers),
- * - the read policy (never cached, same-origin),
+ * - the read policy (re-exported {@link VERIFICATION_REQUEST}: never cached,
+ *   same-origin — defined beside the universal order lookup in `payments.ts`),
  * - the settle retry (one ~2s wait for the webhook, never polling),
  * - analytics emission (exactly once per state change).
  *
@@ -23,6 +25,8 @@ import { track, type AnalyticsEvent, type AnalyticsProps } from "../analytics.ts
  * and the Paystack redirect are untouched. A return from Paystack proves
  * nothing by itself — callers must verify before rendering any outcome.
  */
+
+export { VERIFICATION_REQUEST }
 
 export type VerificationOutcome = "pending" | "confirmed" | "failed" | "cancelled"
 
@@ -34,18 +38,15 @@ const PAID_STATUSES = new Set(["paid", "confirmed", "success", "completed"])
 /** Terminal payment states that will never settle — never retried. */
 const FAILED_STATUSES = new Set(["failed", "abandoned", "expired"])
 
-/** Still-settling states where one webhook wait is worthwhile. */
-const PENDING_STATUSES = new Set(["pending", "processing", "initialized"])
-
 /**
  * Canonical status mapping. `payment_status` synonyms (`paid`, `success`,
  * `completed`) and module `confirmed` all mean the money moved. Terminal
  * `failed`/`cancelled` (plus `abandoned`/`expired`, which settle never)
- * render the not-completed branch immediately. Anything else — including
- * `pending`, `processing`, and unrecognized or missing states — stays
- * pending so the customer keeps checking instead of assuming failure and
- * paying twice. `extraPaid` covers per-type terminal-proof states (visa
- * `contacted`: a specialist only contacts after the fee has moved).
+ * render the not-completed branch immediately. Everything else — `pending`,
+ * `processing`, unrecognized, or missing — stays pending so the customer
+ * keeps checking instead of assuming failure and paying twice. `extraPaid`
+ * covers per-type terminal-proof states (visa `contacted`: a specialist only
+ * contacts after the fee has moved).
  */
 export function resolveVerificationOutcome(
   status: string | null | undefined,
@@ -56,7 +57,6 @@ export function resolveVerificationOutcome(
   if (extraPaid.includes(normalized)) return "confirmed"
   if (normalized === "cancelled") return "cancelled"
   if (FAILED_STATUSES.has(normalized)) return "failed"
-  if (normalized !== "" && !PENDING_STATUSES.has(normalized)) return "pending"
   return "pending"
 }
 
@@ -77,17 +77,6 @@ export function resolveBookingOutcome(
     type === "visa" ? VISA_EXTRA_PAID : []
   )
 }
-
-// ---------------------------------------------------------------------------
-// Read policy: verification reads are live and same-origin, never cached.
-// A cached "pending" snapshot must never mask a completed payment.
-// Every module verify function spreads this into its request options.
-// ---------------------------------------------------------------------------
-
-export const VERIFICATION_REQUEST = {
-  noStore: true,
-  sameOrigin: true,
-} as const
 
 // ---------------------------------------------------------------------------
 // Authoritative payment-state reads. The universal order's `payment_status`
@@ -116,25 +105,15 @@ export function isSettlingOrder(
   return isOrderPending(resolveOrderPaymentStatus(order))
 }
 
-/** Raw-status variant for callers that already resolved the status string. */
-export function shouldSettleRetry(
-  status: string | null | undefined
-): boolean {
-  return isOrderPending(status) && !isOrderPaid(status)
-}
-
 // ---------------------------------------------------------------------------
 // Settle retry: wait ~2s for the webhook, retry ONCE, never poll. Terminal
 // states skip the wait entirely — the payment will never settle.
 // ---------------------------------------------------------------------------
 
-export const SETTLE_RETRY_WAIT_MS = 2000
+const SETTLE_RETRY_WAIT_MS = 2000
 
-export function waitForSettlement(
-  ms: number = SETTLE_RETRY_WAIT_MS
-): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+const waitForSettlement = (): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, SETTLE_RETRY_WAIT_MS))
 
 /**
  * Run `read`; when `shouldRetry` holds for the first result, wait once and
@@ -144,7 +123,7 @@ export function waitForSettlement(
 export async function withSettleRetry<T>(
   read: () => Promise<T>,
   shouldRetry: (value: T) => boolean,
-  wait: () => Promise<void> = () => waitForSettlement()
+  wait: () => Promise<void> = waitForSettlement
 ): Promise<T> {
   const first = await read()
   if (!shouldRetry(first)) return first
@@ -165,7 +144,7 @@ export async function withSettleRetry<T>(
 export async function fetchOrderWithSettleRetry(
   reference: string,
   options: GetPaymentOrderOptions = {},
-  wait: () => Promise<void> = () => waitForSettlement()
+  wait: () => Promise<void> = waitForSettlement
 ): Promise<PaymentOrder> {
   return withSettleRetry(
     () => getPaymentOrder(reference, options),
@@ -190,13 +169,6 @@ export async function fetchOrderWithSettleRetry(
 const EMITTED_STORAGE_PREFIX = "alphaa:verification-event:v1:"
 
 const emittedMemory = new Set<string>()
-
-export function verificationEventKey(
-  reference: string,
-  suffix: string
-): string {
-  return `${reference}::${suffix}`
-}
 
 function readStorageFlag(key: string): boolean {
   try {

@@ -1,7 +1,11 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost } from "./client.ts"
 import { digestKey } from "./booking-key.ts"
-import { resolveBookingOutcome, VERIFICATION_REQUEST } from "./verification.ts"
+import {
+  clearSessionKeys,
+  resolveBookingOutcome,
+  VERIFICATION_REQUEST,
+} from "./verification.ts"
 import { emailSchema } from "./validation.ts"
 import { moneyToKobo, resolveMoneyChange, type MoneyChange } from "../money.ts"
 import {
@@ -166,13 +170,7 @@ export function readPaymentReference(): string | null {
  * completed trip; the verify page keeps rendering from its fetched booking.
  */
 export function clearBookingSession(): void {
-  if (typeof window === "undefined") return
-  try {
-    window.sessionStorage.removeItem(PENDING_BOOKING_SESSION_KEY)
-    window.sessionStorage.removeItem(PAYMENT_REFERENCE_SESSION_KEY)
-  } catch {
-    // sessionStorage may throw in private mode — nothing to clear, nothing to do
-  }
+  clearSessionKeys([PENDING_BOOKING_SESSION_KEY, PAYMENT_REFERENCE_SESSION_KEY])
 }
 
 // ---------------------------------------------------------------------------

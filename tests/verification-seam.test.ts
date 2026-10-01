@@ -20,7 +20,6 @@ import {
   resetVerificationEmissions,
   resolveBookingOutcome,
   resolveVerificationOutcome,
-  shouldSettleRetry,
   VERIFICATION_REQUEST,
   withSettleRetry,
   type BookingType,
@@ -150,10 +149,6 @@ test("Seam vocabulary: terminal payment states never read as pending", () => {
       assert.equal(outcome, "failed", `${type}:${failed}`)
       assert.notEqual(outcome, "pending", `${type}:${failed} must not retry`)
     }
-    assert.equal(shouldSettleRetry("abandoned"), false)
-    assert.equal(shouldSettleRetry("failed"), false)
-    assert.equal(shouldSettleRetry("cancelled"), false)
-    assert.equal(shouldSettleRetry("expired"), false)
   }
 })
 
@@ -192,11 +187,12 @@ test("Settling read: pending-but-unpaid retries, everything else does not", () =
   assert.equal(isSettlingOrder({ status: "processing" }), true)
   assert.equal(isSettlingOrder({ payment_status: "success" }), false)
   assert.equal(isSettlingOrder({ status: "failed" }), false)
+  assert.equal(isSettlingOrder({ status: "abandoned" }), false)
+  assert.equal(isSettlingOrder({ status: "expired" }), false)
+  assert.equal(isSettlingOrder({ status: "cancelled" }), false)
+  assert.equal(isSettlingOrder({ payment_status: "" }), true, "missing status keeps checking")
   assert.equal(isSettlingOrder(null), false)
-  assert.equal(shouldSettleRetry("pending"), true)
-  assert.equal(shouldSettleRetry("processing"), true)
-  assert.equal(shouldSettleRetry("paid"), false)
-  assert.equal(shouldSettleRetry(null), true, "missing status keeps checking")
+  assert.equal(isSettlingOrder(undefined), false)
 })
 
 // ---------------------------------------------------------------------------
