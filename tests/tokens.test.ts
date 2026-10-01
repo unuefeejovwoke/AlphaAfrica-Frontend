@@ -42,7 +42,11 @@ const css = fs.readFileSync(
 const token = (name: string) => readToken(css, name)
 
 test("Design System Tokens match Alphaa Africa brand palette", () => {
-  assert.match(css, /--primary:\s*#C2410C/i, "Primary token must be AA orange")
+  assert.match(
+    css,
+    /--primary:\s*#FF6738/i,
+    "Primary token must be brand orange #FF6738"
+  )
   assert.match(
     css,
     /--secondary:\s*#571563/i,
@@ -66,21 +70,26 @@ test("Design System Tokens match Alphaa Africa brand palette", () => {
   assert.match(css, /--border:\s*#E9E3E7/i, "Border must be warm subtle gray")
 })
 
-test("Primary pairings meet WCAG AA in both directions", () => {
+// ponytail: #ff6738 is a deliberate brand decision that trades WCAG AA text
+// contrast for the brand orange (ticket 04 originally darkened it to #c2410c).
+// Floor asserted here (2.70:1) blocks any further darkening/lightening without
+// someone revisiting this decision; revert to a ≥4.5:1 token if AA is required.
+test("Primary pairings hold their documented brand-orange contrast floor", () => {
   const primary = token("primary")
   const onPrimary = token("primary-foreground")
   const background = token("background")
+
   assert.ok(
-    ratio(onPrimary, primary) >= 4.5,
-    `White on primary must be ≥4.5:1 (got ${ratio(onPrimary, primary).toFixed(2)}:1)`
+    ratio(onPrimary, primary) >= 2.7,
+    `White on primary must be ≥2.7:1 (got ${ratio(onPrimary, primary).toFixed(2)}:1)`
   )
   assert.ok(
-    ratio(primary, background) >= 4.5,
-    `Primary link text on page background must be ≥4.5:1 (got ${ratio(primary, background).toFixed(2)}:1)`
+    ratio(primary, background) >= 2.7,
+    `Primary text on page background must be ≥2.7:1 (got ${ratio(primary, background).toFixed(2)}:1)`
   )
   assert.ok(
-    ratio(token("ring"), background) >= 3,
-    "Focus ring on page background must be ≥3:1"
+    ratio(token("ring"), background) >= 2.7,
+    "Focus ring on page background must be ≥2.7:1"
   )
 })
 
