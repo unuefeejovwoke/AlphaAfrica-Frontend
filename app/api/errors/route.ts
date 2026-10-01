@@ -16,25 +16,18 @@ export const dynamic = "force-dynamic"
 const SAFE_KIND_PATTERN = /^[\w:.-]{1,64}$/
 
 export async function POST(request: Request): Promise<Response> {
+  const bad = () =>
+    Response.json({ message: "Unprocessable report." }, { status: 400 })
   let body: unknown = null
   try {
     body = (await request.json()) as unknown
   } catch {
-    return Response.json({ message: "Unprocessable report." }, { status: 400 })
+    return bad()
   }
-  if (typeof body !== "object" || body === null) {
-    return Response.json({ message: "Unprocessable report." }, { status: 400 })
-  }
+  if (typeof body !== "object" || body === null) return bad()
   const record = body as Record<string, unknown>
-  const rawContext = record.context
-  const context = sanitizeReportContext(
-    typeof rawContext === "object" && rawContext !== null
-      ? (rawContext as Record<string, string>)
-      : {}
-  )
-  if (!context) {
-    return Response.json({ message: "Unprocessable report." }, { status: 400 })
-  }
+  const context = sanitizeReportContext(record.context ?? {})
+  if (!context) return bad()
   const kind =
     typeof record.kind === "string" && SAFE_KIND_PATTERN.test(record.kind)
       ? record.kind

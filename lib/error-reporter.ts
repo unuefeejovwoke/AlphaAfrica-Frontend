@@ -92,7 +92,7 @@ export function extractBookingReference(path: string): string | undefined {
 }
 
 /** Error kind for the report: class + typed code/status, never the message. */
-export function reportKind(error: unknown): string {
+function reportKind(error: unknown): string {
   if (error instanceof ApiError) {
     return `ApiError:${error.code}:${error.status ?? "none"}`
   }
@@ -206,7 +206,14 @@ export function reportError(
     return null
   }
   if (!report) return null
-  const key = `${report.kind}:${report.context.flow}:${report.context.bookingReference ?? ""}`
+  const key = [
+    report.kind,
+    report.context.flow,
+    report.context.bookingReference ?? "",
+    report.context.route ?? "",
+    report.context.code ?? "",
+    report.context.status ?? "",
+  ].join(":")
   try {
     if (!shouldSendReport(key)) return null
     transport(report)

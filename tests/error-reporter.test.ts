@@ -25,6 +25,7 @@ import {
 } from "../lib/error-reporter.ts"
 import { envConfigStatus } from "../lib/env.ts"
 import { getHealthStatus } from "../lib/health.ts"
+import { proxyToBackend } from "../lib/api/proxy.ts"
 
 const ROOT = path.resolve(import.meta.dirname, "..")
 
@@ -217,8 +218,7 @@ test("Health probe reports configuration validity separately from liveness", (t)
   assert.equal(getHealthStatus().status, "ok")
 })
 
-test("Error ingress and probe routes stay thin and safe", () => {
-  const errors = fs.readFileSync(
+test("Error ingress and probe routes stay thin and safe", () => {  const errors = fs.readFileSync(
     path.join(ROOT, "app/api/errors/route.ts"),
     "utf8"
   )
@@ -241,4 +241,45 @@ test("Error ingress and probe routes stay thin and safe", () => {
   const proxy = fs.readFileSync(path.join(ROOT, "lib/api/proxy.ts"), "utf8")
   assert.match(proxy, /reportError\(error/, "server failures reach the reporter")
   assert.match(proxy, /extractBookingReference/, "server tags the reference")
+})
+
+test("Distinct failures sharing kind and flow do not over-suppress", (t) => {
+  enableReporter(t)
+  const sent: ErrorReport[] = []
+  const transport = (r: ErrorReport) => sent.push(r)
+  const failure = new Error("upstream breakage")
+  assert.ok(reportError(failure, { flow: "proxy", route: "/a/" }, transport))
+  assert.ok(
+    reportError(failure, { flow: "proxy", route: "/b/" }, transport),
+    "different routes are different failures"
+  )
+  assert.equal(sent.length, 2)
+})
+
+test("A passed-through backend failure still reaches the reporter", async (t) => {
+  enableReporter(t)
+  withEnv(t, { NEXT_PUBLIC_API_BASE_URL: "https://backend.test" })
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = (() =>
+    Promise.resolve(
+      Response.json({ message: "backend exploded" }, { status: 502 })
+    )) as typeof fetch
+  const lines: string[] = []
+  const originalError = console.error
+  console.error = (...args: unknown[]) => {
+    lines.push(args.map(String).join(" "))
+  }
+  t.after(() => {
+    globalThis.fetch = originalFetch
+    console.error = originalError
+  })
+  const response = await proxyToBackend(
+    new Request("http://localhost/api/flights/search/", { method: "GET" }),
+    "/api/flights/search/"
+  )
+  assert.equal(response.status, 502, "upstream status still passes through")
+  assert.ok(
+    lines.some((line) => line.includes("[alphaa:error]")),
+    "the 502 must leave a reporter trace"
+  )
 })

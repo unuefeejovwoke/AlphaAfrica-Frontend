@@ -112,6 +112,19 @@ export async function proxyToBackend(
     request.signal.removeEventListener("abort", onClientAbort)
   }
 
+  // Non-OK upstreams pass through untouched (client `ApiError` mapping owns
+  // the customer copy), but a backend failure the Customer sees must also
+  // reach the reporter — a thrown error is not the only failure shape.
+  if (!upstream.ok) {
+    reportError(new Error(`Upstream answered ${upstream.status}`), {
+      flow: "proxy",
+      route: path,
+      code: String(upstream.status),
+      status: upstream.status,
+      bookingReference: extractBookingReference(path),
+    })
+  }
+
   const responseHeaders = new Headers()
   responseHeaders.set(
     "Content-Type",

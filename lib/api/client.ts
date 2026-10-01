@@ -25,7 +25,7 @@ export const DEFAULT_READ_TIMEOUT_MS = 15_000
 export const WRITE_TIMEOUT_MS = 20_000
 export const SEARCH_TIMEOUT_MS = 30_000
 
-export const TIMEOUT_MESSAGE =
+const TIMEOUT_MESSAGE =
   "The travel service took too long to respond. No booking was made and no payment was taken."
 
 export interface PaginatedResponse<T> {
@@ -178,7 +178,7 @@ function extractDetail(payload: unknown): string | null {
 }
 
 /** Caller cancellation (AbortError, or a caller-owned TimeoutError). */
-export function isAbortError(error: unknown): boolean {
+function isAbortError(error: unknown): boolean {
   if (error instanceof DOMException) {
     return error.name === "AbortError" || error.name === "TimeoutError"
   }
