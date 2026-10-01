@@ -33,12 +33,14 @@ import { hotelDetailJsonLd, humanizeSlug } from "@/lib/listings"
  * `/hotels/[slug]` (RSC, ISR 3600, open-ended fallback).
  *
  * One Hotel page answering "can Alphaa help with this stay?". The layout is
- * conversion-first: photo, name, rating, address and top amenities in the
- * hero, then the Room Type choice immediately beneath it with the stay panel
- * mirroring that choice, then About, Location and the full amenity list as
- * supporting evidence. Stable Hotel content revalidates hourly; new slugs
- * render on demand with a prices-confirmed-at-booking caveat against stale
- * from-prices (ADR-0005, ADR-0003).
+ * conversion-first and reads in two moves: photo beside name, rating, address
+ * and top amenities, then the Room Type choice with the stay panel aligned
+ * beside it, then About, Location and the full amenity list as supporting
+ * evidence. Keeping the panel level with the choice is deliberate — a booking
+ * form that precedes the options it configures asks for input before the guest
+ * knows what they are choosing between. Stable Hotel content revalidates
+ * hourly; new slugs render on demand with a prices-confirmed-at-booking caveat
+ * against stale from-prices (ADR-0005, ADR-0003).
  *
  * CONTEXT.md vocabulary throughout: Hotel, Room Type, Hotel Guest,
  * Hotel Booking, Customer, Payment Reference.
@@ -220,68 +222,77 @@ export default async function HotelDetailPage({
         server payload is what makes the preload Next emits for it actually
         match the first paint. `HotelBookingFlow` returns a fragment, so the
         three interactive regions land in these same grid cells once it mounts.
+
+        Row 1 is the photograph beside the identity it belongs to. Row 2 is the
+        entire decision: Room Types on the left, stay panel top-aligned with
+        them on the right. That alignment is the redesign. The panel used to
+        start at row 1, level with the gallery, so it asked for dates and party
+        before the guest had seen a single Room Type and left its Continue
+        button disabled above the very list that would enable it. Pairing the
+        photo with the name instead of the form buys back ~265px of height, so
+        the Room Type choice now reaches the first viewport.
       */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-x-12">
-        <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-x-12 lg:gap-y-8">
+        <div className="lg:col-start-1 lg:row-start-1">
           <HotelGallery hotelName={hotel.name} images={display.gallery} />
+        </div>
 
-          {/* Title block: one h1, rating, place, address. */}
-          <div className="flex flex-col gap-2.5">
-            <h1
-              id="hotel-title"
-              className="text-3xl leading-[1.1] font-extrabold tracking-tight text-balance text-foreground sm:text-4xl lg:text-[2.5rem]"
-            >
-              {hotel.name}
-            </h1>
+        {/* Title block: one h1, rating, place, address, pitch, top amenities. */}
+        <div className="flex min-w-0 flex-col gap-3 lg:col-start-2 lg:row-start-1 lg:pt-2">
+          <h1
+            id="hotel-title"
+            className="text-3xl leading-[1.1] font-extrabold tracking-tight text-balance text-foreground sm:text-4xl lg:text-[2rem]"
+          >
+            {hotel.name}
+          </h1>
 
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              {display.starLabel ? (
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                  <span aria-hidden="true" className="flex gap-0.5">
-                    {Array.from({ length: hotel.star_rating })
-                      .slice(0, 5)
-                      .map((_, index) => (
-                        <HugeiconsIcon
-                          key={index}
-                          icon={StarIcon}
-                          size={14}
-                          className="text-primary"
-                        />
-                      ))}
-                  </span>
-                  <span
-                    role="img"
-                    aria-label={`Rated ${hotel.star_rating} out of 5 stars`}
-                  >
-                    {display.starLabel}
-                  </span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {display.starLabel ? (
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <span aria-hidden="true" className="flex gap-0.5">
+                  {Array.from({ length: hotel.star_rating })
+                    .slice(0, 5)
+                    .map((_, index) => (
+                      <HugeiconsIcon
+                        key={index}
+                        icon={StarIcon}
+                        size={14}
+                        className="fill-primary text-primary"
+                      />
+                    ))}
                 </span>
-              ) : null}
-              <span aria-hidden="true" className="h-3.5 w-px bg-border" />
-              <span className="text-sm font-medium text-muted-foreground">
-                {display.placeLabel}
+                <span
+                  role="img"
+                  aria-label={`Rated ${hotel.star_rating} out of 5 stars`}
+                >
+                  {display.starLabel}
+                </span>
               </span>
-            </div>
-
-            {display.addressText ? (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {display.addressText}
-              </p>
             ) : null}
-
-            {/* Short description sits with the identity block so the guest
-                gets the pitch before the choice, not after it. */}
-            {overviewParagraphs.length > 0 ? (
-              <p className="max-w-[68ch] text-[15px] leading-relaxed text-foreground/80">
-                {overviewParagraphs[0]}
-              </p>
-            ) : null}
-
-            <HotelAmenityStrip
-              amenities={display.amenities}
-              deferToFullGrid={hasDeferredAmenities}
-            />
+            <span aria-hidden="true" className="h-3.5 w-px bg-border" />
+            <span className="text-sm font-medium text-muted-foreground">
+              {display.placeLabel}
+            </span>
           </div>
+
+          {display.addressText ? (
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {display.addressText}
+            </p>
+          ) : null}
+
+          {/* Short description sits with the identity block so the guest
+              gets the pitch before the choice, not after it. */}
+          {overviewParagraphs.length > 0 ? (
+            <p className="text-[15px] leading-relaxed text-foreground/80">
+              {overviewParagraphs[0]}
+            </p>
+          ) : null}
+
+          <HotelAmenityStrip
+            amenities={display.amenities}
+            deferToFullGrid={hasDeferredAmenities}
+          />
         </div>
 
         <React.Suspense fallback={<HotelBookingFlowFallback />}>

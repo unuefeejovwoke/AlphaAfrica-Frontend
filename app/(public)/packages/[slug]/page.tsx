@@ -219,7 +219,7 @@ export default async function PackageDetailPage({
                 <HugeiconsIcon
                   icon={StarIcon}
                   size={12}
-                  className="text-amber-500"
+                  className="fill-amber-500 text-amber-500"
                   aria-hidden="true"
                 />
                 <span>Featured Journey</span>

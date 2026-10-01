@@ -218,13 +218,13 @@ export function HotelGallery({
 }
 
 /**
- * Hero sizes. The hero sits in the grid's content column, which is the page
- * width minus the 360px stay rail and its 48px gap once `lg` applies, so
- * ~808px inside a 1280px `max-w-7xl`. Keeping this accurate lets the browser
+ * Hero sizes. The hero is the sole occupant of the grid's first column: the
+ * page width minus the 400px stay rail and its 48px gap once `lg` applies, so
+ * ~768px inside a 1216px content box. Keeping this accurate lets the browser
  * pick the right preload candidate for the LCP image instead of fetching one
  * and then requesting another.
  */
-const HERO_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 810px"
+const HERO_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 768px"
 
 /**
  * One gallery image. The hero is the page LCP element and loads eagerly; the

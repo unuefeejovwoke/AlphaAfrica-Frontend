@@ -154,6 +154,7 @@ export function HotelRoomChoice({
                       <HugeiconsIcon
                         icon={StarIcon}
                         size={10}
+                        className="fill-current text-current"
                         aria-hidden="true"
                       />
                       <span>Lowest price</span>

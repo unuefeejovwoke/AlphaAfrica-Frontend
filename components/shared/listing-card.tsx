@@ -11,7 +11,7 @@ export function FeaturedBadge() {
       <HugeiconsIcon
         icon={StarIcon}
         size={12}
-        className="text-amber-400"
+        className="fill-amber-400 text-amber-400"
         aria-hidden="true"
       />
       Featured

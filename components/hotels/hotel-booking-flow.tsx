@@ -51,11 +51,12 @@ function todayString(): string {
  * Hotel detail interactive shell: Room Type choice plus the stay panel.
  *
  * The ordering is the redesign. The Room Type choice is the page's only
- * conversion action, so it sits directly under the hero instead of below
- * About, Location and Amenities, and the stay panel mirrors the current
- * selection instead of pointing at a list further down the page. That removes
- * the "choose a Room Type below" dead end where the control and its target
- * were never in the same visual field.
+ * conversion action, so it sits in the first content row and the stay panel is
+ * top-aligned with it rather than with the hero. The panel used to start level
+ * with the photo, which put a booking form in front of the guest before they
+ * had seen a single Room Type, and left its Continue button disabled above the
+ * list that would enable it. Mirroring the current selection is what lets the
+ * panel double as the running summary.
  *
  * This component returns a fragment: the page owns the grid and renders the
  * hero as a sibling outside the Suspense boundary, because the hero photo is
@@ -299,12 +300,16 @@ export function HotelBookingFlow({
         )}
       </section>
 
-      {/* Stay panel. Sticky in the right column on desktop; inline between the
-          Room Types and the supporting detail on mobile. */}
+      {/* Stay panel. Top-aligned with the Room Type choice on desktop so the
+          control and the thing it configures are read together; inline between
+          the Room Types and the supporting detail on mobile. It deliberately
+          does NOT start level with the hero: a booking form that precedes the
+          options it configures asks for dates and party before the guest has
+          seen a single Room Type. */}
       <aside
         id="stay-panel"
         aria-label={`Book ${hotel.name}`}
-        className="relative min-w-0 scroll-mt-24 lg:col-start-2 lg:row-span-3 lg:row-start-1"
+        className="relative min-w-0 scroll-mt-24 lg:col-start-2 lg:row-start-2"
       >
         {/* Zero-height marker at the panel's own top edge. The mobile bar
             observes it, so the bar appears exactly when this panel leaves the
@@ -436,6 +441,21 @@ export function HotelBookingFlow({
               </span>
             </Button>
 
+            {/* A disabled primary button with no stated reason is a dead end
+                for sighted guests, so the missing step is named next to the
+                control waiting on it. This is the visual twin of the `sr-only`
+                live region below, which already announces the same sentence on
+                every change — hence `aria-hidden`, so assistive tech hears it
+                once rather than twice. */}
+            {blockedReason ? (
+              <p
+                aria-hidden="true"
+                className="-mt-2 text-[13px] leading-snug text-muted-foreground"
+              >
+                {blockedReason}
+              </p>
+            ) : null}
+
             <TrackLink
               event="support_click"
               eventProps={{
@@ -518,7 +538,7 @@ export function HotelBookingFlowFallback() {
         ))}
       </div>
 
-      <div className="min-w-0 lg:col-start-2 lg:row-span-3 lg:row-start-1">
+      <div className="min-w-0 lg:col-start-2 lg:row-start-2">
         <div
           aria-hidden="true"
           className="flex flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-border/80"
