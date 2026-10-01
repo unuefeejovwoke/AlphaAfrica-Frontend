@@ -172,4 +172,3 @@ export const guestContactSchema = z.object({
 })
 
 export type GuestContactInput = z.input<typeof guestContactSchema>
-export type GuestContact = z.output<typeof guestContactSchema>

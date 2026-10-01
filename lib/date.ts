@@ -40,7 +40,7 @@ export function parseYMD(dateStr: string): [number, number, number] {
 }
 
 /** Format year/month/day (1-based) into a zero-padded YYYY-MM-DD string. */
-export function formatYMD(year: number, month: number, day: number): string {
+function formatYMD(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 }
 
