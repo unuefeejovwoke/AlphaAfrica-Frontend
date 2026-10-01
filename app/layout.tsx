@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
@@ -12,6 +12,12 @@ const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+
+// Matches --background in globals.css, so browser chrome and the page are
+// one continuous surface.
+export const viewport: Viewport = {
+  themeColor: "#faf9f7",
+}
 
 export const metadata: Metadata = {
   title: "Alphaa Africa | Travel & Assisted Service",

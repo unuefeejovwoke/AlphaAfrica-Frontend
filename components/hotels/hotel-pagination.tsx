@@ -53,7 +53,7 @@ export function HotelPagination({
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1 || isPending}
           aria-label="Go to previous Hotels page"
-          className="touch-manipulation"
+          className="min-h-11 touch-manipulation sm:min-h-8"
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={14} aria-hidden="true" />
           <span>Previous</span>
@@ -78,7 +78,7 @@ export function HotelPagination({
                 aria-label={`Go to Hotels page ${item}`}
                 aria-current={item === page ? "page" : undefined}
                 className={cn(
-                  "flex size-9 touch-manipulation items-center justify-center rounded-lg text-sm font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+                  "flex size-11 touch-manipulation items-center justify-center rounded-lg text-sm font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:size-9",
                   item === page
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -96,7 +96,7 @@ export function HotelPagination({
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages || isPending}
           aria-label="Go to next Hotels page"
-          className="touch-manipulation"
+          className="min-h-11 touch-manipulation sm:min-h-8"
         >
           <span>Next</span>
           <HugeiconsIcon icon={ArrowRight01Icon} size={14} aria-hidden="true" />

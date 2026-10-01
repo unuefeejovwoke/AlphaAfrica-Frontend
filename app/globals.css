@@ -131,6 +131,21 @@
   }
 }
 
+/* Reduced motion (ticket 20): visitors who ask the OS for less motion get a
+   still page — entrance animations, transitions, and smooth scrolling are all
+   collapsed to their final state. Per-component `motion-reduce:` variants
+   stay as-is; this is the document-wide backstop. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @media print {
   @page {
     margin: 1cm;

@@ -20,7 +20,10 @@ export function PublicFooter() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="w-full border-t border-border/50 bg-background text-foreground">
+    <footer
+      aria-label="Site footer"
+      className="w-full border-t border-border/50 bg-background text-foreground"
+    >
       {/* Editorial Pre-Footer / Concierge Bar */}
       <div className="border-b border-border/50 bg-muted/30">
         <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 py-6 sm:flex-row sm:items-center sm:px-6 lg:px-8">
@@ -76,10 +79,12 @@ export function PublicFooter() {
               concierge advisory.
             </p>
 
-            {/* Social Icons */}
+            {/* Social Icons — role="group" so the aria-label is actually
+                exposed; a plain div ignores labels. */}
             <div
-              className="mt-1 flex items-center gap-2.5"
+              role="group"
               aria-label="Social media links"
+              className="mt-1 flex items-center gap-2.5"
             >
               <a
                 href={company.socials.instagram}
@@ -121,9 +126,11 @@ export function PublicFooter() {
 
           {/* Column 2: Book Services */}
           <div>
-            <h3 className="mb-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            {/* Column headings are h2: the footer has no deeper heading
+                ancestor, so h3 would skip a level in the document outline. */}
+            <h2 className="mb-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Services
-            </h3>
+            </h2>
             <ul className="space-y-0.5 text-xs sm:space-y-2.5">
               <li>
                 <Link
@@ -170,9 +177,9 @@ export function PublicFooter() {
 
           {/* Column 3: Explore & Company */}
           <div>
-            <h3 className="mb-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            <h2 className="mb-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Company
-            </h3>
+            </h2>
             <ul className="space-y-0.5 text-xs sm:space-y-2.5">
               <li>
                 <Link
@@ -211,9 +218,9 @@ export function PublicFooter() {
 
           {/* Column 4: Abuja Headquarters & Direct Contact */}
           <div className="col-span-2 flex flex-col gap-3 md:col-span-1">
-            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Abuja Headquarters
-            </h3>
+            </h2>
 
             <div className="flex items-start gap-2.5 text-xs text-muted-foreground">
               <HugeiconsIcon

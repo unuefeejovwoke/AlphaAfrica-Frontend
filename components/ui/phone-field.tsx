@@ -167,12 +167,13 @@ export function PhoneField({
           <ComboboxPrimitive.InputGroup className="flex h-full shrink-0 items-center gap-1 rounded-l-xl border-r border-border/60 bg-muted/40 pr-1 pl-2.5">
             <CountryFlag code={activeCountry.code} />
             <ComboboxPrimitive.Input
+              autoComplete="off"
               aria-label={`Country dial code, currently +${activeCountry.dial} ${activeCountry.name}`}
               className="font-variant-numeric h-full w-14 bg-transparent text-sm font-semibold text-foreground tabular-nums focus:outline-none"
             />
             <ComboboxPrimitive.Trigger
               aria-label="Change country code"
-              className="flex size-7 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:size-9"
             >
               <HugeiconsIcon
                 icon={ArrowDown01Icon}

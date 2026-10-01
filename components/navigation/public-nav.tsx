@@ -167,13 +167,18 @@ export function PublicNav() {
             onMouseLeave={handleMegaMenuLeave}
             className="relative"
           >
+            {/* Disclosure pattern: the trigger owns expanded/controls state and
+                the panel it presents renders adjacent to it, so tab order
+                follows what the menu shows. No menu-button semantics — the
+                panel is a set of links, not a menu widget. */}
             <button
               type="button"
+              id="explore-menu-trigger"
               onClick={() => setMegaMenuOpen((prev) => !prev)}
               onMouseEnter={handleMegaMenuEnter}
               className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               aria-expanded={megaMenuOpen}
-              aria-haspopup="true"
+              aria-controls="explore-mega-menu"
             >
               <span>Explore</span>
               <HugeiconsIcon
@@ -235,12 +240,16 @@ export function PublicNav() {
           <ButtonLink href="/flights" size="sm" className="text-xs">
             Book
           </ButtonLink>
+          {/* The drawer panel carries the matching id, so trigger and panel
+              share the same expanded/controls relationship the desktop
+              disclosure has. */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="inline-flex size-9 touch-manipulation items-center justify-center rounded-lg border border-border/60 bg-card text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="inline-flex size-11 touch-manipulation items-center justify-center rounded-lg border border-border/60 bg-card text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             aria-expanded={mobileMenuOpen}
-            aria-label="Toggle navigation menu"
+            aria-controls="mobile-navigation-drawer"
+            aria-label="Open navigation menu"
           >
             <HugeiconsIcon icon={Menu01Icon} size={18} aria-hidden="true" />
           </button>
@@ -248,6 +257,9 @@ export function PublicNav() {
 
         {megaMenuOpen && (
           <div
+            id="explore-mega-menu"
+            role="group"
+            aria-labelledby="explore-menu-trigger"
             ref={megaMenuRef}
             onMouseEnter={handleMegaMenuEnter}
             onMouseLeave={handleMegaMenuLeave}
@@ -283,9 +295,11 @@ export function PublicNav() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
                       <div className="relative z-10">
-                        <h3 className="text-base font-bold tracking-tight text-white">
+                        {/* Link card label, not a document heading — the
+                            heading outline belongs to the page behind the nav. */}
+                        <p className="text-base font-bold tracking-tight text-white">
                           {service.title}
-                        </h3>
+                        </p>
                         <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/80">
                           {service.description}
                         </p>
@@ -358,7 +372,10 @@ export function PublicNav() {
         <Drawer.Portal>
           <Drawer.Backdrop className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 sm:bg-black/10" />
           <Drawer.Viewport className="fixed inset-0 z-50 flex items-start justify-center p-4">
-            <Drawer.Popup className="max-h-[88vh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl border border-border/60 bg-background px-4 py-5 shadow-2xl lg:hidden">
+            <Drawer.Popup
+              id="mobile-navigation-drawer"
+              className="max-h-[88vh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl border border-border/60 bg-background px-4 py-5 shadow-2xl lg:hidden"
+            >
               <Drawer.Content className="flex min-w-0 flex-col gap-1">
                 <div className="flex items-center justify-between px-2 pb-3">
                   <Drawer.Title className="text-sm font-semibold text-foreground">
@@ -366,7 +383,7 @@ export function PublicNav() {
                   </Drawer.Title>
                   <Drawer.Close
                     aria-label="Close navigation menu"
-                    className="inline-flex size-8 touch-manipulation items-center justify-center rounded-lg border border-border/60 bg-card text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="inline-flex size-11 touch-manipulation items-center justify-center rounded-lg border border-border/60 bg-card text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
                     <HugeiconsIcon
                       icon={Cancel01Icon}
@@ -384,6 +401,7 @@ export function PublicNav() {
                   onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
                   className="flex w-full touch-manipulation items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   aria-expanded={mobileServicesOpen}
+                  aria-controls="mobile-services-panel"
                 >
                   <span>Explore</span>
                   <HugeiconsIcon
@@ -395,7 +413,10 @@ export function PublicNav() {
                 </button>
 
                 {mobileServicesOpen && (
-                  <div className="grid grid-cols-2 gap-2 py-1">
+                  <div
+                    id="mobile-services-panel"
+                    className="grid grid-cols-2 gap-2 py-1"
+                  >
                     {SERVICES.map((item) => {
                       const isDisabled = Boolean(item.comingSoon)
 

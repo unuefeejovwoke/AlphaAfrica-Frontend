@@ -127,6 +127,8 @@ export function CarHireCalculator({ vehicle }: { vehicle: VehicleDetail }) {
           <span>Pickup date</span>
           <input
             type="date"
+            name="pickup_date"
+            autoComplete="off"
             value={pickupDate}
             min={todayDate()}
             onChange={(event) => setPickupDate(event.target.value)}
@@ -137,6 +139,8 @@ export function CarHireCalculator({ vehicle }: { vehicle: VehicleDetail }) {
           <span>Pickup time</span>
           <input
             type="time"
+            name="pickup_time"
+            autoComplete="off"
             value={pickupTime}
             onChange={(event) => setPickupTime(event.target.value)}
             className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-medium tabular-nums focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -156,6 +160,8 @@ export function CarHireCalculator({ vehicle }: { vehicle: VehicleDetail }) {
           aria-labelledby="hire-hours-label"
           className="flex items-center gap-2"
         >
+          {/* Stepper controls keep the 44px phone target the other steppers
+              (TravellerStepper, HotelPartyStepper) already meet. */}
           <Button
             type="button"
             variant="outline"
@@ -163,6 +169,7 @@ export function CarHireCalculator({ vehicle }: { vehicle: VehicleDetail }) {
             onClick={() => setNumHours((h) => Math.max(MIN_HIRE_HOURS, h - 1))}
             disabled={numHours <= MIN_HIRE_HOURS}
             aria-label="Reduce hours by one"
+            className="size-11 shrink-0"
           >
             <span aria-hidden="true">−</span>
           </Button>
@@ -177,7 +184,7 @@ export function CarHireCalculator({ vehicle }: { vehicle: VehicleDetail }) {
               if (Number.isInteger(parsed)) setNumHours(parsed)
             }}
             aria-label="Number of hours"
-            className="h-9 w-full rounded-lg border border-border bg-background px-3 text-center text-sm font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="h-11 w-full rounded-lg border border-border bg-background px-3 text-center text-sm font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           />
           <Button
             type="button"
@@ -186,6 +193,7 @@ export function CarHireCalculator({ vehicle }: { vehicle: VehicleDetail }) {
             onClick={() => setNumHours((h) => Math.min(MAX_HIRE_HOURS, h + 1))}
             disabled={numHours >= MAX_HIRE_HOURS}
             aria-label="Add one hour"
+            className="size-11 shrink-0"
           >
             <span aria-hidden="true">+</span>
           </Button>

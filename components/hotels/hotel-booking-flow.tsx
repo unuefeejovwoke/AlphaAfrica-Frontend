@@ -345,6 +345,8 @@ export function HotelBookingFlow({
             <div className="grid grid-cols-2 gap-3">
               <DatePicker
                 label="Check-in"
+                name="check_in"
+                autoComplete="off"
                 labelClassName="text-[13px] normal-case tracking-normal"
                 min={today}
                 value={checkIn}
@@ -355,6 +357,8 @@ export function HotelBookingFlow({
               />
               <DatePicker
                 label="Check-out"
+                name="check_out"
+                autoComplete="off"
                 labelClassName="text-[13px] normal-case tracking-normal"
                 min={checkIn || today}
                 value={checkOut}
