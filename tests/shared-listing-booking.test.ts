@@ -1,31 +1,11 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 
-// Ticket 12 (expand) — the shared listing/booking-session/pagination
-// modules beside the existing code. No production component imports them
-// yet; this suite pins shared-vs-domain parity so the migrate tickets can
-// rewire call sites without changing behaviour.
+// Tickets 12 + 15 — the shared listing, booking-session and pagination
+// modules are the single home for this logic. These tests exercise that
+// single implementation directly; the Hotel and Car domain tests exercise
+// the parts of it their flows actually use.
 
-import {
-  countActiveHotelFilters,
-  findReusableHotelBooking,
-  getHotelPageItems,
-  getHotelPagination,
-  hashHotelBookingKey,
-  hasHotelSearchParams,
-  normalizeHotelBookingCreateResult,
-  HOTEL_SEARCH_PARAM_KEYS,
-} from "../lib/api/hotels.ts"
-import {
-  countActiveCarFilters,
-  findReusableCarBooking,
-  getCarPageItems,
-  getCarPagination,
-  hashCarBookingKey,
-  hasCarSearchParams,
-  normalizeCarBookingCreateResult,
-  CAR_SEARCH_PARAM_KEYS,
-} from "../lib/api/cars.ts"
 import {
   countActiveFilters,
   extractSlugs,
@@ -44,136 +24,113 @@ import {
   saveSessionRecord,
   saveSessionString,
   selectFeaturedItems,
+  stableStringify,
 } from "../lib/api/shared.ts"
 
-test("pagination ranges match both domains, including honest last pages", () => {
-  const inputs = [
-    { page: 1, totalCount: 30, pageSize: 10, visibleCount: 10 },
-    { page: 3, totalCount: 25, pageSize: 10, visibleCount: 5 },
-    { page: 1, totalCount: 0, pageSize: 10, visibleCount: 0 },
-  ]
-  for (const input of inputs) {
-    assert.deepEqual(getPagination(input), getHotelPagination(input))
-    assert.deepEqual(getPagination(input), getCarPagination(input))
-  }
-  assert.deepEqual(getPagination(inputs[1]), {
-    totalPages: 3,
-    start: 21,
-    end: 25,
-  })
+test("pagination derives total pages and honest last-page ranges", () => {
+  assert.deepEqual(
+    getPagination({ page: 3, totalCount: 25, pageSize: 10, visibleCount: 5 }),
+    { totalPages: 3, start: 21, end: 25 }
+  )
+  assert.deepEqual(
+    getPagination({ page: 1, totalCount: 30, pageSize: 10, visibleCount: 10 }),
+    { totalPages: 3, start: 1, end: 10 }
+  )
+  // Empty page reports no range, never a fabricated one.
+  assert.deepEqual(
+    getPagination({ page: 1, totalCount: 0, pageSize: 10, visibleCount: 0 }),
+    { totalPages: 0, start: 0, end: 0 }
+  )
 })
 
-test("page-item windows match both domains", () => {
-  for (const [page, total] of [
-    [2, 5],
-    [1, 10],
-    [5, 10],
-    [10, 10],
-  ] as const) {
-    assert.deepEqual(getPageItems(page, total), getHotelPageItems(page, total))
-    assert.deepEqual(getPageItems(page, total), getCarPageItems(page, total))
-  }
+test("page-item windows ellipsis for long runs and list all for short ones", () => {
   assert.deepEqual(getPageItems(1, 0), [])
+  assert.deepEqual(getPageItems(2, 5), [1, 2, 3, 4, 5])
+  assert.deepEqual(getPageItems(1, 10), [1, 2, "ellipsis", 10])
+  assert.deepEqual(getPageItems(10, 10), [1, "ellipsis", 9, 10])
 })
 
-test("creation envelopes normalize like both domains", () => {
-  const shapes: unknown[] = [
-    { reference: "R1", authorization_url: "https://pay.test/1" },
-    {
+test("creation envelopes normalize flat and { booking, payment } shapes", () => {
+  assert.deepEqual(
+    normalizeBookingCreateResult({
+      reference: "R1",
+      authorization_url: "https://pay.test/1",
+    }),
+    { reference: "R1", authorization_url: "https://pay.test/1" }
+  )
+  assert.deepEqual(
+    normalizeBookingCreateResult({
       booking: { reference: "R2", status: "pending" },
       payment: { reference: "R2", authorization_url: "https://pay.test/2" },
-    },
-    { booking: { reference: "X" } },
-    {},
-    null,
-  ]
-  for (const raw of shapes) {
-    assert.deepEqual(
-      normalizeBookingCreateResult(raw),
-      normalizeHotelBookingCreateResult(raw)
-    )
-    assert.deepEqual(
-      normalizeBookingCreateResult(raw),
-      normalizeCarBookingCreateResult(raw)
-    )
-  }
+    }),
+    { reference: "R2", authorization_url: "https://pay.test/2" }
+  )
+  // Neither shape without both halves is usable — never redirect broken.
+  assert.equal(
+    normalizeBookingCreateResult({ booking: { reference: "X" } }),
+    null
+  )
+  assert.equal(normalizeBookingCreateResult({}), null)
+  assert.equal(normalizeBookingCreateResult(null), null)
 })
 
-test("one digest helper covers both reuse keys, leaking no guest data", () => {
-  const hotelPayload = {
-    hotel_id: 1,
-    room_type_id: 2,
-    check_in: "2999-01-15",
-    check_out: "2999-01-17",
-    num_rooms: 1,
-    num_guests: 2,
+test("reuse identity is a key-order-normalized digest, never the payload", () => {
+  const payload = {
     guest_name: "Ada Okafor",
     guest_email: "ada@example.com",
     guest_phone: "+2348012345678",
-  }
-  const carPayload = {
-    vehicle_id: 1,
-    pickup_location: "Airport",
-    dropoff_location: "Hotel",
-    pickup_datetime: "2999-01-15T09:30:00.000Z",
     num_hours: 5,
-    guest_name: "Ada Okafor",
-    guest_email: "ada@example.com",
+  }
+  const reordered = {
+    num_hours: 5,
     guest_phone: "+2348012345678",
+    guest_email: "ada@example.com",
+    guest_name: "Ada Okafor",
   }
-  assert.equal(hashPayloadKey(hotelPayload), hashHotelBookingKey(hotelPayload))
-  assert.equal(hashPayloadKey(carPayload), hashCarBookingKey(carPayload))
-  for (const key of [hashPayloadKey(hotelPayload), hashPayloadKey(carPayload)]) {
-    assert.match(key, /^[0-9a-f]{16}$/)
-    assert.equal(key.includes("ada@example.com"), false)
-  }
+  assert.equal(hashPayloadKey(payload), hashPayloadKey(reordered))
+  const key = hashPayloadKey(payload)
+  assert.match(key, /^[0-9a-f]{16}$/)
+  assert.equal(key.includes("ada@example.com"), false)
+  assert.equal(stableStringify({ b: 1, a: 2 }), '{"a":2,"b":1}')
+
   const stored = {
-    key: hashPayloadKey(carPayload),
+    key,
     reference: "REF-1",
     authorization_url: "https://pay.test/x",
   }
-  assert.deepEqual(findReusableBookingRecord(stored, stored.key), {
+  assert.deepEqual(findReusableBookingRecord(stored, key), {
     reference: "REF-1",
     authorization_url: "https://pay.test/x",
   })
-  assert.deepEqual(
-    findReusableBookingRecord(stored, stored.key),
-    findReusableCarBooking(stored, stored.key)
-  )
-  assert.deepEqual(
-    findReusableBookingRecord(stored, stored.key),
-    findReusableHotelBooking(stored, stored.key)
-  )
   assert.equal(findReusableBookingRecord(stored, "other"), null)
-  assert.equal(findReusableBookingRecord(null, stored.key), null)
+  assert.equal(findReusableBookingRecord(null, key), null)
+  assert.equal(
+    findReusableBookingRecord({ ...stored, reference: "" }, key),
+    null
+  )
 })
 
-test("listing params match both domains and drop invalid values", () => {
+test("listing params parse bounded values and drop the invalid", () => {
   assert.equal(
-    hasListingSearchParams({ destination: "Lagos" }, HOTEL_SEARCH_PARAM_KEYS),
-    hasHotelSearchParams({ destination: "Lagos" })
+    hasListingSearchParams({ destination: "Lagos" }, ["destination"]),
+    true
   )
+  assert.equal(hasListingSearchParams({}, ["destination"]), false)
   assert.equal(
-    hasListingSearchParams({ max_rate: "50000" }, CAR_SEARCH_PARAM_KEYS),
-    hasCarSearchParams({ max_rate: "50000" })
+    hasListingSearchParams({ destination: "  " }, ["destination"]),
+    false
   )
-  assert.equal(hasListingSearchParams({}, HOTEL_SEARCH_PARAM_KEYS), false)
   assert.equal(
     countActiveFilters({ max_price: 100000, min_stars: 4, ordering: "price" }),
-    countActiveHotelFilters({
-      max_price: 100000,
-      min_stars: 4,
-      ordering: "price",
-    })
+    3
   )
-  assert.equal(
-    countActiveFilters({ vehicle_type: "coaster", max_rate: 50000 }),
-    countActiveCarFilters({ vehicle_type: "coaster", max_rate: 50000 })
-  )
+  assert.equal(countActiveFilters({}), 0)
   assert.equal(parseBoundedInt("3", 1, 5), 3)
   assert.equal(parseBoundedInt("0", 1), undefined)
+  assert.equal(parseBoundedInt("abc", 1), undefined)
   assert.equal(parsePriceCeiling("150,000", 100_000_000), 150000)
   assert.equal(parsePriceCeiling("-5", 100_000_000), undefined)
+  assert.equal(parsePriceCeiling("999999999", 100_000_000), undefined)
   assert.equal(parseOrderingValue("price", ["price", "name"] as const), "price")
   assert.equal(
     parseOrderingValue("bogus", ["price", "name"] as const),
@@ -214,6 +171,16 @@ test("session records round-trip, reject corruption, and clear", () => {
   } finally {
     delete (globalThis as { window?: unknown }).window
   }
+})
+
+test("session helpers degrade gracefully without a window", () => {
+  saveSessionRecord("alphaa:no-window:v1", {
+    key: "d",
+    reference: "R",
+    authorization_url: "u",
+  })
+  assert.equal(readSessionRecord("alphaa:no-window:v1"), null)
+  assert.equal(readSessionString("alphaa:no-window:v1"), null)
 })
 
 test("featured selection slices and slug listing maps", () => {

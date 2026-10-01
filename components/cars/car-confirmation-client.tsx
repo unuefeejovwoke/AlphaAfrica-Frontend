@@ -20,11 +20,12 @@ import {
 } from "@/lib/api/verification"
 import {
   clearCarBookingSession,
+  CAR_PAYMENT_REFERENCE_SESSION_KEY,
   getCarSupportWhatsAppUrl,
-  readCarPaymentReference,
   resolveCarVerificationState,
   verifyCarBooking,
 } from "@/lib/api/cars"
+import { readSessionString } from "@/lib/api/shared"
 import { formatNaira } from "@/lib/format"
 
 type Outcome = "loading" | "confirmed" | "pending" | "failed" | "error"
@@ -37,7 +38,9 @@ type Outcome = "loading" | "confirmed" | "pending" | "failed" | "error"
 export function CarConfirmationClient() {
   const searchParams = useSearchParams()
   const reference =
-    searchParams.get("reference") ?? readCarPaymentReference() ?? ""
+    searchParams.get("reference") ??
+    readSessionString(CAR_PAYMENT_REFERENCE_SESSION_KEY) ??
+    ""
 
   const [outcome, setOutcome] = React.useState<Outcome>("loading")
   const [attempt, setAttempt] = React.useState(0)

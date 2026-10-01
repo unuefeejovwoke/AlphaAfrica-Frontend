@@ -24,16 +24,20 @@ import {
 import {
   buildCarBookingPayload,
   createCarBooking,
-  findReusableCarBooking,
   getCarSupportWhatsAppUrl,
-  hashCarBookingKey,
   carGuestSchema,
-  readPendingCarBooking,
-  saveCarPaymentReference,
-  savePendingCarBooking,
+  CAR_PAYMENT_REFERENCE_SESSION_KEY,
+  PENDING_CAR_BOOKING_SESSION_KEY,
   type CarGuestInput,
   type VehicleDetail,
 } from "@/lib/api/cars"
+import {
+  findReusableBookingRecord,
+  hashPayloadKey,
+  readSessionRecord,
+  saveSessionRecord,
+  saveSessionString,
+} from "@/lib/api/shared"
 
 export interface CarGuestHire {
   pickup_location: string
@@ -115,11 +119,14 @@ export function CarGuestForm({
       return
     }
 
-    const key = hashCarBookingKey(payload)
-    const reusable = findReusableCarBooking(readPendingCarBooking(), key)
+    const key = hashPayloadKey(payload)
+    const reusable = findReusableBookingRecord(
+      readSessionRecord(PENDING_CAR_BOOKING_SESSION_KEY),
+      key
+    )
     if (reusable) {
       creationRef.current = reusable.reference
-      saveCarPaymentReference(reusable.reference)
+      saveSessionString(CAR_PAYMENT_REFERENCE_SESSION_KEY, reusable.reference)
       setRedirectUrl(reusable.authorization_url)
       setPhase("redirecting")
       track("car_payment_initiated", { currency: "NGN", hours: hire.num_hours })
@@ -133,12 +140,12 @@ export function CarGuestForm({
       try {
         const result = await createCarBooking(payload)
         creationRef.current = result.reference
-        savePendingCarBooking({
+        saveSessionRecord(PENDING_CAR_BOOKING_SESSION_KEY, {
           key,
           reference: result.reference,
           authorization_url: result.authorization_url,
         })
-        saveCarPaymentReference(result.reference)
+        saveSessionString(CAR_PAYMENT_REFERENCE_SESSION_KEY, result.reference)
         setRedirectUrl(result.authorization_url)
         setPhase("redirecting")
         track("car_payment_initiated", {
@@ -150,7 +157,11 @@ export function CarGuestForm({
         creationRef.current = null
         setPhase("failed")
         if (error instanceof ApiError) {
-          if (error.reference) saveCarPaymentReference(error.reference)
+          if (error.reference)
+            saveSessionString(
+              CAR_PAYMENT_REFERENCE_SESSION_KEY,
+              error.reference
+            )
           let mapped = false
           if (error.fieldErrors) {
             for (const [field, messages] of Object.entries(error.fieldErrors)) {

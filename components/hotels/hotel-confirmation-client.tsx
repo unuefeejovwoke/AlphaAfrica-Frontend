@@ -18,11 +18,12 @@ import {
   buildHotelConfirmationUrl,
   clearHotelBookingSession,
   hotelBookingFromOrder,
-  readHotelPaymentReference,
+  HOTEL_PAYMENT_REFERENCE_SESSION_KEY,
   resolveHotelVerificationState,
   verifyHotelBooking,
   type HotelBooking,
 } from "@/lib/api/hotels"
+import { readSessionString } from "@/lib/api/shared"
 import {
   ApiError,
   getHumanErrorMessage,
@@ -60,8 +61,8 @@ export function HotelConfirmationClient() {
   const searchParams = useSearchParams()
   const reference = searchParams.get("reference")?.trim() || null
   const guestToken = searchParams.get("token")?.trim() || null
-  const [savedReference] = React.useState<string | null>(
-    readHotelPaymentReference
+  const [savedReference] = React.useState<string | null>(() =>
+    readSessionString(HOTEL_PAYMENT_REFERENCE_SESSION_KEY)
   )
   const [state, setState] = React.useState<ConfirmationState>({
     kind: "verifying",

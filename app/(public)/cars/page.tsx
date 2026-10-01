@@ -6,7 +6,11 @@ import { Message01Icon } from "@hugeicons/core-free-icons"
 import { ButtonLink } from "@/components/ui/button"
 import { CarSearchPageClient } from "@/components/cars/car-search-page-client"
 import { CarResultsSkeleton } from "@/components/cars/car-results-skeleton"
-import { getCarSupportWhatsAppUrl, hasCarSearchParams } from "@/lib/api/cars"
+import {
+  getCarSupportWhatsAppUrl,
+  CAR_SEARCH_PARAM_KEYS,
+} from "@/lib/api/cars"
+import { hasListingSearchParams } from "@/lib/api/shared"
 import {
   CARS_LANDING_DESCRIPTION,
   CARS_LANDING_TITLE,
@@ -30,7 +34,7 @@ export async function generateMetadata({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }): Promise<Metadata> {
   const params = await searchParams
-  const hasSearch = hasCarSearchParams(params)
+  const hasSearch = hasListingSearchParams(params, CAR_SEARCH_PARAM_KEYS)
   return {
     metadataBase: new URL(getSiteUrl()),
     title: CARS_LANDING_TITLE,
@@ -60,7 +64,10 @@ export default async function CarsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  const hasSearch = hasCarSearchParams(await searchParams)
+  const hasSearch = hasListingSearchParams(
+    await searchParams,
+    CAR_SEARCH_PARAM_KEYS
+  )
 
   return (
     <>

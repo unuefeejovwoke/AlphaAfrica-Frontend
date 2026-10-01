@@ -12,10 +12,12 @@ import assert from "node:assert/strict"
 
 import {
   buildHotelBookingPayload,
-  findReusableHotelBooking,
-  hashHotelBookingKey,
   hotelGuestSchema,
 } from "../lib/api/hotels.ts"
+import {
+  findReusableBookingRecord,
+  hashPayloadKey,
+} from "../lib/api/shared.ts"
 
 function futureDate(daysAhead: number): string {
   const d = new Date(Date.now() + daysAhead * 86400000)
@@ -84,7 +86,7 @@ test("Booking payload: Hotel plus Room Type plus stay plus Hotel Guest", () => {
 })
 
 test("Creation guard: identical retries reuse the reference, new stays create", () => {
-  const key = hashHotelBookingKey({
+  const key = hashPayloadKey({
     hotel_id: 7,
     room_type_id: 11,
     check_in: "2026-05-01",
@@ -108,13 +110,13 @@ test("Creation guard: identical retries reuse the reference, new stays create", 
   }
 
   // Identical retry reuses — no duplicate Hotel Booking is created.
-  assert.deepEqual(findReusableHotelBooking(stored, key), {
+  assert.deepEqual(findReusableBookingRecord(stored, key), {
     reference: "HOTEL-ABC123",
     authorization_url: "https://paystack.test/pay/abc123",
   })
 
   // A changed stay (one more guest) is a new booking, never a reuse.
-  const changedKey = hashHotelBookingKey({
+  const changedKey = hashPayloadKey({
     hotel_id: 7,
     room_type_id: 11,
     check_in: "2026-05-01",
@@ -126,11 +128,11 @@ test("Creation guard: identical retries reuse the reference, new stays create", 
     guest_phone: "+2348031234567",
   })
   assert.equal(
-    findReusableHotelBooking(stored, changedKey),
+    findReusableBookingRecord(stored, changedKey),
     null,
     "Changed stays must create, never reuse"
   )
 
   // Corrupt storage never blocks a fresh creation.
-  assert.equal(findReusableHotelBooking(null, key), null)
+  assert.equal(findReusableBookingRecord(null, key), null)
 })

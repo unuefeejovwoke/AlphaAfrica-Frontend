@@ -26,16 +26,20 @@ import {
   calculateNights,
   checkRoomCapacity,
   createHotelBooking,
-  findReusableHotelBooking,
   getHotelSupportWhatsAppUrl,
-  hashHotelBookingKey,
   hotelGuestSchema,
-  readPendingHotelBooking,
-  saveHotelPaymentReference,
-  savePendingHotelBooking,
+  HOTEL_PAYMENT_REFERENCE_SESSION_KEY,
+  PENDING_HOTEL_BOOKING_SESSION_KEY,
   type HotelGuestInput,
   type RoomType,
 } from "@/lib/api/hotels"
+import {
+  findReusableBookingRecord,
+  hashPayloadKey,
+  readSessionRecord,
+  saveSessionRecord,
+  saveSessionString,
+} from "@/lib/api/shared"
 
 export interface HotelGuestStay {
   check_in: string
@@ -159,14 +163,17 @@ export function HotelGuestForm({
       return
     }
 
-    const key = hashHotelBookingKey(payload)
-    const reusable = findReusableHotelBooking(readPendingHotelBooking(), key)
+    const key = hashPayloadKey(payload)
+    const reusable = findReusableBookingRecord(
+      readSessionRecord(PENDING_HOTEL_BOOKING_SESSION_KEY),
+      key
+    )
     // Funnel: currency plus stay length only — never the reference, guest
     // PII, or the authorization URL (ticket 07).
     const initiatedProps = { currency: "NGN", nights } as const
     if (reusable) {
       creationRef.current = reusable.reference
-      saveHotelPaymentReference(reusable.reference)
+      saveSessionString(HOTEL_PAYMENT_REFERENCE_SESSION_KEY, reusable.reference)
       setRedirectUrl(reusable.authorization_url)
       setPhase("redirecting")
       track("hotel_payment_initiated", { ...initiatedProps })
@@ -180,12 +187,12 @@ export function HotelGuestForm({
       try {
         const result = await createHotelBooking(payload)
         creationRef.current = result.reference
-        savePendingHotelBooking({
+        saveSessionRecord(PENDING_HOTEL_BOOKING_SESSION_KEY, {
           key,
           reference: result.reference,
           authorization_url: result.authorization_url,
         })
-        saveHotelPaymentReference(result.reference)
+        saveSessionString(HOTEL_PAYMENT_REFERENCE_SESSION_KEY, result.reference)
         setRedirectUrl(result.authorization_url)
         setPhase("redirecting")
         track("hotel_payment_initiated", { currency: "NGN", nights })
@@ -194,7 +201,11 @@ export function HotelGuestForm({
         creationRef.current = null
         setPhase("failed")
         if (error instanceof ApiError) {
-          if (error.reference) saveHotelPaymentReference(error.reference)
+          if (error.reference)
+            saveSessionString(
+              HOTEL_PAYMENT_REFERENCE_SESSION_KEY,
+              error.reference
+            )
           let mapped = false
           if (error.fieldErrors) {
             for (const [field, messages] of Object.entries(error.fieldErrors)) {

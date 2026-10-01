@@ -5,7 +5,7 @@ import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Cancel01Icon, FilterIcon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
-import { countActiveHotelFilters } from "@/lib/api/hotels"
+import { countActiveFilters } from "@/lib/api/shared"
 import type { HotelOrdering } from "@/lib/api/hotels"
 
 /**
@@ -210,7 +210,7 @@ export function HotelFilters({
   onServerChange,
   onResetFilters,
 }: HotelFiltersProps) {
-  const activeGroups = countActiveHotelFilters(server)
+  const activeGroups = countActiveFilters(server)
   const isFiltering = activeGroups > 0
 
   return (
@@ -280,7 +280,7 @@ export function HotelMobileFilters({
   onResetFilters,
 }: HotelFiltersProps) {
   const [sheetOpen, setSheetOpen] = React.useState(false)
-  const activeGroups = countActiveHotelFilters(server)
+  const activeGroups = countActiveFilters(server)
   const isFiltering = activeGroups > 0
 
   return (

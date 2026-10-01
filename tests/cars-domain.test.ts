@@ -5,19 +5,21 @@ import {
   buildCarSearchParams,
   carHireSchema,
   combinePickupDateTime,
-  countActiveCarFilters,
-  findReusableCarBooking,
   formatCarHourlyRate,
-  getCarPageItems,
-  getCarPagination,
-  hashCarBookingKey,
-  normalizeCarBookingCreateResult,
   parseCarHireParams,
   parseCarSearchParams,
   previewHireTotal,
   resolveCarVerificationState,
   toVehicleCardDisplay,
 } from "../lib/api/cars.ts"
+import {
+  countActiveFilters,
+  findReusableBookingRecord,
+  getPageItems,
+  getPagination,
+  hashPayloadKey,
+  normalizeBookingCreateResult,
+} from "../lib/api/shared.ts"
 
 // --- pricing display: hourly only, null on unusable ---
 
@@ -150,8 +152,8 @@ test("vehicle card links to /cars and never invents prices", () => {
 
 // --- creation envelope + dedupe ---
 
-test("normalizeCarBookingCreateResult accepts flat and envelope shapes", () => {
-  const flat = normalizeCarBookingCreateResult({
+test("normalizeBookingCreateResult accepts flat and envelope shapes", () => {
+  const flat = normalizeBookingCreateResult({
     reference: "ALPHAA-1",
     authorization_url: "https://paystack.test/x",
   })
@@ -159,7 +161,7 @@ test("normalizeCarBookingCreateResult accepts flat and envelope shapes", () => {
     reference: "ALPHAA-1",
     authorization_url: "https://paystack.test/x",
   })
-  const envelope = normalizeCarBookingCreateResult({
+  const envelope = normalizeBookingCreateResult({
     booking: { reference: "ALPHAA-2" },
     payment: {
       reference: "ALPHAA-2",
@@ -170,7 +172,7 @@ test("normalizeCarBookingCreateResult accepts flat and envelope shapes", () => {
     reference: "ALPHAA-2",
     authorization_url: "https://paystack.test/y",
   })
-  assert.equal(normalizeCarBookingCreateResult({ nope: true }), null)
+  assert.equal(normalizeBookingCreateResult({ nope: true }), null)
 })
 
 test("identical car payload reuses pending reference, changed payload does not", () => {
@@ -184,7 +186,7 @@ test("identical car payload reuses pending reference, changed payload does not",
     guest_email: "ada@example.com",
     guest_phone: "+2348012345678",
   }
-  const key = hashCarBookingKey(payload)
+  const key = hashPayloadKey(payload)
   assert.match(key, /^[0-9a-f]{16}$/, "The stored key must be a hex digest")
   assert.equal(
     key.includes("ada@example.com"),
@@ -196,11 +198,11 @@ test("identical car payload reuses pending reference, changed payload does not",
     reference: "ALPHAA-9",
     authorization_url: "https://paystack.test/z",
   }
-  assert.deepEqual(findReusableCarBooking(stored, key), {
+  assert.deepEqual(findReusableBookingRecord(stored, key), {
     reference: "ALPHAA-9",
     authorization_url: "https://paystack.test/z",
   })
-  assert.equal(findReusableCarBooking(stored, "other"), null)
+  assert.equal(findReusableBookingRecord(stored, "other"), null)
 })
 
 test("car verification resolves unknown states to pending", () => {
@@ -214,15 +216,15 @@ test("car verification resolves unknown states to pending", () => {
 
 // --- sidebar listing: active-filter count ---
 
-test("countActiveCarFilters counts type + rate + sort groups", () => {
-  assert.equal(countActiveCarFilters({}), 0)
-  assert.equal(countActiveCarFilters({ vehicle_type: "coaster" }), 1)
+test("countActiveFilters counts type + rate + sort groups", () => {
+  assert.equal(countActiveFilters({}), 0)
+  assert.equal(countActiveFilters({ vehicle_type: "coaster" }), 1)
   assert.equal(
-    countActiveCarFilters({ vehicle_type: "coaster", max_rate: 50000 }),
+    countActiveFilters({ vehicle_type: "coaster", max_rate: 50000 }),
     2
   )
   assert.equal(
-    countActiveCarFilters({
+    countActiveFilters({
       vehicle_type: "coaster",
       max_rate: 50000,
       ordering: "rate",
@@ -233,9 +235,9 @@ test("countActiveCarFilters counts type + rate + sort groups", () => {
 
 // --- numbered pagination: honest ranges over count/next/previous shapes ---
 
-test("getCarPagination derives total pages and honest last-page ranges", () => {
+test("getPagination derives total pages and honest last-page ranges", () => {
   assert.deepEqual(
-    getCarPagination({
+    getPagination({
       page: 1,
       totalCount: 25,
       pageSize: 10,
@@ -245,7 +247,7 @@ test("getCarPagination derives total pages and honest last-page ranges", () => {
   )
   // Last page never reads `21–30 of 25`.
   assert.deepEqual(
-    getCarPagination({
+    getPagination({
       page: 3,
       totalCount: 25,
       pageSize: 10,
@@ -254,20 +256,20 @@ test("getCarPagination derives total pages and honest last-page ranges", () => {
     { totalPages: 3, start: 21, end: 25 }
   )
   assert.deepEqual(
-    getCarPagination({ page: 1, totalCount: 0, pageSize: 10, visibleCount: 0 }),
+    getPagination({ page: 1, totalCount: 0, pageSize: 10, visibleCount: 0 }),
     { totalPages: 0, start: 0, end: 0 }
   )
   assert.deepEqual(
-    getCarPagination({ page: 1, totalCount: 4, pageSize: 10, visibleCount: 4 }),
+    getPagination({ page: 1, totalCount: 4, pageSize: 10, visibleCount: 4 }),
     { totalPages: 1, start: 1, end: 4 }
   )
 })
 
-test("getCarPageItems windows with ellipsis, all pages when few", () => {
-  assert.deepEqual(getCarPageItems(1, 0), [])
-  assert.deepEqual(getCarPageItems(2, 5), [1, 2, 3, 4, 5])
-  assert.deepEqual(getCarPageItems(1, 10), [1, 2, "ellipsis", 10])
-  assert.deepEqual(getCarPageItems(5, 10), [
+test("getPageItems windows with ellipsis, all pages when few", () => {
+  assert.deepEqual(getPageItems(1, 0), [])
+  assert.deepEqual(getPageItems(2, 5), [1, 2, 3, 4, 5])
+  assert.deepEqual(getPageItems(1, 10), [1, 2, "ellipsis", 10])
+  assert.deepEqual(getPageItems(5, 10), [
     1,
     "ellipsis",
     4,
@@ -276,5 +278,5 @@ test("getCarPageItems windows with ellipsis, all pages when few", () => {
     "ellipsis",
     10,
   ])
-  assert.deepEqual(getCarPageItems(10, 10), [1, "ellipsis", 9, 10])
+  assert.deepEqual(getPageItems(10, 10), [1, "ellipsis", 9, 10])
 })

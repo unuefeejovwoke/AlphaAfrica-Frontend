@@ -16,16 +16,19 @@ import {
   HOTEL_ORDERINGS,
   buildHotelSearchParams,
   collectAmenityOptions,
-  countActiveHotelFilters,
   filterHotelsByAmenities,
   formatHotelFromPrice,
-  hasHotelSearchParams,
   hotelSearchQuerySchema,
+  HOTEL_SEARCH_PARAM_KEYS,
   parseHotelSearchParams,
   toHotelApiQuery,
   toHotelCardDisplay,
   type HotelList,
 } from "../lib/api/hotels.ts"
+import {
+  countActiveFilters,
+  hasListingSearchParams,
+} from "../lib/api/shared.ts"
 
 function makeHotel(overrides: Partial<HotelList> = {}): HotelList {
   return {
@@ -205,9 +208,21 @@ test("Hotel filter URL round-trip: server filters survive share/back/refresh wit
   )
 
   // Filter-only URLs still read as an active search (results view, noindex).
-  assert.equal(hasHotelSearchParams({ max_price: "150000" }), true)
-  assert.equal(hasHotelSearchParams({ min_stars: "4" }), true)
-  assert.equal(hasHotelSearchParams({ ordering: "price" }), true)
+  assert.equal(
+    hasListingSearchParams(
+      { max_price: "150000" },
+      HOTEL_SEARCH_PARAM_KEYS
+    ),
+    true
+  )
+  assert.equal(
+    hasListingSearchParams({ min_stars: "4" }, HOTEL_SEARCH_PARAM_KEYS),
+    true
+  )
+  assert.equal(
+    hasListingSearchParams({ ordering: "price" }, HOTEL_SEARCH_PARAM_KEYS),
+    true
+  )
 })
 
 test("Hotel card display mapping: missing-image and empty-amenity fallbacks with locked pricing copy", () => {
@@ -347,13 +362,13 @@ test("Client-side amenity refinement filters the fetched page without a new sear
   )
 })
 
-test("countActiveHotelFilters counts price, star, and sort groups", () => {
-  assert.equal(countActiveHotelFilters({}), 0)
-  assert.equal(countActiveHotelFilters({ max_price: 100000 }), 1)
-  assert.equal(countActiveHotelFilters({ min_stars: 4 }), 1)
-  assert.equal(countActiveHotelFilters({ ordering: "price" }), 1)
+test("countActiveFilters counts price, star, and sort groups", () => {
+  assert.equal(countActiveFilters({}), 0)
+  assert.equal(countActiveFilters({ max_price: 100000 }), 1)
+  assert.equal(countActiveFilters({ min_stars: 4 }), 1)
+  assert.equal(countActiveFilters({ ordering: "price" }), 1)
   assert.equal(
-    countActiveHotelFilters({
+    countActiveFilters({
       max_price: 150000,
       min_stars: 4,
       ordering: "-price",

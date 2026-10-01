@@ -8,8 +8,9 @@ import { HotelSearchPageClient } from "@/components/hotels/hotel-search-page-cli
 import { HotelResultsSkeleton } from "@/components/hotels/hotel-results-skeleton"
 import {
   getHotelSupportWhatsAppUrl,
-  hasHotelSearchParams,
+  HOTEL_SEARCH_PARAM_KEYS,
 } from "@/lib/api/hotels"
+import { hasListingSearchParams } from "@/lib/api/shared"
 import {
   HOTELS_LANDING_DESCRIPTION,
   HOTELS_LANDING_TITLE,
@@ -40,7 +41,7 @@ export async function generateMetadata({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }): Promise<Metadata> {
   const params = await searchParams
-  const hasSearch = hasHotelSearchParams(params)
+  const hasSearch = hasListingSearchParams(params, HOTEL_SEARCH_PARAM_KEYS)
   return {
     metadataBase: new URL(getSiteUrl()),
     title: HOTELS_LANDING_TITLE,
@@ -70,7 +71,10 @@ export default async function HotelsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  const hasSearch = hasHotelSearchParams(await searchParams)
+  const hasSearch = hasListingSearchParams(
+    await searchParams,
+    HOTEL_SEARCH_PARAM_KEYS
+  )
 
   return (
     <>

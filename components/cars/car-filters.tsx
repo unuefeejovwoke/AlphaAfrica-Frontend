@@ -7,13 +7,13 @@ import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { formatNaira } from "@/lib/format"
+import { countActiveFilters } from "@/lib/api/shared"
 import {
   CAR_MAX_RATE_BANDS,
   CAR_ORDERING_OPTIONS,
   MAX_CAR_HOURLY_RATE,
   VEHICLE_TYPES,
   VEHICLE_TYPE_LABELS,
-  countActiveCarFilters,
   type CarOrdering,
   type VehicleType,
 } from "@/lib/api/cars"
@@ -296,7 +296,7 @@ export function CarFilters({
   onServerChange,
   onResetFilters,
 }: CarFiltersProps) {
-  const activeGroups = countActiveCarFilters(server)
+  const activeGroups = countActiveFilters(server)
   const isFiltering = activeGroups > 0
 
   return (
@@ -364,7 +364,7 @@ export function CarMobileFilters({
   onResetFilters,
 }: CarFiltersProps) {
   const [sheetOpen, setSheetOpen] = React.useState(false)
-  const activeGroups = countActiveCarFilters(server)
+  const activeGroups = countActiveFilters(server)
   const isFiltering = activeGroups > 0
 
   return (

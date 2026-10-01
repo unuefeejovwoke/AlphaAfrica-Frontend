@@ -1,29 +1,20 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS, type PaginatedResponse } from "./client.ts"
 import {
-  clearSessionKeys,
   resolveBookingOutcome,
   VERIFICATION_REQUEST,
   type VerificationOutcome,
 } from "./verification.ts"
 import {
-  countActiveFilters,
+  clearSessionRecord,
   extractSlugs,
-  findReusableBookingRecord,
   firstSearchParam,
-  getPageItems,
-  getPagination,
-  hasListingSearchParams,
-  hashPayloadKey,
   normalizeBookingCreateResult,
   parseBoundedInt,
   parseOrderingValue,
   parsePriceCeiling,
-  readSessionRecord,
-  readSessionString,
-  saveSessionRecord,
-  saveSessionString,
   selectFeaturedItems,
+  type BookingCreateResult,
 } from "./shared.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
@@ -264,16 +255,6 @@ export const HOTEL_SEARCH_PARAM_KEYS = [
   "ordering",
   "page",
 ] as const
-
-/**
- * True when the query carries any listing state. A bare `/hotels` is the
- * landing (which auto-loads browse-all client-side); any destination,
- * server filter, or page marks a results view. Mirrors
- * `hasFlightSearchParams` for consistent listing SEO semantics.
- */
-export function hasHotelSearchParams(input: RawSearchParams): boolean {
-  return hasListingSearchParams(input, HOTEL_SEARCH_PARAM_KEYS)
-}
 
 /**
  * Parse the shareable `?destination=&…&max_price=&min_stars=&ordering=&page=`
@@ -1100,38 +1081,13 @@ export function buildHotelBookingPayload(
   return hotelBookingCreateRequestSchema.parse(input)
 }
 
-/** Creation result: Paystack handoff plus the Payment Reference. */
-export const hotelBookingCreateResultSchema = z.object({
-  reference: z.string().min(1),
-  authorization_url: z.string().min(1),
-})
-
-export type HotelBookingCreateResult = z.infer<
-  typeof hotelBookingCreateResultSchema
->
-
-/**
- * Either live shape: flat (apidoc) or the `{ booking, payment }` envelope
- * the guide documents for `POST /api/hotels/bookings/create/`. Normalization
- * is owned by the shared module so every booking type accepts both.
- */
-
-/**
- * Normalize either create response shape into the Paystack-handoff contract.
- * Returns null when no usable reference plus checkout link exists — the form
- * then surfaces an error instead of redirecting to a broken URL.
- */
-export function normalizeHotelBookingCreateResult(
-  raw: unknown
-): HotelBookingCreateResult | null {
-  return normalizeBookingCreateResult(raw)
-}
-
+/** The Paystack-handoff contract (shared by every booking type). */
+export type HotelBookingCreateResult = BookingCreateResult
 /**
  * Create one Hotel Booking (Guest Booking — no login required). Validates
  * the payload against the backend contract first; the response is parsed as
  * untrusted input and normalized from either the flat or the
- * `{ booking, payment }` envelope. Never cached.
+ * `{ booking, payment }` envelope via the shared module. Never cached.
  */
 export async function createHotelBooking(
   payload: HotelBookingCreatePayload
@@ -1141,7 +1097,7 @@ export async function createHotelBooking(
     payload as Record<string, unknown>,
     { sameOrigin: true }
   )
-  const normalized = normalizeHotelBookingCreateResult(raw)
+  const normalized = normalizeBookingCreateResult(raw)
   if (!normalized) {
     throw new ApiError("Invalid response from the hotel service.", {
       status: 201,
@@ -1152,62 +1108,15 @@ export async function createHotelBooking(
 }
 
 // ---------------------------------------------------------------------------
-// Single-flight creation guard (pure — tested). Retrying an identical stay
-// plus Hotel Guest reuses the stored pending reference instead of creating a
-// duplicate Hotel Booking; any change creates fresh.
+// Booking session — this domain's storage keys. Stable serialise, digest,
+// save, read, reuse and clear all live in `./shared.ts` (the single home for
+// that logic); only the domain's own session keys remain here.
 // ---------------------------------------------------------------------------
-
-/** A stored Hotel Booking creation, keyed by a digest of the full creation payload. */
-export interface PendingHotelBookingRecord {
-  key: string
-  reference: string
-  authorization_url: string
-}
-
-/** Identity of one creation attempt: a digest of the full payload, key-order normalized. */
-export function hashHotelBookingKey(
-  payload: HotelBookingCreatePayload
-): string {
-  return hashPayloadKey(payload)
-}
-
-/**
- * Reuse the stored pending reference when the retry matches the stored key,
- * otherwise signal that a new creation is required. Never throws.
- */
-export function findReusableHotelBooking(
-  stored: PendingHotelBookingRecord | null,
-  key: string
-): { reference: string; authorization_url: string } | null {
-  return findReusableBookingRecord(stored, key)
-}
 
 export const PENDING_HOTEL_BOOKING_SESSION_KEY =
   "alphaa:pending-hotel-booking:v1"
 export const HOTEL_PAYMENT_REFERENCE_SESSION_KEY =
   "alphaa:hotel-payment-reference:v1"
-
-/** Persist the created Hotel Booking so an identical retry reuses it. */
-export function savePendingHotelBooking(
-  record: PendingHotelBookingRecord
-): void {
-  saveSessionRecord(PENDING_HOTEL_BOOKING_SESSION_KEY, record)
-}
-
-/** Read back the stored Hotel Booking, or null when absent/corrupt. */
-export function readPendingHotelBooking(): PendingHotelBookingRecord | null {
-  return readSessionRecord(PENDING_HOTEL_BOOKING_SESSION_KEY)
-}
-
-/** Persist the Payment Reference so refresh, back, and new tabs survive. */
-export function saveHotelPaymentReference(reference: string): void {
-  saveSessionString(HOTEL_PAYMENT_REFERENCE_SESSION_KEY, reference)
-}
-
-/** Read back the persisted Payment Reference, or null when absent. */
-export function readHotelPaymentReference(): string | null {
-  return readSessionString(HOTEL_PAYMENT_REFERENCE_SESSION_KEY)
-}
 
 /**
  * Drop the stored Hotel Booking and Payment Reference once a payment is
@@ -1216,10 +1125,8 @@ export function readHotelPaymentReference(): string | null {
  * booking, and the reference stays in the URL for refreshes.
  */
 export function clearHotelBookingSession(): void {
-  clearSessionKeys([
-    PENDING_HOTEL_BOOKING_SESSION_KEY,
-    HOTEL_PAYMENT_REFERENCE_SESSION_KEY,
-  ])
+  clearSessionRecord(PENDING_HOTEL_BOOKING_SESSION_KEY)
+  clearSessionRecord(HOTEL_PAYMENT_REFERENCE_SESSION_KEY)
 }
 
 // ---------------------------------------------------------------------------
@@ -1330,58 +1237,6 @@ export function buildHotelConfirmationUrl(reference: string): string {
   return `/hotels/confirmation?reference=${encodeURIComponent(reference)}`
 }
 
-// ---------------------------------------------------------------------------
-// Listing pagination + active-filter count — mirrors the cars listing so the
-// hotel results shell can share its sidebar layout, numbered pagination, and
-// honest `Showing A–B of N` range (backend exposes `count/next/previous`
-// only). Pure helpers: no fetch, no DOM.
-// ---------------------------------------------------------------------------
+// Listing pagination and active-filter count are owned by `./shared.ts`
+// (getPagination, getPageItems, countActiveFilters) and not re-exported here.
 
-/** Number of active server-filter groups (price + stars + sort). */
-export function countActiveHotelFilters(query: {
-  max_price?: number
-  min_stars?: number
-  ordering?: HotelOrdering
-}): number {
-  return countActiveFilters(query)
-}
-
-export interface HotelPaginationInput {
-  page: number
-  totalCount: number
-  pageSize: number
-  visibleCount: number
-}
-
-export interface HotelPagination {
-  totalPages: number
-  start: number
-  end: number
-}
-
-/**
- * Numbered-pagination arithmetic over DRF `count/next/previous` shapes.
- * `pageSize` is the observed full-page length (first full page wins);
- * `visibleCount` is this page's result length so the last-page range stays
- * honest (`Showing 11–13 of 13`, never `11–20 of 13`).
- */
-export function getHotelPagination(
-  input: HotelPaginationInput
-): HotelPagination {
-  return getPagination(input)
-}
-
-export type HotelPageItem = number | "ellipsis"
-
-/**
- * Compact page-item window: always the first/last page plus `sibling`
- * neighbours around the current page, with ellipsis gaps. Pure seam so the
- * pagination UI is unit-testable.
- */
-export function getHotelPageItems(
-  page: number,
-  totalPages: number,
-  sibling = 1
-): HotelPageItem[] {
-  return getPageItems(page, totalPages, sibling)
-}

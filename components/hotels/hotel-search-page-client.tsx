@@ -25,11 +25,9 @@ import {
   DEFAULT_HOTEL_GUESTS,
   DEFAULT_HOTEL_ROOMS,
   buildHotelSearchParams,
-  countActiveHotelFilters,
-  getHotelPagination,
   getHotelSupportWhatsAppUrl,
   getHotels,
-  hasHotelSearchParams,
+  HOTEL_SEARCH_PARAM_KEYS,
   parseHotelSearchParams,
   validateHotelSearchQuery,
   type HotelOrdering,
@@ -37,6 +35,11 @@ import {
   type HotelStayContext,
   type PaginatedHotels,
 } from "@/lib/api/hotels"
+import {
+  countActiveFilters,
+  getPagination,
+  hasListingSearchParams,
+} from "@/lib/api/shared"
 
 type SearchStatus = "loading" | "success" | "empty" | "error"
 
@@ -98,7 +101,7 @@ export function HotelSearchPageClient() {
     [rawParams]
   )
   const hasSearch = React.useMemo(
-    () => hasHotelSearchParams(rawParams),
+    () => hasListingSearchParams(rawParams, HOTEL_SEARCH_PARAM_KEYS),
     [rawParams]
   )
 
@@ -198,7 +201,7 @@ export function HotelSearchPageClient() {
     parsedQuery.max_price !== undefined ||
     parsedQuery.min_stars !== undefined ||
     parsedQuery.ordering !== undefined
-  const activeFilterCount = countActiveHotelFilters(serverFilters)
+  const activeFilterCount = countActiveFilters(serverFilters)
 
   const pushQuery = React.useCallback(
     (params: string, options?: { scrollToResults?: boolean }) => {
@@ -304,7 +307,7 @@ export function HotelSearchPageClient() {
   const hotels = pageData?.results ?? []
   const pageSize =
     pageSizeRef.current > 0 ? pageSizeRef.current : Math.max(hotels.length, 1)
-  const { totalPages, start, end } = getHotelPagination({
+  const { totalPages, start, end } = getPagination({
     page: parsedQuery.page,
     totalCount: count,
     pageSize,

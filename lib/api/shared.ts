@@ -6,14 +6,17 @@ import { clearSessionKeys } from "./verification.ts"
  * Shared listing, booking-session, and pagination helpers (production
  * hardening, tickets 12–15).
  *
- * The Hotel (`./hotels.ts`) and Car (`./cars.ts`) modules grew as parallel
- * copies of the same logic: bounded-integer parsing, price ceilings,
- * ordering vocabularies, search-param presence, featured selection, slug
- * listing, pagination windows with honest last-page ranges, stable
- * serialisation plus session save/read/clear, digest-based reuse identity,
- * and Paystack-handoff envelope normalisation. This module is the single
- * home for that logic — the next domain to need it (Visa, package) plugs
- * in here instead of copying it a third time.
+ * SINGLE HOME. The Hotel (`./hotels.ts`) and Car (`./cars.ts`) modules grew
+ * as parallel copies of the same logic: bounded-integer parsing, price
+ * ceilings, ordering vocabularies, search-param presence, featured
+ * selection, slug listing, pagination windows with honest last-page ranges,
+ * stable serialisation plus session save/read/clear, digest-based reuse
+ * identity, and Paystack-handoff envelope normalisation. The duplicates were
+ * collapsed here (expand → migrate → contract) so this is the one place to
+ * change that behaviour for the listing and booking flows that use it —
+ * Hotel and Car today (Flights keeps its own copy; out of this ticket's
+ * scope). The next domain to need it (Visa, package) plugs in here instead
+ * of copying a third time.
  *
  * Deliberately NOT duplicated here:
  * - Verification-state resolution lives in `./verification.ts`
@@ -21,6 +24,12 @@ import { clearSessionKeys } from "./verification.ts"
  *   domains already delegate to it; a second resolver here would drift.
  * - Money display (`lib/format.ts`) and listing image resolution
  *   (`lib/listings.ts`) already have single homes.
+ *
+ * Domains keep their own vocabulary and config in their module: the
+ * `HOTEL_*`/`CAR_*` ordering lists and search-param key lists (passed into
+ * {@link parseOrderingValue}/{@link hasListingSearchParams}) and their
+ * session-key strings (passed into the session helpers). That is
+ * domain-specific data, not duplicated logic.
  *
  * Reuse identity is a digest, never readable payload (ticket 06): session
  * records carry only `{ key, reference, authorization_url }`, where `key`
@@ -112,7 +121,7 @@ export function hasListingSearchParams(
  * pass exactly the server-owned slice (e.g. price + stars + sort), so a
  * count of "defined" is a count of groups.
  */
-export function countActiveFilters(query: Record<string, unknown>): number {
+export function countActiveFilters(query: object): number {
   return Object.values(query).filter((value) => value !== undefined).length
 }
 

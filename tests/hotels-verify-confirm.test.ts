@@ -14,9 +14,9 @@ import {
   buildHotelConfirmationUrl,
   hotelBookingFromOrder,
   hotelBookingSchema,
-  normalizeHotelBookingCreateResult,
   resolveHotelVerificationState,
 } from "../lib/api/hotels.ts"
+import { normalizeBookingCreateResult } from "../lib/api/shared.ts"
 
 test("Verification states: confirmed, pending, cancelled, failed — unknown stays pending", () => {
   assert.equal(
@@ -86,7 +86,7 @@ test("Confirmation URL carries only the Payment Reference — never PII", () => 
 test("Create result: flat shape and live { booking, payment } envelope both normalize", () => {
   // Flat shape (apidoc).
   assert.deepEqual(
-    normalizeHotelBookingCreateResult({
+    normalizeBookingCreateResult({
       reference: "HOTEL-FLAT",
       authorization_url: "https://paystack.test/pay/flat",
     }),
@@ -97,7 +97,7 @@ test("Create result: flat shape and live { booking, payment } envelope both norm
   )
   // Live envelope (guide §5).
   assert.deepEqual(
-    normalizeHotelBookingCreateResult({
+    normalizeBookingCreateResult({
       booking: { reference: "HOTEL-ENV", status: "pending" },
       payment: {
         reference: "HOTEL-ENV",
@@ -113,11 +113,11 @@ test("Create result: flat shape and live { booking, payment } envelope both norm
   )
   // Neither shape without both halves is usable — never redirect broken.
   assert.equal(
-    normalizeHotelBookingCreateResult({ booking: { reference: "X" } }),
+    normalizeBookingCreateResult({ booking: { reference: "X" } }),
     null
   )
-  assert.equal(normalizeHotelBookingCreateResult({}), null)
-  assert.equal(normalizeHotelBookingCreateResult(null), null)
+  assert.equal(normalizeBookingCreateResult({}), null)
+  assert.equal(normalizeBookingCreateResult(null), null)
 })
 
 test("Order fallback: embedded order details build a renderable booking", () => {

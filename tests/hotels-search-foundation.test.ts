@@ -10,11 +10,12 @@ import assert from "node:assert/strict"
 import {
   buildHotelSearchParams,
   describeHotelStay,
-  hasHotelSearchParams,
   hotelSearchQuerySchema,
+  HOTEL_SEARCH_PARAM_KEYS,
   parseHotelSearchParams,
   validateHotelSearchQuery,
 } from "../lib/api/hotels.ts"
+import { hasListingSearchParams } from "../lib/api/shared.ts"
 
 function futureDate(daysAhead: number): string {
   const d = new Date(Date.now() + daysAhead * 86400000)
@@ -206,22 +207,25 @@ test("Hotel URL round-trip preserves shareable search state and drops invalid va
   // state (destination, server filters, page) marks a results view —
   // legacy party-only URLs carry no listing state.
   assert.equal(
-    hasHotelSearchParams({}),
+    hasListingSearchParams({}, HOTEL_SEARCH_PARAM_KEYS),
     false,
     "No params must read as the idle landing"
   )
   assert.equal(
-    hasHotelSearchParams({ guests: "2", rooms: "1" }),
+    hasListingSearchParams({ guests: "2", rooms: "1" }, HOTEL_SEARCH_PARAM_KEYS),
     false,
     "Party-only URLs are not listing state"
   )
   assert.equal(
-    hasHotelSearchParams({ destination: "  " }),
+    hasListingSearchParams({ destination: "  " }, HOTEL_SEARCH_PARAM_KEYS),
     false,
     "Whitespace-only values are not search state"
   )
   assert.equal(
-    hasHotelSearchParams({ destination: "Lagos" }),
+    hasListingSearchParams(
+      { destination: "Lagos" },
+      HOTEL_SEARCH_PARAM_KEYS
+    ),
     true,
     "A destination search must read as active"
   )

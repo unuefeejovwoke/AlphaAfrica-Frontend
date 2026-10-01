@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { getCarPageItems } from "@/lib/api/cars"
+import { getPageItems } from "@/lib/api/shared"
 
 /**
  * Numbered vehicle pagination — Prev/Next plus a compact page window with
@@ -39,7 +39,7 @@ export function CarPagination({
     )
   }
 
-  const items = getCarPageItems(page, totalPages)
+  const items = getPageItems(page, totalPages)
 
   return (
     <nav

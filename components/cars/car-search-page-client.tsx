@@ -19,8 +19,6 @@ import { formatNaira } from "@/lib/format"
 import {
   VEHICLE_TYPE_LABELS,
   buildCarSearchParams,
-  countActiveCarFilters,
-  getCarPagination,
   getCarSupportWhatsAppUrl,
   getVehicles,
   parseCarSearchParams,
@@ -30,6 +28,7 @@ import {
   type PaginatedVehicles,
   type VehicleType,
 } from "@/lib/api/cars"
+import { countActiveFilters, getPagination } from "@/lib/api/shared"
 
 type SearchStatus = "loading" | "success" | "empty" | "error"
 
@@ -218,13 +217,13 @@ export function CarSearchPageClient() {
     }),
     [parsedQuery.vehicle_type, parsedQuery.max_rate, parsedQuery.ordering]
   )
-  const activeFilterCount = countActiveCarFilters(serverFilters)
+  const activeFilterCount = countActiveFilters(serverFilters)
 
   const count = pageData?.count ?? 0
   const visibleCount = pageData?.results.length ?? 0
   const pageSize =
     pageSizeRef.current > 0 ? pageSizeRef.current : Math.max(visibleCount, 1)
-  const { totalPages, start, end } = getCarPagination({
+  const { totalPages, start, end } = getPagination({
     page: parsedQuery.page,
     totalCount: count,
     pageSize,

@@ -1,29 +1,20 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS, type PaginatedResponse } from "./client.ts"
 import {
-  clearSessionKeys,
   resolveBookingOutcome,
   VERIFICATION_REQUEST,
   type VerificationOutcome,
 } from "./verification.ts"
 import {
-  countActiveFilters,
+  clearSessionRecord,
   extractSlugs,
-  findReusableBookingRecord,
   firstSearchParam,
-  getPageItems,
-  getPagination,
-  hasListingSearchParams,
-  hashPayloadKey,
   normalizeBookingCreateResult,
   parseBoundedInt,
   parseOrderingValue,
   parsePriceCeiling,
-  readSessionRecord,
-  readSessionString,
-  saveSessionRecord,
-  saveSessionString,
   selectFeaturedItems,
+  type BookingCreateResult,
 } from "./shared.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
@@ -123,10 +114,6 @@ export const CAR_SEARCH_PARAM_KEYS = [
   "ordering",
   "page",
 ] as const
-
-export function hasCarSearchParams(input: RawSearchParams): boolean {
-  return hasListingSearchParams(input, CAR_SEARCH_PARAM_KEYS)
-}
 
 export function parseCarSearchParams(input: RawSearchParams): CarSearchQuery {
   const query: CarSearchQuery = {
@@ -555,22 +542,8 @@ export function buildCarBookingPayload(
   return carBookingCreateRequestSchema.parse(input)
 }
 
-export const carBookingCreateResultSchema = z.object({
-  reference: z.string().min(1),
-  authorization_url: z.string().min(1),
-})
-
-export type CarBookingCreateResult = z.infer<
-  typeof carBookingCreateResultSchema
->
-
-/** Either live shape: flat (apidoc) or `{ booking, payment }` envelope. */
-export function normalizeCarBookingCreateResult(
-  raw: unknown
-): CarBookingCreateResult | null {
-  return normalizeBookingCreateResult(raw)
-}
-
+/** The Paystack-handoff contract (shared by every booking type). */
+export type CarBookingCreateResult = BookingCreateResult
 export async function createCarBooking(
   payload: CarBookingCreatePayload
 ): Promise<CarBookingCreateResult> {
@@ -579,7 +552,7 @@ export async function createCarBooking(
     payload as Record<string, unknown>,
     { sameOrigin: true }
   )
-  const normalized = normalizeCarBookingCreateResult(raw)
+  const normalized = normalizeBookingCreateResult(raw)
   if (!normalized) {
     throw new ApiError("Invalid response from the car rental service.", {
       status: 201,
@@ -590,45 +563,14 @@ export async function createCarBooking(
 }
 
 // ---------------------------------------------------------------------------
-// Single-flight creation guard
+// Booking session — this domain's storage keys. Stable serialise, digest,
+// save, read, reuse and clear all live in `./shared.ts` (the single home for
+// that logic); only the domain's own session keys remain here.
 // ---------------------------------------------------------------------------
-
-export interface PendingCarBookingRecord {
-  key: string
-  reference: string
-  authorization_url: string
-}
-
-export function hashCarBookingKey(payload: CarBookingCreatePayload): string {
-  return hashPayloadKey(payload)
-}
-
-export function findReusableCarBooking(
-  stored: PendingCarBookingRecord | null,
-  key: string
-): { reference: string; authorization_url: string } | null {
-  return findReusableBookingRecord(stored, key)
-}
 
 export const PENDING_CAR_BOOKING_SESSION_KEY = "alphaa:pending-car-booking:v1"
 export const CAR_PAYMENT_REFERENCE_SESSION_KEY =
   "alphaa:car-payment-reference:v1"
-
-export function savePendingCarBooking(record: PendingCarBookingRecord): void {
-  saveSessionRecord(PENDING_CAR_BOOKING_SESSION_KEY, record)
-}
-
-export function readPendingCarBooking(): PendingCarBookingRecord | null {
-  return readSessionRecord(PENDING_CAR_BOOKING_SESSION_KEY)
-}
-
-export function saveCarPaymentReference(reference: string): void {
-  saveSessionString(CAR_PAYMENT_REFERENCE_SESSION_KEY, reference)
-}
-
-export function readCarPaymentReference(): string | null {
-  return readSessionString(CAR_PAYMENT_REFERENCE_SESSION_KEY)
-}
 
 /**
  * Drop the stored Car Booking and Payment Reference once a payment is
@@ -637,10 +579,8 @@ export function readCarPaymentReference(): string | null {
  * booking, and the reference stays in the URL for refreshes.
  */
 export function clearCarBookingSession(): void {
-  clearSessionKeys([
-    PENDING_CAR_BOOKING_SESSION_KEY,
-    CAR_PAYMENT_REFERENCE_SESSION_KEY,
-  ])
+  clearSessionRecord(PENDING_CAR_BOOKING_SESSION_KEY)
+  clearSessionRecord(CAR_PAYMENT_REFERENCE_SESSION_KEY)
 }
 
 // ---------------------------------------------------------------------------
@@ -754,49 +694,6 @@ export const CAR_MAX_RATE_BANDS: { value: number | null; label: string }[] = [
   { value: 250000, label: "Up to ₦250,000" },
 ]
 
-/** Number of active server-filter groups (type + rate + sort). */
-export function countActiveCarFilters(query: {
-  vehicle_type?: VehicleType
-  max_rate?: number
-  ordering?: CarOrdering
-}): number {
-  return countActiveFilters(query)
-}
+// Active-filter count and listing pagination are owned by `./shared.ts`
+// (countActiveFilters, getPagination, getPageItems) and not re-exported here.
 
-export interface CarPaginationInput {
-  page: number
-  totalCount: number
-  pageSize: number
-  visibleCount: number
-}
-
-export interface CarPagination {
-  totalPages: number
-  start: number
-  end: number
-}
-
-/**
- * Numbered-pagination arithmetic over DRF `count/next/previous` shapes.
- * `pageSize` is the observed full-page length (first full page wins);
- * `visibleCount` is this page's result length so the last-page range stays
- * honest (`Showing 11–13 of 13`, never `11–20 of 13`).
- */
-export function getCarPagination(input: CarPaginationInput): CarPagination {
-  return getPagination(input)
-}
-
-export type CarPageItem = number | "ellipsis"
-
-/**
- * Compact page-item window: always the first/last page plus
- * `sibling` neighbours around the current page, with ellipsis gaps.
- * Pure seam so the pagination UI is unit-testable.
- */
-export function getCarPageItems(
-  page: number,
-  totalPages: number,
-  sibling = 1
-): CarPageItem[] {
-  return getPageItems(page, totalPages, sibling)
-}
