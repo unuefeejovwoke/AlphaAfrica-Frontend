@@ -23,6 +23,7 @@ import {
   saveSelectedOffer,
   saveSelectedParty,
   saveTravellersDraft,
+  TRAVELLERS_DRAFT_SESSION_KEY,
 } from "../lib/api/flights.ts"
 import {
   clearSelectedDomesticCard,
@@ -109,6 +110,136 @@ test("Pending booking: same offer, travellers, and contact reuse the reference; 
     findReusableBooking(null, hashBookingKey(OFFER_A, TRAVELLERS, CUSTOMER)),
     null
   )
+})
+
+test("Pending booking: reuse identity is a digest carrying no readable traveller data", () => {
+  const key = hashBookingKey(OFFER_A, TRAVELLERS, CUSTOMER)
+  assert.match(key, /^[0-9a-f]{16}$/, "The stored key must be a hex digest")
+  for (const readable of ["Ada", "Obi", "1990-01-01", "ada@example.com"]) {
+    assert.equal(
+      key.includes(readable),
+      false,
+      `Digest must not leak readable data: ${readable}`
+    )
+  }
+  assert.equal(
+    hashBookingKey(OFFER_A, TRAVELLERS, CUSTOMER),
+    key,
+    "Unchanged retries hash identically so reuse keeps working"
+  )
+  assert.notEqual(
+    hashBookingKey(OFFER_A, [traveller("Ngozi")], CUSTOMER),
+    key,
+    "An edited traveller hashes differently so reuse can never match"
+  )
+})
+
+function readRawSession(key: string): string | null {
+  const session = (
+    (globalThis as { window?: unknown }).window as {
+      sessionStorage: { getItem: (key: string) => string | null }
+    }
+  ).sessionStorage
+  return session.getItem(key)
+}
+
+function writeRawSession(key: string, value: string): void {
+  const session = (
+    (globalThis as { window?: unknown }).window as {
+      sessionStorage: { setItem: (key: string, value: string) => void }
+    }
+  ).sessionStorage
+  session.setItem(key, value)
+}
+
+test("Travellers draft: storage holds no passport, birth date, or contact data", () => {
+  installMemorySessionStorage()
+  try {
+    saveTravellersDraft({
+      travellers: [
+        {
+          ...traveller("Ada"),
+          passport_number: "A12345678",
+          passport_expiry: "2030-01-01",
+          nationality: "NG",
+        },
+      ],
+      customer: CUSTOMER,
+    })
+
+    const raw = readRawSession(TRAVELLERS_DRAFT_SESSION_KEY)
+    assert.ok(raw, "The draft must persist for resume")
+    for (const banned of [
+      "A12345678",
+      "2030-01-01",
+      "1990-01-01",
+      "ada@example.com",
+      "+2348031234567",
+      "passport_number",
+      "passport_expiry",
+      "date_of_birth",
+    ]) {
+      assert.equal(
+        raw.includes(banned),
+        false,
+        `Browser storage must never hold: ${banned}`
+      )
+    }
+
+    const draft = readTravellersDraft()
+    assert.ok(draft, "Party recovery still works from the stripped draft")
+    assert.equal(draft.travellers[0].first_name, "Ada")
+    assert.equal(draft.travellers[0].traveler_type, "ADULT")
+    assert.equal(draft.customer.name, "Ada Obi")
+    assert.equal(
+      "passport_number" in (draft.travellers[0] as unknown as Record<
+        string,
+        unknown
+      >),
+      false
+    )
+
+    writeRawSession(TRAVELLERS_DRAFT_SESSION_KEY, "{not-json")
+    assert.equal(
+      readTravellersDraft(),
+      null,
+      "Corrupt storage reads as no draft rather than crashing"
+    )
+    writeRawSession(TRAVELLERS_DRAFT_SESSION_KEY, "[]")
+    assert.equal(
+      readTravellersDraft(),
+      null,
+      "Wrong-shaped storage reads as no draft rather than crashing"
+    )
+
+    // A pre-hardening full-shape draft is sanitized on read, not restored.
+    writeRawSession(
+      TRAVELLERS_DRAFT_SESSION_KEY,
+      JSON.stringify({
+        travellers: [
+          {
+            ...traveller("Ada"),
+            passport_number: "A12345678",
+            passport_expiry: "2030-01-01",
+          },
+        ],
+        customer: CUSTOMER,
+      })
+    )
+    const migrated = readTravellersDraft()
+    assert.ok(migrated, "Legacy drafts still recover the party")
+    assert.equal(
+      "passport_number" in (migrated.travellers[0] as unknown as Record<
+        string,
+        unknown
+      >),
+      false,
+      "Legacy passport data is dropped on read"
+    )
+    assert.equal(migrated.travellers[0].first_name, "Ada")
+  } finally {
+    uninstallWindowStub()
+  }
 })
 
 // ---------------------------------------------------------------------------

@@ -49,6 +49,7 @@ import { formatNaira } from "@/lib/format"
 import { notifyPaymentFailed } from "@/lib/toast"
 import {
   draftToTravellerFormValues,
+  toTravellersDraft,
   totalTravellers,
   type BookingTravellersPayload,
   type TravellerComposition,
@@ -250,7 +251,9 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
       // Persist first: a failed creation plus a refresh must never lose what
       // the guest typed (the draft also prefills the form on remount).
       saveTravellersDraft(payload)
-      setSubmittedValues(draftToTravellerFormValues(data.party, payload))
+      setSubmittedValues(
+        draftToTravellerFormValues(data.party, toTravellersDraft(payload))
+      )
 
       const bookingKey = hashBookingKey(
         data.offer,

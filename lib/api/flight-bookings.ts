@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost } from "./client.ts"
+import { digestKey } from "./booking-key.ts"
 import { emailSchema } from "./validation.ts"
 import { moneyToKobo, resolveMoneyChange, type MoneyChange } from "../money.ts"
 import {
@@ -45,19 +46,24 @@ function stableStringify(value: unknown): string {
 }
 
 /**
- * Identity of one booking attempt: the opaque Confirmed Offer blob plus the
- * validated Traveller details and paying contact. Including the travellers is
- * the safety property that matters — an edited name, passport, or contact must
- * never silently reuse a Pending Booking created for different people, because
- * the airline order is built from the booking's stored travellers. Key order
- * is normalized so unchanged retries hash identically.
+ * Identity of one booking attempt: a digest of the opaque Confirmed Offer
+ * blob plus the validated Traveller details and paying contact. Including
+ * the travellers is the safety property that matters — an edited name,
+ * passport, or contact must never silently reuse a Pending Booking created
+ * for different people, because the airline order is built from the
+ * booking's stored travellers. Key order is normalized so unchanged retries
+ * hash identically. The stored key is a digest, never the readable payload:
+ * passport numbers, dates of birth, and contact details must never sit in
+ * browser storage.
  */
 export function hashBookingKey(
   flightOffer: unknown,
   travelers: readonly BookingTravellerPayload[],
   customer: BookingCustomer
 ): string {
-  return stableStringify({ flight_offer: flightOffer, travelers, customer })
+  return digestKey(
+    stableStringify({ flight_offer: flightOffer, travelers, customer })
+  )
 }
 
 /**

@@ -493,14 +493,61 @@ export function createTravellerSlots(
 }
 
 /**
+ * Browser-persisted Travellers draft (production hardening, 06).
+ *
+ * The draft restores an unfinished booking — party composition (counts and
+ * traveller types), names, and nationality — without ever holding a passport
+ * number, passport expiry, date of birth, email, or phone. Those exist only
+ * in the form the guest typed them into. The paying contact keeps its name
+ * (needed to restore the copy-from-first-traveller state); its email and
+ * phone are never persisted.
+ */
+export interface TravellerDraftTraveller {
+  first_name: string
+  last_name: string
+  gender: Gender
+  traveler_type: TravelerType
+  nationality?: string | undefined
+}
+
+export interface TravellersDraft {
+  travellers: TravellerDraftTraveller[]
+  customer: { name: string }
+}
+
+/**
+ * Strip a validated submission payload down to the browser-persistable
+ * draft. Pure seam: everything sensitive is dropped here, once, instead of
+ * at each storage call site.
+ */
+export function toTravellersDraft(
+  payload: BookingTravellersPayload
+): TravellersDraft {
+  return {
+    travellers: payload.travellers.map((traveller) => ({
+      first_name: traveller.first_name,
+      last_name: traveller.last_name,
+      gender: traveller.gender,
+      traveler_type: traveller.traveler_type,
+      ...(traveller.nationality !== undefined
+        ? { nationality: traveller.nationality }
+        : null),
+    })),
+    customer: { name: payload.customer.name },
+  }
+}
+
+/**
  * Rebuild form defaults from a saved Travellers draft so a refresh, or a
- * return from Paystack, restores exactly what the guest typed. Returns null
- * when the draft no longer matches the expected party composition — callers
- * then start from empty slots rather than guessing.
+ * return from Paystack, restores exactly what the guest may keep — party,
+ * names, nationality. Returns null when the draft no longer matches the
+ * expected party composition — callers then start from empty slots rather
+ * than guessing. Sensitive fields always restore as empty inputs: the guest
+ * retypes passport, birth date, and contact details every time.
  */
 export function draftToTravellerFormValues(
   party: TravellerComposition,
-  draft: BookingTravellersPayload
+  draft: TravellersDraft
 ): TravellerFormValues | null {
   const travellers = draft.travellers
   let adults = 0
@@ -521,28 +568,26 @@ export function draftToTravellerFormValues(
   }
 
   const first = travellers[0]
-  const contactFromFirst = first ? deriveCustomerFromTraveller(first) : null
-  const contactIsFirstTraveller = contactFromFirst
-    ? contactFromFirst.name === draft.customer.name &&
-      contactFromFirst.email === draft.customer.email &&
-      contactFromFirst.phone === draft.customer.phone
+  const contactIsFirstTraveller = first
+    ? `${first.first_name.trim()} ${first.last_name.trim()}`.trim() ===
+      draft.customer.name
     : true
 
   return {
     travellers: travellers.map((traveller) => ({
       first_name: traveller.first_name,
       last_name: traveller.last_name,
-      date_of_birth: traveller.date_of_birth,
+      date_of_birth: "",
       gender: traveller.gender,
-      email: traveller.email,
-      phone_country_code: traveller.phone_country_code,
-      phone: traveller.phone,
+      email: "",
+      phone_country_code: "234",
+      phone: "",
       traveler_type: traveller.traveler_type,
-      passport_number: traveller.passport_number ?? "",
-      passport_expiry: traveller.passport_expiry ?? "",
+      passport_number: "",
+      passport_expiry: "",
       nationality: traveller.nationality ?? "",
     })),
     contactIsFirstTraveller,
-    customer: { ...draft.customer },
+    customer: { name: draft.customer.name, email: "", phone: "" },
   }
 }

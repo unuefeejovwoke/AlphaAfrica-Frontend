@@ -3,6 +3,7 @@ import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS } from "./client.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { futureDateStringSchema } from "./validation.ts"
 import { moneyToKobo, koboToMoneyString, resolveMoneyChange } from "../money.ts"
+import { formatNaira } from "../format.ts"
 import {
   travellerCompositionSchema,
   travellerPartyBaseSchema,
@@ -10,7 +11,10 @@ import {
 import type {
   BookingTravellersPayload,
   TravellerComposition,
+  TravellerDraftTraveller,
+  TravellersDraft,
 } from "../schemas/travel.ts"
+import { toTravellersDraft } from "../schemas/travel.ts"
 
 /**
  * Flight domain — one-way international search (Phase 3, ticket 01).
@@ -2014,6 +2018,23 @@ export function resolvePriceConfirmation(
   }
 }
 
+/**
+ * Assertive screen-reader announcement for a fare outcome (ticket 18). A
+ * same-fare outcome needs no announcement — the flow continues to Traveller
+ * entry. Changed and expired fares must be heard: the price the Customer saw
+ * is no longer the price they would pay.
+ */
+export function describePriceOutcome(
+  outcome: PriceConfirmOutcome
+): string | null {
+  if (outcome.status === "same") return null
+  if (outcome.status === "expired") {
+    return "This fare is no longer available. Nothing was booked and no payment was taken."
+  }
+  const direction = outcome.increased ? "increased" : "decreased"
+  return `The airline updated this fare: now ${formatNaira(outcome.newTotal)} (was ${formatNaira(outcome.previousTotal)}, ${direction}).`
+}
+
 const EXPIRED_OFFER_PATTERN =
   /expir|no longer (available|valid)|unavailable|not found|invalid offer|stale|offer .*gone|reserv|could not (hold|book|confirm)|search (again|expired)|seat .*gone|fare .*gone/i
 
@@ -2327,28 +2348,74 @@ export function clearSelectedParty(): void {
 
 export const TRAVELLERS_DRAFT_SESSION_KEY = "alphaa:travellers-draft:v1"
 
-/** Persist the validated Traveller + Customer draft for ticket 07 (payment). */
+const DRAFT_GENDERS = new Set(["MALE", "FEMALE"])
+const DRAFT_TRAVELER_TYPES = new Set(["ADULT", "CHILD", "HELD_INFANT"])
+
+/**
+ * Persist the validated Traveller + Customer draft for ticket 07 (payment).
+ * Only the stripped draft is stored — passport numbers, expiries, dates of
+ * birth, emails, and phones never reach browser storage. sessionStorage is
+ * tab-scoped, so the draft dies with the tab on top of the explicit
+ * teardown below.
+ */
 export function saveTravellersDraft(payload: BookingTravellersPayload): void {
   if (typeof window === "undefined") return
   try {
     window.sessionStorage.setItem(
       TRAVELLERS_DRAFT_SESSION_KEY,
-      JSON.stringify(payload)
+      JSON.stringify(toTravellersDraft(payload))
     )
   } catch {
     // sessionStorage may throw in private mode — the in-memory submit still ran
   }
 }
 
+/** Pick only the persistable draft keys, so legacy full-shape drafts stored
+ * before the hardening boundary are sanitized on read instead of restored. */
+function sanitizeTravellersDraft(parsed: unknown): TravellersDraft | null {
+  if (typeof parsed !== "object" || parsed === null) return null
+  const record = parsed as Record<string, unknown>
+  if (!Array.isArray(record.travellers)) return null
+  if (typeof record.customer !== "object" || record.customer === null) {
+    return null
+  }
+  const customerName = (record.customer as Record<string, unknown>).name
+  if (typeof customerName !== "string") return null
+  const travellers: TravellerDraftTraveller[] = []
+  for (const item of record.travellers) {
+    if (typeof item !== "object" || item === null) return null
+    const row = item as Record<string, unknown>
+    if (
+      typeof row.first_name !== "string" ||
+      typeof row.last_name !== "string" ||
+      typeof row.gender !== "string" ||
+      !DRAFT_GENDERS.has(row.gender) ||
+      typeof row.traveler_type !== "string" ||
+      !DRAFT_TRAVELER_TYPES.has(row.traveler_type)
+    ) {
+      return null
+    }
+    travellers.push({
+      first_name: row.first_name,
+      last_name: row.last_name,
+      gender: row.gender as TravellerDraftTraveller["gender"],
+      traveler_type:
+        row.traveler_type as TravellerDraftTraveller["traveler_type"],
+      ...(typeof row.nationality === "string"
+        ? { nationality: row.nationality }
+        : null),
+    })
+  }
+  return { travellers, customer: { name: customerName } }
+}
+
 /** Read back the Travellers draft, or null when absent/corrupt. */
-export function readTravellersDraft(): BookingTravellersPayload | null {
+export function readTravellersDraft(): TravellersDraft | null {
   if (typeof window === "undefined") return null
   try {
     const raw = window.sessionStorage.getItem(TRAVELLERS_DRAFT_SESSION_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as unknown
-    if (typeof parsed !== "object" || parsed === null) return null
-    return parsed as BookingTravellersPayload
+    return sanitizeTravellersDraft(JSON.parse(raw) as unknown)
   } catch {
     return null
   }

@@ -95,6 +95,12 @@ test("Creation guard: identical retries reuse the reference, new stays create", 
     guest_email: "adaeze@example.com",
     guest_phone: "+2348031234567",
   })
+  assert.match(key, /^[0-9a-f]{16}$/, "The stored key must be a hex digest")
+  assert.equal(
+    key.includes("adaeze@example.com"),
+    false,
+    "The digest must not leak readable guest contact data"
+  )
   const stored = {
     key,
     reference: "HOTEL-ABC123",

@@ -185,6 +185,12 @@ test("identical car payload reuses pending reference, changed payload does not",
     guest_phone: "+2348012345678",
   }
   const key = hashCarBookingKey(payload)
+  assert.match(key, /^[0-9a-f]{16}$/, "The stored key must be a hex digest")
+  assert.equal(
+    key.includes("ada@example.com"),
+    false,
+    "The digest must not leak readable guest contact data"
+  )
   const stored = {
     key,
     reference: "ALPHAA-9",

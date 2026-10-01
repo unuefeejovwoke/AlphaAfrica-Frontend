@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS, type PaginatedResponse } from "./client.ts"
+import { digestKey } from "./booking-key.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
 import { resolveListingImageUrl } from "../listings.ts"
@@ -1204,7 +1205,7 @@ export async function createHotelBooking(
 // duplicate Hotel Booking; any change creates fresh.
 // ---------------------------------------------------------------------------
 
-/** A stored Hotel Booking creation, keyed by the full creation payload. */
+/** A stored Hotel Booking creation, keyed by a digest of the full creation payload. */
 export interface PendingHotelBookingRecord {
   key: string
   reference: string
@@ -1226,11 +1227,11 @@ function stableStringify(value: unknown): string {
   return `{${parts.join(",")}}`
 }
 
-/** Identity of one creation attempt: the full payload, key-order normalized. */
+/** Identity of one creation attempt: a digest of the full payload, key-order normalized. */
 export function hashHotelBookingKey(
   payload: HotelBookingCreatePayload
 ): string {
-  return stableStringify(payload)
+  return digestKey(stableStringify(payload))
 }
 
 /**

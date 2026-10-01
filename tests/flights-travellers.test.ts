@@ -4,6 +4,7 @@ import {
   createTravellerFormSchema,
   draftToTravellerFormValues,
   getTravellerAgeWarnings,
+  toTravellersDraft,
   type BookingTravellersPayload,
   type TravellerFormTraveller,
 } from "../lib/schemas/travel.ts"
@@ -213,7 +214,7 @@ test("Traveller composition: infants above adults fails, total above nine fails"
   assert.equal(exact.success, true, "Exact expected party must pass")
 })
 
-test("Travellers draft restores form defaults only when it matches the party", () => {
+test("Travellers draft strips sensitive fields yet restores the party", () => {
   const party = { adults: 1, children: 1, infants: 0 }
   const payload: BookingTravellersPayload = {
     travellers: [
@@ -226,6 +227,9 @@ test("Travellers draft restores form defaults only when it matches the party", (
         phone_country_code: "234",
         phone: "+2348031234567",
         traveler_type: "ADULT",
+        passport_number: "A12345678",
+        passport_expiry: "2030-01-01",
+        nationality: "NG",
       },
       {
         first_name: "Chidi",
@@ -245,7 +249,28 @@ test("Travellers draft restores form defaults only when it matches the party", (
     },
   }
 
-  const values = draftToTravellerFormValues(party, payload)
+  const draft = toTravellersDraft(payload)
+  const serialized = JSON.stringify(draft)
+  for (const banned of [
+    "A12345678",
+    "1990-01-01",
+    "ada@example.com",
+    "+2348031234567",
+    "passport_number",
+    "passport_expiry",
+    "date_of_birth",
+  ]) {
+    assert.equal(
+      serialized.includes(banned),
+      false,
+      `Draft must never persist: ${banned}`
+    )
+  }
+  assert.equal(draft.travellers[0].first_name, "Ada")
+  assert.equal(draft.travellers[0].nationality, "NG")
+  assert.equal(draft.customer.name, "Ada Obi")
+
+  const values = draftToTravellerFormValues(party, draft)
   assert.ok(values, "A matching draft must restore form values")
   assert.equal(values.travellers.length, 2, "Slots keep the draft party")
   assert.equal(
@@ -253,26 +278,27 @@ test("Travellers draft restores form defaults only when it matches the party", (
     true,
     "Derived contact marks the copy checkbox"
   )
-  assert.equal(values.travellers[0].phone, "+2348031234567")
+  assert.equal(values.travellers[0].first_name, "Ada")
+  assert.equal(values.travellers[0].nationality, "NG")
   assert.equal(
     values.travellers[0].passport_number,
     "",
-    "Missing passport fields restore as empty inputs"
+    "Passport restores as an empty input — the guest retypes it"
   )
+  assert.equal(values.travellers[0].date_of_birth, "")
+  assert.equal(values.travellers[0].email, "")
+  assert.equal(values.travellers[0].phone, "")
+  assert.equal(values.customer.email, "")
 
   assert.equal(
-    draftToTravellerFormValues({ adults: 2, children: 0, infants: 0 }, payload),
+    draftToTravellerFormValues({ adults: 2, children: 0, infants: 0 }, draft),
     null,
     "A draft that no longer matches the party must never prefill"
   )
 
   const separateCustomer = draftToTravellerFormValues(party, {
-    ...payload,
-    customer: {
-      name: "Ngozi Eze",
-      email: "ngozi@example.com",
-      phone: "+2348090000000",
-    },
+    ...draft,
+    customer: { name: "Ngozi Eze" },
   })
   assert.ok(separateCustomer, "A differing contact still restores")
   assert.equal(
