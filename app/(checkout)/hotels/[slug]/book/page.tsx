@@ -8,7 +8,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
-import { HotelGuestForm } from "@/components/hotels/hotel-guest-form"
+import { GuestBookingForm } from "@/components/shared/guest-booking-form"
 import { ApiError } from "@/lib/api/client"
 import {
   calculateNights,
@@ -237,13 +237,9 @@ export default async function HotelBookPage({
           </p>
         </header>
 
-        <HotelGuestForm
-          hotel={{
-            id: hotel.id,
-            slug: hotel.slug,
-            name: hotel.name,
-            city: hotel.city,
-          }}
+        <GuestBookingForm
+          kind="hotel"
+          hotel={{ id: hotel.id, name: hotel.name, city: hotel.city }}
           room={room}
           stay={{
             check_in: stay.check_in,

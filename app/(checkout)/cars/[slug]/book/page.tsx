@@ -8,7 +8,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { ButtonLink } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
-import { CarGuestForm } from "@/components/cars/car-guest-form"
+import { GuestBookingForm } from "@/components/shared/guest-booking-form"
 import { ApiError } from "@/lib/api/client"
 import {
   buildCarHireParams,
@@ -186,14 +186,13 @@ export default async function CarBookPage({
           </p>
         </header>
 
-        <CarGuestForm
+        <GuestBookingForm
+          kind="car"
           vehicle={vehicle}
           hire={{
             pickup_location: hire.pickup_location,
             dropoff_location: hire.dropoff_location,
             pickup_datetime: pickupDatetime,
-            pickup_date: hire.pickup_date,
-            pickup_time: hire.pickup_time,
             num_hours: hours,
           }}
           backHref={`/cars/${slug}`}

@@ -12,8 +12,8 @@ import assert from "node:assert/strict"
 
 import {
   buildHotelBookingPayload,
-  hotelGuestSchema,
 } from "../lib/api/hotels.ts"
+import { guestContactSchema } from "../lib/api/validation.ts"
 import {
   findReusableBookingRecord,
   hashPayloadKey,
@@ -25,8 +25,8 @@ function futureDate(daysAhead: number): string {
   return local.toISOString().slice(0, 10)
 }
 
-test("Hotel Guest shape: single full name plus email plus normalized NG phone", () => {
-  const parsed = hotelGuestSchema.safeParse({
+test("Guest contact shape (one schema for every booking type): full name plus email plus normalized NG phone", () => {
+  const parsed = guestContactSchema.safeParse({
     guest_name: "Adaeze Okonkwo",
     guest_email: "adaeze@example.com",
     guest_phone: "0803 123 4567",
@@ -38,7 +38,7 @@ test("Hotel Guest shape: single full name plus email plus normalized NG phone", 
   assert.equal(parsed.data.guest_phone, "+2348031234567")
 
   // International format normalizes without a country-code guess.
-  const intl = hotelGuestSchema.safeParse({
+  const intl = guestContactSchema.safeParse({
     guest_name: "Adaeze Okonkwo",
     guest_email: "adaeze@example.com",
     guest_phone: "+1 415 555 2671",
@@ -47,7 +47,7 @@ test("Hotel Guest shape: single full name plus email plus normalized NG phone", 
   if (intl.success) assert.equal(intl.data.guest_phone, "+14155552671")
 
   // Letters in the phone never pass, however plausible the rest is.
-  const letters = hotelGuestSchema.safeParse({
+  const letters = guestContactSchema.safeParse({
     guest_name: "Adaeze Okonkwo",
     guest_email: "adaeze@example.com",
     guest_phone: "0803-CALL-NOW",
@@ -55,7 +55,7 @@ test("Hotel Guest shape: single full name plus email plus normalized NG phone", 
   assert.equal(letters.success, false, "Phone numbers cannot contain letters")
 
   // A bad email fails even with a perfect name and phone.
-  const badEmail = hotelGuestSchema.safeParse({
+  const badEmail = guestContactSchema.safeParse({
     guest_name: "Adaeze Okonkwo",
     guest_email: "not-an-email",
     guest_phone: "08031234567",

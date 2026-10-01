@@ -19,11 +19,7 @@ import {
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
 import { resolveListingImageUrl } from "../listings.ts"
-import {
-  emailSchema,
-  fullNameSchema,
-  nigerianPhoneSchema,
-} from "./validation.ts"
+import { guestContactSchema } from "./validation.ts"
 
 /**
  * Hotel domain — search foundation (Phase 4, ticket 01).
@@ -1028,30 +1024,20 @@ export function parseHotelBookingParams(
 // ---------------------------------------------------------------------------
 
 /**
- * Hotel Guest contact shape (CONTEXT.md: the single booking contact and stay
- * representative). Reuses the shared validation primitives (ADR-0002): the
- * phone transform normalizes Nigerian formats to `+234…` before submission.
+ * Hotel Guest contact validation (ticket 05) is the shared guest-contact
+ * schema (`guestContactSchema` in `./validation.ts`) — the one field set for
+ * every booking type; the phone transform normalizes Nigerian formats to
+ * `+234…` before submission.
  */
-export const hotelGuestSchema = z.object({
-  guest_name: fullNameSchema,
-  guest_email: emailSchema,
-  guest_phone: nigerianPhoneSchema("Phone number"),
-})
-
-export type HotelGuestInput = z.input<typeof hotelGuestSchema>
-export type HotelGuest = z.output<typeof hotelGuestSchema>
 
 /** Backend contract for `POST /api/hotels/bookings/create/`. */
-export const hotelBookingCreateRequestSchema = z.object({
+export const hotelBookingCreateRequestSchema = guestContactSchema.extend({
   hotel_id: z.number().int().positive(),
   room_type_id: z.number().int().positive(),
   check_in: z.string().trim().min(1, "Add a check-in date"),
   check_out: z.string().trim().min(1, "Add a check-out date"),
   num_rooms: z.number().int().min(1).max(MAX_HOTEL_ROOMS),
   num_guests: z.number().int().min(1).max(MAX_HOTEL_GUESTS),
-  guest_name: fullNameSchema,
-  guest_email: emailSchema,
-  guest_phone: nigerianPhoneSchema("Phone number"),
 })
 
 export type HotelBookingCreatePayload = z.infer<

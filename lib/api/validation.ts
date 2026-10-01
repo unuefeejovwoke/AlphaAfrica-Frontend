@@ -174,3 +174,19 @@ export const fullNameSchema = z
   .trim()
   .min(2, "Enter your full name")
   .max(150, "Name is too long")
+
+/**
+ * The one guest-contact schema for every booking type (ticket 16): Hotel
+ * Guest and Vehicle guest both capture one full name plus email plus phone
+ * (CONTEXT.md — the single booking contact). Composed from the shared
+ * primitives above; the phone transform normalizes Nigerian formats to
+ * `+234…` before submission.
+ */
+export const guestContactSchema = z.object({
+  guest_name: fullNameSchema,
+  guest_email: emailSchema,
+  guest_phone: nigerianPhoneSchema("Phone number"),
+})
+
+export type GuestContactInput = z.input<typeof guestContactSchema>
+export type GuestContact = z.output<typeof guestContactSchema>

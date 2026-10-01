@@ -19,11 +19,7 @@ import {
 import { getSupportWhatsAppUrl } from "../content/company.ts"
 import { formatNaira } from "../format.ts"
 import { resolveListingImageUrl } from "../listings.ts"
-import {
-  emailSchema,
-  fullNameSchema,
-  nigerianPhoneSchema,
-} from "./validation.ts"
+import { guestContactSchema } from "./validation.ts"
 
 /**
  * Car rental domain — Phase 5.
@@ -490,16 +486,11 @@ export type CarHireInput = z.input<typeof carHireSchema>
 // Guest form + creation with Paystack redirect
 // ---------------------------------------------------------------------------
 
-export const carGuestSchema = z.object({
-  guest_name: fullNameSchema,
-  guest_email: emailSchema,
-  guest_phone: nigerianPhoneSchema("Phone number"),
-})
+// Guest contact validation is the shared guest-contact schema
+// (`guestContactSchema` in `./validation.ts`) — the one field set for every
+// booking type; the phone transform normalizes Nigerian formats to `+234…`.
 
-export type CarGuestInput = z.input<typeof carGuestSchema>
-export type CarGuest = z.output<typeof carGuestSchema>
-
-export const carBookingCreateRequestSchema = z.object({
+export const carBookingCreateRequestSchema = guestContactSchema.extend({
   vehicle_id: z.number().int().positive(),
   pickup_location: locationSchema("Pickup location"),
   dropoff_location: locationSchema("Drop-off location"),
@@ -516,9 +507,6 @@ export const carBookingCreateRequestSchema = z.object({
       { message: "Pickup must be in the future" }
     ),
   num_hours: z.number().int().min(MIN_HIRE_HOURS).max(MAX_HIRE_HOURS),
-  guest_name: fullNameSchema,
-  guest_email: emailSchema,
-  guest_phone: nigerianPhoneSchema("Phone number"),
 })
 
 export type CarBookingCreatePayload = z.infer<

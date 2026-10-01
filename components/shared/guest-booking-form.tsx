@@ -22,15 +22,13 @@ import {
   getPaymentSafetyCopy,
 } from "@/lib/api/client"
 import {
-  buildCarBookingPayload,
-  createCarBooking,
-  getCarSupportWhatsAppUrl,
-  carGuestSchema,
-  CAR_PAYMENT_REFERENCE_SESSION_KEY,
-  PENDING_CAR_BOOKING_SESSION_KEY,
-  type CarGuestInput,
-  type VehicleDetail,
-} from "@/lib/api/cars"
+  carGuestBooking,
+  hotelGuestBooking,
+  mapGuestFieldErrors,
+  NEEDS_ATTENTION_COPY,
+  type CarGuestBookingData,
+  type HotelGuestBookingData,
+} from "@/lib/api/guest-booking"
 import {
   findReusableBookingRecord,
   hashPayloadKey,
@@ -38,60 +36,55 @@ import {
   saveSessionRecord,
   saveSessionString,
 } from "@/lib/api/shared"
-
-export interface CarGuestHire {
-  pickup_location: string
-  dropoff_location: string
-  pickup_datetime: string
-  pickup_date: string
-  pickup_time: string
-  num_hours: number
-}
+import {
+  guestContactSchema,
+  type GuestContactInput,
+} from "@/lib/api/validation"
 
 type Phase = "idle" | "creating" | "redirecting" | "failed"
 
-const GUEST_FIELD_MAP: Record<
-  string,
-  "guest_name" | "guest_email" | "guest_phone"
-> = {
-  guest_name: "guest_name",
-  guest_email: "guest_email",
-  guest_phone: "guest_phone",
-  phone: "guest_phone",
-  email: "guest_email",
-  name: "guest_name",
-}
+export type GuestBookingFormProps =
+  | ({ kind: "hotel"; backHref: string } & HotelGuestBookingData)
+  | ({ kind: "car"; backHref: string } & CarGuestBookingData)
 
 /**
- * Car guest details plus Paystack handoff.
- * Guest booking, no account gate. Single-flight guard + persisted
- * reference so double-taps never create duplicates.
+ * The one Guest Booking form for Hotel and Car (production hardening, 16).
+ *
+ * Guest Booking with no account gate: one full name plus email plus phone,
+ * validated on blur plus on submit plus pre-payment. One phase machine, one
+ * field set, one validation and error-handling path, and one payment
+ * reassurance voice serve both booking types; only the booking-specific
+ * payload building, creation, reuse keys, analytics, and vocabulary differ,
+ * and those arrive as data ({@link GuestBookingFormProps} resolves to its
+ * setup in `lib/api/guest-booking.ts`). A single-flight guard disables
+ * submit and pay actions while creation runs and persists the Payment
+ * Reference, so double-taps and retries never create duplicates. Success
+ * hands off to the backend-owned Paystack authorization URL; failures map
+ * to customer-safe copy with field errors inline and never raw.
  */
-export function CarGuestForm({
-  vehicle,
-  hire,
-  backHref,
-}: {
-  vehicle: VehicleDetail
-  hire: CarGuestHire
-  backHref: string
-}) {
+export function GuestBookingForm(props: GuestBookingFormProps) {
+  const { backHref } = props
+  const { booking, copy, supportHref } =
+    props.kind === "hotel"
+      ? hotelGuestBooking({
+          hotel: props.hotel,
+          room: props.room,
+          stay: props.stay,
+        })
+      : carGuestBooking({ vehicle: props.vehicle, hire: props.hire })
+
   const [phase, setPhase] = React.useState<Phase>("idle")
   const [failure, setFailure] = React.useState<string | null>(null)
   const [redirectUrl, setRedirectUrl] = React.useState<string | null>(null)
+  // Transient in-flight marker: drops double taps without a rerender while
+  // the disabled button covers the visual state.
   const creationRef = React.useRef<string | null>(null)
 
-  const form = useForm<CarGuestInput>({
-    resolver: zodResolver(carGuestSchema),
+  const form = useForm<GuestContactInput>({
+    resolver: zodResolver(guestContactSchema),
     defaultValues: { guest_name: "", guest_email: "", guest_phone: "" },
     mode: "onTouched",
     shouldFocusError: true,
-  })
-
-  const supportHref = getCarSupportWhatsAppUrl(`the ${vehicle.name} hire`, {
-    vehicle_name: vehicle.name,
-    pickup_location: hire.pickup_location,
-    num_hours: hire.num_hours,
   })
 
   const handleSubmit = form.handleSubmit((values) => {
@@ -99,37 +92,38 @@ export function CarGuestForm({
     setFailure(null)
     form.clearErrors("root")
 
-    let payload
+    // Pre-payment gate: booking-specific revalidation before anything
+    // reaches the backend (an invalid stay or hire never leaves the device).
+    const blocked = booking.prePaymentIssue?.() ?? null
+    if (blocked !== null) {
+      form.setError("root", { type: "validate", message: blocked })
+      return
+    }
+
+    let payload: object
     try {
-      payload = buildCarBookingPayload({
-        vehicle_id: vehicle.id,
-        pickup_location: hire.pickup_location,
-        dropoff_location: hire.dropoff_location,
-        pickup_datetime: hire.pickup_datetime,
-        num_hours: hire.num_hours,
-        guest_name: values.guest_name,
-        guest_email: values.guest_email,
-        guest_phone: values.guest_phone,
-      })
+      payload = booking.buildPayload(values)
     } catch {
       form.setError("root", {
         type: "validate",
-        message: "Some details need attention before we can continue.",
+        message: NEEDS_ATTENTION_COPY,
       })
       return
     }
 
     const key = hashPayloadKey(payload)
     const reusable = findReusableBookingRecord(
-      readSessionRecord(PENDING_CAR_BOOKING_SESSION_KEY),
+      readSessionRecord(booking.pendingSessionKey),
       key
     )
+    // Funnel: currency plus stay/hire length only — never the reference,
+    // guest PII, or the authorization URL (ticket 07).
     if (reusable) {
       creationRef.current = reusable.reference
-      saveSessionString(CAR_PAYMENT_REFERENCE_SESSION_KEY, reusable.reference)
+      saveSessionString(booking.referenceSessionKey, reusable.reference)
       setRedirectUrl(reusable.authorization_url)
       setPhase("redirecting")
-      track("car_payment_initiated", { currency: "NGN", hours: hire.num_hours })
+      track(booking.analyticsEvent, booking.analyticsProps)
       window.location.href = reusable.authorization_url
       return
     }
@@ -138,43 +132,34 @@ export function CarGuestForm({
     setPhase("creating")
     void (async () => {
       try {
-        const result = await createCarBooking(payload)
+        const result = await booking.createBooking(payload)
         creationRef.current = result.reference
-        saveSessionRecord(PENDING_CAR_BOOKING_SESSION_KEY, {
+        saveSessionRecord(booking.pendingSessionKey, {
           key,
           reference: result.reference,
           authorization_url: result.authorization_url,
         })
-        saveSessionString(CAR_PAYMENT_REFERENCE_SESSION_KEY, result.reference)
+        saveSessionString(booking.referenceSessionKey, result.reference)
         setRedirectUrl(result.authorization_url)
         setPhase("redirecting")
-        track("car_payment_initiated", {
-          currency: "NGN",
-          hours: hire.num_hours,
-        })
+        track(booking.analyticsEvent, booking.analyticsProps)
         window.location.href = result.authorization_url
       } catch (error) {
         creationRef.current = null
         setPhase("failed")
         if (error instanceof ApiError) {
           if (error.reference)
-            saveSessionString(
-              CAR_PAYMENT_REFERENCE_SESSION_KEY,
-              error.reference
-            )
-          let mapped = false
-          if (error.fieldErrors) {
-            for (const [field, messages] of Object.entries(error.fieldErrors)) {
-              const target = GUEST_FIELD_MAP[field]
-              if (target && messages.length > 0) {
-                form.setError(target, { type: "server", message: messages[0] })
-                mapped = true
-              }
-            }
+            saveSessionString(booking.referenceSessionKey, error.reference)
+          const fieldErrors =
+            error.fieldErrors === null
+              ? []
+              : mapGuestFieldErrors(error.fieldErrors)
+          for (const { field, message } of fieldErrors) {
+            form.setError(field, { type: "server", message })
           }
           setFailure(
-            mapped
-              ? "Some details need attention before we can continue."
+            fieldErrors.length > 0
+              ? NEEDS_ATTENTION_COPY
               : getHumanErrorMessage(error)
           )
         } else {
@@ -202,8 +187,7 @@ export function CarGuestForm({
           aria-live="polite"
           className="mx-auto max-w-md text-sm leading-relaxed text-muted-foreground"
         >
-          Your car booking is reserved and your payment reference is saved.
-          Complete payment on the secure Paystack page to confirm your hire.
+          {copy.redirectBody}
         </p>
         {redirectUrl ? (
           <ButtonLink
@@ -222,14 +206,13 @@ export function CarGuestForm({
     <form
       noValidate
       onSubmit={handleSubmit}
-      aria-label="Guest details for car hire"
+      aria-label={copy.ariaLabel}
       className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
     >
       <div className="flex flex-col gap-1">
-        <h2 className="text-base font-bold text-foreground">Who is hiring?</h2>
+        <h2 className="text-base font-bold text-foreground">{copy.heading}</h2>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          One contact per booking — the person the driver meets. No account
-          needed.
+          {copy.intro}
         </p>
       </div>
 
@@ -264,7 +247,7 @@ export function CarGuestForm({
             onChange={field.onChange}
             onBlur={field.onBlur}
             placeholder="803 123 4567"
-            helperText="Pick your country code, then type your number — the driver meets this contact."
+            helperText={copy.phoneHelperText}
             error={form.formState.errors.guest_phone?.message}
           />
         )}
@@ -302,19 +285,18 @@ export function CarGuestForm({
         >
           <HugeiconsIcon icon={LockIcon} size={16} aria-hidden="true" />
           <span>
-            {phase === "creating"
-              ? "Reserving your car…"
-              : "Continue to payment"}
+            {phase === "creating" ? copy.submitPendingLabel : "Continue to payment"}
           </span>
         </Button>
         <ButtonLink
           href={backHref}
           variant="ghost"
           size="sm"
+          aria-disabled={busy || undefined}
           className="w-full justify-center"
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={14} aria-hidden="true" />
-          <span>Back to vehicle</span>
+          <span>{copy.backLabel}</span>
         </ButtonLink>
         <ButtonLink
           href={supportHref}
