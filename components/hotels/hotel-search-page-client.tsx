@@ -33,6 +33,12 @@ import {
   type PaginatedHotels,
 } from "@/lib/api/hotels"
 import {
+  initialListingState,
+  listingSearchedKey,
+  LISTING_AUTO_BROWSE_KEY,
+  type ListingInitialPayload,
+} from "@/lib/api/listing-initial"
+import {
   countActiveFilters,
   getPagination,
   hasListingSearchParams,
@@ -48,8 +54,6 @@ const DEFAULT_LISTING_QUERY: HotelSearchQuery = {
   rooms: DEFAULT_HOTEL_ROOMS,
   page: 1,
 }
-/** Sentinel marking the one automatic browse-all load on the clean entry. */
-const AUTO_BROWSE_KEY = "auto:browse-all"
 
 /** Human line for the active server filters, e.g. "up to ₦150,000 · 4+ stars". */
 function describeServerFilters(query: HotelSearchQuery): string | null {
@@ -77,8 +81,17 @@ function describeServerFilters(query: HotelSearchQuery): string | null {
  * Filter transitions keep previous results visible under a pending dim
  * instead of flashing skeletons; pagination is numbered with an honest
  * `Showing A–B of N` range derived from the observed full-page length.
+ *
+ * On document loads the page streams a server-read first page in via the
+ * `initial` payload (ticket 21): the client seeds from it — real results,
+ * empty, or error in the delivered HTML — and marks that URL state as
+ * already searched, so the first page is fetched once, by the server.
  */
-export function HotelSearchPageClient() {
+export function HotelSearchPageClient({
+  initial,
+}: {
+  initial?: ListingInitialPayload<PaginatedHotels> | null
+}) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -106,9 +119,15 @@ export function HotelSearchPageClient() {
   // typing on navigation (vercel: rerender-use-deferred-value).
   const deferredDestination = React.useDeferredValue(parsedQuery.destination)
 
-  const [status, setStatus] = React.useState<SearchStatus>("loading")
-  const [pageData, setPageData] = React.useState<PaginatedHotels | null>(null)
-  const [error, setError] = React.useState<unknown | null>(null)
+  // Seed from the server-rendered first page when the document load carried
+  // one (ticket 21); without a payload — RSC navigations — the client engine
+  // owns fetching and starts in its loading state.
+  const seeded = React.useMemo(() => initialListingState(initial), [initial])
+  const [status, setStatus] = React.useState<SearchStatus>(seeded.status)
+  const [pageData, setPageData] = React.useState<PaginatedHotels | null>(
+    seeded.page
+  )
+  const [error, setError] = React.useState<unknown | null>(seeded.error)
 
   // Server-filter transitions keep input responsive: the previous results
   // stay visible with a pending indicator instead of flashing skeletons.
@@ -117,12 +136,27 @@ export function HotelSearchPageClient() {
   // Ignore stale responses when a newer search supersedes an in-flight one.
   const requestIdRef = React.useRef(0)
   // Last URL search state that was hydrated, so each change searches once.
-  const lastSearchedParamsRef = React.useRef<string | null>(null)
+  // A server payload (document load) already covers the entry URL, so it
+  // counts as searched from the first render — never a duplicate fetch.
+  const lastSearchedParamsRef = React.useRef<string | null>(
+    initial ? listingSearchedKey(hasSearch, paramsString) : null
+  )
   // Observed full-page length — first full page wins so the last-page range
   // never reads `11–20 of 13`. Falls back to the current page length.
   const pageSizeRef = React.useRef<number>(0)
   const resultsHeadingRef = React.useRef<HTMLHeadingElement | null>(null)
   const pendingScrollRef = React.useRef(false)
+
+  // Adopt the server payload's observed full-page length so the pagination
+  // range is honest from the first paint, not just after the next search.
+  React.useEffect(() => {
+    const page = initial?.page
+    if (page && page.results.length > 0 && pageSizeRef.current === 0) {
+      pageSizeRef.current = page.results.length
+    }
+    // Seed once on mount; later data flows through `runSearch`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const runSearch = React.useCallback(async (query: HotelSearchQuery) => {
     const requestId = ++requestIdRef.current
@@ -156,11 +190,13 @@ export function HotelSearchPageClient() {
     }
   }, [])
 
-  // Hydrate from the URL: a change in listing state triggers exactly one backend search.
+  // Hydrate from the URL: a change in listing state triggers exactly one
+  // backend search. The entry URL on a document load is already marked as
+  // searched (the server fetched it), so only genuine changes fire here.
   React.useEffect(() => {
     if (!hasSearch) {
-      if (lastSearchedParamsRef.current === AUTO_BROWSE_KEY) return
-      lastSearchedParamsRef.current = AUTO_BROWSE_KEY
+      if (lastSearchedParamsRef.current === LISTING_AUTO_BROWSE_KEY) return
+      lastSearchedParamsRef.current = LISTING_AUTO_BROWSE_KEY
       void runSearch(DEFAULT_LISTING_QUERY)
       return
     }

@@ -7,9 +7,11 @@ import { ButtonLink } from "@/components/ui/button"
 import { CarSearchPageClient } from "@/components/cars/car-search-page-client"
 import { CarResultsSkeleton } from "@/components/cars/car-results-skeleton"
 import {
+  getCarListingInitial,
   getCarSupportWhatsAppUrl,
   CAR_SEARCH_PARAM_KEYS,
 } from "@/lib/api/cars"
+import { isRscNavigationRequest } from "@/lib/api/rsc-request"
 import { hasListingSearchParams } from "@/lib/api/shared"
 import {
   CARS_LANDING_DESCRIPTION,
@@ -64,10 +66,8 @@ export default async function CarsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  const hasSearch = hasListingSearchParams(
-    await searchParams,
-    CAR_SEARCH_PARAM_KEYS
-  )
+  const params = await searchParams
+  const hasSearch = hasListingSearchParams(params, CAR_SEARCH_PARAM_KEYS)
 
   return (
     <>
@@ -100,7 +100,7 @@ export default async function CarsPage({
       ) : null}
 
       <React.Suspense fallback={<CarsPageFallback />}>
-        <CarSearchPageClient />
+        <CarListingSection rawParams={params} />
       </React.Suspense>
 
       <nav
@@ -141,6 +141,27 @@ export default async function CarsPage({
       </nav>
     </>
   )
+}
+
+/**
+ * Suspense boundary child that streams the first page of inventory into the
+ * delivered HTML on document loads (ticket 21): the guest — and every
+ * crawler — sees Vehicles in the first response, and the client seeds from
+ * the same read instead of fetching it again. RSC navigations (the client's
+ * own filter, sort, and pagination pushes) skip the server read and hand
+ * fetching back to the client engine, so no request ever fetches the same
+ * page twice.
+ */
+async function CarListingSection({
+  rawParams,
+}: {
+  rawParams: Record<string, string | string[] | undefined>
+}) {
+  if (await isRscNavigationRequest()) {
+    return <CarSearchPageClient />
+  }
+  const initial = await getCarListingInitial(rawParams)
+  return <CarSearchPageClient initial={initial} />
 }
 
 function CarsPageFallback() {

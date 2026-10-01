@@ -1,5 +1,14 @@
 import { z } from "zod"
-import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS, type PaginatedResponse } from "./client.ts"
+import {
+  ApiError,
+  apiGet,
+  apiPost,
+  getHumanErrorMessage,
+  SEARCH_TIMEOUT_MS,
+  type PaginatedResponse,
+} from "./client.ts"
+import type { ListingInitialPayload } from "./listing-initial.ts"
+import { LISTING_DETAIL_REVALIDATE_SECONDS } from "./client.ts"
 import {
   resolveBookingOutcome,
   VERIFICATION_REQUEST,
@@ -188,6 +197,40 @@ export async function getVehicles(
 }
 
 /**
+ * Server-side first read for the vehicle listing page (ticket 21): validates
+ * the URL query exactly like the client does, fetches the first page live
+ * (`no-store` — listing state is request-time state), and maps every outcome
+ * into a serializable payload the client seeds from. Never throws: a
+ * validation failure or backend failure becomes the error payload so the
+ * delivered HTML still renders the honest error state instead of a skeleton.
+ */
+export async function getCarListingInitial(
+  rawParams: RawSearchParams
+): Promise<ListingInitialPayload<PaginatedVehicles>> {
+  const query = parseCarSearchParams(rawParams)
+  const validation = validateCarSearchQuery(query)
+  if (!validation.success) {
+    return {
+      status: "error",
+      page: null,
+      errorMessage: validation.message,
+      errorCode: "validation",
+    }
+  }
+  try {
+    const page = await getVehicles(query)
+    return { status: page.results.length > 0 ? "success" : "empty", page }
+  } catch (error) {
+    return {
+      status: "error",
+      page: null,
+      errorMessage: getHumanErrorMessage(error),
+      errorCode: error instanceof ApiError ? error.code : "unknown",
+    }
+  }
+}
+
+/**
  * Featured Vehicles for Home. The cars endpoint exposes no server-side
  * featured flag, so this reads the first browse-all page (ISR-cached like
  * `listVehicleSlugs`) and slices to `limit`. Empty stays empty (§12).
@@ -222,9 +265,15 @@ export const vehicleDetailSchema = z.object({
 
 export type VehicleDetail = z.infer<typeof vehicleDetailSchema>
 
+/**
+ * Stable Vehicle detail read for ISR pages. Price-bearing (ticket 21): the
+ * five-minute data-cache lifetime matches the page's `revalidate` export so
+ * a browsed Hourly Rate cannot drift an hour from the checkout total.
+ */
 export async function getVehicleDetail(slug: string): Promise<VehicleDetail> {
   const raw = await apiGet<unknown>(`/api/cars/${encodeURIComponent(slug)}/`, {
     tags: ["cars", `car:${slug}`],
+    revalidate: LISTING_DETAIL_REVALIDATE_SECONDS,
   })
   const parsed = vehicleDetailSchema.safeParse(raw)
   if (!parsed.success) {

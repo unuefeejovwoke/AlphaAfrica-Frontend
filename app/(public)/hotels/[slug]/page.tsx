@@ -31,7 +31,7 @@ import { hotelDetailJsonLd, humanizeSlug } from "@/lib/listings"
 import { serializeJsonLd } from "@/lib/structured-data"
 
 /**
- * `/hotels/[slug]` (RSC, ISR 3600, open-ended fallback).
+ * `/hotels/[slug]` (RSC, ISR 300, open-ended fallback).
  *
  * One Hotel page answering "can Alphaa help with this stay?". The layout is
  * conversion-first and reads in two moves: photo beside name, rating, address
@@ -39,14 +39,16 @@ import { serializeJsonLd } from "@/lib/structured-data"
  * beside it, then About, Location and the full amenity list as supporting
  * evidence. Keeping the panel level with the choice is deliberate — a booking
  * form that precedes the options it configures asks for input before the guest
- * knows what they are choosing between. Stable Hotel content revalidates
- * hourly; new slugs render on demand with a prices-confirmed-at-booking caveat
+ * knows what they are choosing between. This page bears prices, so it
+ * revalidates every five minutes (ticket 21): an hour-stale from-price can
+ * disagree with the backend-computed total the Customer is asked to pay.
+ * New slugs still render on demand with a prices-confirmed-at-booking caveat
  * against stale from-prices (ADR-0005, ADR-0003).
  *
  * CONTEXT.md vocabulary throughout: Hotel, Room Type, Hotel Guest,
  * Hotel Booking, Customer, Payment Reference.
  */
-export const revalidate = 3600
+export const revalidate = 300
 export const dynamicParams = true
 
 type DetailParams = { slug: string }

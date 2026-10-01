@@ -15,6 +15,15 @@ import { apiBaseUrl } from "../env.ts"
 export const API_REVALIDATE_SECONDS = 3600
 
 /**
+ * Cache lifetime for price-bearing listing detail reads (Hotel, Vehicle).
+ * Ticket 21: an hour-old from-price can disagree with the backend-computed
+ * total the Customer is asked to pay at checkout, so these revalidate every
+ * five minutes — short enough to stay honest, long enough to keep the pages
+ * fast and indexable. The detail pages' own `revalidate` export matches.
+ */
+export const LISTING_DETAIL_REVALIDATE_SECONDS = 300
+
+/**
  * Per-operation request deadlines (ticket 05). Every backend read and write
  * carries one: search and streaming wait longest, booking writes less, and
  * verification/detail reads least — a slow upstream fails honestly instead

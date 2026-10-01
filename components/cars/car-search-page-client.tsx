@@ -27,6 +27,10 @@ import {
   type PaginatedVehicles,
   type VehicleType,
 } from "@/lib/api/cars"
+import {
+  initialListingState,
+  type ListingInitialPayload,
+} from "@/lib/api/listing-initial"
 import { countActiveFilters, getPagination } from "@/lib/api/shared"
 
 type SearchStatus = "loading" | "success" | "empty" | "error"
@@ -53,8 +57,17 @@ function describeActiveFilters(query: CarSearchQuery): string | null {
  * under a pending dim instead of flashing skeletons; pagination is numbered
  * with an honest `Showing A–B of N` range derived from the observed
  * full-page length (the backend exposes `count/next/previous` only).
+ *
+ * On document loads the page streams a server-read first page in via the
+ * `initial` payload (ticket 21): the client seeds from it — real results,
+ * empty, or error in the delivered HTML — and marks that URL state as
+ * already searched, so the first page is fetched once, by the server.
  */
-export function CarSearchPageClient() {
+export function CarSearchPageClient({
+  initial,
+}: {
+  initial?: ListingInitialPayload<PaginatedVehicles> | null
+}) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -74,17 +87,39 @@ export function CarSearchPageClient() {
     [rawParams]
   )
 
-  const [status, setStatus] = React.useState<SearchStatus>("loading")
-  const [pageData, setPageData] = React.useState<PaginatedVehicles | null>(null)
-  const [error, setError] = React.useState<unknown | null>(null)
+  // Seed from the server-rendered first page when the document load carried
+  // one (ticket 21); without a payload — RSC navigations — the client engine
+  // owns fetching and starts in its loading state.
+  const seeded = React.useMemo(() => initialListingState(initial), [initial])
+  const [status, setStatus] = React.useState<SearchStatus>(seeded.status)
+  const [pageData, setPageData] = React.useState<PaginatedVehicles | null>(
+    seeded.page
+  )
+  const [error, setError] = React.useState<unknown | null>(seeded.error)
   const [isFilterPending, startFilterTransition] = React.useTransition()
   const requestIdRef = React.useRef(0)
-  const lastSearchedParamsRef = React.useRef<string | null>(null)
+  // Last URL search state that was hydrated, so each change searches once.
+  // A server payload (document load) already covers the entry URL, so it
+  // counts as searched from the first render — never a duplicate fetch.
+  const lastSearchedParamsRef = React.useRef<string | null>(
+    initial ? paramsString : null
+  )
   // Observed full-page length — first full page wins so the last-page range
   // never reads `11–20 of 13`. Falls back to the current page length.
   const pageSizeRef = React.useRef<number>(0)
   const resultsHeadingRef = React.useRef<HTMLHeadingElement | null>(null)
   const pendingScrollRef = React.useRef(false)
+
+  // Adopt the server payload's observed full-page length so the pagination
+  // range is honest from the first paint, not just after the next search.
+  React.useEffect(() => {
+    const page = initial?.page
+    if (page && page.results.length > 0 && pageSizeRef.current === 0) {
+      pageSizeRef.current = page.results.length
+    }
+    // Seed once on mount; later data flows through `runSearch`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const runSearch = React.useCallback(async (query: CarSearchQuery) => {
     const requestId = ++requestIdRef.current

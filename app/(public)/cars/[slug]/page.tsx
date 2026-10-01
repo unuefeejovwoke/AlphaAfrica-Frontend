@@ -31,10 +31,13 @@ import { serializeJsonLd } from "@/lib/structured-data"
 import { formatNaira } from "@/lib/format"
 
 /**
- * `/cars/[slug]` (RSC, ISR 3600, open-ended fallback).
+ * `/cars/[slug]` (RSC, ISR 300, open-ended fallback).
  * Gallery + overview + hire calculator. Prices confirmed at booking.
+ * Price-bearing page, so the cache is five minutes, not an hour (ticket 21):
+ * the Hourly Rate a guest browses must not drift from the backend total
+ * they are asked to pay.
  */
-export const revalidate = 3600
+export const revalidate = 300
 export const dynamicParams = true
 
 type DetailParams = { slug: string }

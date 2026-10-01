@@ -1,5 +1,14 @@
 import { z } from "zod"
-import { ApiError, apiGet, apiPost, SEARCH_TIMEOUT_MS, type PaginatedResponse } from "./client.ts"
+import {
+  ApiError,
+  apiGet,
+  apiPost,
+  getHumanErrorMessage,
+  LISTING_DETAIL_REVALIDATE_SECONDS,
+  SEARCH_TIMEOUT_MS,
+  type PaginatedResponse,
+} from "./client.ts"
+import type { ListingInitialPayload } from "./listing-initial.ts"
 import {
   resolveBookingOutcome,
   VERIFICATION_REQUEST,
@@ -365,6 +374,41 @@ export async function getHotels(
 }
 
 /**
+ * Server-side first read for the listing page (ticket 21): validates the URL
+ * query exactly like the client does, fetches the first page live
+ * (`no-store` — listing state is request-time state, ADR-0005), and maps
+ * every outcome into a serializable payload the client seeds from. Never
+ * throws: a validation failure or backend failure becomes the error payload
+ * so the delivered HTML still renders the honest error state instead of a
+ * skeleton.
+ */
+export async function getHotelListingInitial(
+  rawParams: RawSearchParams
+): Promise<ListingInitialPayload<PaginatedHotels>> {
+  const query = parseHotelSearchParams(rawParams)
+  const validation = validateHotelSearchQuery(query)
+  if (!validation.success) {
+    return {
+      status: "error",
+      page: null,
+      errorMessage: validation.message,
+      errorCode: "validation",
+    }
+  }
+  try {
+    const page = await getHotels(query)
+    return { status: page.results.length > 0 ? "success" : "empty", page }
+  } catch (error) {
+    return {
+      status: "error",
+      page: null,
+      errorMessage: getHumanErrorMessage(error),
+      errorCode: error instanceof ApiError ? error.code : "unknown",
+    }
+  }
+}
+
+/**
  * Featured Hotels for Home. The Hotels endpoint exposes no server-side
  * featured flag, so this reads the first browse-all page (ISR-cached like
  * `listHotelSlugs`) and slices to `limit`. Empty stays empty (§12) — the
@@ -652,15 +696,20 @@ export const hotelDetailSchema = z.object({
 export type HotelDetail = z.infer<typeof hotelDetailSchema>
 
 /**
- * Stable Hotel detail read for ISR pages (`revalidate 3600`,
+ * Stable Hotel detail read for ISR pages (`revalidate 300`,
  * `dynamicParams true`). Timed revalidation keeps detail fast and indexable
  * while picking up new slugs and price changes without redeploys (ADR-0005,
- * ADR-0003). A shape violation throws a typed error instead of a partial page.
+ * ADR-0003). The five-minute lifetime is the price-honesty contract (ticket
+ * 21): a browsed from-price must not drift an hour from the checkout total.
+ * A shape violation throws a typed error instead of a partial page.
  */
 export async function getHotelDetail(slug: string): Promise<HotelDetail> {
   const raw = await apiGet<unknown>(
     `/api/hotels/${encodeURIComponent(slug)}/`,
-    { tags: ["hotels", `hotel:${slug}`] }
+    {
+      tags: ["hotels", `hotel:${slug}`],
+      revalidate: LISTING_DETAIL_REVALIDATE_SECONDS,
+    }
   )
   const parsed = hotelDetailSchema.safeParse(raw)
   if (!parsed.success) {

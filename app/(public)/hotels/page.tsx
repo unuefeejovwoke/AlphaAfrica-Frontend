@@ -7,9 +7,11 @@ import { ButtonLink } from "@/components/ui/button"
 import { HotelSearchPageClient } from "@/components/hotels/hotel-search-page-client"
 import { HotelResultsSkeleton } from "@/components/hotels/hotel-results-skeleton"
 import {
+  getHotelListingInitial,
   getHotelSupportWhatsAppUrl,
   HOTEL_SEARCH_PARAM_KEYS,
 } from "@/lib/api/hotels"
+import { isRscNavigationRequest } from "@/lib/api/rsc-request"
 import { hasListingSearchParams } from "@/lib/api/shared"
 import {
   HOTELS_LANDING_DESCRIPTION,
@@ -71,10 +73,8 @@ export default async function HotelsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  const hasSearch = hasListingSearchParams(
-    await searchParams,
-    HOTEL_SEARCH_PARAM_KEYS
-  )
+  const params = await searchParams
+  const hasSearch = hasListingSearchParams(params, HOTEL_SEARCH_PARAM_KEYS)
 
   return (
     <>
@@ -108,7 +108,7 @@ export default async function HotelsPage({
       ) : null}
 
       <React.Suspense fallback={<HotelsPageFallback />}>
-        <HotelSearchPageClient />
+        <HotelListingSection rawParams={params} />
       </React.Suspense>
 
       {/* Server-rendered crawlable links for the stable entry (SEO §18). */}
@@ -156,7 +156,28 @@ export default async function HotelsPage({
 }
 
 /**
- * Suspense fallback while the search client hydrates. Mirrors the results
+ * Suspense boundary child that streams the first page of inventory into the
+ * delivered HTML on document loads (ticket 21): the guest — and every
+ * crawler — sees Hotels in the first response, and the client seeds from
+ * the same read instead of fetching it again. RSC navigations (the client's
+ * own filter, sort, and pagination pushes) skip the server read and hand
+ * fetching back to the client engine, so no request ever fetches the same
+ * page twice.
+ */
+async function HotelListingSection({
+  rawParams,
+}: {
+  rawParams: Record<string, string | string[] | undefined>
+}) {
+  if (await isRscNavigationRequest()) {
+    return <HotelSearchPageClient />
+  }
+  const initial = await getHotelListingInitial(rawParams)
+  return <HotelSearchPageClient initial={initial} />
+}
+
+/**
+ * Suspense fallback while the first page streams in. Mirrors the results
  * section, keeps the support hatch available, and never renders a blank
  * container.
  */
