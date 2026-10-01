@@ -13,7 +13,7 @@ export function getSiteUrl(): string {
   return siteUrl()
 }
 
-/** Absolute canonical URL for a page path such as `/about`. */
+/** Absolute canonical URL for a page path such as `/contact`. */
 export function canonicalUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`
   return `${getSiteUrl()}${normalized === "/" ? "/" : normalized}`
@@ -44,7 +44,7 @@ interface OrganizationJsonLd {
   }[]
 }
 
-/** Organization graph for Home, About, and Contact. */
+/** Organization graph for Home and Contact. */
 export function organizationJsonLd(): OrganizationJsonLd {
   return {
     "@context": "https://schema.org",

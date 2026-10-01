@@ -14,6 +14,7 @@ import {
   WhatsappIcon,
 } from "@hugeicons/core-free-icons"
 import { company, getWhatsAppUrl } from "@/lib/content/company"
+import { contact } from "@/lib/content/contact"
 
 export function PublicFooter() {
   const currentYear = new Date().getFullYear()
@@ -39,22 +40,22 @@ export function PublicFooter() {
               </span>
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <span>Talk to Alphaa</span>
-            </Link>
-          </div>
+          <Link
+            href="/contact"
+            className="inline-flex min-h-11 w-full touch-manipulation items-center justify-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0 sm:w-auto sm:py-2"
+          >
+            <span>Talk to Alphaa</span>
+          </Link>
         </div>
       </div>
 
       {/* Main Navigation Grid */}
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-10">
+        {/* Two link columns share a row on mobile so the footer stays scannable;
+            brand and contact span the full width, as they carry prose. */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4 lg:gap-10">
           {/* Brand Column */}
-          <div className="flex flex-col gap-4">
+          <div className="col-span-2 flex flex-col gap-4 md:col-span-1">
             <Link href="/" className="group flex items-center gap-2.5">
               <Image
                 src="/android-chrome-192x192.png"
@@ -77,7 +78,7 @@ export function PublicFooter() {
 
             {/* Social Icons */}
             <div
-              className="mt-1 flex items-center gap-2"
+              className="mt-1 flex items-center gap-2.5"
               aria-label="Social media links"
             >
               <a
@@ -85,11 +86,11 @@ export function PublicFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram"
-                className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-90 sm:size-9"
               >
                 <HugeiconsIcon
                   icon={InstagramIcon}
-                  size={15}
+                  size={17}
                   aria-hidden="true"
                 />
               </a>
@@ -98,11 +99,11 @@ export function PublicFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Facebook"
-                className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-90 sm:size-9"
               >
                 <HugeiconsIcon
                   icon={Facebook02Icon}
-                  size={15}
+                  size={17}
                   aria-hidden="true"
                 />
               </a>
@@ -111,9 +112,9 @@ export function PublicFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="TikTok"
-                className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-90"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-90 sm:size-9"
               >
-                <HugeiconsIcon icon={TiktokIcon} size={15} aria-hidden="true" />
+                <HugeiconsIcon icon={TiktokIcon} size={17} aria-hidden="true" />
               </a>
             </div>
           </div>
@@ -123,27 +124,27 @@ export function PublicFooter() {
             <h3 className="mb-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Services
             </h3>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-0.5 text-xs sm:space-y-2.5">
               <li>
                 <Link
                   href="/flights"
-                  className="text-foreground/80 transition-colors hover:text-primary"
+                  className="flex min-h-11 items-center text-foreground/80 transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
-                  Flights & Air Tickets
+                  Flights &amp; Air Tickets
                 </Link>
               </li>
               <li>
                 <Link
                   href="/hotels"
-                  className="text-foreground/80 transition-colors hover:text-primary"
+                  className="flex min-h-11 items-center text-foreground/80 transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
-                  Hotels & Resorts
+                  Hotels &amp; Resorts
                 </Link>
               </li>
               <li>
                 <Link
                   href="/packages"
-                  className="text-foreground/80 transition-colors hover:text-primary"
+                  className="flex min-h-11 items-center text-foreground/80 transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
                   Curated Packages
                 </Link>
@@ -151,7 +152,7 @@ export function PublicFooter() {
               <li>
                 <Link
                   href="/visa"
-                  className="text-foreground/80 transition-colors hover:text-primary"
+                  className="flex min-h-11 items-center text-foreground/80 transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
                   Visa Assistance
                 </Link>
@@ -159,7 +160,7 @@ export function PublicFooter() {
               <li>
                 <Link
                   href="/cars"
-                  className="text-foreground/80 transition-colors hover:text-primary"
+                  className="flex min-h-11 items-center text-foreground/80 transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
                   Chauffeured Cars
                 </Link>
@@ -172,11 +173,11 @@ export function PublicFooter() {
             <h3 className="mb-3.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Company
             </h3>
-            <ul className="space-y-2.5 text-xs">
+            <ul className="space-y-0.5 text-xs sm:space-y-2.5">
               <li>
                 <Link
                   href="/destinations"
-                  className="text-foreground/80 transition-colors hover:text-primary"
+                  className="flex min-h-11 items-center text-foreground/80 transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
                   Destinations
                 </Link>
@@ -184,31 +185,23 @@ export function PublicFooter() {
               <li>
                 <Link
                   href="/blog"
-                  className="text-foreground/80 transition-colors hover:text-primary"
+                  className="flex min-h-11 items-center text-foreground/80 transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
-                  Travel Blog & News
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/about"
-                  className="text-foreground/80 transition-colors hover:text-primary"
-                >
-                  About Alphaa Africa
+                  Travel Blog &amp; News
                 </Link>
               </li>
               <li>
                 <Link
                   href="/faq"
-                  className="text-foreground/80 transition-colors hover:text-primary"
+                  className="flex min-h-11 items-center text-foreground/80 transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
-                  Help & FAQs
+                  Help &amp; FAQs
                 </Link>
               </li>
               <li>
                 <Link
                   href="/contact"
-                  className="text-foreground/80 transition-colors hover:text-primary"
+                  className="flex min-h-11 items-center text-foreground/80 transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
                   Contact Office
                 </Link>
@@ -217,12 +210,12 @@ export function PublicFooter() {
           </div>
 
           {/* Column 4: Abuja Headquarters & Direct Contact */}
-          <div className="flex flex-col gap-3">
+          <div className="col-span-2 flex flex-col gap-3 md:col-span-1">
             <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Abuja Headquarters
             </h3>
 
-            <div className="flex items-start gap-2 text-xs text-muted-foreground">
+            <div className="flex items-start gap-2.5 text-xs text-muted-foreground">
               <HugeiconsIcon
                 icon={Location01Icon}
                 size={15}
@@ -232,80 +225,89 @@ export function PublicFooter() {
               <p className="leading-relaxed">{company.office.address}</p>
             </div>
 
-            <div className="mt-1 flex flex-col gap-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon
-                  icon={WhatsappIcon}
-                  size={15}
-                  className="shrink-0 text-emerald-600"
-                  aria-hidden="true"
-                />
+            {/* Icon sits inside its link so the whole row is the tap target. */}
+            <ul className="flex flex-col gap-0.5 text-xs text-muted-foreground sm:gap-2">
+              <li>
                 <a
                   href={getWhatsAppUrl(company.whatsapp.prefills.services)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-foreground transition-colors hover:text-primary"
+                  className="flex min-h-11 items-center gap-2.5 rounded-sm transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
-                  WhatsApp: {company.whatsapp.display}
+                  <HugeiconsIcon
+                    icon={WhatsappIcon}
+                    size={16}
+                    className="shrink-0 text-emerald-600"
+                    aria-hidden="true"
+                  />
+                  <span className="font-medium text-foreground">
+                    WhatsApp: {company.whatsapp.display}
+                  </span>
                 </a>
-              </div>
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon
-                  icon={Call02Icon}
-                  size={15}
-                  className="shrink-0 text-primary"
-                  aria-hidden="true"
-                />
+              </li>
+              <li>
                 <a
                   href={`tel:${company.phone.e164}`}
-                  className="transition-colors hover:text-foreground"
+                  className="flex min-h-11 items-center gap-2.5 rounded-sm transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
-                  {company.phone.display}
+                  <HugeiconsIcon
+                    icon={Call02Icon}
+                    size={16}
+                    className="shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
+                  <span className="font-medium text-foreground">
+                    Call: {company.phone.display}
+                  </span>
                 </a>
-              </div>
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon
-                  icon={Mail01Icon}
-                  size={15}
-                  className="shrink-0 text-primary"
-                  aria-hidden="true"
-                />
+              </li>
+              <li>
                 <a
                   href={`mailto:${company.email}`}
-                  className="transition-colors hover:text-foreground"
+                  className="flex min-h-11 items-center gap-2.5 rounded-sm transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
                 >
-                  {company.email}
+                  <HugeiconsIcon
+                    icon={Mail01Icon}
+                    size={16}
+                    className="shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
+                  <span className="font-medium break-all text-foreground">
+                    {company.email}
+                  </span>
                 </a>
-              </div>
-            </div>
+              </li>
+            </ul>
 
-            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground/80">
+            <div className="mt-1 flex items-start gap-2.5 text-[11px] text-muted-foreground/80">
               <HugeiconsIcon
                 icon={Clock01Icon}
-                size={13}
-                className="shrink-0"
+                size={14}
+                className="mt-0.5 shrink-0"
                 aria-hidden="true"
               />
-              <span>Mon – Sat: 8:00 AM – 6:00 PM (WAT)</span>
+              <span className="leading-relaxed">{contact.hours.label}</span>
             </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/50 pt-6 text-xs text-muted-foreground sm:flex-row">
-          <p>© {currentYear} Alphaa Africa Limited. All rights reserved.</p>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+        <div className="mt-10 flex flex-col items-center justify-between gap-2 border-t border-border/50 pt-4 text-xs text-muted-foreground sm:flex-row sm:gap-4 sm:pt-6">
+          <p className="py-2 text-center sm:py-0 sm:text-left">
+            © {currentYear} Alphaa Africa Limited. All rights reserved.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-0 text-xs sm:gap-x-6 sm:gap-y-2">
             <Link
               href="/privacy"
-              className="transition-colors hover:text-primary"
+              className="flex min-h-11 items-center rounded-sm transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
             >
               Privacy Policy
             </Link>
             <Link
               href="/terms"
-              className="transition-colors hover:text-primary"
+              className="flex min-h-11 items-center rounded-sm transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0"
             >
-              Terms & Conditions
+              Terms &amp; Conditions
             </Link>
           </div>
         </div>

@@ -22,11 +22,10 @@ export interface CompanyInfo {
     label: string
     address: string
     mapQuery: string
-    coordinates: { lat: number; lng: number }
   }
   phone: {
     display: string
-    /** E.164 digits with leading `+`, e.g. `+2348000000000`. */
+    /** E.164 digits with leading `+`, e.g. `+2347066851051`. */
     e164: string
     href: string
     secondaryDisplay: string | null
@@ -54,29 +53,28 @@ export interface CompanyInfo {
 }
 
 export const company: CompanyInfo = {
-  // WhatsApp and socials are production values taken from alphaaafrica.com;
-  // phone, email, and office are still placeholders awaiting owner sign-off.
+  // WhatsApp, socials, phone, and office are owner-verified values; email is
+  // still a placeholder awaiting sign-off.
   source: "draft",
-  updatedAt: "2026-09-25",
+  updatedAt: "2026-10-01",
   legalName: "Alphaa Africa Limited",
   brandName: "Alphaa Africa",
   positioning:
     "A trusted travel partner that combines modern self-service booking with real human assistance.",
   promise: "Make travel easier, clearer, and less stressful.",
   office: {
-    label: "Abuja Office — Central Business District",
+    label: "Abuja Office — Wuse II",
     address:
-      "Suite B4, Statement Hotel Building, Plot 1002 1st Avenue, Off Shehu Shagari Way, Central Business District, Abuja, Nigeria.",
+      "Olive Plaza, SF19, Alexandria Cres, off Aminu Kano Crescent, Wuse II, Abuja 900107, Federal Capital Territory",
     mapQuery:
-      "Suite B4, Statement Hotel Building, Plot 1002 1st Avenue, Off Shehu Shagari Way, Central Business District, Abuja, Nigeria",
-    coordinates: { lat: 9.0579, lng: 7.4951 },
+      "Olive Plaza, SF19, Alexandria Cres, off Aminu Kano Crescent, Wuse II, Abuja 900107, Federal Capital Territory",
   },
   phone: {
-    // Draft placeholder: production publishes no phone number (WhatsApp only).
-    display: "+234 800 000 0000",
-    e164: "+2348000000000",
-    href: "tel:+2348000000000",
-    secondaryDisplay: "+234 9 292 0000",
+    // One desk line: voice calls and WhatsApp reach the same number.
+    display: "+234 706 685 1051",
+    e164: "+2347066851051",
+    href: "tel:+2347066851051",
+    secondaryDisplay: null,
   },
   whatsapp: {
     number: "2347066851051",

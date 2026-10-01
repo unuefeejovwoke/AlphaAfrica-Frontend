@@ -12,6 +12,8 @@
  * prevail.
  */
 
+import { company } from "./company.ts"
+
 export interface LegalSection {
   id: string
   title: string
@@ -47,7 +49,7 @@ export const privacyPolicy: LegalDocument = {
       title: "1. Who is responsible for your data",
       paragraphs: [
         "Alphaa Africa Limited is the data controller for personal data processed through this platform. That means we decide the purposes and means of processing described in this policy. Where we use service providers (for example payment processing or hosting) to handle data on our behalf, they act as data processors under our instructions.",
-        "Our registered office and primary contact point is Suite B4, Statement Hotel Building, Plot 1002 1st Avenue, Off Shehu Shagari Way, Central Business District, Abuja, Nigeria. For any privacy question, request, or complaint, contact support@alphaaafrica.com and we will route it to the responsible team. Where the NDPA requires a designated Data Protection Officer, that contact serves as the channel to reach them.",
+        `Our registered office and primary contact point is ${company.office.address}. For any privacy question, request, or complaint, contact ${company.email} and we will route it to the responsible team. Where the NDPA requires a designated Data Protection Officer, that contact serves as the channel to reach them.`,
       ],
     },
     {
@@ -189,7 +191,7 @@ export const privacyPolicy: LegalDocument = {
       id: "contact",
       title: "15. Contact and complaints",
       paragraphs: [
-        "For privacy questions, data-rights requests, or complaints, contact Alphaa Africa Limited at support@alphaaafrica.com, on WhatsApp at +234 706 685 1051, or at Suite B4, Statement Hotel Building, Plot 1002 1st Avenue, Off Shehu Shagari Way, Central Business District, Abuja, Nigeria (Monday to Saturday, 8:00 AM to 6:00 PM WAT). If you remain dissatisfied after contacting us, you may lodge a complaint with the Nigeria Data Protection Commission (NDPC) or seek redress before a court of competent jurisdiction in Nigeria.",
+        `For privacy questions, data-rights requests, or complaints, contact Alphaa Africa Limited at ${company.email}, on WhatsApp at ${company.whatsapp.display}, or at ${company.office.address} (Monday to Saturday, 8:00 AM to 6:00 PM WAT). If you remain dissatisfied after contacting us, you may lodge a complaint with the Nigeria Data Protection Commission (NDPC) or seek redress before a court of competent jurisdiction in Nigeria.`,
       ],
     },
   ],
@@ -214,7 +216,7 @@ export const termsConditions: LegalDocument = {
       id: "who-we-are",
       title: "1. Who we are and what we do",
       paragraphs: [
-        "Alphaa Africa Limited combines modern self-service booking (flights, hotels, car rentals) with human-assisted services (holiday packages and visa consultations) supported by travel specialists reachable on WhatsApp, phone, and email, and in person at Suite B4, Statement Hotel Building, Plot 1002 1st Avenue, Off Shehu Shagari Way, Central Business District, Abuja, Nigeria.",
+        `Alphaa Africa Limited combines modern self-service booking (flights, hotels, car rentals) with human-assisted services (holiday packages and visa consultations) supported by travel specialists reachable on WhatsApp, phone, and email, and in person at ${company.office.address}.`,
         "Unless expressly stated otherwise for a specific product, we act as an agent and intermediary between you and third-party suppliers (airlines, hotels, vehicle providers, and other principals). The travel service itself is provided by the supplier, and your booking is subject both to these Terms and to the supplier's terms attached to your fare, rate, or hire.",
       ],
     },
@@ -337,7 +339,7 @@ export const termsConditions: LegalDocument = {
       id: "complaints",
       title: "15. Support and complaints",
       paragraphs: [
-        "If anything goes wrong, contact us immediately on WhatsApp at +234 706 685 1051, by email at support@alphaaafrica.com, or at our Abuja office (Monday to Saturday, 8:00 AM to 6:00 PM WAT), quoting your booking and payment references. For travel-day or payment-uncertainty issues, call the phone line for the fastest response. We aim to acknowledge complaints promptly and resolve them fairly, liaising with the supplier where the issue sits with them.",
+        `If anything goes wrong, contact us immediately on WhatsApp at ${company.whatsapp.display}, by email at ${company.email}, or at our Abuja office (Monday to Saturday, 8:00 AM to 6:00 PM WAT), quoting your booking and payment references. For travel-day or payment-uncertainty issues, call the phone line for the fastest response. We aim to acknowledge complaints promptly and resolve them fairly, liaising with the supplier where the issue sits with them.`,
       ],
     },
     {

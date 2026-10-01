@@ -247,7 +247,7 @@ export default function ContactPage() {
                       className="text-primary"
                       aria-hidden="true"
                     />
-                    <span>Central Business District · Abuja</span>
+                    <span>{company.office.label}</span>
                   </div>
                 </div>
               </div>

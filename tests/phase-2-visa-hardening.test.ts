@@ -284,7 +284,6 @@ test("Support hatch reads every number from company.ts with context prefill", ()
     "components/support/assisted-support-widget.tsx",
     "components/shared/terminal-cta.tsx",
     "app/(public)/page.tsx",
-    "app/(public)/about/page.tsx",
   ]) {
     const content = readRoute(file)
     assert.match(

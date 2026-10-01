@@ -36,7 +36,7 @@ export interface ContactInfo {
 
 export const contact: ContactInfo = {
   source: "draft",
-  updatedAt: "2026-09-25",
+  updatedAt: "2026-10-01",
   channels: [
     {
       id: "whatsapp",

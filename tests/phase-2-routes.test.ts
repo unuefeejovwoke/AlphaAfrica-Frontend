@@ -24,7 +24,7 @@ test("Site URL resolves from env with a production fallback", () => {
 })
 
 test("Canonical URLs join the site root with page paths", () => {
-  assert.equal(canonicalUrl("/about"), `${getSiteUrl()}/about`)
+  assert.equal(canonicalUrl("/contact"), `${getSiteUrl()}/contact`)
   assert.equal(canonicalUrl("/"), `${getSiteUrl()}/`)
 })
 
@@ -256,45 +256,6 @@ test("Search tabs link to live routes instead of 404ing", () => {
     /\/car-rentals/,
     "No dead links to the legacy /car-rentals path"
   )
-})
-
-test("About establishes trust from lib/content in eight lean sections", () => {
-  const content = readRoute("app/(public)/about/page.tsx")
-  assert.doesNotMatch(
-    content,
-    /"use client"/,
-    "About must be a React Server Component"
-  )
-  assert.match(
-    content,
-    /export const revalidate = 3600/,
-    "About must revalidate every 3600s"
-  )
-  assert.match(
-    content,
-    /generateMetadata/,
-    "About must expose metadata for SEO"
-  )
-  assert.match(
-    content,
-    /lib\/content\/company/,
-    "About copy must come from company.ts"
-  )
-  assert.match(
-    content,
-    /application\/ld\+json/,
-    "About must embed Organization JSON-LD"
-  )
-  for (const heading of [
-    "Who Alphaa is",
-    "What we help",
-    "Services",
-    "Why customers choose",
-    "Human support",
-    "Abuja office",
-  ]) {
-    assert.match(content, new RegExp(heading), `About must include: ${heading}`)
-  }
 })
 
 test("Contact has no form, lazy map embed, and emergency guidance", () => {
