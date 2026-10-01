@@ -35,7 +35,8 @@ export function HotelPagination({
         className="text-center text-xs font-medium text-muted-foreground"
         aria-live="polite"
       >
-        Showing {totalCount} {totalCount === 1 ? "Hotel" : "Hotels"}
+        Showing {totalCount} {totalCount === 1 ? "Hotel" : "Hotels"} on this
+        page
       </p>
     )
   }

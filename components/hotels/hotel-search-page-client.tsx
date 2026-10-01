@@ -2,12 +2,9 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Message01Icon } from "@hugeicons/core-free-icons"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ErrorState } from "@/components/feedback/error-state"
-import { TrackLink } from "@/components/analytics/track-link"
 import { HotelSearchForm } from "@/components/hotels/hotel-search-form"
 import { HotelResultsSkeleton } from "@/components/hotels/hotel-results-skeleton"
 import { HotelCard } from "@/components/hotels/hotel-card"
@@ -15,6 +12,7 @@ import { HotelEmptyState } from "@/components/hotels/hotel-empty-state"
 import {
   HotelFilters,
   HotelMobileFilters,
+  HotelSortSelect,
   type HotelServerFilterValue,
 } from "@/components/hotels/hotel-filters"
 import { HotelPagination } from "@/components/hotels/hotel-pagination"
@@ -25,7 +23,6 @@ import {
   DEFAULT_HOTEL_GUESTS,
   DEFAULT_HOTEL_ROOMS,
   buildHotelSearchParams,
-  getHotelSupportWhatsAppUrl,
   getHotels,
   HOTEL_SEARCH_PARAM_KEYS,
   parseHotelSearchParams,
@@ -464,7 +461,7 @@ export function HotelSearchPageClient() {
         isSearching={isSearching}
       />
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <h1
           ref={resultsHeadingRef}
           id="hotel-results-heading"
@@ -479,20 +476,22 @@ export function HotelSearchPageClient() {
             </span>
           ) : null}
         </h1>
-        <TrackLink
-          event="support_click"
-          eventProps={{
-            context: "choosing a hotel",
-            channel: "whatsapp",
-          }}
-          href={getHotelSupportWhatsAppUrl("choosing a hotel", stayContext)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-        >
-          <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
-          <span>Talk to Alphaa</span>
-        </TrackLink>
+
+        {/* Sorting sits with the results, not in the filter rail: it does not
+            narrow the set, and the guest's eye is already here. The rail keeps
+            only refinements. Hidden below lg, where the sheet carries it.
+            The single "Talk to Alphaa" escape hatch for this page is the
+            site-wide assistant widget, so this row adds no competing CTA. */}
+        <HotelSortSelect
+          ordering={parsedQuery.ordering ?? ""}
+          onOrderingChange={(next) =>
+            handleServerFilterChange({
+              ordering: next === "" ? undefined : next,
+            })
+          }
+          isPending={isFilterPending}
+          className="hidden shrink-0 lg:flex"
+        />
       </div>
 
       <HotelMobileFilters
@@ -504,11 +503,17 @@ export function HotelSearchPageClient() {
       />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        {/* `self-stretch` is what makes the pin work. The row is `lg:items-start`,
+            which sized this aside to its own content, and a sticky child
+            cannot travel inside a containing block no taller than itself —
+            so the rail scrolled away despite carrying `sticky`. Stretching
+            the aside to the row height gives it the scroll runway it needs
+            while the results section beside it stays start-aligned. */}
         <aside
           aria-label="Hotel filters"
-          className="hidden w-72 shrink-0 lg:block"
+          className="hidden w-72 shrink-0 lg:block lg:self-stretch"
         >
-          <div className="sticky top-24">{filtersPanel}</div>
+          <div className="sticky top-20">{filtersPanel}</div>
         </aside>
 
         <section

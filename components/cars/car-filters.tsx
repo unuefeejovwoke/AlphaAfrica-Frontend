@@ -49,10 +49,57 @@ const selectClassName =
   "flex h-11 w-full touch-manipulation rounded-xl border border-input/80 bg-background/80 px-3.5 text-sm font-medium text-foreground shadow-xs transition-colors hover:border-foreground/20 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
 
 /**
- * Pure filter groups — vehicle type (radio semantics), hourly cap (preset
- * bands + custom input with inline validation), and backend sort. Every
- * change writes to the URL via the owner callback and resets to page 1.
- * Backend-only by design: no seats/city refinement in v1.
+ * Sort control, deliberately NOT part of the filter groups.
+ *
+ * Sorting does not narrow the result set, so it does not belong in the filter
+ * rail — it belongs beside the result count, where the guest's eye already is.
+ * Mirrors `HotelSortSelect`. Rendered next to the heading on desktop and inside
+ * the mobile sheet, which has no results header to host it.
+ */
+export function CarSortSelect({
+  ordering,
+  onOrderingChange,
+  isPending,
+  className,
+}: {
+  ordering: CarOrdering | ""
+  onOrderingChange: (next: CarOrdering | "") => void
+  isPending?: boolean
+  className?: string
+}) {
+  const orderingId = React.useId()
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
+      <label
+        htmlFor={orderingId}
+        className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+      >
+        Sort
+      </label>
+      <select
+        id={orderingId}
+        value={ordering}
+        disabled={isPending}
+        onChange={(event) =>
+          onOrderingChange(event.target.value as CarOrdering | "")
+        }
+        className={cn(selectClassName, "w-full sm:w-56")}
+      >
+        {CAR_ORDERING_OPTIONS.map((option) => (
+          <option key={option.label} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+/**
+ * Pure filter groups — vehicle type (radio semantics) and hourly cap (preset
+ * bands + custom input with inline validation). Every change writes to the URL
+ * via the owner callback and resets to page 1. Backend-only by design: no
+ * seats/city refinement in v1.
  */
 export function CarFilterGroups({
   server,
@@ -62,7 +109,6 @@ export function CarFilterGroups({
 }: CarFilterGroupsProps) {
   const typeGroupId = React.useId()
   const rateGroupId = React.useId()
-  const orderingId = React.useId()
   const customRateId = React.useId()
 
   const [rateInput, setRateInput] = React.useState(
@@ -107,31 +153,6 @@ export function CarFilterGroups({
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <div className="flex min-w-0 flex-col gap-2">
-        <label
-          htmlFor={orderingId}
-          className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
-        >
-          Sort
-        </label>
-        <select
-          id={orderingId}
-          value={server.ordering ?? ""}
-          disabled={isPending}
-          onChange={(event) => {
-            const next = event.target.value as CarOrdering | ""
-            onServerChange({ ordering: next === "" ? undefined : next })
-          }}
-          className={selectClassName}
-        >
-          {CAR_ORDERING_OPTIONS.map((option) => (
-            <option key={option.label} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
       <div
         role="radiogroup"
         aria-labelledby={typeGroupId}
@@ -290,8 +311,6 @@ export interface CarFiltersProps {
  */
 export function CarFilters({
   server,
-  visibleCount,
-  totalCount,
   isPending,
   onServerChange,
   onResetFilters,
@@ -302,11 +321,12 @@ export function CarFilters({
   return (
     <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-2">
+        {/* No count here: the results summary beside the heading is the single
+            place that reports how many vehicles matched, and it is the live
+            region. Repeating it in the rail made competing counts. */}
         <p className="flex items-center gap-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
           <HugeiconsIcon icon={FilterIcon} size={14} aria-hidden="true" />
-          <span>
-            Filters · {visibleCount} of {totalCount}
-          </span>
+          <span>Filters</span>
         </p>
         {isFiltering ? (
           <button
@@ -323,29 +343,29 @@ export function CarFilters({
         isPending={isPending}
         onServerChange={onServerChange}
       />
-      <div
-        className="flex items-center gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground"
-        role="status"
-        aria-live="polite"
-      >
-        <span
-          className={cn(
-            "size-1.5 shrink-0 rounded-full transition-colors",
-            isPending
-              ? "animate-ping bg-amber-500"
-              : isFiltering
-                ? "bg-primary"
-                : "bg-muted-foreground/40"
-          )}
-        />
-        <span>
-          {isPending
-            ? "Updating vehicles…"
-            : isFiltering
-              ? "Filters applied. URL updated for sharing."
-              : "Filters update the address bar for shareable searches."}
-        </span>
-      </div>
+      {/* Only speaks when it has something to say. The idle line was internal
+          chatter about URL plumbing that the guest never needed; with no
+          filters applied there is now no footer at all, so no orphan dot and
+          no stray divider above it. */}
+      {isPending || isFiltering ? (
+        <div
+          className="flex items-center gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          <span
+            className={cn(
+              "size-1.5 shrink-0 rounded-full transition-colors",
+              isPending ? "animate-ping bg-amber-500" : "bg-primary"
+            )}
+          />
+          <span>
+            {isPending
+              ? "Updating vehicles…"
+              : "Filters applied. URL updated for sharing."}
+          </span>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -421,7 +441,19 @@ export function CarMobileFilters({
                     />
                   </DrawerPrimitive.Close>
                 </div>
-                <div className="mt-4 min-w-0">
+                <div className="mt-4 flex min-w-0 flex-col gap-5">
+                  {/* Sorting lives beside the results on desktop, but the sheet
+                      has no results header, so it rides along here. */}
+                  <CarSortSelect
+                    ordering={server.ordering ?? ""}
+                    onOrderingChange={(next) =>
+                      onServerChange({
+                        ordering: next === "" ? undefined : next,
+                      })
+                    }
+                    isPending={isPending}
+                  />
+
                   <CarFilterGroups
                     server={server}
                     isPending={isPending}

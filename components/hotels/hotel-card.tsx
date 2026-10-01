@@ -72,22 +72,9 @@ export function HotelCard({ hotel }: { hotel: HotelList }) {
       )}
 
       <div className="mt-auto flex items-end justify-between gap-3 border-t border-border/50 pt-3.5">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          {display.priceLabel ? (
-            <>
-              <p className="text-base font-extrabold tracking-tight text-balance text-foreground tabular-nums sm:text-lg">
-                {display.priceLabel}
-              </p>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Lowest room · confirmed at booking
-              </p>
-            </>
-          ) : (
-            <p className="text-xs leading-relaxed font-medium text-muted-foreground">
-              Prices confirmed at booking
-            </p>
-          )}
-        </div>
+        <p className="min-w-0 text-base font-extrabold tracking-tight text-balance text-foreground tabular-nums sm:text-lg">
+          {display.priceLabel ?? "Prices confirmed at booking"}
+        </p>
         <CardCta label="View Hotel" />
       </div>
     </ListingCardShell>

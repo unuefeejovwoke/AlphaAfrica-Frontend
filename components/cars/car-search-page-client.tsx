@@ -2,16 +2,16 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Message01Icon } from "@hugeicons/core-free-icons"
-import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ErrorState } from "@/components/feedback/error-state"
-import { TrackLink } from "@/components/analytics/track-link"
 import { CarResultsSkeleton } from "@/components/cars/car-results-skeleton"
 import { CarCard } from "@/components/cars/car-card"
 import { CarEmptyState } from "@/components/cars/car-empty-state"
-import { CarFilters, CarMobileFilters } from "@/components/cars/car-filters"
+import {
+  CarFilters,
+  CarMobileFilters,
+  CarSortSelect,
+} from "@/components/cars/car-filters"
 import { CarPagination } from "@/components/cars/car-pagination"
 import { ApiError } from "@/lib/api/client"
 import { track } from "@/lib/analytics"
@@ -19,7 +19,6 @@ import { formatNaira } from "@/lib/format"
 import {
   VEHICLE_TYPE_LABELS,
   buildCarSearchParams,
-  getCarSupportWhatsAppUrl,
   getVehicles,
   parseCarSearchParams,
   validateCarSearchQuery,
@@ -332,7 +331,7 @@ export function CarSearchPageClient() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 md:py-8 lg:px-8">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <h1
           ref={resultsHeadingRef}
           id="car-results-heading"
@@ -349,17 +348,22 @@ export function CarSearchPageClient() {
             </span>
           ) : null}
         </h1>
-        <TrackLink
-          event="support_click"
-          eventProps={{ context: "choosing a car", channel: "whatsapp" }}
-          href={getCarSupportWhatsAppUrl("choosing a car")}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-        >
-          <HugeiconsIcon icon={Message01Icon} size={14} aria-hidden="true" />
-          <span>Talk to Alphaa</span>
-        </TrackLink>
+
+        {/* Sorting sits with the results, not in the filter rail: it does not
+            narrow the set, and the guest's eye is already here. The rail keeps
+            only refinements. Hidden below lg, where the sheet carries it.
+            The single "Talk to Alphaa" escape hatch for this page is the
+            site-wide assistant widget, so this row adds no competing CTA. */}
+        <CarSortSelect
+          ordering={parsedQuery.ordering ?? ""}
+          onOrderingChange={(next) =>
+            handleServerFilterChange({
+              ordering: next === "" ? undefined : next,
+            })
+          }
+          isPending={isFilterPending}
+          className="hidden shrink-0 lg:flex"
+        />
       </div>
 
       <CarMobileFilters
@@ -372,11 +376,15 @@ export function CarSearchPageClient() {
       />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        {/* `self-stretch` is what makes the pin work. The row is `lg:items-start`,
+            which sized this aside to its own content, and a sticky child cannot
+            travel inside a containing block no taller than itself — so the rail
+            scrolled away despite carrying `sticky`. */}
         <aside
           aria-label="Vehicle filters"
-          className="hidden w-72 shrink-0 lg:block"
+          className="hidden w-72 shrink-0 lg:block lg:self-stretch"
         >
-          <div className="sticky top-24">{filtersPanel}</div>
+          <div className="sticky top-20">{filtersPanel}</div>
         </aside>
 
         <section

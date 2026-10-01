@@ -71,55 +71,67 @@ export function HotelSearchForm({
       noValidate
       onSubmit={handleSubmit}
       aria-label="Hotel search"
-      className="group relative flex w-full flex-col gap-1.5"
+      className="group flex w-full flex-col"
     >
-      <div className="relative flex items-center gap-2 rounded-2xl border border-border/80 bg-card p-1.5 shadow-xs transition-all duration-200 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 hover:border-foreground/20 sm:p-2">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground transition-colors group-focus-within:bg-primary/10 group-focus-within:text-primary sm:size-11">
-          <HugeiconsIcon icon={Search01Icon} size={18} aria-hidden="true" />
-        </div>
+      {/* Label sits above the control, not inside it. Nested inside the
+          bordered bar it read as a floating label gone wrong, and it forced
+          the field to be two rows tall in an otherwise single-row control. */}
+      <label
+        htmlFor="hotel-destination-input"
+        className="mb-1.5 block text-[11px] leading-none font-semibold tracking-wider text-muted-foreground uppercase"
+      >
+        City or hotel
+      </label>
 
-        <div className="flex min-w-0 flex-1 flex-col justify-center">
-          <label htmlFor="hotel-destination-input" className="sr-only">
-            City or Hotel name
-          </label>
-          <input
-            id="hotel-destination-input"
-            type="text"
-            autoComplete="off"
-            placeholder="Search by city or hotel name — e.g. Lagos, Abuja, Radisson Blu"
-            className="h-9 w-full bg-transparent px-1 text-sm font-medium text-foreground placeholder:text-muted-foreground/70 focus:outline-none sm:h-10 sm:text-base"
-            {...form.register("destination")}
-          />
-        </div>
+      {/* One flat bar. The previous build nested three rounded shapes (outer
+          card, icon tile, buttons) and showed the search glyph twice — once in
+          a tile that looked clickable but was not, once in the button. Now a
+          single leading glyph, one container radius, and an inset button. */}
+      <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-xs transition-colors duration-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 hover:border-foreground/25">
+        <HugeiconsIcon
+          icon={Search01Icon}
+          size={18}
+          aria-hidden="true"
+          className="ml-2 shrink-0 text-muted-foreground transition-colors group-focus-within:text-primary"
+        />
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          {isDirty ? (
-            <button
-              type="button"
-              onClick={handleClear}
-              disabled={!!isSearching}
-              aria-label="Clear destination"
-              className="inline-flex size-9 touch-manipulation items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:size-10"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
-            </button>
-          ) : null}
+        <input
+          id="hotel-destination-input"
+          type="text"
+          autoComplete="off"
+          placeholder="Lagos, Abuja, Radisson Blu"
+          className="h-11 w-full min-w-0 flex-1 bg-transparent px-2 text-[15px] font-medium text-foreground placeholder:font-normal placeholder:text-muted-foreground focus:outline-none sm:text-base"
+          {...form.register("destination")}
+        />
 
-          <Button
-            type="submit"
-            size="default"
-            isLoading={!!isSearching}
+        {isDirty ? (
+          <button
+            type="button"
+            onClick={handleClear}
             disabled={!!isSearching}
-            className="h-9 rounded-xl px-4 font-semibold sm:h-10 sm:px-6"
+            aria-label="Clear destination"
+            className="inline-flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
-            <HugeiconsIcon icon={Search01Icon} size={16} aria-hidden="true" />
-            <span>{isSearching ? "Searching…" : "Search"}</span>
-          </Button>
-        </div>
+            <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+          </button>
+        ) : null}
+
+        <Button
+          type="submit"
+          size="default"
+          isLoading={!!isSearching}
+          disabled={!!isSearching}
+          className="h-11 shrink-0 rounded-lg px-4 font-semibold sm:px-6"
+        >
+          <span>{isSearching ? "Searching…" : "Search"}</span>
+        </Button>
       </div>
 
       {form.formState.errors.destination?.message ? (
-        <p className="px-2 text-xs font-medium text-destructive" role="alert">
+        <p
+          className="mt-1.5 px-2 text-xs font-medium text-destructive"
+          role="alert"
+        >
           {form.formState.errors.destination.message}
         </p>
       ) : null}

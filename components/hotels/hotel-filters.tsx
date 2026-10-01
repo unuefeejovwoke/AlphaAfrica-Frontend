@@ -84,6 +84,16 @@ function chipClass(active: boolean, large?: boolean): string {
   )
 }
 
+/**
+ * Single-select option lists (price bands, star floors) are a two-column grid
+ * rather than a wrapping pill row. In the 288px rail a wrapping row pushed
+ * these groups to six rows each and the rail past the fold; the grid keeps
+ * every label whole on one line at three rows while keeping 44px targets.
+ */
+function chipGridClass(large?: boolean): string {
+  return cn("grid grid-cols-2 gap-2", large && "gap-2.5")
+}
+
 const selectClassName =
   "flex h-11 w-full touch-manipulation rounded-xl border border-input/80 bg-background/80 px-3.5 text-sm font-medium text-foreground shadow-xs transition-colors hover:border-foreground/20 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
 
@@ -95,7 +105,54 @@ interface FilterGroupsProps {
 }
 
 /**
- * Pure filter groups — sort, per-night cap, and star floor.
+ * Sort control, deliberately NOT part of the filter groups.
+ *
+ * Sorting does not narrow the result set, so it does not belong in the filter
+ * rail — it belongs beside the result count, where the guest's eye already is.
+ * Rendered next to the heading on desktop and inside the mobile sheet, which
+ * has no separate results header to host it.
+ */
+export function HotelSortSelect({
+  ordering,
+  onOrderingChange,
+  isPending,
+  className,
+}: {
+  ordering: HotelOrdering | ""
+  onOrderingChange: (next: HotelOrdering | "") => void
+  isPending?: boolean
+  className?: string
+}) {
+  const orderingId = React.useId()
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
+      <label
+        htmlFor={orderingId}
+        className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+      >
+        Sort
+      </label>
+      <select
+        id={orderingId}
+        value={ordering}
+        disabled={isPending}
+        onChange={(event) =>
+          onOrderingChange(event.target.value as HotelOrdering | "")
+        }
+        className={cn(selectClassName, "w-full sm:w-56")}
+      >
+        {HOTEL_ORDERING_OPTIONS.map((option) => (
+          <option key={option.label} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+/**
+ * Pure filter groups — per-night cap and star floor.
  * Every server change writes to the URL via the owner callback and resets to page 1.
  * Mirrors the cars filter groups so both catalogues filter alike.
  */
@@ -105,35 +162,8 @@ export function HotelFilterGroups({
   large,
   isPending,
 }: FilterGroupsProps) {
-  const orderingId = React.useId()
-
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <div className="flex min-w-0 flex-col gap-2">
-        <label
-          htmlFor={orderingId}
-          className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
-        >
-          Sort
-        </label>
-        <select
-          id={orderingId}
-          value={server.ordering ?? ""}
-          disabled={isPending}
-          onChange={(event) => {
-            const next = event.target.value as HotelOrdering | ""
-            onServerChange({ ordering: next === "" ? undefined : next })
-          }}
-          className={selectClassName}
-        >
-          {HOTEL_ORDERING_OPTIONS.map((option) => (
-            <option key={option.label} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
       <div
         role="group"
         aria-label="Filter Hotels by maximum price per night"
@@ -142,7 +172,7 @@ export function HotelFilterGroups({
         <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
           Max per night
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className={chipGridClass(large)}>
           {HOTEL_MAX_PRICE_BANDS.map((option) => {
             const active =
               option.value === null
@@ -156,9 +186,12 @@ export function HotelFilterGroups({
                 onClick={() =>
                   onServerChange({ max_price: option.value ?? undefined })
                 }
-                className={chipClass(active, large)}
+                className={cn(
+                  chipClass(active, large),
+                  "w-full px-2 whitespace-nowrap"
+                )}
               >
-                <span>{option.label}</span>
+                <span className="truncate">{option.label}</span>
               </button>
             )
           })}
@@ -173,7 +206,7 @@ export function HotelFilterGroups({
         <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
           Minimum stars
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className={chipGridClass(large)}>
           {HOTEL_MIN_STARS_OPTIONS.map((option) => {
             const active =
               option.value === null
@@ -187,7 +220,7 @@ export function HotelFilterGroups({
                 onClick={() =>
                   onServerChange({ min_stars: option.value ?? undefined })
                 }
-                className={chipClass(active, large)}
+                className={cn(chipClass(active, large), "w-full px-2")}
               >
                 <span>{option.label}</span>
               </button>
@@ -216,14 +249,12 @@ export function HotelFilters({
   return (
     <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-2">
+        {/* No count here: the results summary beside the heading is the single
+            place that reports how many Hotels matched, and it is the live
+            region. Repeating it in the rail made three competing counts. */}
         <p className="flex items-center gap-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
           <HugeiconsIcon icon={FilterIcon} size={14} aria-hidden="true" />
-          <span>
-            Filters{" "}
-            {totalCount > 0
-              ? `· ${totalCount} ${totalCount === 1 ? "Hotel" : "Hotels"}`
-              : ""}
-          </span>
+          <span>Filters</span>
         </p>
         {isFiltering ? (
           <button
@@ -240,29 +271,29 @@ export function HotelFilters({
         isPending={isPending}
         onServerChange={onServerChange}
       />
-      <div
-        className="flex items-center gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground"
-        role="status"
-        aria-live="polite"
-      >
-        <span
-          className={cn(
-            "size-1.5 shrink-0 rounded-full transition-colors",
-            isPending
-              ? "animate-ping bg-amber-500"
-              : isFiltering
-                ? "bg-primary"
-                : "bg-muted-foreground/40"
-          )}
-        />
-        <span>
-          {isPending
-            ? "Updating Hotels…"
-            : isFiltering
-              ? "Filters applied. URL updated for sharing."
-              : "Filters update the address bar for shareable searches."}
-        </span>
-      </div>
+      {/* Only speaks when it has something to say. The idle line was internal
+          chatter about URL plumbing that the guest never needed; with no
+          filters applied there is now no footer at all, so no orphan dot and
+          no stray divider above it. */}
+      {isPending || isFiltering ? (
+        <div
+          className="flex items-center gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          <span
+            className={cn(
+              "size-1.5 shrink-0 rounded-full transition-colors",
+              isPending ? "animate-ping bg-amber-500" : "bg-primary"
+            )}
+          />
+          <span>
+            {isPending
+              ? "Updating Hotels…"
+              : "Filters applied. URL updated for sharing."}
+          </span>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -339,6 +370,18 @@ export function HotelMobileFilters({
                 </div>
 
                 <div className="mt-6 flex flex-col gap-6">
+                  {/* Sorting lives beside the results on desktop, but the sheet
+                      has no results header, so it rides along here. */}
+                  <HotelSortSelect
+                    ordering={server.ordering ?? ""}
+                    onOrderingChange={(next) =>
+                      onServerChange({
+                        ordering: next === "" ? undefined : next,
+                      })
+                    }
+                    isPending={isPending}
+                  />
+
                   <HotelFilterGroups
                     server={server}
                     large

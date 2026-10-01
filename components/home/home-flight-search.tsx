@@ -406,7 +406,7 @@ export function HomeFlightSearch() {
               <label
                 key={option.value}
                 className={cn(
-                  "inline-flex flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
+                  "inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:min-h-0 sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                   checked
                     ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
                     : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
@@ -438,7 +438,7 @@ export function HomeFlightSearch() {
         <Link
           href={MULTI_CITY_HREF}
           aria-label="Multi-city trips continue in the full flights editor"
-          className="inline-flex flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap text-muted-foreground transition-all hover:bg-card/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm"
+          className="inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap text-muted-foreground transition-all hover:bg-card/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0 sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm"
         >
           <HugeiconsIcon
             icon={Airplane01Icon}
@@ -476,7 +476,7 @@ export function HomeFlightSearch() {
               onClick={handleSwap}
               disabled={!canSwap}
               aria-label="Swap origin and destination"
-              className="flex size-10 touch-manipulation items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex size-11 touch-manipulation items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:size-10"
             >
               <HugeiconsIcon
                 icon={ArrowLeftRightIcon}

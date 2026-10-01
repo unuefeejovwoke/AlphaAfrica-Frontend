@@ -61,13 +61,14 @@ export function HomeSearchSwitcher() {
 
   return (
     <div className="w-full rounded-3xl border border-border/80 bg-card/95 p-4 shadow-xl shadow-black/[0.04] backdrop-blur-xl sm:p-6 md:p-7">
-      <div className="inline-flex max-w-full scrollbar-none items-center gap-1 overflow-x-auto rounded-2xl border border-border/50 bg-muted/70 p-1 sm:gap-1.5 sm:p-1.5">
-        {/* Tablist owns only the interactive tabs; links are siblings. */}
-        <div
-          role="tablist"
-          aria-label="Travel services"
-          className="flex items-center gap-1 sm:gap-1.5"
-        >
+      {/* Five services never fit one 390px row. Three-up over two rows on
+          mobile, five-up from sm: every service stays visible and evenly
+          sized — no horizontal scroll to reach the last two. */}
+      <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-border/50 bg-muted/70 p-1 sm:grid-cols-5 sm:p-1.5">
+        {/* Tablist owns only the interactive tabs; links are siblings.
+            `contents` lets its button join the grid instead of nesting a
+            second track inside one cell. */}
+        <div role="tablist" aria-label="Travel services" className="contents">
           {interactiveTabs.map((tab) => {
             const isActive = activeTab === tab.id
             return (
@@ -84,7 +85,7 @@ export function HomeSearchSwitcher() {
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
                 onKeyDown={(event) => onKeyDown(event, tab.id)}
-                className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:px-4 sm:text-sm ${
+                className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-center text-[11px] leading-tight font-medium transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:flex-row sm:gap-2 sm:px-3 sm:py-2.5 sm:text-left sm:text-sm ${
                   isActive
                     ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
                     : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
@@ -100,7 +101,7 @@ export function HomeSearchSwitcher() {
                       : "shrink-0 text-muted-foreground"
                   }
                 />
-                <span>{tab.label}</span>
+                <span className="min-w-0">{tab.label}</span>
               </button>
             )
           })}
@@ -110,7 +111,7 @@ export function HomeSearchSwitcher() {
           <Link
             key={tab.id}
             href={tab.href ?? "#"}
-            className="group inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-card/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:px-4 sm:text-sm"
+            className="group flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-center text-[11px] leading-tight font-medium text-muted-foreground transition-all hover:bg-card/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:flex-row sm:gap-2 sm:px-3 sm:py-2.5 sm:text-left sm:text-sm"
           >
             <HugeiconsIcon
               icon={tab.icon}
@@ -118,12 +119,12 @@ export function HomeSearchSwitcher() {
               aria-hidden="true"
               className="shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
             />
-            <span>{tab.label}</span>
+            <span className="min-w-0">{tab.label}</span>
             <HugeiconsIcon
               icon={ArrowUpRight01Icon}
               size={13}
               aria-hidden="true"
-              className="shrink-0 opacity-50 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100"
+              className="hidden shrink-0 opacity-50 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100 sm:block"
             />
           </Link>
         ))}

@@ -34,7 +34,8 @@ export function CarPagination({
         className="text-center text-xs font-medium text-muted-foreground"
         aria-live="polite"
       >
-        Showing {totalCount} {totalCount === 1 ? "vehicle" : "vehicles"}
+        Showing {totalCount} {totalCount === 1 ? "vehicle" : "vehicles"} on this
+        page
       </p>
     )
   }
