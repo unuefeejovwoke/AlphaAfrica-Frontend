@@ -1187,7 +1187,8 @@ export async function createHotelBooking(
 ): Promise<HotelBookingCreateResult> {
   const raw = await apiPost<unknown, Record<string, unknown>>(
     "/api/hotels/bookings/create/",
-    payload as Record<string, unknown>
+    payload as Record<string, unknown>,
+    { sameOrigin: true }
   )
   const normalized = normalizeHotelBookingCreateResult(raw)
   if (!normalized) {
@@ -1386,7 +1387,7 @@ export async function verifyHotelBooking(
 ): Promise<HotelBooking> {
   const raw = await apiGet<unknown>(
     `/api/hotels/bookings/verify/${encodeURIComponent(reference)}/`,
-    { noStore: true }
+    { noStore: true, sameOrigin: true }
   )
   const parsed = hotelBookingSchema.safeParse(raw)
   if (!parsed.success) {

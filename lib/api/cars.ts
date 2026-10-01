@@ -633,7 +633,8 @@ export async function createCarBooking(
 ): Promise<CarBookingCreateResult> {
   const raw = await apiPost<unknown, Record<string, unknown>>(
     "/api/cars/bookings/create/",
-    payload as Record<string, unknown>
+    payload as Record<string, unknown>,
+    { sameOrigin: true }
   )
   const normalized = normalizeCarBookingCreateResult(raw)
   if (!normalized) {
@@ -780,7 +781,7 @@ export type CarBooking = z.infer<typeof carBookingSchema>
 export async function verifyCarBooking(reference: string): Promise<CarBooking> {
   const raw = await apiGet<unknown>(
     `/api/cars/bookings/verify/${encodeURIComponent(reference)}/`,
-    { noStore: true }
+    { noStore: true, sameOrigin: true }
   )
   return carBookingSchema.parse(raw)
 }

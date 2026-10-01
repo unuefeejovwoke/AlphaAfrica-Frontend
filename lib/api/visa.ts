@@ -199,7 +199,8 @@ export async function submitVisaConsultation(
   const payload = visaConsultationSchema.parse(input)
   const raw = await apiPost<unknown, Record<string, unknown>>(
     "/api/visa/apply/",
-    payload as Record<string, unknown>
+    payload as Record<string, unknown>,
+    { sameOrigin: true }
   )
   const normalized = normalizeVisaConsultationResult(raw)
   if (!normalized) {
@@ -219,6 +220,7 @@ export async function verifyVisaPayment(
     `/api/visa/verify/${encodeURIComponent(reference)}/`,
     {
       noStore: true,
+      sameOrigin: true,
     }
   )
   return visaApplicationSchema.parse(raw)

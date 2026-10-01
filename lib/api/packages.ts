@@ -172,7 +172,8 @@ export async function submitPackageEnquiry(
   const payload = packageEnquirySchema.parse(input)
   const raw = await apiPost<unknown, Record<string, unknown>>(
     `/api/packages/${encodeURIComponent(slug)}/enquire/`,
-    payload as Record<string, unknown>
+    payload as Record<string, unknown>,
+    { sameOrigin: true }
   )
   return packageEnquiryResultSchema.parse(raw)
 }
