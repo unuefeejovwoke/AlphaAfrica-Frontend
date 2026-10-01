@@ -1,8 +1,10 @@
 import { z } from "zod"
+import { parseCalendarDate, startOfTodayUtc } from "../date.ts"
 import {
   emailSchema,
   futureDateStringSchema,
   nigerianPhoneSchema,
+  phoneInputSchema,
 } from "../api/validation.ts"
 
 // Plain field shape (no cross-field rules) for composition into plain
@@ -42,10 +44,7 @@ export type TravellerComposition = z.infer<typeof travellerCompositionSchema>
 export const contactEnquirySchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  phone: z
-    .string()
-    .min(7, "Phone number is too short")
-    .regex(/^[+0-9\s-()]+$/, "Please enter a valid phone number"),
+  phone: phoneInputSchema("Phone number"),
   service: z.enum(["flights", "hotels", "packages", "visa", "cars", "general"]),
   message: z
     .string()
@@ -56,10 +55,7 @@ export type ContactEnquiry = z.infer<typeof contactEnquirySchema>
 
 export const callbackRequestSchema = z.object({
   customerName: z.string().min(2, "Enter your name so we know who to call"),
-  customerPhone: z
-    .string()
-    .min(7, "Enter a valid phone number so we can reach you")
-    .regex(/^[+0-9\s-()]+$/, "Enter a valid phone number so we can reach you"),
+  customerPhone: phoneInputSchema("Phone number"),
   customerNotes: z
     .string()
     .max(280, "Keep details under 280 characters")
@@ -85,35 +81,11 @@ export type TravelerType = z.infer<typeof travelerTypeSchema>
 export const genderSchema = z.enum(["MALE", "FEMALE"])
 export type Gender = z.infer<typeof genderSchema>
 
-const DATE_STRING_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-
-/** Parse a YYYY-MM-DD string into a UTC-midnight date, or null when impossible. */
-function parseCalendarDate(value: string): Date | null {
-  if (!DATE_STRING_PATTERN.test(value)) return null
-  const [y, m, d] = value.split("-").map(Number)
-  const date = new Date(Date.UTC(y, m - 1, d))
-  if (Number.isNaN(date.getTime())) return null
-  if (
-    date.getUTCFullYear() !== y ||
-    date.getUTCMonth() !== m - 1 ||
-    date.getUTCDate() !== d
-  ) {
-    return null
-  }
-  return date
-}
-
-/** Start of today (local) as a UTC timestamp — day-precision comparisons. */
-function startOfTodayUtc(): number {
-  const now = new Date()
-  return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
-}
-
 /** Date of birth: real calendar date, today or earlier. Future is a hard error. */
 export const dateOfBirthSchema = z
   .string()
   .trim()
-  .regex(DATE_STRING_PATTERN, "Enter a valid date of birth (YYYY-MM-DD)")
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date of birth (YYYY-MM-DD)")
   .refine((value) => parseCalendarDate(value) !== null, {
     message: "Enter a valid date of birth (YYYY-MM-DD)",
   })
@@ -224,6 +196,29 @@ export interface TravellerFormValues {
   customer: { name: string; email: string; phone: string }
 }
 
+/**
+ * Form-side input shape: every field is typed text until the schema parses —
+ * the gender select reads raw, and phones normalize on parse. Passport keys
+ * stay optional because the domestic path hides them entirely.
+ */
+export interface TravellerFormInput {
+  travellers: {
+    first_name: string
+    last_name: string
+    date_of_birth: string
+    gender: string
+    email: string
+    phone_country_code: string
+    phone: string
+    traveler_type: TravelerType
+    passport_number?: string
+    passport_expiry?: string
+    nationality?: string
+  }[]
+  contactIsFirstTraveller: boolean
+  customer: { name: string; email: string; phone: string }
+}
+
 export interface TravellerFormOptions {
   /** Expected party from the search step — counts are enforced against it. */
   party: TravellerComposition
@@ -247,7 +242,7 @@ export function totalTravellers(party: TravellerComposition): number {
  */
 export function createTravellerFormSchema(
   options: TravellerFormOptions
-): z.ZodType<TravellerFormValues, any> {
+): z.ZodType<TravellerFormValues, TravellerFormInput> {
   const { party, isInternational } = options
   const itemSchema = travellerItemSchema(isInternational)
 

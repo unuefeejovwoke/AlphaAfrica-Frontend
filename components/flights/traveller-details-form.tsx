@@ -39,7 +39,7 @@ import {
   getTravellerAgeWarnings,
   type BookingTravellersPayload,
   type TravellerComposition,
-  type TravellerFormTraveller,
+  type TravellerFormInput,
   type TravellerFormValues,
   type TravelerType,
 } from "@/lib/schemas/travel"
@@ -92,7 +92,7 @@ type TravellerFieldName =
 
 /** Array-level issues (path ["travellers"]) surface as one alert, not per card. */
 function getTravellersArrayError(
-  errors: FieldErrors<TravellerFormValues>
+  errors: FieldErrors<TravellerFormInput>
 ): string | undefined {
   const list = errors.travellers
   if (!Array.isArray(list) && typeof list?.message === "string")
@@ -101,7 +101,7 @@ function getTravellersArrayError(
 }
 
 function getTravellerFieldError(
-  errors: FieldErrors<TravellerFormValues>,
+  errors: FieldErrors<TravellerFormInput>,
   index: number,
   field: TravellerFieldName
 ): string | undefined {
@@ -118,13 +118,13 @@ function getTravellerFieldError(
 const AgeBandWarnings = React.memo(function AgeBandWarnings({
   control,
 }: {
-  control: Control<TravellerFormValues>
+  control: Control<TravellerFormInput, any, TravellerFormValues>
 }) {
   const travellers = useWatch({ control, name: "travellers" })
   const warnings = React.useMemo(
     () =>
       getTravellerAgeWarnings(
-        (travellers ?? []).map((traveller: TravellerFormTraveller) => ({
+        (travellers ?? []).map((traveller) => ({
           date_of_birth: traveller.date_of_birth,
           traveler_type: traveller.traveler_type,
         }))
@@ -192,7 +192,10 @@ export function TravellerDetailsForm({
     [initialValues, party.adults, party.children, party.infants]
   )
 
-  const form = useForm<TravellerFormValues>({
+  // TInput carries the raw form state (the gender select reads typed text
+  // until parse); TTransformedValues is the schema-parsed output that submit
+  // receives — phones normalized, gender narrowed.
+  const form = useForm<TravellerFormInput, any, TravellerFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
     mode: "onTouched",

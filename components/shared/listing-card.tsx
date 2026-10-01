@@ -4,16 +4,32 @@ import { StarIcon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
+/**
+ * Amber-filled star glyph — the one star-rating presentation shared by
+ * listing badges and rating rows (production hardening, 23).
+ */
+export function StarGlyph({
+  size,
+  className,
+}: {
+  size: number
+  className?: string
+}) {
+  return (
+    <HugeiconsIcon
+      icon={StarIcon}
+      size={size}
+      className={cn("fill-amber-400 text-amber-400", className)}
+      aria-hidden="true"
+    />
+  )
+}
+
 /** Shared "Featured" pill for listing cards (destinations + packages). */
 export function FeaturedBadge() {
   return (
     <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/60 px-3 py-1 text-[11px] font-semibold text-white shadow-xs backdrop-blur-md">
-      <HugeiconsIcon
-        icon={StarIcon}
-        size={12}
-        className="fill-amber-400 text-amber-400"
-        aria-hidden="true"
-      />
+      <StarGlyph size={12} />
       Featured
     </span>
   )

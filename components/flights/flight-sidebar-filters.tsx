@@ -24,7 +24,10 @@ import {
   type PriceCeilingOption,
 } from "@/lib/api/flight-filters"
 import type { AirlineOption } from "@/components/flights/use-filtered-offers"
-import type { FlightOfferDisplay } from "@/lib/api/flights"
+import {
+  CABIN_OPTIONS as FLIGHT_CABIN_OPTIONS,
+  type FlightOfferDisplay,
+} from "@/lib/api/flights"
 import { parseNairaAmount } from "@/lib/api/flight-filters"
 
 export interface FlightSidebarFiltersProps {
@@ -46,12 +49,11 @@ const DEPARTURE_WINDOW_ICONS: Record<DepartureWindow, typeof Sun01Icon> = {
   night: MoonStarIcon,
 }
 
+// Cabin vocabulary is the shared CABIN_OPTIONS (lib/api/flights.ts); the
+// sidebar prepends only its "any cabin" escape value.
 const CABIN_OPTIONS: { label: string; value: string | null }[] = [
   { label: "Any Cabin", value: null },
-  { label: "Economy", value: "ECONOMY" },
-  { label: "Premium Economy", value: "PREMIUM_ECONOMY" },
-  { label: "Business", value: "BUSINESS" },
-  { label: "First", value: "FIRST" },
+  ...FLIGHT_CABIN_OPTIONS,
 ]
 
 function toggleValue<T>(list: readonly T[] | null, value: T): T[] | null {

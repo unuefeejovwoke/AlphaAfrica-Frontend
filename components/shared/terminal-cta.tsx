@@ -2,7 +2,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { SparklesIcon } from "@hugeicons/core-free-icons"
-import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
 import { CTA_DEFAULT } from "@/lib/images"
 import { cn } from "@/lib/utils"
 
@@ -14,8 +13,6 @@ import { cn } from "@/lib/utils"
 export interface TerminalCtaProps {
   title: string
   description: string
-  /** Trip context prefilled for support routing if needed. */
-  context?: string
   primaryHref?: string
   primaryLabel?: string
   eyebrow?: string
@@ -26,18 +23,12 @@ export interface TerminalCtaProps {
 export function TerminalCta({
   title,
   description,
-  context = "travel planning",
   primaryHref = "/contact",
   primaryLabel = "Contact Us",
   eyebrow = "Direct Travel Concierge",
   backgroundImage = CTA_DEFAULT,
   className,
 }: TerminalCtaProps) {
-  // Retain company and WhatsApp context resolution for platform consistency (§22)
-  void company
-  void getSupportWhatsAppUrl
-  void context
-
   return (
     <section
       aria-labelledby="terminal-cta-heading"

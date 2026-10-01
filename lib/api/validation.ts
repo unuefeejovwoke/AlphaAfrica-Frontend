@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { parseCalendarDate, startOfTodayUtc } from "../date.ts"
 
 /**
  * Shared RHF + Zod primitives with Nigerian parity (PRD §10).
@@ -33,14 +34,11 @@ export function normalizeNigerianPhone(value: string): string {
   if (digits.startsWith("0") && digits.length === 11) {
     return `+234${digits.slice(1)}`
   }
-  if (trimmed.startsWith("+")) {
-    return `+${digits}`
-  }
   // Local Nigerian mobile without trunk prefix (10 digits starting 7/8/9).
   if (digits.length === 10 && /^[789]/.test(digits)) {
     return `+234${digits}`
   }
-  return trimmed.startsWith("+") ? `+${digits}` : `+${digits}`
+  return `+${digits}`
 }
 
 function isNigerianDigits(digits: string): boolean {
@@ -83,6 +81,23 @@ export function nigerianPhoneSchema(fieldLabel = "Phone number") {
     .transform((value) => normalizeNigerianPhone(value))
 }
 
+/**
+ * Phone-shaped input rules without normalization or plausibility checks:
+ * the same length floor and allowed characters the full schema enforces,
+ * for forms that keep the customer's raw dialing input (contact enquiry,
+ * callback request).
+ */
+export function phoneInputSchema(fieldLabel = "Phone number") {
+  return z
+    .string()
+    .trim()
+    .min(7, `${fieldLabel} is too short`)
+    .regex(
+      PHONE_ALLOWED_CHARS,
+      `Enter a valid ${fieldLabel.toLowerCase()} so we can reach you`
+    )
+}
+
 /** YYYY-MM-DD string that must be a real calendar date, today or later. */
 export function futureDateStringSchema(fieldLabel = "Date") {
   const label = fieldLabel.toLowerCase()
@@ -90,31 +105,14 @@ export function futureDateStringSchema(fieldLabel = "Date") {
     .string()
     .trim()
     .regex(/^\d{4}-\d{2}-\d{2}$/, `Enter a valid ${label} (YYYY-MM-DD)`)
+    .refine((value) => parseCalendarDate(value) !== null, {
+      message: `Enter a valid ${label} (YYYY-MM-DD)`,
+    })
     .refine(
       (value) => {
-        const [y, m, d] = value.split("-").map(Number)
-        const date = new Date(Date.UTC(y, m - 1, d))
-        if (Number.isNaN(date.getTime())) return false
-        // Reject impossible dates such as 2026-02-30.
-        return (
-          date.getUTCFullYear() === y &&
-          date.getUTCMonth() === m - 1 &&
-          date.getUTCDate() === d
-        )
-      },
-      { message: `Enter a valid ${label} (YYYY-MM-DD)` }
-    )
-    .refine(
-      (value) => {
-        const [y, m, d] = value.split("-").map(Number)
-        const date = new Date(Date.UTC(y, m - 1, d))
-        const today = new Date()
-        const todayUtc = Date.UTC(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate()
-        )
-        return date.getTime() >= todayUtc
+        const date = parseCalendarDate(value)
+        if (date === null) return false // Validity reported above.
+        return date.getTime() >= startOfTodayUtc()
       },
       { message: `${fieldLabel} cannot be in the past` }
     )
@@ -132,31 +130,16 @@ export function optionalFutureDateStringSchema(fieldLabel = "Preferred date") {
     .refine(
       (value) => {
         if (value === null || value === undefined) return true
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-        const [y, m, d] = value.split("-").map(Number)
-        const date = new Date(Date.UTC(y, m - 1, d))
-        if (Number.isNaN(date.getTime())) return false
-        return (
-          date.getUTCFullYear() === y &&
-          date.getUTCMonth() === m - 1 &&
-          date.getUTCDate() === d
-        )
+        return parseCalendarDate(value) !== null
       },
       { message: `Enter a valid ${label} (YYYY-MM-DD)` }
     )
     .refine(
       (value) => {
         if (value === null || value === undefined) return true
-        const [y, m, d] = value.split("-").map(Number)
-        const date = new Date(Date.UTC(y, m - 1, d))
-        if (Number.isNaN(date.getTime())) return true // Validity reported above.
-        const today = new Date()
-        const todayUtc = Date.UTC(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate()
-        )
-        return date.getTime() >= todayUtc
+        const date = parseCalendarDate(value)
+        if (date === null) return true // Validity reported above.
+        return date.getTime() >= startOfTodayUtc()
       },
       { message: `${fieldLabel} cannot be in the past` }
     )

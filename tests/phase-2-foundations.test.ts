@@ -6,11 +6,11 @@ import {
   ApiError,
   apiGet,
   buildApiUrl,
-  getApiBaseUrl,
   getHumanErrorMessage,
   getPaymentSafetyCopy,
   API_REVALIDATE_SECONDS,
 } from "../lib/api/client.ts"
+import { apiBaseUrl } from "../lib/env.ts"
 import {
   normalizeNigerianPhone,
   nigerianPhoneSchema,
@@ -42,9 +42,9 @@ test("API client uses ISR revalidate 3600 and env-driven base URL", () => {
   )
   const url = buildApiUrl("/api/packages/destinations/", { page: 2 })
   assert.match(url, /\/api\/packages\/destinations\/\?page=2/)
-  assert.ok(getApiBaseUrl().length > 0, "Base URL must resolve")
+  assert.ok(apiBaseUrl().length > 0, "Base URL must resolve")
   assert.doesNotMatch(
-    getApiBaseUrl(),
+    apiBaseUrl(),
     /\/$/,
     "Base URL must not end with a slash"
   )

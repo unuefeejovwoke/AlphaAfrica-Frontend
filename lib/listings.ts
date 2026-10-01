@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "./api/client.ts"
+import { apiBaseUrl } from "./env.ts"
 import { canonicalUrl, getSiteUrl } from "./seo.ts"
 import type { PackageFilters } from "./api/packages.ts"
 
@@ -104,7 +104,7 @@ export function resolveListingImageUrl(src: string | null | undefined): string {
   const trimmed = src.trim()
   if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith("data:"))
     return trimmed
-  const base = getApiBaseUrl().replace(/\/+$/, "")
+  const base = apiBaseUrl().replace(/\/+$/, "")
   if (trimmed.startsWith("/")) return `${base}${trimmed}`
   return `${base}/${trimmed}`
 }

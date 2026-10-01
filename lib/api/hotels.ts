@@ -17,8 +17,9 @@ import {
   type BookingCreateResult,
 } from "./shared.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
+import { parseCalendarDate, startOfTodayUtc } from "../date.ts"
 import { formatNaira } from "../format.ts"
-import { resolveListingImageUrl } from "../listings.ts"
+import { parsePriceAmount, resolveListingImageUrl } from "../listings.ts"
 import { guestContactSchema } from "./validation.ts"
 
 /**
@@ -70,30 +71,6 @@ export const HOTEL_ORDERINGS = [
 ] as const
 
 export type HotelOrdering = (typeof HOTEL_ORDERINGS)[number]
-
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-
-/** Parse YYYY-MM-DD into a UTC-midnight date, or null when impossible. */
-function parseCalendarDate(value: string): Date | null {
-  if (!DATE_PATTERN.test(value)) return null
-  const [y, m, d] = value.split("-").map(Number)
-  const date = new Date(Date.UTC(y, m - 1, d))
-  if (Number.isNaN(date.getTime())) return null
-  if (
-    date.getUTCFullYear() !== y ||
-    date.getUTCMonth() !== m - 1 ||
-    date.getUTCDate() !== d
-  ) {
-    return null
-  }
-  return date
-}
-
-/** Start of today (local) as a UTC timestamp — day-precision comparisons. */
-function startOfTodayUtc(): number {
-  const now = new Date()
-  return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
-}
 
 /**
  * Hotel search query validation (TDD seam 01, extended in ticket 02).
@@ -441,21 +418,10 @@ export interface HotelCardDisplay {
   priceLabel: string | null
 }
 
-/**
- * Parse a backend decimal string into a positive whole-Naira number, or null
- * when the input is missing, zero, or non-numeric. Shared by card and Room
- * Type price copy so neither invents a "₦0" label.
- */
-export function parsePositiveNaira(
-  value: string | null | undefined
-): number | null {
-  if (value === null || value === undefined) return null
-  const trimmed = value.replace(/,/g, "").trim()
-  if (trimmed.length === 0) return null
-  const parsed = Number(trimmed)
-  if (!Number.isFinite(parsed) || parsed <= 0) return null
-  return parsed
-}
+// Positive-Naira parsing (`parsePriceAmount`, lib/listings.ts) and display
+// formatting (`formatNaira`, lib/format.ts) are single implementations shared
+// by card price copy, Room Type price copy, and preview arithmetic — no
+// domain ever invents a "₦0" label.
 
 /**
  * Locked from-price copy for Hotel cards: "from ₦X per night".
@@ -465,9 +431,17 @@ export function parsePositiveNaira(
 export function formatHotelFromPrice(
   startingPrice: string | null | undefined
 ): string | null {
-  const amount = parsePositiveNaira(startingPrice)
+  const amount = parsePriceAmount(startingPrice)
   if (amount === null) return null
   return `from ${formatNaira(amount)} per night`
+}
+
+/**
+ * Star-rating presentation (one implementation): "5-star Hotel"; null when
+ * the Hotel is unrated (never "0-star").
+ */
+function formatHotelStarLabel(starRating: number): string | null {
+  return starRating >= 1 ? `${starRating}-star Hotel` : null
 }
 
 /**
@@ -489,8 +463,7 @@ export function toHotelCardDisplay(hotel: HotelList): HotelCardDisplay {
     imageSrc: resolveListingImageUrl(hotel.main_image),
     imageAlt: `${hotel.name} — ${placeLabel}`,
     placeLabel,
-    starLabel:
-      hotel.star_rating >= 1 ? `${hotel.star_rating}-star Hotel` : null,
+    starLabel: formatHotelStarLabel(hotel.star_rating),
     keyAmenities: amenities.slice(0, HOTEL_CARD_KEY_AMENITIES),
     hasMoreAmenities: amenities.length > HOTEL_CARD_KEY_AMENITIES,
     priceLabel: formatHotelFromPrice(hotel.starting_price),
@@ -764,7 +737,7 @@ export interface HotelDetailDisplay {
 export function formatRoomTypePrice(
   pricePerNight: string | null | undefined
 ): string | null {
-  const amount = parsePositiveNaira(pricePerNight)
+  const amount = parsePriceAmount(pricePerNight)
   if (amount === null) return null
   return `${formatNaira(amount)} per night`
 }
@@ -865,8 +838,7 @@ export function toHotelDetailDisplay(hotel: HotelDetail): HotelDetailDisplay {
       lat.length > 0 && lng.length > 0
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`
         : null,
-    starLabel:
-      hotel.star_rating >= 1 ? `${hotel.star_rating}-star Hotel` : null,
+    starLabel: formatHotelStarLabel(hotel.star_rating),
     description: hotel.description,
     amenities,
     gallery,
@@ -951,10 +923,8 @@ export function previewStayTotal(input: StayPreviewInput): number | null {
   const rooms = input.numRooms ?? 0
   if (!Number.isInteger(nights) || nights < 1) return null
   if (!Number.isInteger(rooms) || rooms < 1) return null
-  const raw = (input.pricePerNight ?? "").replace(/,/g, "").trim()
-  if (raw.length === 0) return null
-  const price = Number(raw)
-  if (!Number.isFinite(price) || price <= 0) return null
+  const price = parsePriceAmount(input.pricePerNight)
+  if (price === null) return null
   return Math.round(price * nights * rooms)
 }
 

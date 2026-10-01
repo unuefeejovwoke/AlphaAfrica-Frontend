@@ -90,11 +90,8 @@ export class ApiError extends Error {
 
 /**
  * Resolve the backend base URL from the environment (see `lib/env.ts`).
- * Kept as the public accessor so existing import sites stay unchanged.
+ * Callers that need it import `apiBaseUrl` from `lib/env.ts` directly.
  */
-export function getApiBaseUrl(): string {
-  return apiBaseUrl()
-}
 
 function buildQueryString(
   query?: Record<string, string | number | boolean | null | undefined>
@@ -112,7 +109,7 @@ export function buildApiUrl(
   path: string,
   query?: Record<string, string | number | boolean | null | undefined>
 ): string {
-  const base = getApiBaseUrl()
+  const base = apiBaseUrl()
   const normalizedPath = path.startsWith("/") ? path : `/${path}`
   const suffix = buildQueryString(query)
   return suffix.length > 0

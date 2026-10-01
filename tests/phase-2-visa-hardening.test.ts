@@ -282,7 +282,6 @@ test("Verify page fetches the final order and never assumes success", () => {
 test("Support hatch reads every number from company.ts with context prefill", () => {
   for (const file of [
     "components/support/assisted-support-widget.tsx",
-    "components/shared/terminal-cta.tsx",
     "app/(public)/page.tsx",
   ]) {
     const content = readRoute(file)
@@ -297,6 +296,12 @@ test("Support hatch reads every number from company.ts with context prefill", ()
       `${file} must prefill WhatsApp context`
     )
   }
+  // The terminal CTA routes to the one contact page and carries no contact
+  // details of its own — it must not re-declare numbers (ticket 23).
+  const cta = readRoute("components/shared/terminal-cta.tsx")
+  assert.doesNotMatch(cta, /lib\/content\/company/)
+  assert.doesNotMatch(cta, /wa\.me|tel:|\+234/)
+  assert.match(cta, /\/contact/, "The terminal CTA must route to Contact Us")
   const widget = readRoute("components/support/assisted-support-widget.tsx")
   assert.match(
     widget,

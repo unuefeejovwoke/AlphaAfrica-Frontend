@@ -16,7 +16,7 @@ import {
 } from "../lib/api/visa.ts"
 import { submitPackageEnquiry } from "../lib/api/packages.ts"
 import { proxyToBackend } from "../lib/api/proxy.ts"
-import { getApiBaseUrl } from "../lib/api/client.ts"
+import { apiBaseUrl } from "../lib/env.ts"
 
 const ROOT = join(import.meta.dirname, "..")
 
@@ -190,7 +190,7 @@ test("server calls stay absolute against the backend host", async (t) => {
   })
   await verifyHotelBooking("ALPHAA-H")
   assert.ok(
-    url.startsWith(`${getApiBaseUrl()}/api/hotels/bookings/verify/`),
+    url.startsWith(`${apiBaseUrl()}/api/hotels/bookings/verify/`),
     `server must hit the backend host, got ${url}`
   )
 })
@@ -224,7 +224,7 @@ test("proxy forwards method, query, headers and body; passes status through un-c
   )
   assert.equal(
     upstreamUrl,
-    `${getApiBaseUrl()}/api/hotels/bookings/create/?next=1`,
+    `${apiBaseUrl()}/api/hotels/bookings/create/?next=1`,
     "method target plus query must reach the backend"
   )
   assert.equal(upstreamInit?.method, "POST")

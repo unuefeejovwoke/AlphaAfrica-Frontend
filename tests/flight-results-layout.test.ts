@@ -2,6 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
+import { addDays, diffDays, todayYMD } from "../lib/date.ts"
 
 test("Flight results page has 2-column layout and factual cards structure", () => {
   const cardPath = path.resolve(
@@ -211,35 +212,7 @@ test("Flight results page has 2-column layout and factual cards structure", () =
 })
 
 test("Nearby dates calculation only produces current and future dates", () => {
-  function parseYMD(dateStr: string): [number, number, number] {
-    const parts = dateStr.split("-").map(Number)
-    return [parts[0] || 2026, parts[1] || 1, parts[2] || 1]
-  }
-
-  function formatYMD(year: number, month: number, day: number): string {
-    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-  }
-
-  function addDays(baseDateStr: string, days: number): string {
-    const [y, m, d] = parseYMD(baseDateStr)
-    const dt = new Date(Date.UTC(y, m - 1, d + days, 12, 0, 0))
-    return formatYMD(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate())
-  }
-
-  function diffDays(d1: string, d2: string): number {
-    const [y1, m1, day1] = parseYMD(d1)
-    const [y2, m2, day2] = parseYMD(d2)
-    const t1 = Date.UTC(y1, m1 - 1, day1)
-    const t2 = Date.UTC(y2, m2 - 1, day2)
-    return Math.floor((t1 - t2) / 86400000)
-  }
-
-  const now = new Date()
-  const todayStr = formatYMD(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    now.getDate()
-  )
+  const todayStr = todayYMD()
 
   // Test 1: Base is today
   const daysFromToday = Math.max(0, diffDays(todayStr, todayStr))

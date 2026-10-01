@@ -5,9 +5,9 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  StarIcon,
   SparklesIcon,
 } from "@hugeicons/core-free-icons"
+import { StarGlyph } from "@/components/shared/listing-card"
 import { getTestimonials } from "@/lib/content/testimonials"
 import { stats } from "@/lib/content/stats"
 import { cn } from "@/lib/utils"
@@ -215,13 +215,7 @@ export function HomeTestimonials() {
                     aria-label="5 out of 5 stars"
                   >
                     {[...Array(5)].map((_, i) => (
-                      <HugeiconsIcon
-                        key={i}
-                        icon={StarIcon}
-                        size={14}
-                        className="fill-amber-400 text-amber-400"
-                        aria-hidden="true"
-                      />
+                      <StarGlyph key={i} size={14} />
                     ))}
                   </div>
                   {item.trip && (

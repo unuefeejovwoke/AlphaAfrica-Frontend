@@ -454,7 +454,6 @@ export default async function HotelDetailPage({
         description="Different dates, more guests, or another city entirely? A specialist will compare options with you and confirm per-night prices before anything is booked."
         eyebrow="Human Help, One Tap Away"
         primaryLabel="Contact Alphaa"
-        context={`the ${hotel.name} Hotel stay in ${hotel.city}`}
       />
     </div>
   )

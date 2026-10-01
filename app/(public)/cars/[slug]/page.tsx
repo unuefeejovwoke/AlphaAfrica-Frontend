@@ -332,7 +332,6 @@ export default async function CarDetailPage({
         eyebrow="Human Help, One Tap Away"
         primaryHref="/cars"
         primaryLabel="Search more vehicles"
-        context={`the ${vehicle.name} car hire`}
       />
     </div>
   )

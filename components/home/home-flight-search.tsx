@@ -22,6 +22,7 @@ import { Select } from "@/components/ui/select"
 import { TravellerStepper } from "@/components/ui/traveller-stepper"
 import { AirportAutocomplete } from "@/components/flights/airport-autocomplete"
 import {
+  CABIN_OPTIONS,
   type Airport,
   type FlightSearchFormValues,
   createEmptyLeg,
@@ -56,13 +57,6 @@ function readStoredTripType(): HomeTripType {
 const TRIP_OPTIONS = [
   { value: "one_way", label: "One way", icon: ArrowRight01Icon },
   { value: "round_trip", label: "Round trip", icon: Exchange01Icon },
-] as const
-
-const CABIN_OPTIONS = [
-  { value: "ECONOMY", label: "Economy" },
-  { value: "PREMIUM_ECONOMY", label: "Premium Economy" },
-  { value: "BUSINESS", label: "Business" },
-  { value: "FIRST", label: "First" },
 ] as const
 
 type FocusableField = "origin" | "destination" | "departureDate" | "returnDate"

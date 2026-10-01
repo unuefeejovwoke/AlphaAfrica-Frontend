@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "./client.ts"
+import { apiBaseUrl } from "../env.ts"
 import { extractBookingReference, reportError } from "../error-reporter.ts"
 
 const METHODS_WITHOUT_BODY = new Set(["GET", "HEAD", "OPTIONS"])
@@ -38,7 +38,7 @@ export async function proxyToBackend(
   options: ProxyOptions = {}
 ): Promise<Response> {
   const incoming = new URL(request.url)
-  const backendUrl = `${getApiBaseUrl()}${path}${incoming.search}`
+  const backendUrl = `${apiBaseUrl()}${path}${incoming.search}`
 
   const headers = new Headers()
   const accept = request.headers.get("accept")

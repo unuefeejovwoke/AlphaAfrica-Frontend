@@ -1,8 +1,12 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Location01Icon, StarIcon } from "@hugeicons/core-free-icons"
+import { Location01Icon } from "@hugeicons/core-free-icons"
 import type { HotelList } from "@/lib/api/hotels"
 import { toHotelCardDisplay } from "@/lib/api/hotels"
-import { CardCta, ListingCardShell } from "@/components/shared/listing-card"
+import {
+  CardCta,
+  ListingCardShell,
+  StarGlyph,
+} from "@/components/shared/listing-card"
 
 /**
  * Hotel card — server-rendered crawlable card mirroring the vehicle card.
@@ -22,12 +26,7 @@ export function HotelCard({ hotel }: { hotel: HotelList }) {
       badge={
         display.starLabel ? (
           <span className="absolute top-3 left-3 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-full border border-white/20 bg-black/65 px-2.5 py-1 text-xs font-semibold text-white shadow-xs backdrop-blur-md">
-            <HugeiconsIcon
-              icon={StarIcon}
-              size={12}
-              className="shrink-0 fill-amber-400 text-amber-400"
-              aria-hidden="true"
-            />
+            <StarGlyph size={12} className="shrink-0" />
             <span className="truncate">{display.starLabel}</span>
           </span>
         ) : undefined

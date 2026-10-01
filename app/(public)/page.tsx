@@ -465,7 +465,6 @@ export default function HomePage() {
           title="Not sure where to start?"
           description="Tell us where you're going and when. We'll sort out the flights, hotel, visa, or car — and answer anything you're unsure about."
           eyebrow="Talk to a person"
-          context="travel planning"
           primaryHref="/contact"
           primaryLabel="Talk to Alphaa"
         />

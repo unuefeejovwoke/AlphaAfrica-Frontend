@@ -9,44 +9,13 @@ import {
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { formatNaira } from "@/lib/format"
+import { addDays, diffDays, parseYMD, todayYMD } from "@/lib/date"
 
 export interface NearbyDatesBarProps {
   currentDate?: string | null
   lowestPrice?: number | null
   onSelectDate?: (date: string) => void
   className?: string
-}
-
-function parseYMD(dateStr: string): [number, number, number] {
-  const parts = dateStr.split("-").map(Number)
-  const currentYear = new Date().getFullYear()
-  return [parts[0] || currentYear, parts[1] || 1, parts[2] || 1]
-}
-
-function formatYMD(year: number, month: number, day: number): string {
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-}
-
-function addDays(baseDateStr: string, days: number): string {
-  try {
-    const [y, m, d] = parseYMD(baseDateStr)
-    const dt = new Date(Date.UTC(y, m - 1, d + days, 12, 0, 0))
-    return formatYMD(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate())
-  } catch {
-    return baseDateStr
-  }
-}
-
-function diffDays(d1: string, d2: string): number {
-  try {
-    const [y1, m1, day1] = parseYMD(d1)
-    const [y2, m2, day2] = parseYMD(d2)
-    const t1 = Date.UTC(y1, m1 - 1, day1)
-    const t2 = Date.UTC(y2, m2 - 1, day2)
-    return Math.floor((t1 - t2) / 86400000)
-  } catch {
-    return 0
-  }
 }
 
 function formatDateTab(
@@ -71,11 +40,6 @@ function formatDateTab(
   }
 }
 
-function getTodayStr(): string {
-  const now = new Date()
-  return formatYMD(now.getFullYear(), now.getMonth() + 1, now.getDate())
-}
-
 export function NearbyDatesBar({
   currentDate,
   lowestPrice,
@@ -83,7 +47,7 @@ export function NearbyDatesBar({
   className,
 }: NearbyDatesBarProps) {
   // Always lock minimum date to today in local calendar time
-  const todayStr = React.useMemo(() => getTodayStr(), [])
+  const todayStr = React.useMemo(() => todayYMD(), [])
 
   // Never allow base date to be before today
   const baseDate =

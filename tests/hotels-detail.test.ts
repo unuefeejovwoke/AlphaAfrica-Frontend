@@ -15,10 +15,9 @@ import {
   formatRoomTypePrice,
   hasSubstantiveRoomDescription,
   hotelDetailSchema,
-  parsePositiveNaira,
   toHotelDetailDisplay,
 } from "../lib/api/hotels.ts"
-import { hotelDetailJsonLd } from "../lib/listings.ts"
+import { hotelDetailJsonLd, parsePriceAmount } from "../lib/listings.ts"
 import { amenityIconFor } from "../components/hotels/hotel-amenity-icon.ts"
 
 function makeDetail(overrides: Record<string, unknown> = {}) {
@@ -235,14 +234,14 @@ test("Room Type descriptions that only restate the names are suppressed", () => 
 })
 
 test("Room Type price parsing: only positive amounts count", () => {
-  assert.equal(parsePositiveNaira("85000.00"), 85000)
-  assert.equal(parsePositiveNaira("1,200.00"), 1200)
-  assert.equal(parsePositiveNaira("0.00"), null)
-  assert.equal(parsePositiveNaira(""), null)
-  assert.equal(parsePositiveNaira(null), null)
-  assert.equal(parsePositiveNaira(undefined), null)
-  assert.equal(parsePositiveNaira("not-a-price"), null)
-  assert.equal(parsePositiveNaira("-5000.00"), null)
+  assert.equal(parsePriceAmount("85000.00"), 85000)
+  assert.equal(parsePriceAmount("1,200.00"), 1200)
+  assert.equal(parsePriceAmount("0.00"), null)
+  assert.equal(parsePriceAmount(""), null)
+  assert.equal(parsePriceAmount(null), null)
+  assert.equal(parsePriceAmount(undefined), null)
+  assert.equal(parsePriceAmount("not-a-price"), null)
+  assert.equal(parsePriceAmount("-5000.00"), null)
 })
 
 test("Amenity icons resolve for known copy and stay null for the unknown", () => {

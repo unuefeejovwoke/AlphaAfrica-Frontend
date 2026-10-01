@@ -17,8 +17,9 @@ import {
   type BookingCreateResult,
 } from "./shared.ts"
 import { getSupportWhatsAppUrl } from "../content/company.ts"
+import { parseCalendarDate } from "../date.ts"
 import { formatNaira } from "../format.ts"
-import { resolveListingImageUrl } from "../listings.ts"
+import { parsePriceAmount, resolveListingImageUrl } from "../listings.ts"
 import { guestContactSchema } from "./validation.ts"
 
 /**
@@ -262,12 +263,9 @@ export interface VehicleCardDisplay {
 export function formatCarHourlyRate(
   hourlyRate: string | null | undefined
 ): string | null {
-  if (hourlyRate === null || hourlyRate === undefined) return null
-  const trimmed = hourlyRate.replace(/,/g, "").trim()
-  if (trimmed.length === 0) return null
-  const parsed = Number(trimmed)
-  if (!Number.isFinite(parsed) || parsed <= 0) return null
-  return `${formatNaira(trimmed)}/hr`
+  const amount = parsePriceAmount(hourlyRate)
+  if (amount === null) return null
+  return `${formatNaira(amount)}/hr`
 }
 
 function vehicleTypeLabel(vehicle: {
@@ -317,22 +315,7 @@ export function toVehicleDetailDisplay(
 // Hire datetime + preview arithmetic (pure, tested seams)
 // ---------------------------------------------------------------------------
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/
-
-function parseCalendarDate(value: string): Date | null {
-  if (!DATE_PATTERN.test(value)) return null
-  const [y, m, d] = value.split("-").map(Number)
-  const date = new Date(Date.UTC(y, m - 1, d))
-  if (
-    date.getUTCFullYear() !== y ||
-    date.getUTCMonth() !== m - 1 ||
-    date.getUTCDate() !== d
-  ) {
-    return null
-  }
-  return date
-}
 
 /**
  * Combine separate date (YYYY-MM-DD) + time (HH:MM) inputs into a UTC ISO
@@ -346,8 +329,7 @@ export function combinePickupDateTime(
 ): string | null {
   const cleanDate = date.trim()
   const cleanTime = time.trim()
-  if (!DATE_PATTERN.test(cleanDate) || !TIME_PATTERN.test(cleanTime))
-    return null
+  if (!TIME_PATTERN.test(cleanTime)) return null
   const calendar = parseCalendarDate(cleanDate)
   if (calendar === null) return null
   const [hh, mm] = cleanTime.split(":").map(Number)
@@ -393,10 +375,8 @@ export interface HirePreviewInput {
 export function previewHireTotal(input: HirePreviewInput): number | null {
   const hours = input.numHours ?? 0
   if (!Number.isInteger(hours) || hours < MIN_HIRE_HOURS) return null
-  const raw = (input.hourlyRate ?? "").replace(/,/g, "").trim()
-  if (raw.length === 0) return null
-  const rate = Number(raw)
-  if (!Number.isFinite(rate) || rate <= 0) return null
+  const rate = parsePriceAmount(input.hourlyRate)
+  if (rate === null) return null
   return Math.round(rate * hours)
 }
 

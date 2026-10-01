@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@/lib/api/client"
+import { apiBaseUrl } from "@/lib/env"
 import { parseDomesticParams, toDomesticQuery } from "@/lib/api/domestic"
 
 /**
@@ -46,7 +46,7 @@ export async function GET(request: Request): Promise<Response> {
 
   // Query holds only safe primitives (IATA, date, party counts) — never
   // tokens, passports, payment data, or opaque blobs (spec §59).
-  const backendUrl = `${getApiBaseUrl()}/api/flights/local-search-stream/?${new URLSearchParams(
+  const backendUrl = `${apiBaseUrl()}/api/flights/local-search-stream/?${new URLSearchParams(
     toDomesticQuery(params)
   ).toString()}`
 

@@ -71,7 +71,6 @@ export default function FaqPage() {
         <TerminalCta
           title="Still have questions about your upcoming trip?"
           description="Our team is always ready to guide you with flights, stays, holiday packages, and visa advice."
-          context="a question from the FAQ page"
           eyebrow="Direct Concierge Help"
           backgroundImage={CTA_FAQ}
         />

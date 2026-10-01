@@ -13,10 +13,9 @@ import {
 import {
   formatRoomTypeCapacity,
   hasSubstantiveRoomDescription,
-  parsePositiveNaira,
   type RoomType,
 } from "@/lib/api/hotels"
-import { resolveListingImageUrl } from "@/lib/listings"
+import { parsePriceAmount, resolveListingImageUrl } from "@/lib/listings"
 import { formatNaira } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
@@ -69,7 +68,7 @@ export function HotelRoomChoice({
     let cheapestId: number | null = null
     let cheapestPrice = Number.POSITIVE_INFINITY
     for (const room of rooms) {
-      const price = parsePositiveNaira(room.price_per_night)
+      const price = parsePriceAmount(room.price_per_night)
       if (price === null || price >= cheapestPrice) continue
       cheapestPrice = price
       cheapestId = room.id
@@ -91,7 +90,7 @@ export function HotelRoomChoice({
         className="flex flex-col gap-2.5"
       >
         {rooms.map((room) => {
-          const price = parsePositiveNaira(room.price_per_night)
+          const price = parsePriceAmount(room.price_per_night)
           const selected = value === room.id
           const isCheapest = price !== null && room.id === cheapestRoomId
           const imageSrc = resolveListingImageUrl(room.image)
