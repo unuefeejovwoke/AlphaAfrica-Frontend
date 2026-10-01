@@ -307,12 +307,6 @@ export function PublicFooter() {
             >
               Terms & Conditions
             </Link>
-            <Link
-              href="/login"
-              className="transition-colors hover:text-primary"
-            >
-              Sign In
-            </Link>
           </div>
         </div>
       </div>

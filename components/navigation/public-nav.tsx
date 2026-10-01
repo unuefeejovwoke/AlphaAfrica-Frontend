@@ -8,7 +8,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Menu01Icon,
   Cancel01Icon,
-  UserIcon,
   ChevronDownIcon,
   HelpCircleIcon,
   PhoneIcon,
@@ -223,13 +222,6 @@ export function PublicNav() {
         </Link>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <Link
-            href="/login"
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
-            <span>Sign In</span>
-          </Link>
           <ButtonLink href="/flights" size="default">
             Book a Trip
           </ButtonLink>
@@ -494,18 +486,6 @@ export function PublicNav() {
                 </Link>
 
                 <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
-                  <Link
-                    href="/login"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex touch-manipulation items-center justify-center gap-2 rounded-xl border border-border/60 bg-card py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  >
-                    <HugeiconsIcon
-                      icon={UserIcon}
-                      size={15}
-                      aria-hidden="true"
-                    />
-                    <span>Sign In</span>
-                  </Link>
                   <ButtonLink
                     href="/flights"
                     onClick={() => setMobileMenuOpen(false)}
