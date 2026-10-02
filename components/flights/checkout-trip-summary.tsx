@@ -67,11 +67,6 @@ export function CheckoutTripSummary({
           </dd>
         </div>
       </dl>
-
-      <p className="border-t border-border/60 pt-3 text-[11px] leading-relaxed text-muted-foreground">
-        Guest Booking — no account needed. You pay securely on Paystack, and the
-        final amount is confirmed there before any charge.
-      </p>
     </div>
   )
 }

@@ -524,18 +524,12 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
               initialValues={initialValues}
               onSubmit={handlePay}
               isSubmitting={submitting}
-              submitLabel={
-                phase === "failed"
-                  ? `Try again · ${total}`
-                  : `Pay ${total} securely`
-              }
+              submitLabel={`Pay ${total}`}
               submittingLabel={
                 phase === "redirecting"
                   ? "Taking you to Paystack…"
                   : "Creating your booking…"
               }
-              stickyNotice="The final amount is confirmed on Paystack before any charge."
-              trip={tripContext}
             />
           </>
         )}

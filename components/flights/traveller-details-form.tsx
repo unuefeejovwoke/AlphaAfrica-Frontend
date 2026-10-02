@@ -14,7 +14,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
   InformationCircleIcon,
-  LockIcon,
   Mail01Icon,
   PassportIcon,
   UserIcon,
@@ -28,11 +27,6 @@ import { CountrySelect } from "@/components/ui/country-select"
 import { LegalNotice } from "@/components/legal/legal-notice"
 import { getCountryByDial } from "@/lib/data/countries"
 import { splitPhoneValue } from "@/lib/phone"
-import { TrackLink } from "@/components/analytics/track-link"
-import {
-  getFlightSupportWhatsAppUrl,
-  type FlightTripContext,
-} from "@/lib/api/flights"
 import {
   buildBookingTravellersPayload,
   createTravellerFormSchema,
@@ -62,10 +56,6 @@ export interface TravellerDetailsFormProps {
   /** Primary action copy. Defaults to the traveller-details wording. */
   submitLabel?: string
   submittingLabel?: string
-  /** Optional trust/disclosure line rendered inside the sticky action bar. */
-  stickyNotice?: React.ReactNode
-  /** Trip context (route, dates, party) for the support hatch. */
-  trip?: FlightTripContext
 }
 
 const GENDER_OPTIONS = [
@@ -175,8 +165,6 @@ export function TravellerDetailsForm({
   initialValues,
   submitLabel = "Save traveller details",
   submittingLabel = "Saving details…",
-  stickyNotice,
-  trip,
 }: TravellerDetailsFormProps) {
   // Factory schema memoized on primitives so resolver identity stays stable.
   const schema = React.useMemo(
@@ -354,7 +342,6 @@ export function TravellerDetailsForm({
                     }}
                     onBlur={phoneField.onBlur}
                     placeholder="803 123 4567"
-                    helperText="Pick your country code, then type your number."
                     error={getTravellerFieldError(errors, index, "phone")}
                   />
                 </>
@@ -484,7 +471,6 @@ export function TravellerDetailsForm({
                   onChange={customerPhoneField.onChange}
                   onBlur={customerPhoneField.onBlur}
                   placeholder="803 123 4567"
-                  helperText="Pick your country code, then type your number."
                   error={
                     typeof customerErrors?.phone?.message === "string"
                       ? customerErrors.phone.message
@@ -507,34 +493,10 @@ export function TravellerDetailsForm({
           disabled={!!isSubmitting}
           className="w-full justify-center"
         >
-          <HugeiconsIcon icon={LockIcon} size={16} aria-hidden="true" />
           <span>{isSubmitting ? submittingLabel : submitLabel}</span>
         </Button>
-        {stickyNotice ? (
-          <div className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
-            {stickyNotice}
-          </div>
-        ) : null}
         <LegalNotice className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground" />
       </div>
-
-      <p className="text-center text-xs leading-relaxed text-muted-foreground">
-        No account needed. Details are validated before payment —{" "}
-        <TrackLink
-          event="support_click"
-          eventProps={{
-            context: "entering traveller details",
-            channel: "whatsapp",
-          }}
-          href={getFlightSupportWhatsAppUrl("entering traveller details", trip)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-semibold text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
-        >
-          Talk to Alphaa
-        </TrackLink>{" "}
-        if anything is unclear.
-      </p>
     </form>
   )
 }

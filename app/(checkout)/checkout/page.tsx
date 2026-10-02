@@ -1,5 +1,4 @@
 import * as React from "react"
-import Link from "next/link"
 import {
   CheckoutClient,
   CheckoutSkeleton,
@@ -61,23 +60,10 @@ export default async function CheckoutPage({
         <h1 className="text-3xl font-extrabold tracking-tight text-balance text-foreground sm:text-4xl">
           Secure Guest Booking Checkout
         </h1>
-        <p className="min-w-0 text-sm leading-relaxed break-words text-muted-foreground">
-          Complete your reservation without creating an account. Your payment
-          stays protected by 256-bit encryption, and our Abuja specialists
-          remain one call away if you need assistance…
-        </p>
         <p className="text-xs text-muted-foreground">
           Complete your booking details below — your reference is issued once
           payment is confirmed.
         </p>
-        <div className="pt-2">
-          <Link
-            href="/"
-            className="text-xs font-semibold text-muted-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            Return to homepage
-          </Link>
-        </div>
       </div>
       <div className="mt-8">
         <React.Suspense fallback={<CheckoutSkeleton />}>
