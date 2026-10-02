@@ -102,6 +102,33 @@ test("No source file repeats the brand inside a title", () => {
   )
 })
 
+test("Every page that declares openGraph ships its own OG image", () => {
+  // Next merges metadata KEYS, not objects: a page-level `openGraph` replaces
+  // the layout's outright, so `og:image` is NOT inherited from `app/`. A page
+  // that declares `openGraph` without an `opengraph-image` file in its own
+  // segment silently ships no share card — which is exactly how the homepage,
+  // /faq, /contact, /privacy and /terms lost theirs.
+  const missing: string[] = []
+  for (const page of walk(path.resolve(process.cwd(), "app"))) {
+    if (!page.endsWith("page.tsx")) continue
+    const dir = path.dirname(page)
+    const relative = path.relative(process.cwd(), page)
+    if (!/\bopenGraph\s*:/.test(fs.readFileSync(page, "utf-8"))) continue
+    const hasCard = [
+      "opengraph-image.tsx",
+      "opengraph-image.ts",
+      "opengraph-image.png",
+      "opengraph-image.jpg",
+    ].some((file) => fs.existsSync(path.join(dir, file)))
+    if (!hasCard) missing.push(relative)
+  }
+  assert.deepEqual(
+    missing,
+    [],
+    `these pages replace the layout's openGraph and would ship no og:image: ${missing.join(", ")}`
+  )
+})
+
 test("OG cards do not reuse SERP descriptions as card copy", () => {
   // A share card is read in a feed in under a second: it has room for one
   // human line. Meta descriptions are keyword-loaded and get truncated
