@@ -162,7 +162,7 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
                         <span className="pr-4 text-sm font-semibold tracking-tight text-foreground sm:text-base">
                           {faq.question}
                         </span>
-                        <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/80 text-muted-foreground transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-data-[panel-open]:rotate-180 group-data-[panel-open]:border-foreground/20 group-data-[panel-open]:bg-muted group-data-[panel-open]:text-foreground">
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/80 text-muted-foreground transition-all duration-300 ease-brand group-data-[panel-open]:rotate-180 group-data-[panel-open]:border-foreground/20 group-data-[panel-open]:bg-muted group-data-[panel-open]:text-foreground">
                           <HugeiconsIcon
                             icon={ArrowDown01Icon}
                             size={14}
@@ -175,7 +175,7 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
                     {/* Opacity-only reveal: animating height here re-ran
                         layout every frame for the whole document below the
                         panel, while opacity composites on the GPU. */}
-                    <Accordion.Panel className="overflow-hidden transition-opacity duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
+                    <Accordion.Panel className="overflow-hidden transition-opacity duration-300 ease-brand data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
                       <div className="flex flex-col gap-3 px-5 pb-5 sm:px-6 sm:pb-6">
                         <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm sm:leading-relaxed">
                           {faq.answer}

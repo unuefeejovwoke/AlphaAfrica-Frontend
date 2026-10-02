@@ -120,11 +120,11 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/20" />
 
         <div className="relative mx-auto flex w-full max-w-7xl flex-col items-start gap-5 px-4 pt-20 pb-36 text-left sm:gap-6 sm:px-6 sm:pt-28 sm:pb-44 md:pt-32 md:pb-48 lg:px-8 lg:pt-36">
-          <div className="flex max-w-3xl flex-col gap-3">
+          <div className="flex max-w-3xl animate-rise flex-col gap-3">
             <h1 className="text-3xl leading-[1.15] font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
               Travel Beyond <span className="text-primary">Borders</span>
             </h1>
-            <p className="max-w-2xl text-base leading-relaxed text-white/90 sm:text-lg">
+            <p className="max-w-2xl animate-rise [--rise-delay:110ms] text-base leading-relaxed text-white/90 sm:text-lg">
               Get the best flight deals, handpicked hotels, and curated holidays
               with transparent pricing and 24/7 human support every step of the
               way.
@@ -132,7 +132,7 @@ export default function HomePage() {
           </div>
 
           {/* Trust strip — claims published on alphaaafrica.com */}
-          <div className="inline-flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-white/80 sm:gap-x-4 sm:text-sm">
+          <div className="inline-flex animate-rise [--rise-delay:220ms] flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-white/80 sm:gap-x-4 sm:text-sm">
             {trustBadges.map((badge, index) => (
               <React.Fragment key={badge.id}>
                 {index > 0 && (
@@ -188,7 +188,7 @@ export default function HomePage() {
         {/* Asymmetrical Bento Grid */}
         <div className="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-12">
           {/* 1. Everything in one place */}
-          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
+          <div className="group reveal relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
             <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
@@ -213,7 +213,7 @@ export default function HomePage() {
           </div>
 
           {/* 2. Book in minutes */}
-          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
+          <div className="group reveal relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
             <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
@@ -238,7 +238,7 @@ export default function HomePage() {
           </div>
 
           {/* 3. Clear prices */}
-          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
+          <div className="group reveal relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
             <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
@@ -264,14 +264,14 @@ export default function HomePage() {
           </div>
 
           {/* 4. Editorial: custom planning */}
-          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-7 lg:col-span-8">
+          <div className="group reveal relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-7 lg:col-span-8">
             <div className="relative flex min-h-[360px] flex-1 flex-col justify-between overflow-hidden rounded-[calc(1.5rem-2px)] border border-white/20 p-6 text-white shadow-xl sm:min-h-[400px] sm:p-8">
               <Image
                 src={HOME_BENTO}
                 alt="A couple walking along the waterline of a white sand tropical beach"
                 fill
                 sizes="(max-width: 768px) 100vw, 66vw"
-                className="object-cover object-center transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105"
+                className="object-cover object-center transition-transform duration-700 ease-brand group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/20" />
 
@@ -315,7 +315,7 @@ export default function HomePage() {
           </div>
 
           {/* 5. Human support — fills the column beside the editorial card */}
-          <div className="group relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-5 lg:col-span-4">
+          <div className="group reveal relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-5 lg:col-span-4">
             <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">

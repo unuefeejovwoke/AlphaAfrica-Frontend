@@ -75,7 +75,7 @@ export function HotelGallery({
                 <span className="text-xs font-semibold text-white tabular-nums">
                   {safeIndex + 1} of {images.length}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/40 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-md transition-transform duration-300 ease-brand group-hover:scale-105">
                   <HugeiconsIcon
                     icon={Maximize01Icon}
                     size={13}
@@ -99,7 +99,7 @@ export function HotelGallery({
                   aria-pressed={index === safeIndex}
                   aria-label={`Show photo ${index + 1} of ${images.length}: ${image.alt}`}
                   className={cn(
-                    "relative aspect-[4/3] min-h-11 touch-manipulation overflow-hidden rounded-lg bg-muted transition-[opacity,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                    "relative aspect-[4/3] min-h-11 touch-manipulation overflow-hidden rounded-lg bg-muted transition-[opacity,box-shadow] duration-300 ease-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                     index === safeIndex
                       ? "opacity-100 ring-2 ring-primary ring-offset-1 ring-offset-background"
                       : "opacity-60 hover:opacity-100"

@@ -58,6 +58,58 @@
   --color-emerald-600: #047857;
 }
 
+/* ------------------------------------------------------------------ motion ---
+   Brand concept, "departure → arrival": things rise into view and settle, on
+   one easing and one distance. Transform + opacity only, so no frame here can
+   trigger layout.
+
+   ponytail: `--ease-brand` names the curve that 20 components had already
+   inlined as cubic-bezier(0.32,0.72,0,1) — the token is a rename, not a
+   redesign, and `tests/motion.test.ts` keeps it from being re-inlined. */
+@theme {
+  --ease-brand: cubic-bezier(0.32, 0.72, 0, 1);
+  /* The delay lives inside the shorthand, not in a companion `delay-*` class:
+     Tailwind's `delay-*` sets `transition-delay`, which an animation ignores,
+     so a separate delay utility would silently do nothing. Set the offset
+     per element with `[--rise-delay:120ms]`; the `0ms` default covers the
+     unstaggered case. */
+  --animate-rise: brand-rise 520ms var(--ease-brand) var(--rise-delay, 0ms) both;
+}
+
+/* Declared outside @theme so Tailwind always emits them: `brand-reveal` is
+   referenced by the `.reveal` utility below, not by an --animate-* token. */
+@keyframes brand-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes brand-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+/* Scroll-linked entrance. The timeline is per-element, so a grid of cards
+   staggers itself as each one enters — no delay bookkeeping, no observer, no
+   JavaScript.
+
+   ponytail: gated on @supports because Firefox stable still ships
+   scroll-driven animations behind layout.css.scroll-driven-animations.enabled
+   (an Interop 2026 priority). Ungated, every revealed element would freeze at
+   opacity 0 on Firefox — content invisible, which is far worse than no
+   animation. Static is Firefox's correct resting state, so drop the @supports
+   once Firefox ships it and every Firefox visitor gets the motion for free. */
+@utility reveal {
+  @supports (animation-timeline: view()) {
+    animation: brand-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 45%;
+  }
+}
+
 :root {
   color-scheme: light;
   --background: #faf9f7;
@@ -181,6 +233,12 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* A scroll-driven animation is driven by scroll position, not elapsed time,
+     so collapsing animation-duration above does not slow it down — it keeps
+     moving. Kill it outright. */
+  .reveal {
+    animation: none !important;
+  }
 }
 
 @media print {
@@ -207,5 +265,12 @@
   main {
     padding: 0 !important;
     margin: 0 !important;
+  }
+
+  /* Cards below the fold sit at the reveal's `from` state (opacity 0) because
+     they have not scrolled into view, and printing never scrolls. Without
+     this the printed page comes out with blank cards. */
+  .reveal {
+    animation: none !important;
   }
 }

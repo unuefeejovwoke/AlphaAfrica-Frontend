@@ -78,7 +78,7 @@ export function AssistedSupportWidget() {
           type="button"
           onClick={() => setIsOpen(true)}
           className={cn(
-            "group flex touch-manipulation items-center rounded-full border border-foreground/20 bg-background/90 text-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/35 hover:bg-background hover:shadow-[0_12px_36px_rgba(0,0,0,0.18)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]",
+            "group flex touch-manipulation items-center rounded-full border border-foreground/20 bg-background/90 text-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 ease-brand hover:border-foreground/35 hover:bg-background hover:shadow-[0_12px_36px_rgba(0,0,0,0.18)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]",
             labelAllowed ? "py-1.5 pr-1.5 pl-4" : "p-1.5"
           )}
           aria-expanded={isOpen}
@@ -87,7 +87,7 @@ export function AssistedSupportWidget() {
         >
           <div
             className={cn(
-              "flex overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+              "flex overflow-hidden transition-all duration-500 ease-brand",
               labelAllowed ? "max-w-[260px] opacity-100" : "max-w-0 opacity-0"
             )}
             aria-hidden={!labelAllowed}

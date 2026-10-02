@@ -104,7 +104,7 @@ export function HotelRoomChoice({
             <label
               key={room.id}
               className={cn(
-                "group flex cursor-pointer touch-manipulation items-center gap-3.5 rounded-2xl border-2 bg-card p-2.5 text-left transition-[border-color,background-color,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:gap-4 sm:p-3",
+                "group flex cursor-pointer touch-manipulation items-center gap-3.5 rounded-2xl border-2 bg-card p-2.5 text-left transition-[border-color,background-color,box-shadow] duration-300 ease-brand focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:gap-4 sm:p-3",
                 selected
                   ? "border-primary bg-primary/[0.04] shadow-[0_2px_16px_-6px_rgba(255,103,56,0.35)]"
                   : "border-border/80 hover:border-foreground/25 hover:shadow-xs"

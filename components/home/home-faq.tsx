@@ -114,7 +114,7 @@ export function HomeFaq() {
               <Accordion.Item
                 key={item.id}
                 value={item.id}
-                className="group relative flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1 shadow-xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-foreground/20 hover:shadow-md data-[panel-open]:border-primary/40 data-[panel-open]:bg-primary/[0.03] data-[panel-open]:shadow-md sm:p-1.5"
+                className="group reveal relative flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md data-[panel-open]:border-primary/40 data-[panel-open]:bg-primary/[0.03] data-[panel-open]:shadow-md sm:p-1.5"
               >
                 <div className="flex flex-1 flex-col overflow-hidden rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]">
                   <Accordion.Header className="m-0 p-0">
@@ -127,7 +127,7 @@ export function HomeFaq() {
                           {item.question}
                         </span>
                       </div>
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/80 text-muted-foreground transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-data-[panel-open]:rotate-180 group-data-[panel-open]:border-primary/30 group-data-[panel-open]:bg-primary/10 group-data-[panel-open]:text-primary">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/80 text-muted-foreground transition-all duration-300 ease-brand group-data-[panel-open]:rotate-180 group-data-[panel-open]:border-primary/30 group-data-[panel-open]:bg-primary/10 group-data-[panel-open]:text-primary">
                         <HugeiconsIcon
                           icon={ArrowDown01Icon}
                           size={15}
@@ -139,7 +139,7 @@ export function HomeFaq() {
 
                   {/* Opacity-only reveal: animating height re-ran layout every
                       frame; opacity composites on the GPU. */}
-                  <Accordion.Panel className="overflow-hidden transition-opacity duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
+                  <Accordion.Panel className="overflow-hidden transition-opacity duration-300 ease-brand data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
                     <div className="px-5 pt-1 pb-5 sm:px-6 sm:pb-6">
                       <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
                         {item.answer}

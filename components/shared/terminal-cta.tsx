@@ -33,7 +33,7 @@ export function TerminalCta({
     <section
       aria-labelledby="terminal-cta-heading"
       className={cn(
-        "group relative w-full overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.25)]",
+        "group reveal relative w-full overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.25)]",
         className
       )}
     >

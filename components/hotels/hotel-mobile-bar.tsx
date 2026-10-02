@@ -72,7 +72,7 @@ export function HotelMobileBar({
       aria-label="Quick booking bar"
       aria-hidden={!visible}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 px-4 py-3 shadow-[0_-4px_20px_rgba(23,18,23,0.06)] backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] lg:hidden",
+        "fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 px-4 py-3 shadow-[0_-4px_20px_rgba(23,18,23,0.06)] backdrop-blur-md transition-transform duration-300 ease-brand lg:hidden",
         "motion-reduce:transition-none",
         visible ? "translate-y-0" : "pointer-events-none translate-y-full"
       )}
