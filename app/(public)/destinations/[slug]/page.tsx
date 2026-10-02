@@ -91,12 +91,6 @@ export async function generateMetadata({
         description,
         url,
         type: "website",
-        images: [
-          {
-            url: resolveListingImageUrl(destination.main_image),
-            alt: `${destination.name}, ${destination.country}`,
-          },
-        ],
       },
     }
   } catch {

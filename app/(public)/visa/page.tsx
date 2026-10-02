@@ -33,12 +33,6 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: "Alphaa Africa",
       locale: "en_NG",
       type: "website",
-      images: [
-        {
-          url: `${getSiteUrl()}/android-chrome-512x512.png`,
-          alt: "Alphaa Africa — visa assistance",
-        },
-      ],
     },
   }
 }

@@ -77,12 +77,6 @@ export async function generateMetadata({
         siteName: "Alphaa Africa",
         locale: "en_NG",
         type: "website",
-        images: [
-          {
-            url: display.imageSrc,
-            alt: display.imageAlt,
-          },
-        ],
       },
     }
   } catch {

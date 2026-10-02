@@ -27,6 +27,7 @@ import { getWhatsAppUrl } from "@/lib/content/company"
 import { notifyEnquirySent } from "@/lib/toast"
 import { track } from "@/lib/analytics"
 import { TrackLink } from "@/components/analytics/track-link"
+import { LegalNotice } from "@/components/legal/legal-notice"
 import { toast } from "sonner"
 
 const ENQUIRY_FIELD_NAMES = [
@@ -529,6 +530,8 @@ export function PackageEnquiryForm({
             {isSubmitting ? "Submitting request…" : "Send Booking Request"}
           </Button>
         </div>
+
+        <LegalNotice />
       </form>
     </div>
   )

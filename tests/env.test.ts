@@ -132,7 +132,7 @@ test("apiBaseUrl honors NEXT_PUBLIC first, then server-only, then default", () =
 
 test("siteUrl honors NEXT_PUBLIC first, then server-only, then default", () => {
   withEnv({}, () => {
-    assert.equal(siteUrl(), "https://www.alphaaafrica.com")
+    assert.equal(siteUrl(), "https://alphaaafrica.com")
   })
   withEnv({ SITE_URL: "http://localhost:3000/" }, () => {
     assert.equal(siteUrl(), "http://localhost:3000")

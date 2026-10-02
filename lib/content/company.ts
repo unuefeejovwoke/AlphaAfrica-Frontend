@@ -18,6 +18,8 @@ export interface CompanyInfo {
   brandName: string
   positioning: string
   promise: string
+  /** Site brand mark in `public/` — single source for nav, footer, JSON-LD. */
+  logo: string
   office: {
     label: string
     address: string
@@ -53,12 +55,12 @@ export interface CompanyInfo {
 }
 
 export const company: CompanyInfo = {
-  // WhatsApp, socials, phone, and office are owner-verified values; email is
-  // still a placeholder awaiting sign-off.
+  // Owner-verified Oct 2026: phone/WhatsApp/office plus email + socials below.
   source: "draft",
-  updatedAt: "2026-10-01",
+  updatedAt: "2026-10-02",
   legalName: "Alphaa Africa Limited",
   brandName: "Alphaa Africa",
+  logo: "/logo.webp",
   positioning:
     "A trusted travel partner that combines modern self-service booking with real human assistance.",
   promise: "Make travel easier, clearer, and less stressful.",
@@ -85,13 +87,12 @@ export const company: CompanyInfo = {
         "Hello Alphaa.Africa,\nI'd like to book: 1. Flight 2. Hotel 3. Visa Assistance 4. Airport Transfer",
     },
   },
-  // Draft placeholder: production publishes no email address (WhatsApp only).
-  email: "support@alphaaafrica.com",
+  // Owner-confirmed inbox (Oct 2026).
+  email: "info@alphaaafrica.com",
   socials: {
-    instagram:
-      "https://www.instagram.com/alphaa_africatravelandtours?igsh=dnNqY2wwbWc0b21l",
-    facebook: "https://www.facebook.com/share/1Hba4rkBpC/",
-    tiktok: "https://vm.tiktok.com/ZS9MgLjPaqucr-eZPfO/",
+    instagram: "https://www.instagram.com/alphaa_africatravelandtours",
+    facebook: "https://web.facebook.com/alphaaafrica/",
+    tiktok: "https://www.tiktok.com/@alphaaafrica",
   },
   seo: {
     title:

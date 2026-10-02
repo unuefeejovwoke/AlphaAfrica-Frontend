@@ -25,6 +25,7 @@ import { Select } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { PhoneField } from "@/components/ui/phone-field"
 import { CountrySelect } from "@/components/ui/country-select"
+import { LegalNotice } from "@/components/legal/legal-notice"
 import { getCountryByDial } from "@/lib/data/countries"
 import { splitPhoneValue } from "@/lib/phone"
 import { TrackLink } from "@/components/analytics/track-link"
@@ -514,6 +515,7 @@ export function TravellerDetailsForm({
             {stickyNotice}
           </div>
         ) : null}
+        <LegalNotice className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground" />
       </div>
 
       <p className="text-center text-xs leading-relaxed text-muted-foreground">

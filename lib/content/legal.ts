@@ -163,7 +163,7 @@ export const privacyPolicy: LegalDocument = {
       title: "11. Your rights and how to exercise them (NDPA sections 34–38)",
       paragraphs: [
         "As a data subject you have the right to be informed; to access your data and obtain a copy; to rectify inaccurate or incomplete data; to erase data where it is no longer necessary or consent is withdrawn (subject to legal retention duties); to restrict processing while a dispute is resolved; to receive your data in a structured, commonly used, machine-readable format and to port it; to object to processing including direct marketing and to withdraw consent at any time; not to be subject to a decision based solely on automated processing, including profiling, that produces legal or similarly significant effects; and to lodge a complaint with the Nigeria Data Protection Commission or seek redress in court.",
-        "To exercise any of these rights, email support@alphaaafrica.com with the subject “Data Rights Request”, telling us your name, the email or phone number used on the platform, and the right you wish to exercise. We will verify your identity proportionately, respond without undue delay and in any event within the statutory timeframe, and we will never charge you or penalise you for exercising your rights.",
+        "To exercise any of these rights, email info@alphaaafrica.com with the subject “Data Rights Request”, telling us your name, the email or phone number used on the platform, and the right you wish to exercise. We will verify your identity proportionately, respond without undue delay and in any event within the statutory timeframe, and we will never charge you or penalise you for exercising your rights.",
       ],
     },
     {

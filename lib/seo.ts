@@ -1,6 +1,7 @@
 import { company } from "./content/company.ts"
 import type { FaqGroup } from "./content/faqs.ts"
 import { siteUrl } from "./env.ts"
+import { apiGet } from "./api/client.ts"
 
 /**
  * Shared SEO helpers (Phase 2, PRD §18; Phase 3 ticket 10 flights).
@@ -340,5 +341,122 @@ export function carTravelActionJsonLd(): TravelActionJsonLd {
       name: CARS_LANDING_TITLE,
       url,
     },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Marketer-managed SEO config (API guide §11; `GET /api/seo/config/`).
+// The backend owns verification tags, default meta, and the homepage schema;
+// the frontend renders them once, with local fallbacks so a slow or empty
+// backend response can never blank the homepage `<head>`.
+// ---------------------------------------------------------------------------
+
+/** Last-known Google verification token — backend `seo/config` is the source. */
+export const FALLBACK_GOOGLE_VERIFICATION = "LZmxhBWlqXkwVk40quva-TJ2SSe67vCEgFgbnEi4AUg"
+
+export interface SeoConfig {
+  googleVerification: string
+  defaultTitle: string
+  defaultDescription: string
+  homepageSchema: Record<string, unknown> | null
+}
+
+/**
+ * Extract the bare token from the backend value. The API currently returns it
+ * wrapped as `content="<token>" />` — a naive render would nest that inside
+ * the meta `content` attribute and break verification. Falls back to the
+ * last-known token, never to an empty string.
+ */
+export function extractVerificationToken(raw: unknown): string {
+  if (typeof raw === "string") {
+    const match = raw.match(/[A-Za-z0-9_-]{16,}/)
+    if (match) return match[0]
+  }
+  return FALLBACK_GOOGLE_VERIFICATION
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+  return null
+}
+
+function asNonEmptyString(value: unknown): string | null {
+  if (typeof value === "string" && value.trim().length > 0) return value.trim()
+  return null
+}
+
+/**
+ * Sanitize the backend homepage schema for rendering. Keeps backend-owned
+ * facts (geo, opening hours, offers) verbatim; overrides identity fields
+ * with the frontend single source (`company.ts`: footer address, canonical
+ * email/socials, webp logo) so the graph can never contradict the page.
+ */
+export function sanitizeHomepageSchema(
+  raw: unknown
+): Record<string, unknown> | null {
+  const schema = asRecord(raw)
+  if (schema === null) return null
+  const site = getSiteUrl()
+  const address =
+    asRecord(schema["address"]) ?? ({} as Record<string, unknown>)
+  return {
+    ...schema,
+    "@id": `${site}/`,
+    url: site,
+    logo: `${site}${company.logo}`,
+    email: company.email,
+    telephone: company.phone.e164,
+    address: {
+      ...address,
+      "@type": "PostalAddress",
+      streetAddress: company.office.address,
+      addressLocality: "Abuja",
+      addressCountry: "NG",
+    },
+    sameAs: [
+      company.socials.instagram,
+      company.socials.facebook,
+      company.socials.tiktok,
+    ],
+  }
+}
+
+function fallbackSeoConfig(): SeoConfig {
+  return {
+    googleVerification: FALLBACK_GOOGLE_VERIFICATION,
+    defaultTitle: company.seo.title,
+    defaultDescription: company.seo.description,
+    homepageSchema: null,
+  }
+}
+
+/**
+ * Marketer-managed head data with local fallbacks. ISR-cached via the shared
+ * API client (`seo-config` tag) — a backend outage degrades to the fallbacks,
+ * never to a thrown error, so prerendering always succeeds.
+ */
+export async function getSeoConfig(): Promise<SeoConfig> {
+  const fallback = fallbackSeoConfig()
+  try {
+    const raw = await apiGet<unknown>("/api/seo/config/", {
+      tags: ["seo-config"],
+    })
+    const body = asRecord(raw)
+    if (body === null) return fallback
+    return {
+      googleVerification: extractVerificationToken(
+        body["google_site_verification"]
+      ),
+      defaultTitle:
+        asNonEmptyString(body["default_meta_title"]) ?? fallback.defaultTitle,
+      defaultDescription:
+        asNonEmptyString(body["default_meta_description"]) ??
+        fallback.defaultDescription,
+      homepageSchema: sanitizeHomepageSchema(body["homepage_schema"]),
+    }
+  } catch {
+    return fallback
   }
 }

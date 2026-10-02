@@ -26,12 +26,6 @@ export const metadata: Metadata = {
       "Holiday destinations with curated packages, starting prices, and human planning help.",
     url: canonicalUrl("/destinations"),
     type: "website",
-    images: [
-      {
-        url: `${getSiteUrl()}/android-chrome-512x512.png`,
-        alt: "Alphaa Africa — holiday destinations",
-      },
-    ],
   },
 }
 

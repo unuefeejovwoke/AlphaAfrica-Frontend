@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
+import { LegalNotice } from "@/components/legal/legal-notice"
 import {
   TRAVEL_PURPOSE_LABELS,
   submitVisaConsultation,
@@ -407,6 +408,7 @@ export function VisaConsultationForm({
             card details.
           </span>
         </p>
+        <LegalNotice />
       </form>
     </div>
   )

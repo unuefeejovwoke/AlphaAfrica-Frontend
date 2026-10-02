@@ -63,8 +63,6 @@ export async function generateMetadata({
           `A practical Alphaa Africa blog post: ${post.title}.`
     const canonical = post.seo?.canonical_url?.trim() || url
     const noindex = post.seo?.noindex === true
-    const ogImage =
-      post.seo?.og_image?.trim() || blogImageSrc(post.featured_image)
     return {
       metadataBase: new URL(getSiteUrl()),
       title,
@@ -78,12 +76,6 @@ export async function generateMetadata({
         description,
         url: canonical,
         type: "article",
-        images: [
-          {
-            url: ogImage,
-            alt: post.featured_image_alt?.trim() || post.title,
-          },
-        ],
       },
     }
   } catch {

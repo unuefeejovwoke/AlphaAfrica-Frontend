@@ -5,6 +5,8 @@ import "./globals.css"
 import { Toaster } from "@/components/ui/sonner"
 import { AnalyticsLoader } from "@/components/analytics/analytics-loader"
 import { ThemeProvider } from "@/components/shared/theme-provider"
+import { company } from "@/lib/content/company"
+import { getSeoConfig, getSiteUrl } from "@/lib/seo"
 import { cn } from "@/lib/utils"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
@@ -23,21 +25,40 @@ export const viewport: Viewport = {
   ],
 }
 
-export const metadata: Metadata = {
-  title: "Alphaa Africa | Travel & Assisted Service",
-  description:
-    "Abuja's premium assisted-service travel platform. Seamless bookings for flights, hotels, holiday packages, car rentals, and visa assistance with dedicated human support.",
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-    ],
-    apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
-    ],
-  },
-  manifest: "/site.webmanifest",
+/**
+ * Site-wide head defaults. Async only for the Google verification token
+ * (`seo/config`, ISR-cached with a last-known fallback) — every other field
+ * is static, and per-page `generateMetadata` still wins for title/description.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getSeoConfig()
+  return {
+    metadataBase: new URL(getSiteUrl()),
+    title: {
+      default: config.defaultTitle,
+      template: `%s | ${company.brandName}`,
+    },
+    description: config.defaultDescription,
+    verification: { google: config.googleVerification },
+    robots: { index: true, follow: true },
+    openGraph: {
+      siteName: company.brandName,
+      locale: "en_NG",
+      type: "website",
+    },
+    twitter: { card: "summary_large_image" },
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+        { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      ],
+      apple: [
+        { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      ],
+    },
+    manifest: "/site.webmanifest",
+  }
 }
 
 export default function RootLayout({

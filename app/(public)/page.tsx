@@ -27,8 +27,8 @@ import { stats } from "@/lib/content/stats"
 import { HERO, HOME_BENTO } from "@/lib/images"
 import {
   canonicalUrl,
+  getSeoConfig,
   getSiteUrl,
-  organizationJsonLd,
   websiteJsonLd,
 } from "@/lib/seo"
 import { serializeJsonLd } from "@/lib/structured-data"
@@ -36,14 +36,15 @@ import { serializeJsonLd } from "@/lib/structured-data"
 export const revalidate = 3600
 
 export async function generateMetadata(): Promise<Metadata> {
+  const config = await getSeoConfig()
   return {
     metadataBase: new URL(getSiteUrl()),
-    title: company.seo.title,
-    description: company.seo.description,
+    title: config.defaultTitle,
+    description: config.defaultDescription,
     alternates: { canonical: canonicalUrl("/") },
     openGraph: {
-      title: company.seo.title,
-      description: company.seo.description,
+      title: config.defaultTitle,
+      description: config.defaultDescription,
       url: canonicalUrl("/"),
       siteName: company.brandName,
       locale: "en_NG",
@@ -67,7 +68,11 @@ function FeaturedSkeletonGrid({ label }: { label: string }) {
   )
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Marketer-managed homepage schema (API guide §11), sanitized so identity
+  // fields match `company.ts`. Replaces the local organization graph — one
+  // TravelAgency graph per page, never two conflicting ones.
+  const { homepageSchema } = await getSeoConfig()
   // Published traveller figure — single source of truth lives in stats.ts.
   const travellerCount = stats.stats.find(
     (stat) => stat.id === "travellers"
@@ -95,12 +100,14 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-16 pb-20 sm:pb-28 md:gap-24">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: serializeJsonLd(organizationJsonLd()),
-        }}
-      />
+      {homepageSchema ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: serializeJsonLd(homepageSchema),
+          }}
+        />
+      ) : null}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteJsonLd()) }}

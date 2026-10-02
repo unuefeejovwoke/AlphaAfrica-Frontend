@@ -13,7 +13,7 @@
  */
 
 const FALLBACK_API_BASE_URL = "https://api.alphaaafrica.com"
-const FALLBACK_SITE_URL = "https://www.alphaaafrica.com"
+const FALLBACK_SITE_URL = "https://alphaaafrica.com"
 
 function readFirst(...values: Array<string | undefined>): string {
   for (const value of values) {

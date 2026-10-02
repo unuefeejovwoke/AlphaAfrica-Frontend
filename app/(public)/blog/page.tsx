@@ -17,7 +17,7 @@ import {
 import { canonicalUrl, getSiteUrl, robotsForSearchParams } from "@/lib/seo"
 import { serializeJsonLd } from "@/lib/structured-data"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
-import { CTA_BLOG_LISTING, OG_SHARE_CARD } from "@/lib/images"
+import { CTA_BLOG_LISTING } from "@/lib/images"
 
 export const revalidate = 3600
 
@@ -42,12 +42,6 @@ export async function generateMetadata({
       siteName: "Alphaa Africa",
       locale: "en_NG",
       type: "website",
-      images: [
-        {
-          url: `${getSiteUrl()}${OG_SHARE_CARD}`,
-          alt: "Alphaa Africa — travel guides and tips",
-        },
-      ],
     },
     robots: robotsForSearchParams(hasSearch),
   }

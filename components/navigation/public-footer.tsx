@@ -59,16 +59,19 @@ export function PublicFooter() {
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4 lg:gap-10">
           {/* Brand Column */}
           <div className="col-span-2 flex flex-col gap-4 md:col-span-1">
-            <Link href="/" className="group flex items-center gap-2.5">
+            <Link
+              href="/"
+              className="group flex w-fit items-center gap-2.5"
+            >
               <Image
-                src="/android-chrome-192x192.png"
+                src={company.logo}
                 alt="Alphaa Africa"
                 width={32}
                 height={32}
                 className="size-8 object-contain transition-transform duration-300 ease-out group-hover:scale-105"
               />
               <span className="text-lg leading-none font-bold tracking-tight">
-                <span className="text-secondary dark:text-[#e3b3ec]">
+                <span className="text-secondary dark:text-foreground/75">
                   Alphaa
                 </span>{" "}
                 <span className="font-medium text-primary">Africa</span>

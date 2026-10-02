@@ -50,12 +50,6 @@ export async function generateMetadata({
       siteName: "Alphaa Africa",
       locale: "en_NG",
       type: "website",
-      images: [
-        {
-          url: `${getSiteUrl()}/android-chrome-512x512.png`,
-          alt: "Alphaa Africa — rent cars by the hour",
-        },
-      ],
     },
     robots: robotsForSearchParams(hasSearch),
   }

@@ -17,6 +17,7 @@ import {
 import { ButtonLink } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { UnderConstructionBadge } from "@/components/shared/under-construction-badge"
+import { company } from "@/lib/content/company"
 import { SERVICE_IMAGES } from "@/lib/images"
 import { cn } from "@/lib/utils"
 
@@ -218,7 +219,7 @@ export function PublicNav() {
           className="group flex items-center gap-2.5 lg:absolute lg:left-1/2 lg:-translate-x-1/2"
         >
           <Image
-            src="/android-chrome-192x192.png"
+            src={company.logo}
             alt="Alphaa Africa"
             width={32}
             height={32}
@@ -226,7 +227,7 @@ export function PublicNav() {
             priority
           />
           <span className="text-lg leading-none font-bold tracking-tight">
-            <span className="text-secondary dark:text-[#e3b3ec]">
+            <span className="text-secondary dark:text-foreground/75">
               Alphaa
             </span>{" "}
             <span className="font-medium text-primary">Africa</span>

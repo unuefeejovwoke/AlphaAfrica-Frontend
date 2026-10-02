@@ -181,9 +181,6 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
                           {faq.answer}
                         </p>
                         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-2.5 text-[11px] text-muted-foreground/75">
-                          <span>
-                            Status: draft — verified with operations team.
-                          </span>
                           <TrackLink
                             event="support_click"
                             eventProps={{

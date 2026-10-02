@@ -85,12 +85,6 @@ export async function generateMetadata({
         siteName: "Alphaa Africa",
         locale: "en_NG",
         type: "website",
-        images: [
-          {
-            url: resolveListingImageUrl(country.flag_image),
-            alt: `Flag of ${country.name} — visa consultation`,
-          },
-        ],
       },
     }
   } catch {

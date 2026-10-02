@@ -15,6 +15,7 @@ import {
 import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PhoneField } from "@/components/ui/phone-field"
+import { LegalNotice } from "@/components/legal/legal-notice"
 import { track } from "@/lib/analytics"
 import {
   ApiError,
@@ -314,6 +315,8 @@ export function GuestBookingForm(props: GuestBookingFormProps) {
       <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
         Secured by Paystack. Card details are entered on Paystack — never here.
       </p>
+
+      <LegalNotice />
     </form>
   )
 }

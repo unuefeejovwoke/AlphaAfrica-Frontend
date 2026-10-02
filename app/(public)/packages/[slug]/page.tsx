@@ -24,11 +24,7 @@ import { ApiError } from "@/lib/api/client"
 import { formatNaira } from "@/lib/format"
 import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 import { serializeJsonLd } from "@/lib/structured-data"
-import {
-  humanizeSlug,
-  packageDetailJsonLd,
-  resolveListingImageUrl,
-} from "@/lib/listings"
+import { humanizeSlug, packageDetailJsonLd } from "@/lib/listings"
 
 export const revalidate = 3600
 export const dynamicParams = true
@@ -67,12 +63,6 @@ export async function generateMetadata({
         description,
         url,
         type: "website",
-        images: [
-          {
-            url: resolveListingImageUrl(pkg.main_image),
-            alt: `${pkg.title} — ${pkg.destination_name}`,
-          },
-        ],
       },
     }
   } catch {

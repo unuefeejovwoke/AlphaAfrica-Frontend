@@ -16,7 +16,7 @@ import {
   sortFeaturedFirst,
 } from "@/lib/listings"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
-import { CTA_PACKAGES_PAGE, OG_SHARE_CARD } from "@/lib/images"
+import { CTA_PACKAGES_PAGE } from "@/lib/images"
 
 export const revalidate = 3600
 
@@ -32,12 +32,6 @@ export const metadata: Metadata = {
       "Curated itineraries with clear durations, inclusions, and from-prices. Enquire without paying.",
     url: canonicalUrl("/packages"),
     type: "website",
-    images: [
-      {
-        url: `${getSiteUrl()}${OG_SHARE_CARD}`,
-        alt: "Alphaa Africa — curated holiday packages",
-      },
-    ],
   },
 }
 

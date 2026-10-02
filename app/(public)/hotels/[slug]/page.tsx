@@ -90,16 +90,6 @@ export async function generateMetadata({
         siteName: "Alphaa Africa",
         locale: "en_NG",
         type: "website",
-        images: [
-          {
-            url:
-              display.gallery[0]?.src ??
-              `${getSiteUrl()}/android-chrome-512x512.png`,
-            alt:
-              display.gallery[0]?.alt ??
-              `${hotel.name} in ${display.placeLabel}`,
-          },
-        ],
       },
     }
   } catch {
