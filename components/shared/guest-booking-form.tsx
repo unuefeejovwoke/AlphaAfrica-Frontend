@@ -248,7 +248,6 @@ export function GuestBookingForm(props: GuestBookingFormProps) {
             onChange={field.onChange}
             onBlur={field.onBlur}
             placeholder="803 123 4567"
-            helperText={copy.phoneHelperText}
             error={form.formState.errors.guest_phone?.message}
           />
         )}
@@ -311,10 +310,6 @@ export function GuestBookingForm(props: GuestBookingFormProps) {
           <span>Talk to Alphaa</span>
         </ButtonLink>
       </div>
-
-      <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-        Secured by Paystack. Card details are entered on Paystack — never here.
-      </p>
 
       <LegalNotice />
     </form>

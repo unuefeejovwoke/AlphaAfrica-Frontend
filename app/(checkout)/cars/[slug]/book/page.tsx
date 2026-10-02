@@ -248,9 +248,6 @@ export default async function CarBookPage({
               </dd>
             </div>
           </dl>
-          <p className="border-t border-border/60 pt-3 text-[11px] leading-relaxed text-muted-foreground">
-            Estimate only — the exact backend total is confirmed before you pay.
-          </p>
         </div>
       </aside>
     </div>

@@ -5,7 +5,6 @@ import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Message01Icon,
   AlertCircleIcon,
   PlusSignIcon,
   MinusSignIcon,
@@ -156,17 +155,19 @@ export function VisaConsultationForm({
 
   return (
     <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-3xl border border-border/80 bg-card p-6 shadow-sm sm:p-10">
-      <div className="mb-6 flex flex-col gap-1 sm:mb-8">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+      <div className="mb-6 flex flex-col gap-3 sm:mb-8">
+        <h2 className="text-2xl font-bold tracking-tight text-balance text-foreground sm:text-3xl">
           Start your consultation
         </h2>
-        <p className="text-sm text-muted-foreground">
-          Consultation fee{" "}
-          <span className="font-semibold text-foreground">
+        <div className="flex w-fit items-center gap-2.5 rounded-full border border-border/80 bg-muted/50 py-1.5 pr-4 pl-3">
+          <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Consultation fee
+          </span>
+          <span aria-hidden="true" className="h-3.5 w-px bg-border" />
+          <span className="text-sm font-bold text-foreground">
             {formatNaira(consultationFee)}
-          </span>{" "}
-          · pay securely via Paystack, then a specialist takes it from there.
-        </p>
+          </span>
+        </div>
       </div>
 
       {submitError && (
@@ -252,7 +253,6 @@ export function VisaConsultationForm({
             inputMode="tel"
             spellCheck={false}
             placeholder="0803 123 4567"
-            helperText="Nigerian or international formats accepted."
             error={errors.phone?.message}
             {...register("phone")}
           />
@@ -275,7 +275,6 @@ export function VisaConsultationForm({
               value={field.value}
               onValueChange={field.onChange}
               error={fieldState.error?.message}
-              helperText="Choose the reason for this trip."
             />
           )}
         />
@@ -302,14 +301,9 @@ export function VisaConsultationForm({
                   aria-labelledby="visa-applicants-label"
                   className="flex touch-manipulation items-center justify-between rounded-xl border border-input bg-card p-2.5 px-3.5 shadow-2xs"
                 >
-                  <div className="flex flex-col">
-                    <span className="text-xs font-semibold text-foreground">
-                      Travellers
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      Up to {MAX_APPLICANTS} per consultation
-                    </span>
-                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Up to {MAX_APPLICANTS} per consultation
+                  </span>
                   <div className="flex items-center gap-2.5">
                     <button
                       type="button"
@@ -361,17 +355,12 @@ export function VisaConsultationForm({
 
         {/* Row 4: Special requests */}
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="visa-consultation-message"
-              className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
-            >
-              Notes or special requests (optional)
-            </label>
-            <span className="text-[10px] text-muted-foreground">
-              Custom preferences
-            </span>
-          </div>
+          <label
+            htmlFor="visa-consultation-message"
+            className="block text-xs font-semibold tracking-wider text-foreground/80 uppercase"
+          >
+            Notes or special requests (optional)
+          </label>
           <Textarea
             id="visa-consultation-message"
             autoComplete="off"
@@ -380,9 +369,6 @@ export function VisaConsultationForm({
             className="min-h-[80px] text-sm"
             {...register("message")}
           />
-          <p className="text-xs text-muted-foreground">
-            Travel dates, party details, and worries help us reply faster.
-          </p>
         </div>
 
         {/* Submit Action */}
@@ -401,13 +387,6 @@ export function VisaConsultationForm({
                 : `Pay ${formatNaira(consultationFee)} & continue`}
           </Button>
         </div>
-        <p className="flex items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-muted-foreground">
-          <HugeiconsIcon icon={Message01Icon} size={12} aria-hidden="true" />
-          <span>
-            No account needed. Payment is handled by Paystack — we never see
-            card details.
-          </span>
-        </p>
         <LegalNotice />
       </form>
     </div>

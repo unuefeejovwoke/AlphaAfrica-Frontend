@@ -82,8 +82,6 @@ export interface GuestBookingCopy {
   ariaLabel: string
   heading: string
   intro: string
-  /** Phone helper text naming this booking's contact role. */
-  phoneHelperText: string
   /** Submit label while creation runs. */
   submitPendingLabel: string
   backLabel: string
@@ -148,8 +146,6 @@ const HOTEL_GUEST_COPY: GuestBookingCopy = {
   heading: "Who is staying?",
   intro:
     "One Hotel Guest per Hotel Booking — the contact and stay representative. No account needed.",
-  phoneHelperText:
-    "Pick your country code, then type your number — WhatsApp-ready.",
   submitPendingLabel: "Reserving your stay…",
   backLabel: "Back to Hotel",
   redirectBody:
@@ -215,8 +211,6 @@ const CAR_GUEST_COPY: GuestBookingCopy = {
   heading: "Who is hiring?",
   intro:
     "One contact per booking — the person the driver meets. No account needed.",
-  phoneHelperText:
-    "Pick your country code, then type your number — the driver meets this contact.",
   submitPendingLabel: "Reserving your car…",
   backLabel: "Back to vehicle",
   redirectBody:

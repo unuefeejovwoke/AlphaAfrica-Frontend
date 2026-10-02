@@ -209,9 +209,6 @@ export function CarHireCalculator({ vehicle }: { vehicle: VehicleDetail }) {
           {preview !== null ? formatNaira(String(preview)) : "—"}
         </dd>
       </dl>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Estimate only — the exact backend total is confirmed before you pay.
-      </p>
 
       {error ? (
         <p role="alert" className="text-xs font-medium text-destructive">

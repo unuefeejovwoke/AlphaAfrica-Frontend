@@ -1,4 +1,3 @@
-import { CARS_LANDING_DESCRIPTION } from "@/lib/seo"
 import { brandOgCard, OG_CONTENT_TYPE, OG_SIZE } from "@/lib/og-card"
 
 export const alt = "Rent a Car with Driver — Hourly Hire | Alphaa Africa"
@@ -9,6 +8,8 @@ export default function Image() {
   return brandOgCard({
     kicker: "Chauffeur & Car Hire",
     title: "Rent a Car with Driver",
-    subtitle: CARS_LANDING_DESCRIPTION,
+    // Share-card copy, not the SERP description: a card has room for one
+    // human line, and keyword stuffing reads as spam in a feed.
+    subtitle: "Executive sedans, SUVs and Coaster buses by the hour.",
   })
 }

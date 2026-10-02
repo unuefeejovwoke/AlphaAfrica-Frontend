@@ -5,14 +5,13 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Clock01Icon,
   Tick01Icon,
-  Message01Icon,
   ArrowRight01Icon,
   Passport01Icon,
   InformationCircleIcon,
 } from "@hugeicons/core-free-icons"
-import { ButtonLink, buttonVariants } from "@/components/ui/button"
 import { ErrorState } from "@/components/feedback/error-state"
 import { RetryButton } from "@/components/home/retry-button"
+import { TerminalCta } from "@/components/shared/terminal-cta"
 import { VisaConsultationForm } from "@/components/visa/visa-consultation-form"
 import {
   VisaShareButton,
@@ -20,7 +19,6 @@ import {
   StartConsultationButton,
 } from "@/components/visa/visa-detail-client"
 import { ViewTracker } from "@/components/analytics/view-tracker"
-import { TrackLink } from "@/components/analytics/track-link"
 import {
   getVisaCountries,
   getVisaCountryDetail,
@@ -42,7 +40,7 @@ import {
 import { serializeJsonLd } from "@/lib/structured-data"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { faqs } from "@/lib/content/faqs"
-import { cn } from "@/lib/utils"
+import { SERVICE_IMAGES } from "@/lib/images"
 
 export const revalidate = 3600
 export const dynamicParams = true
@@ -492,63 +490,16 @@ export default async function VisaCountryDetailPage({
       </section>
 
       {/* 6. Human support CTA */}
-      <section
-        aria-labelledby="visa-support-heading"
-        className="rounded-3xl bg-secondary p-8 text-secondary-foreground sm:p-12"
-      >
-        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-          <div className="flex max-w-xl flex-col gap-2">
-            <h2
-              id="visa-support-heading"
-              className="text-2xl font-bold tracking-tight text-balance text-white"
-            >
-              Prefer to talk it through first?
-            </h2>
-            <p className="text-sm leading-relaxed text-white/80">
-              Not sure what visa support you need? Start with a conversation — a
-              specialist will point you at the right next step for{" "}
-              {country.name}.
-            </p>
-          </div>
-          <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
-            <TrackLink
-              event="support_click"
-              eventProps={{
-                context: `a ${country.name} visa consultation`,
-              }}
-              href={getSupportWhatsAppUrl(
-                `a ${country.name} visa consultation`
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "justify-center bg-emerald-600 text-white hover:bg-emerald-700"
-              )}
-            >
-              <HugeiconsIcon
-                icon={Message01Icon}
-                size={18}
-                aria-hidden="true"
-              />
-              <span>Chat on WhatsApp</span>
-            </TrackLink>
-            <ButtonLink
-              href="/visa"
-              variant="outline"
-              size="lg"
-              className="justify-center border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            >
-              <span>Compare countries</span>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={16}
-                aria-hidden="true"
-              />
-            </ButtonLink>
-          </div>
-        </div>
-      </section>
+      <TerminalCta
+        title="Prefer to talk it through first?"
+        description={`Not sure what visa support you need? Start with a conversation — a specialist will point you at the right next step for ${country.name}.`}
+        eyebrow="Visa Concierge"
+        backgroundImage={SERVICE_IMAGES.visa}
+        primaryHref={getSupportWhatsAppUrl(
+          `a ${country.name} visa consultation`
+        )}
+        primaryLabel="Chat on WhatsApp"
+      />
 
       {/* 7. Mobile Floating Action Bar */}
       <VisaMobileBar

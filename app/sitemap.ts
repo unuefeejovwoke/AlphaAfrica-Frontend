@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next"
 import { extractSlugs } from "@/lib/api/shared.ts"
 import { getSiteUrl } from "@/lib/seo"
+import { company } from "@/lib/content/company.ts"
 import { getBlogPosts } from "@/lib/api/blog.ts"
 import { getDestinations } from "@/lib/api/destinations.ts"
 import { getPackages } from "@/lib/api/packages.ts"
@@ -16,9 +17,14 @@ import { listVehicleSlugs } from "@/lib/api/cars.ts"
  * first-page detail slug; deeper pages are discovered via on-page links.
  * Every source is best-effort: a backend outage degrades to the static
  * landings, never to a 500.
+ *
+ * Internal-only routes (`/foundation`) are deliberately absent.
  */
 
 export const revalidate = 3600
+
+/** Verified content date — the honest "lastmod" for anything without one. */
+const CONTENT_UPDATED = new Date(company.updatedAt)
 
 const STATIC_ROUTES: { path: string; priority: number }[] = [
   { path: "/", priority: 1 },
@@ -31,7 +37,6 @@ const STATIC_ROUTES: { path: string; priority: number }[] = [
   { path: "/blog", priority: 0.7 },
   { path: "/faq", priority: 0.6 },
   { path: "/contact", priority: 0.5 },
-  { path: "/foundation", priority: 0.5 },
   { path: "/privacy", priority: 0.3 },
   { path: "/terms", priority: 0.3 },
 ]
@@ -48,7 +53,6 @@ async function trySlugs(
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = getSiteUrl()
-  const now = new Date()
   const [blog, hotels, cars, packages, destinations, visa] = await Promise.all(
     [
       trySlugs(async () => {
@@ -75,14 +79,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const detail = (base: string, slugs: string[], priority: number) =>
     slugs.map((slug) => ({
       url: `${site}/${base}/${slug}`,
-      lastModified: now,
+      // ponytail: entities expose no modified date in the listing payloads,
+      // so they carry the site content date. Wire real per-entity dates when
+      // the API starts returning them.
+      lastModified: CONTENT_UPDATED,
       priority,
     }))
 
   return [
     ...STATIC_ROUTES.map(({ path, priority }) => ({
       url: `${site}${path}`,
-      lastModified: now,
+      lastModified: CONTENT_UPDATED,
       priority,
     })),
     ...detail("blog", blog, 0.6),

@@ -34,10 +34,11 @@ export async function generateMetadata(): Promise<Metadata> {
   const config = await getSeoConfig()
   return {
     metadataBase: new URL(getSiteUrl()),
-    title: {
-      default: config.defaultTitle,
-      template: `%s | ${company.brandName}`,
-    },
+    // No `template`: every route ships an absolute `<title>` that already ends
+    // with the brand (see the title constants in `lib/seo.ts` and
+    // `lib/content/*`), so a template would render "… | Alphaa Africa |
+    // Alphaa Africa". `tests/seo-titles.test.ts` guards the convention.
+    title: config.defaultTitle,
     description: config.defaultDescription,
     verification: { google: config.googleVerification },
     robots: { index: true, follow: true },

@@ -246,11 +246,6 @@ test("One form owns the machine and the reassurance copy; the twins are gone", (
   )
   assert.match(
     form,
-    /Secured by Paystack\. Card details are entered on Paystack — never here\./,
-    "The payment reassurance copy lives once, in the shared form"
-  )
-  assert.match(
-    form,
     /NEEDS_ATTENTION_COPY/,
     "The needs-attention error copy lives once, in the shared form"
   )
@@ -286,8 +281,4 @@ test("One form owns the machine and the reassurance copy; the twins are gone", (
   )
   assert.match(carPage, /GuestBookingForm/, "Car book page uses the shared form")
   assert.match(carPage, /kind="car"/)
-
-  // The reassurance copy is not re-declared at call sites.
-  assert.doesNotMatch(hotelPage, /Secured by Paystack/)
-  assert.doesNotMatch(carPage, /Secured by Paystack/)
 })
