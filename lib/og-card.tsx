@@ -8,46 +8,47 @@ import { ImageResponse } from "next/og"
  * Two variants, one brand:
  * - Photo card (detail pages): dark left panel with logo/kicker/title/
  *   subtitle, entity photo covering the right half.
- * - Brand card (landings, fallback): the `og-share-card.webp` background
- *   full-bleed with a dark gradient and the same text block.
+ * - Brand card (landings, fallback): the same text block on a generated
+ *   surface — a dark base with two brand-orange radial washes, drawn
+ *   entirely in CSS so no background raster ships or loads.
  *
  * Satori-safe by construction: inline styles only, no line-clamp (titles are
- * sliced), no webfonts (verified rendering via dev preview). Asset reads are
- * cached per process; every consumer try/catches and falls back to the brand
- * card, so an OG route can never 500.
+ * sliced), no webfonts (verified rendering via dev preview). The only raster
+ * read is the logo, cached per process; every consumer try/catches and falls
+ * back to the brand card, so an OG route can never 500.
  */
 
 export const OG_SIZE = { width: 1200, height: 630 } as const
 export const OG_CONTENT_TYPE = "image/png"
 
-interface OgAssets {
-  background: string | null
-  logo: string | null
-}
+/** Brand surface. `--background` dark, `--primary` orange, from globals.css. */
+const BRAND_BASE = "#171217"
+const BRAND_ACCENT_RGB = "255,103,56"
+const BRAND_SURFACE = [
+  `radial-gradient(900px 520px at 84% -10%, rgba(${BRAND_ACCENT_RGB},0.30), transparent 70%)`,
+  `radial-gradient(1100px 700px at 6% 110%, rgba(${BRAND_ACCENT_RGB},0.10), transparent 68%)`,
+  `linear-gradient(158deg, #241a24 0%, ${BRAND_BASE} 58%, #120e13 100%)`,
+].join(", ")
 
-let assetsPromise: Promise<OgAssets> | null = null
+let logoPromise: Promise<string | null> | null = null
 
-async function fileDataUrl(name: string): Promise<string | null> {
-  try {
-    // Scoped under `public/` (literal segment) so Turbopack traces only
-    // the two brand assets instead of the whole project.
-    const buffer = await readFile(path.join(process.cwd(), "public", name))
-    const ext = name.endsWith(".png") ? "png" : "webp"
-    return `data:image/${ext};base64,${buffer.toString("base64")}`
-  } catch {
-    return null
+/** Brand logo as a data URL (cached; null when unreadable). */
+function loadOgLogo(): Promise<string | null> {
+  if (!logoPromise) {
+    logoPromise = (async () => {
+      try {
+        // Scoped under `public/` (literal segment) so Turbopack traces only
+        // the logo instead of the whole project.
+        const buffer = await readFile(
+          path.join(process.cwd(), "public", "logo.png")
+        )
+        return `data:image/png;base64,${buffer.toString("base64")}`
+      } catch {
+        return null
+      }
+    })()
   }
-}
-
-/** Brand background + logo as data URLs (cached; nulls when unreadable). */
-function loadOgAssets(): Promise<OgAssets> {
-  if (!assetsPromise) {
-    assetsPromise = Promise.all([
-      fileDataUrl("images/og-share-bg.png"),
-      fileDataUrl("logo.png"),
-    ]).then(([background, logo]) => ({ background, logo }))
-  }
-  return assetsPromise
+  return logoPromise
 }
 
 async function photoDataUrl(url: string): Promise<string | null> {
@@ -80,7 +81,11 @@ export interface OgCardInput {
 }
 
 function slice(text: string, max: number): string {
-  const clean = text.replace(/\s+/g, " ").trim()
+  // `next/og`'s bundled font has no U+20A6 NAIRA SIGN: satori tries to fetch a
+  // dynamic fallback, the request 400s, and the glyph renders as a tofu box
+  // ("☒11,000/hr"). Spell the code instead — unambiguous in a feed, and it
+  // keeps card rendering free of a network round-trip.
+  const clean = text.replace(/₦\s*/g, "NGN ").replace(/\s+/g, " ").trim()
   return clean.length > max ? `${clean.slice(0, max - 1).trim()}…` : clean
 }
 
@@ -168,12 +173,12 @@ function BrandRow({ logo }: { logo: string | null }) {
 
 /**
  * Render a 1200×630 share card. Photo variant when `photoUrl` resolves,
- * brand-background variant otherwise. Never throws — callers still wrap in
+ * generated brand surface otherwise. Never throws — callers still wrap in
  * try/catch and fall back to `brandOgCard` for defence in depth.
  */
 export async function ogCardImage(input: OgCardInput): Promise<ImageResponse> {
-  const [{ background, logo }, photo] = await Promise.all([
-    loadOgAssets(),
+  const [logo, photo] = await Promise.all([
+    loadOgLogo(),
     input.photoUrl?.startsWith("http") ? photoDataUrl(input.photoUrl) : null,
   ])
   const text = (
@@ -186,88 +191,57 @@ export async function ogCardImage(input: OgCardInput): Promise<ImageResponse> {
 
   if (photo) {
     return new ImageResponse(
-      (
-        <div
-          style={{
-            display: "flex",
-            width: "100%",
-            height: "100%",
-            background: "#171217",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              width: 660,
-              padding: 64,
-            }}
-          >
-            <BrandRow logo={logo} />
-            {text}
-            <div style={{ fontSize: 24, color: "rgba(255,255,255,0.6)" }}>
-              alphaaafrica.com
-            </div>
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photo}
-            alt=""
-            width={540}
-            height={630}
-            style={{ objectFit: "cover" }}
-          />
-        </div>
-      ),
-      { ...OG_SIZE }
-    )
-  }
-
-  return new ImageResponse(
-    (
       <div
-        style={{ display: "flex", width: "100%", height: "100%", position: "relative" }}
+        style={{
+          display: "flex",
+          width: "100%",
+          height: "100%",
+          background: BRAND_BASE,
+        }}
       >
-        {background ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={background}
-            alt=""
-            width={1200}
-            height={630}
-            style={{ objectFit: "cover", position: "absolute" }}
-          />
-        ) : (
-          <div
-            style={{ position: "absolute", width: 1200, height: 630, background: "#171217" }}
-          />
-        )}
-        <div
-          style={{
-            position: "absolute",
-            width: 1200,
-            height: 630,
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.15) 100%)",
-          }}
-        />
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
-            position: "absolute",
-            width: 1200,
-            height: 630,
+            width: 660,
             padding: 64,
           }}
         >
           <BrandRow logo={logo} />
           {text}
+          <div style={{ fontSize: 24, color: "rgba(255,255,255,0.6)" }}>
+            alphaaafrica.com
+          </div>
         </div>
-      </div>
-    ),
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photo}
+          alt=""
+          width={540}
+          height={630}
+          style={{ objectFit: "cover" }}
+        />
+      </div>,
+      { ...OG_SIZE }
+    )
+  }
+
+  return new ImageResponse(
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        width: "100%",
+        height: "100%",
+        padding: 64,
+        background: BRAND_SURFACE,
+      }}
+    >
+      <BrandRow logo={logo} />
+      {text}
+    </div>,
     { ...OG_SIZE }
   )
 }
