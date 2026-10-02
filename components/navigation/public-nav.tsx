@@ -15,6 +15,7 @@ import {
   Book02Icon,
 } from "@hugeicons/core-free-icons"
 import { ButtonLink } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { UnderConstructionBadge } from "@/components/shared/under-construction-badge"
 import { SERVICE_IMAGES } from "@/lib/images"
 import { cn } from "@/lib/utils"
@@ -225,18 +226,22 @@ export function PublicNav() {
             priority
           />
           <span className="text-lg leading-none font-bold tracking-tight">
-            <span className="text-secondary">Alphaa</span>{" "}
+            <span className="text-secondary dark:text-[#e3b3ec]">
+              Alphaa
+            </span>{" "}
             <span className="font-medium text-primary">Africa</span>
           </span>
         </Link>
 
         <div className="hidden items-center gap-2 lg:flex">
+          <ThemeToggle />
           <ButtonLink href="/flights" size="default">
             Book a Trip
           </ButtonLink>
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
+          <ThemeToggle />
           <ButtonLink href="/flights" size="sm" className="text-xs">
             Book
           </ButtonLink>

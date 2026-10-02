@@ -236,8 +236,13 @@ test("Page declares a theme colour matching the page background", () => {
 
   assert.match(
     layout,
-    /export const viewport: Viewport = \{\s*themeColor: "#faf9f7",?\s*\}/,
+    /themeColor:\s*\[/,
     "layout.tsx must declare themeColor through the Next Viewport export"
+  )
+  assert.match(
+    layout,
+    /color:\s*"#faf9f7"/,
+    "light theme colour must match the page background"
   )
   assert.match(
     css,

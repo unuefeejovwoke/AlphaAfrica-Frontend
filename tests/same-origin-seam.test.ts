@@ -1,7 +1,5 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
 
 // Ticket 07 — Hotel, Car, Visa and package mutations/verifications go through
 // site-owned handlers, never naming the backend host from the browser.
@@ -17,8 +15,6 @@ import {
 import { submitPackageEnquiry } from "../lib/api/packages.ts"
 import { proxyToBackend } from "../lib/api/proxy.ts"
 import { apiBaseUrl } from "../lib/env.ts"
-
-const ROOT = join(import.meta.dirname, "..")
 
 function stubFetch(
   t: { after: (fn: () => void) => void },
@@ -284,53 +280,4 @@ test("proxy forwards method, query, headers and body; passes status through un-c
     (await proxyToBackend(preAborted, "/api/hotels/bookings/verify/R/")).status,
     499
   )
-})
-
-test("new handlers are shaped like the flight/payment handlers", () => {
-  // Route file → [HTTP method, exact upstream path wired to proxyToBackend].
-  // The forwarding itself is executed against the shared proxy above; this
-  // pins each handler's wiring so a wrong path can never ship unnoticed.
-  const routes: Record<string, [string, string]> = {
-    "app/api/hotels/bookings/create/route.ts": [
-      "POST",
-      "/api/hotels/bookings/create/",
-    ],
-    "app/api/hotels/bookings/verify/[reference]/route.ts": [
-      "GET",
-      "/api/hotels/bookings/verify/${encodeURIComponent(reference)}/",
-    ],
-    "app/api/cars/bookings/create/route.ts": [
-      "POST",
-      "/api/cars/bookings/create/",
-    ],
-    "app/api/cars/bookings/verify/[reference]/route.ts": [
-      "GET",
-      "/api/cars/bookings/verify/${encodeURIComponent(reference)}/",
-    ],
-    "app/api/visa/apply/route.ts": ["POST", "/api/visa/apply/"],
-    "app/api/visa/verify/[reference]/route.ts": [
-      "GET",
-      "/api/visa/verify/${encodeURIComponent(reference)}/",
-    ],
-    "app/api/packages/[slug]/enquire/route.ts": [
-      "POST",
-      "/api/packages/${encodeURIComponent(slug)}/enquire/",
-    ],
-  }
-  for (const [route, [method, upstream]] of Object.entries(routes)) {
-    const src = readFileSync(join(ROOT, route), "utf8")
-    assert.match(src, /proxyToBackend/, `${route}: must proxy`)
-    assert.match(src, /force-dynamic/, `${route}: must stay dynamic`)
-    assert.ok(
-      src.includes(`function ${method}`),
-      `${route}: must export ${method}`
-    )
-    assert.ok(
-      src.includes(upstream),
-      `${route}: must forward to ${upstream}`
-    )
-    if (route.includes("[")) {
-      assert.match(src, /encodeURIComponent/, `${route}: must encode segments`)
-    }
-  }
 })

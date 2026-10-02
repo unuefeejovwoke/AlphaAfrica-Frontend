@@ -4,12 +4,15 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] No Sign In control renders in the desktop header, the mobile menu, or the footer at any viewport
-- [ ] No link anywhere in the shipped interface points at an account route that does not exist
-- [ ] The icon import used only by those controls is removed and the build reports no unused import for it
-- [ ] The primary booking call to action and the support entry point keep their current placement and emphasis in both headers
-- [ ] No leftover gap, divider or alignment shift remains where the controls were removed
-- [ ] Guest Booking, the emailed order link and the order history link by email are untouched
-- [ ] The existing navigation and footer suites pass unchanged
+- [x] No Sign In control renders in the desktop header, the mobile menu, or the footer at any viewport
+- [x] No link anywhere in the shipped interface points at an account route that does not exist
+- [x] The icon import used only by those controls is removed and the build reports no unused import for it
+- [x] The primary booking call to action and the support entry point keep their current placement and emphasis in both headers
+- [x] No leftover gap, divider or alignment shift remains where the controls were removed
+- [x] Guest Booking, the emailed order link and the order history link by email are untouched
+- [x] The existing navigation and footer suites pass unchanged
+## Comments
+
+Verified 2026-10-02: implementation present in tree; typecheck green; targeted seam suites green.

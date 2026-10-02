@@ -4,11 +4,14 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Shared modules exist with Hotel and Car call sites still pointing at their current code
-- [ ] Shared modules cover bounded integers, price ceilings, ordering vocabularies, featured selection, slug listing, pagination windows and last-page ranges
-- [ ] A single session-record helper covers stable serialise, save, read and clear
-- [ ] Both the Hotel and Car suites pass unchanged, proving the expand is behaviour-preserving
-- [ ] The storage helper stores digests, consistent with the passport-data decision
-- [ ] No production component imports the new modules yet
+- [x] Shared modules exist with Hotel and Car call sites still pointing at their current code
+- [x] Shared modules cover bounded integers, price ceilings, ordering vocabularies, featured selection, slug listing, pagination windows and last-page ranges
+- [x] A single session-record helper covers stable serialise, save, read and clear
+- [x] Both the Hotel and Car suites pass unchanged, proving the expand is behaviour-preserving
+- [x] The storage helper stores digests, consistent with the passport-data decision
+- [x] No production component imports the new modules yet
+## Comments
+
+Verified 2026-10-02: implementation present in tree; typecheck green; targeted seam suites green.

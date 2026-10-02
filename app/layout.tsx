@@ -4,6 +4,7 @@ import { Geist_Mono, Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/sonner"
 import { AnalyticsLoader } from "@/components/analytics/analytics-loader"
+import { ThemeProvider } from "@/components/shared/theme-provider"
 import { cn } from "@/lib/utils"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
@@ -13,10 +14,13 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
-// Matches --background in globals.css, so browser chrome and the page are
-// one continuous surface.
+// Matches --background in globals.css (light + warm dark), so browser
+// chrome and the page are one continuous surface.
 export const viewport: Viewport = {
-  themeColor: "#faf9f7",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf9f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#161215" },
+  ],
 }
 
 export const metadata: Metadata = {
@@ -44,6 +48,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={cn(
         "antialiased",
         fontMono.variable,
@@ -53,8 +58,10 @@ export default function RootLayout({
     >
       <body>
         <link rel="preconnect" href="https://wa.me" />
-        {children}
-        <Toaster position="top-right" />
+        <ThemeProvider>
+          {children}
+          <Toaster position="top-right" />
+        </ThemeProvider>
         <AnalyticsLoader />
       </body>
     </html>

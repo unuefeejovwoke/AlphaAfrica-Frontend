@@ -68,7 +68,9 @@ export function PublicFooter() {
                 className="size-8 object-contain transition-transform duration-300 ease-out group-hover:scale-105"
               />
               <span className="text-lg leading-none font-bold tracking-tight">
-                <span className="text-secondary">Alphaa</span>{" "}
+                <span className="text-secondary dark:text-[#e3b3ec]">
+                  Alphaa
+                </span>{" "}
                 <span className="font-medium text-primary">Africa</span>
               </span>
             </Link>

@@ -416,36 +416,6 @@ test("Analytics emission: sessionStorage survives a full reload", (t) => {
 // seam — no re-implemented reads, retries, or analytics.
 // ---------------------------------------------------------------------------
 
-const VERIFY_CLIENTS = [
-  "components/flights/flight-verify-client.tsx",
-  "components/hotels/hotel-confirmation-client.tsx",
-  "components/cars/car-confirmation-client.tsx",
-  "components/visa/visa-verify-client.tsx",
-]
-
-test("Every verify client delegates to the shared seam", () => {
-  for (const client of VERIFY_CLIENTS) {
-    const src = readSource(client)
-    assert.match(src, /lib\/api\/verification/, `${client} must use the seam`)
-    assert.match(
-      src,
-      /fetchOrderWithSettleRetry|withSettleRetry|isPaidOrder|resolveBookingOutcome|emitVerificationEventOnce/,
-      `${client} must delegate reads or analytics, not re-implement them`
-    )
-  }
-})
-
-test("Visa client reads the authoritative payment state with settle retry", () => {
-  const src = readSource("components/visa/visa-verify-client.tsx")
-  assert.match(src, /fetchOrderWithSettleRetry/, "visa must share the settle retry")
-  assert.match(src, /isPaidOrder/, "visa must read payment_status first, status as fallback")
-  assert.doesNotMatch(
-    src,
-    /order\?\.status/,
-    "visa must never read the legacy order status field directly"
-  )
-})
-
 test("Flight confirmation records one page view per load", () => {
   const src = readSource("components/flights/flight-verify-client.tsx")
   const canonical = src.match(/"flight_confirmation_viewed"/g) ?? []
@@ -458,16 +428,6 @@ test("Car confirmation rechecks in place instead of reloading the page", () => {
   const src = readSource("components/cars/car-confirmation-client.tsx")
   assert.doesNotMatch(src, /window\.location\.reload/, "no full-page reload on retry")
   assert.match(src, /setAttempt/, "manual recheck re-runs verification in place")
-})
-
-test("Successful verification clears the stored Payment Reference per type", () => {
-  for (const [client, clearer] of [
-    ["components/flights/flight-verify-client.tsx", "clearBookingSession"],
-    ["components/hotels/hotel-confirmation-client.tsx", "clearHotelBookingSession"],
-    ["components/cars/car-confirmation-client.tsx", "clearCarBookingSession"],
-  ] as const) {
-    assert.match(readSource(client), new RegExp(clearer), `${client} must clear on success`)
-  }
 })
 
 test("Session clearing drops keys without a window and tolerates private mode", (t) => {

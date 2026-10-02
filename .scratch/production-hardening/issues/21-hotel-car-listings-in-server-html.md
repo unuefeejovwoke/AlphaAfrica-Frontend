@@ -4,11 +4,14 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] The first page of Hotel and Vehicle listings is rendered on the server and present in the delivered HTML
-- [ ] Filtering, sorting and pagination continue to work through the same client controls the Customer already uses, and deep links still restore state
-- [ ] Price-bearing listing and detail pages no longer serve totals that can disagree with checkout — either the cache lifetime is shortened to something honest or the amount is fetched live
-- [ ] The catalogue markup remains crawlable and accessible, and empty and error states still render when the backend returns nothing
-- [ ] Tests cover both the server-rendered first page and the client-side transitions
-- [ ] No client-only fetch is duplicated by the server render — the first page is fetched once
+- [x] The first page of Hotel and Vehicle listings is rendered on the server and present in the delivered HTML
+- [x] Filtering, sorting and pagination continue to work through the same client controls the Customer already uses, and deep links still restore state
+- [x] Price-bearing listing and detail pages no longer serve totals that can disagree with checkout — either the cache lifetime is shortened to something honest or the amount is fetched live
+- [x] The catalogue markup remains crawlable and accessible, and empty and error states still render when the backend returns nothing
+- [x] Tests cover both the server-rendered first page and the client-side transitions
+- [x] No client-only fetch is duplicated by the server render — the first page is fetched once
+## Comments
+
+Verified 2026-10-02: implementation present in tree; typecheck green; targeted seam suites green.

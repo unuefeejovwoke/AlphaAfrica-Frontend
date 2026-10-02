@@ -4,12 +4,15 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Every read and write through the backend boundary applies its own deadline, sized per operation: search and streaming longer than booking and verification reads
-- [ ] A fired deadline surfaces the timeout copy, and the timeout classification is reachable in tests
-- [ ] A caller-supplied cancellation still propagates as a cancellation and is never converted into a retryable network failure
-- [ ] The same-origin handler forwards the deadline upstream, and an aborted upstream request still answers 499
-- [ ] Streaming domestic search keeps its existing long budget and still falls back to the blocking search on timeout or stream error
-- [ ] Existing run-guard behaviour — stale responses never commit — is preserved and asserted
-- [ ] Deadline, abort and error mapping are covered at the backend boundary seam
+- [x] Every read and write through the backend boundary applies its own deadline, sized per operation: search and streaming longer than booking and verification reads
+- [x] A fired deadline surfaces the timeout copy, and the timeout classification is reachable in tests
+- [x] A caller-supplied cancellation still propagates as a cancellation and is never converted into a retryable network failure
+- [x] The same-origin handler forwards the deadline upstream, and an aborted upstream request still answers 499
+- [x] Streaming domestic search keeps its existing long budget and still falls back to the blocking search on timeout or stream error
+- [x] Existing run-guard behaviour — stale responses never commit — is preserved and asserted
+- [x] Deadline, abort and error mapping are covered at the backend boundary seam
+## Comments
+
+Verified 2026-10-02: implementation present in tree; typecheck green; targeted seam suites green.

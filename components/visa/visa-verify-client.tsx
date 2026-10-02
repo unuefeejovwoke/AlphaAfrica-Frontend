@@ -137,7 +137,7 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
         <div
           role="status"
           aria-live="polite"
-          className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 sm:p-8"
+          className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 sm:p-8 dark:border-emerald-900/60 dark:bg-emerald-950/40"
         >
           <span className="flex size-11 items-center justify-center rounded-xl bg-emerald-600 text-white">
             <HugeiconsIcon icon={Tick01Icon} size={22} aria-hidden="true" />
@@ -152,7 +152,7 @@ export function VisaVerifyClient({ reference }: { reference: string }) {
               safe.
             </p>
           </div>
-          <dl className="grid grid-cols-1 gap-3 rounded-xl border border-emerald-200/70 bg-white/70 p-4 text-sm sm:grid-cols-3">
+          <dl className="grid grid-cols-1 gap-3 rounded-xl border border-emerald-200/70 bg-white/70 p-4 text-sm sm:grid-cols-3 dark:border-emerald-900/50 dark:bg-white/5">
             <div className="flex flex-col gap-0.5">
               <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Reference

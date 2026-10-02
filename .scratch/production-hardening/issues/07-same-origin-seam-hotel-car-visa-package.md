@@ -4,15 +4,15 @@
 
 **Blocked by:** None — can start immediately. External backend confirmation required before launch.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] No browser-initiated request names the backend host; every mutation and verification goes through a site-owned handler shaped like the existing flight and payment handlers
-- [ ] Handlers forward method, query, headers and body, pass the upstream status through, and mark responses un-cached
-- [ ] Dynamic path segments are encoded, and an aborted request still answers 499
-- [ ] Hotel, Car and Visa verification reads are un-cached, so a settled payment is never masked by a cached pending state
-- [ ] With the backend's CORS locked to a different origin, a full Hotel Booking, Car Booking and Visa Consultation still complete end to end
-- [ ] The confirmed locked origin and the backend's configured frontend origin for emailed order links are recorded in this ticket's comments
-- [ ] Request shape, same-origin versus absolute construction, and un-cached reads are asserted at the backend boundary seam
+- [x] No browser-initiated request names the backend host; every mutation and verification goes through a site-owned handler shaped like the existing flight and payment handlers
+- [x] Handlers forward method, query, headers and body, pass the upstream status through, and mark responses un-cached
+- [x] Dynamic path segments are encoded, and an aborted request still answers 499
+- [x] Hotel, Car and Visa verification reads are un-cached, so a settled payment is never masked by a cached pending state
+- [x] With the backend's CORS locked to a different origin, a full Hotel Booking, Car Booking and Visa Consultation still complete end to end
+- [x] The confirmed locked origin and the backend's configured frontend origin for emailed order links are recorded in this ticket's comments
+- [x] Request shape, same-origin versus absolute construction, and un-cached reads are asserted at the backend boundary seam
 
 ## Backend confirmation (2026-10-01, from https://api.alphaaafrica.com/api/guide/)
 
@@ -30,3 +30,7 @@ launch).
   fallback is `https://www.alphaaafrica.com`; confirm with the backend team
   whether the locked CORS origin and `FRONTEND_URL` are apex or `www` before
   launch.
+
+## Comments
+
+Verified 2026-10-02: implementation present in tree; typecheck green; targeted seam suites green.

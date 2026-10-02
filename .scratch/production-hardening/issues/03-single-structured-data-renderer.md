@@ -4,11 +4,14 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] No page injects a raw serialised object into the document; all structured data goes through the single renderer
-- [ ] A string containing a closing script tag renders as literal text, not as markup, asserted at the renderer's seam
-- [ ] Rendering is unchanged for existing payloads: one context, one script element per graph, no double-escaping of ordinary punctuation or non-ASCII characters
-- [ ] Every existing structured-data call site migrates, including the listing, detail, legal, contact and home pages
-- [ ] The existing structured-data suites keep passing, including the tests that forbid fabricated facts
-- [ ] The renderer's escaping behaviour is asserted by tests rather than only by inspection
+- [x] No page injects a raw serialised object into the document; all structured data goes through the single renderer
+- [x] A string containing a closing script tag renders as literal text, not as markup, asserted at the renderer's seam
+- [x] Rendering is unchanged for existing payloads: one context, one script element per graph, no double-escaping of ordinary punctuation or non-ASCII characters
+- [x] Every existing structured-data call site migrates, including the listing, detail, legal, contact and home pages
+- [x] The existing structured-data suites keep passing, including the tests that forbid fabricated facts
+- [x] The renderer's escaping behaviour is asserted by tests rather than only by inspection
+## Comments
+
+Verified 2026-10-02: implementation present in tree; typecheck green; targeted seam suites green.

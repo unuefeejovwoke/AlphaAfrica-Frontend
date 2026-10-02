@@ -51,7 +51,7 @@ const DEPARTURE_WINDOW_ICONS: Record<DepartureWindow, typeof Sun01Icon> = {
 
 // Cabin vocabulary is the shared CABIN_OPTIONS (lib/api/flights.ts); the
 // sidebar prepends only its "any cabin" escape value.
-const CABIN_OPTIONS: { label: string; value: string | null }[] = [
+const CABIN_FILTER_OPTIONS: { label: string; value: string | null }[] = [
   { label: "Any Cabin", value: null },
   ...FLIGHT_CABIN_OPTIONS,
 ]
@@ -385,7 +385,7 @@ export function FlightSidebarFilters({
           Cabin Class
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {CABIN_OPTIONS.map((opt) => {
+          {CABIN_FILTER_OPTIONS.map((opt) => {
             const isSelected = filters.cabin === opt.value
             return (
               <button
