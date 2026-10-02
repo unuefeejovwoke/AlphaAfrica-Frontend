@@ -43,6 +43,10 @@ test("Guardrails: loopback image hosts work in development only", () => {
     prod.some((p) => p.hostname === "api.alphaaafrica.com"),
     "Production keeps the backend media host"
   )
+  assert.ok(
+    prod.some((p) => p.hostname === "images.unsplash.com"),
+    "Production keeps the legacy backend image host while records reference it"
+  )
   for (const host of ["localhost", "127.0.0.1"]) {
     assert.equal(
       prod.some((p) => p.hostname === host),

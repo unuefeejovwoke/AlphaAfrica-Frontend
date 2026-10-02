@@ -41,11 +41,14 @@ export interface RemoteImagePattern {
 }
 
 const PRODUCTION_IMAGE_PATTERNS: RemoteImagePattern[] = [
+  // Backend records still carry Unsplash URLs (hotel/room/package imagery);
+  // drop this entry only once no live record references the host.
+  { protocol: "https", hostname: "images.unsplash.com" },
   { protocol: "https", hostname: "api.alphaaafrica.com" },
 ]
 
 /**
- * Image hosts for `next/image` optimisation — backend media only. Site-owned
+ * Image hosts for `next/image` optimisation — backend media hosts. Site-owned
  * imagery lives in `public/images/` and needs no host allowlist entry.
  * Loopback hosts (localhost, 127.0.0.1) work in development only — a
  * production deployment must never advertise or optimise localhost imagery.
