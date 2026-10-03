@@ -35,6 +35,13 @@ pnpm-debug.log*
 .env*
 !.env.example
 
+# agent local
+AGENTS.md
+.scratch/
+docs/
+CONTEXT.md
+context.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
