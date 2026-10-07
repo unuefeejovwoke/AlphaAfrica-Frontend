@@ -14,9 +14,15 @@ import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { CardSkeleton } from "@/components/ui/skeleton"
 import { FlightETicket } from "@/components/flights/flight-e-ticket"
 import {
+  ReservationConfirmation,
+  getReservedPayErrorMessage,
+} from "@/components/flights/reservation-confirmation"
+import {
   buildFlightVerifyUrl,
   clearBookingSession,
+  fetchFlightTickets,
   flightBookingSchema,
+  payFlightBooking,
   readPaymentReference,
   resolveFlightVerificationState,
   verifyFlightBooking,
@@ -88,9 +94,12 @@ function bookingFromOrder(
  * Paystack return handler for flight Bookings. A return from payment proves
  * nothing by itself: this client reads the Payment Reference from the return
  * URL, fetches the universal order FIRST (guide §12 — it verifies money
- * movement and creates the PNR on the spot), then the flight verify call
- * for the full Booking shape. Guests are welcome — verification needs only
- * the reference, plus the email `token` when present.
+ * movement and returns the Booking for any booking type), then the flight
+ * verify call for the full Booking shape. Guests are welcome — verification
+ * needs only the reference, plus the email `token` when present.
+ *
+ * For an international Flight Offer the PNR already existed before payment
+ * (ADR-0007), so a PNR here proves the seat was held, never that money moved.
  */
 export function FlightVerifyClient() {
   const searchParams = useSearchParams()
@@ -99,6 +108,20 @@ export function FlightVerifyClient() {
   const [savedReference] = React.useState<string | null>(readPaymentReference)
   const [state, setState] = React.useState<VerifyState>({ kind: "verifying" })
   const [attempt, setAttempt] = React.useState(0)
+  // E-ticket numbers: fetched ONCE when a Booking is confirmed, never polled.
+  // The backend emails the Customer the moment numbers appear, so a poll would
+  // burn requests to learn nothing. A failed fetch is a note, not an error —
+  // a merely-not-yet-issued ticket must never read as a failure.
+  const [tickets, setTickets] = React.useState<{
+    ticketed: boolean
+    numbers: string[]
+  } | null>(null)
+  const [ticketsFailed, setTicketsFailed] = React.useState(false)
+  const [ticketsAttempt, setTicketsAttempt] = React.useState(0)
+  const [payingReserved, setPayingReserved] = React.useState(false)
+  const [reservedPayError, setReservedPayError] = React.useState<string | null>(
+    null
+  )
 
   React.useEffect(() => {
     if (!reference) return
@@ -355,7 +378,77 @@ export function FlightVerifyClient() {
     resolveFlightVerificationState(booking) === "paid" ||
     isPaidOrder(order)
 
+  // Ticket numbers resolve once a paid Booking exists — one read, on demand.
+  React.useEffect(() => {
+    if (state.kind !== "resolved" || !paid || tickets !== null || ticketsFailed)
+      return
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetchFlightTickets({
+          reference: state.booking.reference,
+          ...(guestToken ? { token: guestToken } : {}),
+        })
+        if (!cancelled)
+          setTickets({ ticketed: res.ticketed, numbers: res.ticket_numbers })
+      } catch {
+        if (!cancelled) setTicketsFailed(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [state, paid, tickets, ticketsFailed, ticketsAttempt, guestToken])
+
+  const handlePayReserved = React.useCallback(async () => {
+    if (state.kind !== "resolved" || payingReserved) return
+    setPayingReserved(true)
+    setReservedPayError(null)
+    try {
+      const result = await payFlightBooking({
+        reference: state.booking.reference,
+        ...(guestToken ? { token: guestToken } : {}),
+      })
+      if (result.kind === "checkout") {
+        window.location.replace(result.authorization_url)
+        return
+      }
+      window.location.reload()
+    } catch (error) {
+      // 403 is an invalid/expired link, never a missing session — the shared
+      // "please log in" mapper must not speak here (ADR-0007).
+      setReservedPayError(getReservedPayErrorMessage(error))
+      setPayingReserved(false)
+    }
+  }, [state, payingReserved, guestToken])
+
+  // A Reservation reads as reserved — seat held, pay-by date, payment action —
+  // never as a payment still settling. The shared ReservationConfirmation keeps
+  // this identical to the checkout confirmation.
+  if (!paid && resolveFlightVerificationState(booking) === "reserved") {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5 py-4 sm:gap-6 sm:py-8">
+        <ReservationConfirmation
+          booking={booking}
+          onPayNow={handlePayReserved}
+          paying={payingReserved}
+          payError={reservedPayError}
+        />
+      </div>
+    )
+  }
+
   if (paid) {
+    // Prefer the freshest ticket numbers: the tickets endpoint when it
+    // answered, else whatever the Booking itself carries.
+    const ticketBooking: FlightBooking =
+      tickets && tickets.numbers.length > 0
+        ? { ...booking, ticket_numbers: tickets.numbers }
+        : booking
+    const issuing =
+      tickets !== null &&
+      !tickets.ticketed &&
+      (ticketBooking.ticket_numbers ?? []).length === 0
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5 py-4 sm:gap-6 sm:py-8 print:max-w-2xl print:px-0 print:py-6">
         {/* Verification Status Header (matches official e-ticket layout) */}
@@ -376,7 +469,48 @@ export function FlightVerifyClient() {
         </div>
 
         {/* The Official E-Ticket Card */}
-        <FlightETicket booking={booking} order={order} />
+        <FlightETicket booking={ticketBooking} order={order} />
+
+        {/* A confirmed Booking whose e-ticket is not yet issued reads as being
+            issued — with a way to check back — rather than as an incomplete
+            document or an error. */}
+        {issuing ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex w-full flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm leading-relaxed sm:p-5"
+          >
+            <p className="font-bold text-foreground">
+              Your ticket is being issued
+            </p>
+            <p className="text-muted-foreground">
+              Payment is confirmed and the airline has your booking. E-ticket
+              numbers are issued separately and will arrive by email — check
+              back here any time to collect them.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setTickets(null)
+                setTicketsFailed(false)
+                setTicketsAttempt((n) => n + 1)
+              }}
+              className="w-full justify-center sm:w-auto"
+            >
+              <span>Check for my ticket numbers</span>
+            </Button>
+          </div>
+        ) : null}
+        {ticketsFailed ? (
+          <p
+            role="status"
+            className="w-full rounded-xl bg-muted/40 p-3 text-center text-xs leading-relaxed text-muted-foreground"
+          >
+            We couldn&apos;t check your e-ticket numbers just now — they will
+            still arrive by email once issued.
+          </p>
+        ) : null}
 
         {/* Payment & Receipt Summary Strip */}
         <div className="flex w-full flex-col gap-2 rounded-xl border border-border/80 bg-card p-3 text-xs text-muted-foreground shadow-xs sm:flex-row sm:items-center sm:justify-between sm:rounded-2xl sm:p-4 print:hidden">

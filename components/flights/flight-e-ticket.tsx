@@ -307,6 +307,8 @@ export function parseBookingForETicket(booking: FlightBooking) {
     return null
   })()
   const ticketDeadline =
+    (typeof booking.ticketing_deadline === "string" &&
+      booking.ticketing_deadline.trim()) ||
     (typeof rawDetails.last_ticketing_date === "string" &&
       rawDetails.last_ticketing_date.trim()) ||
     (typeof rawDetails.lastTicketingDate === "string" &&
@@ -348,6 +350,14 @@ export function parseBookingForETicket(booking: FlightBooking) {
   const reference = booking.reference.trim()
   const securityReference =
     reference.replace(/^[A-Z]+-?/, "").slice(0, 10) || reference.slice(-8)
+  // Issued e-ticket numbers ride on the Booking itself (and on the tickets
+  // endpoint). Null or empty means the agency is still ticketing — a state,
+  // never a failure.
+  const ticketNumbers = Array.isArray(booking.ticket_numbers)
+    ? booking.ticket_numbers.filter(
+        (n): n is string => typeof n === "string" && n.trim().length > 0
+      )
+    : null
 
   return {
     primaryPassenger,
@@ -372,6 +382,7 @@ export function parseBookingForETicket(booking: FlightBooking) {
     amadeusOrderId,
     seatsAvailable,
     ticketDeadline,
+    ticketNumbers,
     reference,
     securityReference,
     amountFormatted: formatNaira(String(booking.total_amount)),
@@ -393,6 +404,14 @@ export function FlightETicket({
   className,
 }: FlightETicketProps) {
   const data = React.useMemo(() => parseBookingForETicket(booking), [booking])
+  // The status footer and badge branch on Booking status, NEVER on PNR
+  // presence. A PNR exists from creation on international offers (ADR-0007),
+  // so PNR presence no longer implies payment — branching on it would print
+  // "CONFIRMED & ISSUED" on a Booking nobody has paid for.
+  const status = (booking.status ?? "").trim().toLowerCase()
+  const isReserved = status === "reserved"
+  const isPaid = ["paid", "confirmed"].includes(status)
+  const isTicketed = isPaid && (data.ticketNumbers?.length ?? 0) > 0
 
   return (
     <div
@@ -701,9 +720,13 @@ export function FlightETicket({
       <div className="mt-4 flex flex-col items-start justify-between gap-2.5 border-t border-border/80 pt-4 text-xs font-bold sm:mt-5 sm:flex-row sm:items-center sm:pt-5">
         <div className="flex items-center gap-1.5 text-[10px] tracking-wide sm:gap-2 sm:text-[11px]">
           <span className="text-muted-foreground uppercase">STATUS:</span>
-          {data.pnr ? (
+          {isTicketed ? (
             <span className="font-black text-emerald-600 uppercase">
               CONFIRMED &amp; ISSUED
+            </span>
+          ) : isReserved ? (
+            <span className="font-black text-amber-600 uppercase">
+              RESERVED — PAYMENT DUE
             </span>
           ) : (
             <span className="font-black text-amber-600 uppercase">
@@ -712,17 +735,29 @@ export function FlightETicket({
           )}
         </div>
 
-        {data.pnr ? (
+        {isTicketed ? (
           <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase sm:text-[11px]">
             <HugeiconsIcon icon={Tick01Icon} size={15} />
             <span>VERIFIED TICKET &amp; PNR ISSUED</span>
           </div>
+        ) : isReserved ? (
+          <div className="text-[10px] font-bold text-amber-700 uppercase sm:text-[11px]">
+            <span>NOT TICKETED — PAY TO CONFIRM</span>
+          </div>
         ) : (
           <div className="text-[10px] font-bold text-muted-foreground uppercase sm:text-[11px]">
-            <span>PNR PENDING — CHECK BACK SHORTLY</span>
+            <span>TICKET PENDING — CHECK BACK SHORTLY</span>
           </div>
         )}
       </div>
+      {isTicketed && data.ticketNumbers ? (
+        <p className="mt-3 text-center text-xs font-bold break-all text-foreground">
+          E-ticket {data.ticketNumbers.length === 1 ? "number" : "numbers"}:{" "}
+          <span className="font-mono select-all">
+            {data.ticketNumbers.join(" · ")}
+          </span>
+        </p>
+      ) : null}
       {data.amadeusOrderId || data.ticketDeadline ? (
         <p className="mt-3 text-center font-mono text-[10px] break-all text-muted-foreground">
           {data.amadeusOrderId ? `Order ${data.amadeusOrderId}` : ""}

@@ -5,8 +5,13 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AlertCircleIcon, Message01Icon } from "@hugeicons/core-free-icons"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { ButtonLink, Button, buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  buildFlightPayUrl,
+  formatTicketingDeadline,
+  resolveFlightVerificationState,
+} from "@/lib/api/flight-bookings"
 import {
   getOrderHistory,
   isOrderPaid,
@@ -29,6 +34,40 @@ function orderTitle(item: OrderHistoryItem): string {
   const type = (item.booking_type ?? "").trim().toLowerCase()
   if (type) return `${type.charAt(0).toUpperCase() + type.slice(1)} booking`
   return "Booking"
+}
+
+/**
+ * Whether a history item is a Reservation awaiting payment rather than a
+ * payment still settling. A reserved flight reports a pending payment status,
+ * so status alone cannot tell them apart: the reservation markers are an
+ * explicit `reserved` status or a pay-by date on a pending flight. Anything
+ * else pending keeps reading as still processing and is NOT relabelled.
+ */
+function reservationMarker(item: OrderHistoryItem): {
+  reserved: boolean
+  deadline: string | null
+} {
+  if ((item.booking_type ?? "").trim().toLowerCase() !== "flight") {
+    return { reserved: false, deadline: null }
+  }
+  const status = (item.status ?? "").trim().toLowerCase()
+  const paymentStatus = (item.payment_status ?? "").trim().toLowerCase()
+  const extra = item as unknown as Record<string, unknown>
+  const rawDeadline = extra["ticketing_deadline"]
+  const deadline =
+    typeof rawDeadline === "string" && rawDeadline.trim()
+      ? rawDeadline.trim()
+      : null
+  if (resolveFlightVerificationState({ status }) === "reserved") {
+    return { reserved: true, deadline }
+  }
+  if (
+    deadline &&
+    (status === "pending" || paymentStatus === "pending" || !paymentStatus)
+  ) {
+    return { reserved: true, deadline }
+  }
+  return { reserved: false, deadline: null }
 }
 
 function OrdersFallback() {
@@ -201,6 +240,66 @@ export function OrdersClient() {
             const status = resolveOrderPaymentStatus(item)
             const paid = isOrderPaid(status)
             const href = `/order?reference=${encodeURIComponent(item.reference)}&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ""}`
+            const marker = reservationMarker(item)
+            // A Reservation is shown with its pay-by date and a payment action
+            // so it can be completed without hunting for the email — and never
+            // as a "still processing" warning about a state the Customer
+            // chose. The pay page itself handles an already-paid or
+            // no-longer-payable Booking without error.
+            if (marker.reserved && !paid) {
+              const payHref =
+                email && token
+                  ? buildFlightPayUrl({
+                      reference: item.reference,
+                      email,
+                      token,
+                    })
+                  : href
+              const payBy = formatTicketingDeadline(marker.deadline)
+              return (
+                <li
+                  key={item.reference}
+                  className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-card p-4 shadow-xs"
+                >
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate text-sm font-bold text-foreground">
+                      {orderTitle(item)}
+                    </span>
+                    <span className="font-mono text-xs break-all text-muted-foreground">
+                      {item.reference}
+                    </span>
+                    <span className="mt-1 w-fit rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-black tracking-wider text-amber-700 uppercase">
+                      Reserved — payment due
+                    </span>
+                    {payBy ? (
+                      <span className="mt-1 text-xs font-semibold text-muted-foreground">
+                        Pay by {payBy} to keep your seat
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="shrink-0 text-left">
+                      {item.amount !== undefined && item.amount !== null ? (
+                        <span className="font-variant-numeric block text-sm font-extrabold text-foreground tabular-nums">
+                          {formatNaira(String(item.amount))}
+                        </span>
+                      ) : null}
+                      <span className="block text-[11px] text-muted-foreground">
+                        {item.currency || "NGN"}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 gap-2">
+                      <ButtonLink href={payHref} size="sm">
+                        <span>Pay now</span>
+                      </ButtonLink>
+                      <ButtonLink href={href} size="sm" variant="outline">
+                        <span>View</span>
+                      </ButtonLink>
+                    </span>
+                  </span>
+                </li>
+              )
+            }
             return (
               <li key={item.reference}>
                 <Link

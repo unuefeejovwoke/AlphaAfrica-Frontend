@@ -9,6 +9,7 @@
  * - flight_price_changed { direction, currency } (`price_changed` kept as legacy alias)
  * - flight_checkout_started { travellers, is_international }
  * - flight_payment_initiated { currency, travellers }
++ * - flight_reservation_created { travellers, is_international }
  * - flight_payment_completed { type }
  * - flight_confirmation_viewed { type } (`booking_confirmation_viewed` kept as legacy alias)
  * - support_click { context, channel }
@@ -57,6 +58,7 @@ export const ANALYTICS_EVENTS = [
   "flight_price_changed",
   "flight_checkout_started",
   "flight_payment_initiated",
+  "flight_reservation_created",
   "flight_payment_completed",
   "flight_confirmation_viewed",
   "hotel_search",

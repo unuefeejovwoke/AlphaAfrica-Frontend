@@ -43,8 +43,8 @@ test("E-ticket states issuance conditionally and shows every leg", () => {
   )
   assert.match(
     ticket,
-    /PNR PENDING/,
-    "Missing PNR must be labelled pending, never claimed issued"
+    /TICKET PENDING/,
+    "An unissued ticket must be labelled pending, never claimed issued — and without PNR-presence language (ADR-0007)"
   )
   assert.match(
     ticket,

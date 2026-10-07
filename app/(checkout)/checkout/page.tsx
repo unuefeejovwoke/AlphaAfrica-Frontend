@@ -61,8 +61,8 @@ export default async function CheckoutPage({
           Secure Guest Booking Checkout
         </h1>
         <p className="text-xs text-muted-foreground">
-          Complete your booking details below — your reference is issued once
-          payment is confirmed.
+          Complete your booking details below — pay now, or reserve your seat
+          on international flights and pay later.
         </p>
       </div>
       <div className="mt-8">

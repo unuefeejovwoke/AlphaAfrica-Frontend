@@ -39,15 +39,27 @@ import {
   type TravelerType,
 } from "@/lib/schemas/travel"
 
+export type TravellerSubmitIntent = "pay_now" | "reserve"
+
 export interface TravellerDetailsFormProps {
   party: TravellerComposition
   isInternational: boolean
   /**
    * Validated submit — awaited by the form, so `isSubmitting` stays true while
-   * the parent creates the Pending Booking and hands off to Paystack.
+   * the parent creates the Booking and hands off to Paystack or to the
+   * reservation confirmation. One form, one validation path, an intent
+   * argument: the primary action remains a real submit with `pay_now`, and the
+   * secondary action (when offered) invokes the form's own submit handler with
+   * `reserve`. Both run identical validation — no duplicated schema, no second
+   * form.
    */
-  onSubmit: (payload: BookingTravellersPayload) => void | Promise<void>
+  onSubmit: (
+    payload: BookingTravellersPayload,
+    intent: TravellerSubmitIntent
+  ) => void | Promise<void>
   isSubmitting?: boolean
+  /** True while the reserve action is creating the hold. */
+  isReserving?: boolean
   /**
    * Prefill from a restored Travellers draft (refresh / back from Paystack).
    * Must match `party`; callers pass null when it does not.
@@ -56,6 +68,13 @@ export interface TravellerDetailsFormProps {
   /** Primary action copy. Defaults to the traveller-details wording. */
   submitLabel?: string
   submittingLabel?: string
+  /**
+   * Render the secondary reserve action. Only ever true for an international
+   * Flight Offer — domestic QuickAir offers no hold, so no second action.
+   */
+  allowReserve?: boolean
+  /** Secondary action copy. Should carry the amount being committed to. */
+  reserveLabel?: string
 }
 
 const GENDER_OPTIONS = [
@@ -162,9 +181,12 @@ export function TravellerDetailsForm({
   isInternational,
   onSubmit,
   isSubmitting,
+  isReserving,
   initialValues,
   submitLabel = "Save traveller details",
   submittingLabel = "Saving details…",
+  allowReserve = false,
+  reserveLabel = "Reserve and pay later",
 }: TravellerDetailsFormProps) {
   // Factory schema memoized on primitives so resolver identity stays stable.
   const schema = React.useMemo(
@@ -208,9 +230,20 @@ export function TravellerDetailsForm({
   const arrayError = getTravellersArrayError(errors)
   const customerErrors = errors.customer
 
-  const handleFormSubmit = form.handleSubmit(async (values) => {
-    await onSubmit(buildBookingTravellersPayload(values))
-  })
+  const submitAs =
+    (intent: TravellerSubmitIntent) =>
+    async (event?: React.BaseSyntheticEvent) => {
+      await form.handleSubmit(async (values) => {
+        await onSubmit(buildBookingTravellersPayload(values), intent)
+      })(event)
+    }
+
+  const handlePayNow = submitAs("pay_now")
+
+  // The secondary action invokes the form's own submit handler with the other
+  // intent — identical validation, no second form. A non-submit button, so
+  // Enter still takes the prominent pay-now path.
+  const handleReserve = submitAs("reserve")
 
   const contactSummary =
     firstTraveller?.first_name ||
@@ -225,7 +258,7 @@ export function TravellerDetailsForm({
   return (
     <form
       noValidate
-      onSubmit={handleFormSubmit}
+      onSubmit={handlePayNow}
       aria-label="Traveller details"
       className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6"
     >
@@ -486,15 +519,38 @@ export function TravellerDetailsForm({
       {/* Full-bleed action bar attached to the card — the normal floating
           checkout CTA. The support widget is offset above it on checkout. */}
       <div className="sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border bg-card p-3 sm:-mx-6 sm:-mb-6 sm:rounded-b-2xl sm:px-6 sm:pb-4">
-        <Button
-          type="submit"
-          size="lg"
-          isLoading={!!isSubmitting}
-          disabled={!!isSubmitting}
-          className="w-full justify-center"
-        >
-          <span>{isSubmitting ? submittingLabel : submitLabel}</span>
-        </Button>
+        {allowReserve ? (
+          <p className="mb-2.5 text-xs leading-relaxed text-muted-foreground">
+            Reserving holds your seat with the airline now — no payment is taken
+            today. You pay before the ticketing deadline, or the hold is
+            released.
+          </p>
+        ) : null}
+        <div className="flex flex-col gap-2">
+          <Button
+            type="submit"
+            size="lg"
+            isLoading={!!isSubmitting}
+            disabled={!!isSubmitting || !!isReserving}
+            className="w-full justify-center"
+          >
+            <span>{isSubmitting ? submittingLabel : submitLabel}</span>
+          </Button>
+          {allowReserve ? (
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              isLoading={!!isReserving}
+              disabled={!!isSubmitting || !!isReserving}
+              onClick={handleReserve}
+              aria-label={`${reserveLabel} — hold your seat now, pay before the ticketing deadline`}
+              className="w-full justify-center"
+            >
+              <span>{isReserving ? "Reserving your seat…" : reserveLabel}</span>
+            </Button>
+          ) : null}
+        </div>
         <LegalNotice className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground" />
       </div>
     </form>

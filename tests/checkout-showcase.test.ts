@@ -79,13 +79,13 @@ test("Checkout page presents a secure Guest Booking without marketing egress", (
   )
   assert.match(
     content,
-    /reference is issued/i,
-    "Must explain when the booking reference is issued"
+    /pay now/i,
+    "Must present immediate payment as the default action"
   )
   assert.match(
     content,
-    /payment is confirmed/i,
-    "Must tie the reference to confirmed payment"
+    /reserve/i,
+    "Must present the reserve-and-pay-later choice for international flights"
   )
 })
 

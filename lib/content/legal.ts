@@ -98,7 +98,7 @@ export const privacyPolicy: LegalDocument = {
       ],
       bullets: [
         "To display flight, hotel, package, visa, and vehicle options and to complete the searches, bookings, enquiries, and consultations you request.",
-        "To create pending bookings, redirect you to Paystack for payment, verify the payment reference, and issue booking confirmations with PNR or reservation references.",
+        "To create pending bookings, redirect you to Paystack for payment, verify the payment reference, and issue booking confirmations with the booking reference, PNR, and any reservation references.",
         "To operate accounts: registration, login with JWT access and refresh tokens, email verification, password reset, profile management, and order history.",
         "To provide human assistance: answering questions on WhatsApp, phone, and email, reconciling deducted-but-unconfirmed payments, and following up on package enquiries and visa consultations.",
         "To keep the platform safe: fraud prevention, duplicate-submission protection, session management, access control, and troubleshooting.",
@@ -247,7 +247,7 @@ export const termsConditions: LegalDocument = {
       title: "4. Booking, pricing, and payment",
       paragraphs: [
         "Prices are shown in Naira (₦) unless a fare is denominated otherwise, and include applicable taxes and our service margin where disclosed. Flight prices shown during search are live offers that can change until ticketed: before you pay, we revalidate the fare with the airline. If the airline updated the fare, we show the previous amount, the new amount, and the difference, and you choose whether to continue at the new price or cancel — nothing is charged without your confirmation of the final total.",
-        "Checkout creates a pending booking and redirects you to Paystack's secure pages to authorise payment; we never collect or store card numbers, CVVs, PINs, or bank logins. Returning from Paystack does not by itself mean the booking succeeded — we verify the payment reference with the backend and only then create the airline order/PNR or confirm the hotel or car reservation. Your confirmation screen and booking history show the final reference, amount, payment state, and next steps. Keep your payment and booking references: if a payment is deducted but confirmation is unclear, contact us immediately so we can locate and reconcile the transaction.",
+        "Checkout creates a booking and redirects you to Paystack's secure pages to authorise payment; we never collect or store card numbers, CVVs, PINs, or bank logins. On international flights the airline order and its PNR are created when you book, before payment, so your seat is held while you pay. Returning from Paystack does not by itself mean the booking succeeded — we verify the payment reference with the backend before confirming any flight, hotel, or car reservation. Your confirmation screen and booking history show the final reference, amount, payment state, and next steps. Keep your payment and booking references: if a payment is deducted but confirmation is unclear, contact us immediately so we can locate and reconcile the transaction.",
       ],
     },
     {
