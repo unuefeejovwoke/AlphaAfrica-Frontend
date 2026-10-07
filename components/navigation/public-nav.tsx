@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { AnimatePresence, motion, type Variants } from "motion/react"
 import { Drawer } from "@base-ui/react/drawer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -19,6 +20,14 @@ import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { UnderConstructionBadge } from "@/components/shared/under-construction-badge"
 import { company } from "@/lib/content/company"
 import { SERVICE_IMAGES } from "@/lib/images"
+import {
+  MOTION_DISTANCES,
+  MOTION_DURATIONS,
+  MOTION_EASINGS,
+  MOTION_STAGGERS,
+} from "@/lib/motion/tokens"
+import { MOTION_SPRINGS } from "@/lib/motion/springs"
+import { backdropFadeVariants } from "@/lib/motion/variants"
 import { cn } from "@/lib/utils"
 
 type ServiceItem = {
@@ -94,6 +103,57 @@ const SERVICES: ServiceItem[] = [
     sizes: "(max-width: 1280px) 50vw, 600px",
   },
 ]
+
+/**
+ * Explore MegaMenu drop-and-fade (Ticket 06): soft drop (y) + fade (opacity)
+ * over the `menu` duration on the house brand easing; exit mirrors the
+ * entrance so dismissal glides rather than pops.
+ */
+const megaMenuPanelVariants: Variants = {
+  hidden: { opacity: 0, y: -MOTION_DISTANCES.dropdown },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: MOTION_DURATIONS.menu,
+      ease: MOTION_EASINGS.brand,
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -MOTION_DISTANCES.dropdown,
+    transition: {
+      duration: MOTION_DURATIONS.quick,
+      ease: MOTION_EASINGS.easeOut,
+    },
+  },
+}
+
+/**
+ * One MegaMenu service card. The parent passes each card's cascade offset via
+ * `custom` (index × `MOTION_STAGGERS.menu`); exit drops the delay so all six
+ * tiles dismiss together, fast.
+ */
+const megaMenuCardVariants: Variants = {
+  hidden: { opacity: 0, y: -MOTION_DISTANCES.dropdown },
+  visible: (step: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: MOTION_DURATIONS.menu,
+      ease: MOTION_EASINGS.brand,
+      delay: step,
+    },
+  }),
+  exit: {
+    opacity: 0,
+    y: -MOTION_DISTANCES.dropdown,
+    transition: {
+      duration: MOTION_DURATIONS.quick,
+      ease: MOTION_EASINGS.easeOut,
+    },
+  },
+}
 
 export function PublicNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
@@ -186,7 +246,7 @@ export function PublicNav() {
               <HugeiconsIcon
                 icon={ChevronDownIcon}
                 size={14}
-                className={`transition-transform duration-200 ease-out ${megaMenuOpen ? "rotate-180 text-primary" : "text-muted-foreground"}`}
+                className={`transition-transform duration-200 ease-brand ${megaMenuOpen ? "rotate-180 text-primary" : "text-muted-foreground"}`}
                 aria-hidden="true"
               />
             </button>
@@ -261,124 +321,163 @@ export function PublicNav() {
           </button>
         </div>
 
-        {megaMenuOpen && (
-          <div
-            id="explore-mega-menu"
-            role="group"
-            aria-labelledby="explore-menu-trigger"
-            ref={megaMenuRef}
-            onMouseEnter={handleMegaMenuEnter}
-            onMouseLeave={handleMegaMenuLeave}
-            className="absolute top-full right-4 left-4 hidden pt-2 sm:right-6 sm:left-6 lg:right-8 lg:left-8 lg:block"
-          >
-            <div className="w-full rounded-2xl border border-border/80 bg-card p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)]">
-              <div className="grid grid-cols-4 gap-3.5">
-                {SERVICES.map((service) => {
-                  const isDisabled = Boolean(service.comingSoon)
+        {/* Entrance: soft drop-and-fade on the house brand easing; exit
+            mirrors it so dismissal feels instant but never pops. */}
+        <AnimatePresence>
+          {megaMenuOpen && (
+            <motion.div
+              key="explore-mega-menu"
+              id="explore-mega-menu"
+              role="group"
+              aria-labelledby="explore-menu-trigger"
+              ref={megaMenuRef}
+              onMouseEnter={handleMegaMenuEnter}
+              onMouseLeave={handleMegaMenuLeave}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              variants={megaMenuPanelVariants}
+              className="absolute top-full right-4 left-4 hidden pt-2 sm:right-6 sm:left-6 lg:right-8 lg:left-8 lg:block"
+            >
+              <div className="w-full rounded-2xl border border-border/80 bg-card p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.18)]">
+                <div className="grid grid-cols-4 gap-3.5">
+                  {SERVICES.map((service, index) => {
+                    const isDisabled = Boolean(service.comingSoon)
 
-                  const cardBody = (
-                    <>
-                      <Image
-                        src={service.image}
-                        alt={service.imageAlt}
-                        fill
-                        sizes={service.sizes}
-                        className={cn(
-                          "object-cover transition-transform duration-500 ease-out",
-                          isDisabled
-                            ? "opacity-70"
-                            : "group-hover/card:scale-105"
-                        )}
-                      />
+                    const cardBody = (
+                      <>
+                        <Image
+                          src={service.image}
+                          alt={service.imageAlt}
+                          fill
+                          sizes={service.sizes}
+                          className={cn(
+                            "object-cover transition-transform duration-500 ease-out",
+                            isDisabled
+                              ? "opacity-70"
+                              : "group-hover/card:scale-[1.04]"
+                          )}
+                        />
 
-                      <div
-                        className={cn(
-                          "absolute inset-0 bg-black/40",
-                          !isDisabled &&
-                            "transition-colors duration-300 group-hover/card:bg-black/30"
-                        )}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                        <div
+                          className={cn(
+                            "absolute inset-0 bg-black/40",
+                            !isDisabled &&
+                              "transition-colors duration-300 group-hover/card:bg-black/30"
+                          )}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
-                      <div className="relative z-10">
-                        {/* Link card label, not a document heading — the
-                            heading outline belongs to the page behind the nav. */}
-                        <p className="text-base font-bold tracking-tight text-white">
-                          {service.title}
-                        </p>
-                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/80">
-                          {service.description}
-                        </p>
-                        {isDisabled && (
-                          <UnderConstructionBadge className="mt-2" />
-                        )}
-                      </div>
-                    </>
-                  )
-
-                  if (isDisabled) {
-                    return (
-                      <div
-                        key={service.href}
-                        className={cn(
-                          "relative flex h-[190px] cursor-not-allowed flex-col justify-end overflow-hidden rounded-xl border border-dashed border-border/60 p-4",
-                          service.span
-                        )}
-                      >
-                        {cardBody}
-                      </div>
+                        <div className="relative z-10">
+                          {/* Link card label, not a document heading — the
+                              heading outline belongs to the page behind the nav. */}
+                          <p className="text-base font-bold tracking-tight text-white">
+                            {service.title}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/80">
+                            {service.description}
+                          </p>
+                          {isDisabled && (
+                            <UnderConstructionBadge className="mt-2" />
+                          )}
+                        </div>
+                      </>
                     )
-                  }
 
-                  return (
-                    <Link
-                      key={service.href}
-                      href={service.href}
-                      onClick={() => setMegaMenuOpen(false)}
-                      className={cn(
-                        "group/card relative flex h-[190px] flex-col justify-end overflow-hidden rounded-xl border border-border/40 p-4 transition-all duration-300 hover:border-primary/50 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                        service.span
-                      )}
-                    >
-                      {cardBody}
-                    </Link>
-                  )
-                })}
-              </div>
+                    // Each card drops in one cascade step after the previous
+                    // one so the six tiles arrive as a coordinated sequence.
+                    if (isDisabled) {
+                      return (
+                        <motion.div
+                          key={service.href}
+                          variants={megaMenuCardVariants}
+                          custom={index * MOTION_STAGGERS.menu}
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
+                          className={cn("h-[190px]", service.span)}
+                        >
+                          <div className="relative flex h-full w-full cursor-not-allowed flex-col justify-end overflow-hidden rounded-xl border border-dashed border-border/60 p-4">
+                            {cardBody}
+                          </div>
+                        </motion.div>
+                      )
+                    }
 
-              <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <HugeiconsIcon
-                    icon={CustomerService01Icon}
-                    size={15}
-                    className="text-primary"
-                    aria-hidden="true"
-                  />
-                  <span>
-                    Not sure where to start?{" "}
-                    <Link
-                      href="/contact"
-                      onClick={() => setMegaMenuOpen(false)}
-                      className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
-                    >
-                      Talk to our travel specialists
-                    </Link>
+                    return (
+                      <motion.div
+                        key={service.href}
+                        variants={megaMenuCardVariants}
+                        custom={index * MOTION_STAGGERS.menu}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        className={cn("h-[190px]", service.span)}
+                      >
+                        <Link
+                          href={service.href}
+                          onClick={() => setMegaMenuOpen(false)}
+                          className="group/card relative flex h-full w-full flex-col justify-end overflow-hidden rounded-xl border border-border/40 p-4 transition-all duration-300 hover:border-primary/50 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        >
+                          {cardBody}
+                        </Link>
+                      </motion.div>
+                    )
+                  })}
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon
+                      icon={CustomerService01Icon}
+                      size={15}
+                      className="text-primary"
+                      aria-hidden="true"
+                    />
+                    <span>
+                      Not sure where to start?{" "}
+                      <Link
+                        href="/contact"
+                        onClick={() => setMegaMenuOpen(false)}
+                        className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+                      >
+                        Talk to our travel specialists
+                      </Link>
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">
+                    Secure payments by Paystack
                   </span>
                 </div>
-                <span className="text-[11px] text-muted-foreground">
-                  Secure payments by Paystack
-                </span>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <Drawer.Root open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <Drawer.Portal>
-          <Drawer.Backdrop className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 sm:bg-black/10" />
-          <Drawer.Viewport className="fixed inset-0 z-50 flex items-start justify-center p-4">
+          <Drawer.Backdrop
+            render={
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={backdropFadeVariants}
+              />
+            }
+            className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 sm:bg-black/10"
+          />
+          <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center p-4">
             <Drawer.Popup
+              render={
+                <motion.div
+                  initial={{ opacity: 0, y: "100%" }}
+                  animate={{ opacity: 1, y: "0%" }}
+                  exit={{ opacity: 0, y: "100%" }}
+                  transition={MOTION_SPRINGS.sheet}
+                />
+              }
               id="mobile-navigation-drawer"
               className="max-h-[88vh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl border border-border/60 bg-background px-4 py-5 shadow-2xl lg:hidden"
             >
@@ -413,7 +512,7 @@ export function PublicNav() {
                   <HugeiconsIcon
                     icon={ChevronDownIcon}
                     size={16}
-                    className={`text-muted-foreground transition-transform duration-200 ease-out ${mobileServicesOpen ? "rotate-180" : ""}`}
+                    className={`text-muted-foreground transition-transform duration-200 ease-brand ${mobileServicesOpen ? "rotate-180" : ""}`}
                     aria-hidden="true"
                   />
                 </button>

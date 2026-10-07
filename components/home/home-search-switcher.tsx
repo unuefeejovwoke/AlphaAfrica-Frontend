@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Airplane01Icon,
@@ -12,6 +13,8 @@ import {
   ArrowUpRight01Icon,
 } from "@hugeicons/core-free-icons"
 import { HomeFlightSearch } from "@/components/home/home-flight-search"
+import { ActiveIndicator } from "@/components/motion/active-indicator"
+import { MOTION_SPRINGS } from "@/lib/motion/springs"
 
 /** Only Flights renders in place; every other tab links to its live route. */
 type InteractiveTabId = "flights"
@@ -72,7 +75,7 @@ export function HomeSearchSwitcher() {
           {interactiveTabs.map((tab) => {
             const isActive = activeTab === tab.id
             return (
-              <button
+              <motion.button
                 key={tab.id}
                 ref={(node) => {
                   tabRefs.current[tab.id] = node
@@ -85,24 +88,33 @@ export function HomeSearchSwitcher() {
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
                 onKeyDown={(event) => onKeyDown(event, tab.id)}
-                className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-center text-[11px] leading-tight font-medium transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:flex-row sm:gap-2 sm:px-3 sm:py-2.5 sm:text-left sm:text-sm ${
+                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.01 }}
+                transition={MOTION_SPRINGS.tactile}
+                className={`relative flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-center text-[11px] leading-tight font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:flex-row sm:gap-2 sm:px-3 sm:py-2.5 sm:text-left sm:text-sm ${
                   isActive
-                    ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
+                    ? "font-semibold text-foreground"
                     : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
                 }`}
               >
+                {isActive ? (
+                  <ActiveIndicator
+                    layoutId="search-switcher-pill"
+                    transition={MOTION_SPRINGS.layout}
+                  />
+                ) : null}
                 <HugeiconsIcon
                   icon={tab.icon}
                   size={17}
                   aria-hidden="true"
                   className={
                     isActive
-                      ? "shrink-0 text-primary"
-                      : "shrink-0 text-muted-foreground"
+                      ? "relative z-10 shrink-0 text-primary"
+                      : "relative z-10 shrink-0 text-muted-foreground"
                   }
                 />
-                <span className="min-w-0">{tab.label}</span>
-              </button>
+                <span className="relative z-10 min-w-0">{tab.label}</span>
+              </motion.button>
             )
           })}
         </div>
@@ -111,7 +123,7 @@ export function HomeSearchSwitcher() {
           <Link
             key={tab.id}
             href={tab.href ?? "#"}
-            className="group flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-center text-[11px] leading-tight font-medium text-muted-foreground transition-all hover:bg-card/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:flex-row sm:gap-2 sm:px-3 sm:py-2.5 sm:text-left sm:text-sm"
+            className="group flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-center text-[11px] leading-tight font-medium text-muted-foreground transition-all hover:bg-card/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.98] sm:flex-row sm:gap-2 sm:px-3 sm:py-2.5 sm:text-left sm:text-sm"
           >
             <HugeiconsIcon
               icon={tab.icon}

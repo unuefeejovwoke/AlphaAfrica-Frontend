@@ -128,6 +128,8 @@ export const orderHistoryItemSchema = z
     status: z.string().optional().default(""),
     paid_at: z.string().optional().nullable(),
     created_at: z.string().optional().nullable(),
+    /** Present on reserved international flight bookings only. */
+    ticketing_deadline: z.string().optional().nullable(),
   })
   .passthrough()
 

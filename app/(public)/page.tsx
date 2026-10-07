@@ -15,6 +15,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { ButtonLink } from "@/components/ui/button"
 import { CardSkeleton } from "@/components/ui/skeleton"
+import { HomeHeroSlideshow } from "@/components/home/home-hero-slideshow"
 import { HomeSearchSwitcher } from "@/components/home/home-search-switcher"
 import { FeaturedPackages } from "@/components/home/featured-packages"
 import { FeaturedHotels } from "@/components/home/featured-hotels"
@@ -24,7 +25,7 @@ import { HomeFaq } from "@/components/home/home-faq"
 import { TerminalCta } from "@/components/shared/terminal-cta"
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
 import { stats } from "@/lib/content/stats"
-import { HERO, HOME_BENTO } from "@/lib/images"
+import { HOME_BENTO } from "@/lib/images"
 import {
   canonicalUrl,
   getSeoConfig,
@@ -115,14 +116,7 @@ export default async function HomePage() {
 
       {/* Hero Section */}
       <section className="relative w-full overflow-hidden bg-zinc-950 text-white">
-        <Image
-          src={HERO}
-          alt="Aircraft wing above the West African coastline at sunset"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
+        <HomeHeroSlideshow />
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/35" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/20" />
 
@@ -131,7 +125,7 @@ export default async function HomePage() {
             <h1 className="text-3xl leading-[1.15] font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
               Travel Beyond <span className="text-primary">Borders</span>
             </h1>
-            <p className="max-w-2xl animate-rise [--rise-delay:110ms] text-base leading-relaxed text-white/90 sm:text-lg">
+            <p className="max-w-2xl animate-rise text-base leading-relaxed text-white/90 [--rise-delay:100ms] sm:text-lg">
               Get the best flight deals, handpicked hotels, and curated holidays
               with transparent pricing and 24/7 human support every step of the
               way.
@@ -139,7 +133,7 @@ export default async function HomePage() {
           </div>
 
           {/* Trust strip — claims published on alphaaafrica.com */}
-          <div className="inline-flex animate-rise [--rise-delay:220ms] flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-white/80 sm:gap-x-4 sm:text-sm">
+          <div className="inline-flex animate-rise flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-white/80 [--rise-delay:200ms] sm:gap-x-4 sm:text-sm">
             {trustBadges.map((badge, index) => (
               <React.Fragment key={badge.id}>
                 {index > 0 && (
@@ -171,7 +165,7 @@ export default async function HomePage() {
           visible space below the hero copy equals the gap between the hero text
           blocks (gap-5 / sm:gap-6 = 20px / 24px), while still overlapping the
           photo. Formula: |margin| = hero pb + section gap − hero text gap. */}
-      <section className="relative z-20 mx-auto -mt-[188px] w-full max-w-7xl px-4 sm:-mt-[216px] sm:px-6 md:-mt-[264px] lg:px-8">
+      <section className="relative z-20 mx-auto -mt-[188px] w-full max-w-7xl animate-rise px-4 [--rise-delay:260ms] sm:-mt-[216px] sm:px-6 md:-mt-[264px] lg:px-8">
         <div id="trip-search" className="scroll-mt-24">
           <HomeSearchSwitcher />
         </div>
@@ -195,11 +189,11 @@ export default async function HomePage() {
         {/* Asymmetrical Bento Grid */}
         <div className="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-12">
           {/* 1. Everything in one place */}
-          <div className="group reveal relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
+          <div className="group relative col-span-1 flex reveal flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
             <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform duration-200 ease-brand group-hover:scale-105">
                     <HugeiconsIcon icon={Luggage01Icon} size={22} />
                   </div>
                   <span className="rounded-full border border-border/50 bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
@@ -220,11 +214,11 @@ export default async function HomePage() {
           </div>
 
           {/* 2. Book in minutes */}
-          <div className="group reveal relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
+          <div className="group relative col-span-1 flex reveal flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
             <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform duration-200 ease-brand group-hover:scale-105">
                     <HugeiconsIcon icon={Clock01Icon} size={22} />
                   </div>
                   <span className="rounded-full border border-border/50 bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
@@ -245,11 +239,11 @@ export default async function HomePage() {
           </div>
 
           {/* 3. Clear prices */}
-          <div className="group reveal relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
+          <div className="group relative col-span-1 flex reveal flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-4">
             <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+                  <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 transition-transform duration-200 ease-brand group-hover:scale-105">
                     <HugeiconsIcon icon={SecurityCheckIcon} size={22} />
                   </div>
                   <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
@@ -271,14 +265,14 @@ export default async function HomePage() {
           </div>
 
           {/* 4. Editorial: custom planning */}
-          <div className="group reveal relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-7 lg:col-span-8">
+          <div className="group relative col-span-1 flex reveal flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-7 lg:col-span-8">
             <div className="relative flex min-h-[360px] flex-1 flex-col justify-between overflow-hidden rounded-[calc(1.5rem-2px)] border border-white/20 p-6 text-white shadow-xl sm:min-h-[400px] sm:p-8">
               <Image
                 src={HOME_BENTO}
                 alt="A couple walking along the waterline of a white sand tropical beach"
                 fill
                 sizes="(max-width: 768px) 100vw, 66vw"
-                className="object-cover object-center transition-transform duration-700 ease-brand group-hover:scale-105"
+                className="object-cover object-center transition-transform duration-[600ms] ease-brand group-hover:scale-[1.03]"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/20" />
 
@@ -322,11 +316,11 @@ export default async function HomePage() {
           </div>
 
           {/* 5. Human support — fills the column beside the editorial card */}
-          <div className="group reveal relative col-span-1 flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-5 lg:col-span-4">
+          <div className="group relative col-span-1 flex reveal flex-col rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2 md:col-span-5 lg:col-span-4">
             <div className="flex flex-1 flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex size-11 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
+                  <div className="flex size-11 items-center justify-center rounded-2xl bg-secondary/10 text-secondary transition-transform duration-200 ease-brand group-hover:scale-105">
                     <HugeiconsIcon icon={HeadphonesIcon} size={22} />
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">

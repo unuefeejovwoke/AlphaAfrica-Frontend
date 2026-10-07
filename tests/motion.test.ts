@@ -2,6 +2,13 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
+import { MOTION_EASINGS } from "../lib/motion/tokens.ts"
+import {
+  fadeInRiseVariants,
+  staggerContainerVariants,
+  modalScaleVariants,
+  accordionPanelVariants,
+} from "../lib/motion/variants.ts"
 
 /**
  * Motion layer guard (CSS-only entrance + scroll reveal).
@@ -93,7 +100,11 @@ test("Motion: the brand easing lives in one token, not scattered arbitrary value
       const full = path.join(dir, entry.name)
       if (entry.isDirectory()) walk(full)
       else if (/\.tsx?$/.test(entry.name)) {
-        if (/cubic-bezier\(0\.32,\s*0\.72,\s*0,\s*1\)/.test(fs.readFileSync(full, "utf-8"))) {
+        if (
+          /cubic-bezier\(0\.32,\s*0\.72,\s*0,\s*1\)/.test(
+            fs.readFileSync(full, "utf-8")
+          )
+        ) {
           offenders.push(path.relative(ROOT, full))
         }
       }
@@ -173,5 +184,113 @@ test("Motion: reduced motion explicitly disables .reveal", () => {
     block[1],
     /\.reveal[^{]*\{[^}]*animation:\s*none\s*!important/,
     "Reduced motion must set animation: none on .reveal — animation-duration alone does not stop a scroll-driven animation"
+  )
+})
+
+test("Motion: lib/motion/tokens.ts brand easing matches globals.css --ease-brand token", () => {
+  const brandMatch = css.match(/--ease-brand:\s*cubic-bezier\(([^)]+)\)/)
+  assert.ok(brandMatch, "globals.css must declare --ease-brand cubic-bezier")
+
+  const cssNumbers = brandMatch[1]
+    .split(",")
+    .map((s) => Number.parseFloat(s.trim()))
+
+  assert.deepEqual(
+    Array.from(MOTION_EASINGS.brand),
+    cssNumbers,
+    "lib/motion/tokens.ts brand easing array must match globals.css --ease-brand parameters"
+  )
+})
+
+test("Motion: motion variants animate exclusively transform/opacity and zero layout properties", () => {
+  const variantRegistry = {
+    fadeInRiseVariants,
+    staggerContainerVariants,
+    modalScaleVariants,
+    accordionPanelVariants,
+  }
+
+  // camelCase keys as they appear in JS variant objects, kebab-case as in
+  // CSS declarations — a variant declares `marginTop`, a keyframe `margin-top`,
+  // so both spellings have to be covered or either one slips past.
+  const FORBIDDEN_ANIMATION_KEYS = [
+    ...LAYOUT_PROPERTIES,
+    "fontSize",
+    "lineHeight",
+    "minWidth",
+    "maxWidth",
+    "minHeight",
+    "maxHeight",
+    "marginTop",
+    "marginRight",
+    "marginBottom",
+    "marginLeft",
+    "paddingTop",
+    "paddingRight",
+    "paddingBottom",
+    "paddingLeft",
+    "borderRadius",
+    "borderWidth",
+  ]
+
+  for (const [name, variantObj] of Object.entries(variantRegistry)) {
+    for (const [stateKey, target] of Object.entries(variantObj)) {
+      if (!target || typeof target !== "object") continue
+      for (const prop of Object.keys(target)) {
+        if (prop === "transition") continue
+        assert.ok(
+          !FORBIDDEN_ANIMATION_KEYS.includes(prop),
+          `Variant "${name}" state "${stateKey}" must not animate forbidden layout property "${prop}"`
+        )
+      }
+    }
+  }
+
+  // Source scan catches forbidden keys written directly into the variants
+  // file that the object scan above cannot see (e.g. inside a transition).
+  const sources = [
+    "lib/motion/variants.ts",
+    "components/motion/motion-tap.tsx",
+    "components/motion/active-indicator.tsx",
+  ]
+  for (const file of sources) {
+    const source = read(file)
+    for (const layoutProp of FORBIDDEN_ANIMATION_KEYS) {
+      const regex = new RegExp(`(^|\\s|[{,])${layoutProp}\\s*:`, "i")
+      assert.doesNotMatch(
+        source,
+        regex,
+        `${file} must not declare "${layoutProp}" as an animation property — it forces layout every frame and moves CLS off 0`
+      )
+    }
+  }
+})
+
+test("Motion: primitives defer to MotionProvider for reduced motion instead of overriding it", () => {
+  // Issue 01: "Ensure all primitives automatically respect
+  // <MotionConfig reducedMotion='user'>". The provider mounts it app-wide;
+  // a primitive opting out (reducedMotion="never") would silently strip the
+  // accessibility backstop for every consumer, so assert the override is absent.
+  const primitives = [
+    "components/motion/motion-tap.tsx",
+    "components/motion/active-indicator.tsx",
+  ]
+  for (const file of primitives) {
+    const source = read(file)
+      // Strip comments so doc prose mentioning the config doesn't false-positive.
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|\s)\/\/.*$/gm, "$1")
+    assert.doesNotMatch(
+      source,
+      /reducedMotion\s*=/,
+      `${file} must not set a reducedMotion prop — reduced motion comes from MotionProvider's MotionConfig`
+    )
+  }
+
+  const provider = read("components/shared/motion-provider.tsx")
+  assert.match(
+    provider,
+    /<MotionConfig\s+reducedMotion="user"/,
+    'MotionProvider must keep reducedMotion="user" as the app-wide backstop'
   )
 })

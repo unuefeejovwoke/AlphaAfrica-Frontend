@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { motion } from "motion/react"
 import { useSearchParams } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -30,10 +31,7 @@ import {
 } from "@/lib/api/flight-bookings"
 import { clearFlightCheckoutSession } from "@/lib/api/flights"
 import { clearSelectedDomesticCard } from "@/lib/api/domestic"
-import {
-  extractOrderDetails,
-  type PaymentOrder,
-} from "@/lib/api/payments"
+import { extractOrderDetails, type PaymentOrder } from "@/lib/api/payments"
 import {
   emitVerificationEventOnce,
   fetchOrderWithSettleRetry,
@@ -47,6 +45,7 @@ import {
 import { formatNaira } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { pluralize } from "@/lib/schemas/travel"
+import { backdropFadeVariants, fadeInRiseVariants } from "@/lib/motion/variants"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { TrackLink } from "@/components/analytics/track-link"
 
@@ -375,8 +374,7 @@ export function FlightVerifyClient() {
   const { booking, order } = state
   const bookingStatus = booking.status.trim().toLowerCase()
   const paid =
-    resolveFlightVerificationState(booking) === "paid" ||
-    isPaidOrder(order)
+    resolveFlightVerificationState(booking) === "paid" || isPaidOrder(order)
 
   // Ticket numbers resolve once a paid Booking exists — one read, on demand.
   React.useEffect(() => {
@@ -449,10 +447,23 @@ export function FlightVerifyClient() {
       tickets !== null &&
       !tickets.ticketed &&
       (ticketBooking.ticket_numbers ?? []).length === 0
+    // Arrival is opacity-only on the wrapper so the e-ticket document —
+    // PNR, references, ticket numbers — never shifts or scales. The
+    // confident rise is scoped to the status header above the document.
     return (
-      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5 py-4 sm:gap-6 sm:py-8 print:max-w-2xl print:px-0 print:py-6">
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={backdropFadeVariants}
+        className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5 py-4 sm:gap-6 sm:py-8 print:max-w-2xl print:px-0 print:py-6"
+      >
         {/* Verification Status Header (matches official e-ticket layout) */}
-        <div className="flex flex-col items-center gap-1.5 text-center">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInRiseVariants}
+          className="flex flex-col items-center gap-1.5 text-center"
+        >
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-0.5 text-[10px] font-black tracking-wider text-emerald-600 uppercase sm:text-[11px]">
             <span className="size-1.5 animate-pulse rounded-full bg-emerald-500 motion-reduce:animate-none" />
             PAYMENT VERIFIED
@@ -466,7 +477,7 @@ export function FlightVerifyClient() {
             Your transaction has been processed and your official travel
             document issued below.
           </p>
-        </div>
+        </motion.div>
 
         {/* The Official E-Ticket Card */}
         <FlightETicket booking={ticketBooking} order={order} />
@@ -593,7 +604,7 @@ export function FlightVerifyClient() {
             </li>
           </ol>
         </div>
-      </div>
+      </motion.div>
     )
   }
 

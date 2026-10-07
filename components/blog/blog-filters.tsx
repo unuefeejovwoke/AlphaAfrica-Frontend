@@ -2,12 +2,15 @@
 
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { motion } from "motion/react"
 import { Button, ButtonLink } from "@/components/ui/button"
+import { ActiveIndicator } from "@/components/motion/active-indicator"
 import { cn } from "@/lib/utils"
 import { buildBlogSearchParams, parseBlogOrdering } from "@/lib/blog"
 import type { BlogFilters } from "@/lib/api/blog"
 import { BLOG_ORDERINGS } from "@/lib/api/blog"
 import type { BlogCategory, BlogTag } from "@/lib/api/blog"
+import { MOTION_SPRINGS } from "@/lib/motion/springs"
 import { track } from "@/lib/analytics"
 
 const selectClassName =
@@ -15,6 +18,92 @@ const selectClassName =
 
 const inputClassName =
   "flex h-11 w-full rounded-xl border border-input/80 bg-background/80 px-3.5 text-sm font-medium text-foreground shadow-xs transition-colors placeholder:text-muted-foreground hover:border-foreground/20 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+
+/** Segment height matches the select/input row so pills never shift the grid. */
+const pillClassName =
+  "relative flex h-11 shrink-0 items-center rounded-xl px-3.5 text-xs font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+
+const filterLabelClassName =
+  "text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+
+/**
+ * One pill group (category tabs or tag pills). The two groups differ only in
+ * state slice, layoutId, and label prefix — a single component serves both.
+ * Each pill is a submit button carrying its own name/value, so the same
+ * markup still filters the grid through the native GET form without
+ * JavaScript; with JS the click is intercepted and the pill slides on the
+ * layout spring.
+ */
+function PillGroup({
+  label,
+  labelId,
+  name,
+  options,
+  activeSlug,
+  layoutId,
+  hashPrefix,
+  disabled,
+  onSelect,
+}: {
+  label: string
+  labelId: string
+  name: string
+  options: { slug: string; name: string }[]
+  activeSlug: string
+  layoutId: string
+  hashPrefix: boolean
+  disabled: boolean
+  onSelect: (slug: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span id={labelId} className={filterLabelClassName}>
+        {label}
+      </span>
+      <div
+        role="group"
+        aria-labelledby={labelId}
+        className="flex flex-wrap gap-2"
+      >
+        {options.map((option) => {
+          const active = activeSlug === option.slug
+          return (
+            <motion.button
+              key={option.slug || "all"}
+              type="submit"
+              name={name}
+              value={option.slug}
+              aria-pressed={active}
+              disabled={disabled}
+              whileTap={{ scale: 0.97 }}
+              transition={MOTION_SPRINGS.tactile}
+              onClick={(event) => {
+                event.preventDefault()
+                if (!active) onSelect(option.slug)
+              }}
+              className={cn(
+                pillClassName,
+                active
+                  ? "text-secondary-foreground"
+                  : "border border-border bg-card text-foreground hover:bg-muted/60"
+              )}
+            >
+              {active ? (
+                <ActiveIndicator
+                  layoutId={layoutId}
+                  className="bg-secondary"
+                />
+              ) : null}
+              <span className="relative z-10">
+                {hashPrefix ? `#${option.name}` : option.name}
+              </span>
+            </motion.button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 const ORDERING_LABELS: Record<string, string> = {
   "-published_at": "Newest first",
@@ -44,7 +133,9 @@ export function BlogFilters({
   const [search, setSearch] = React.useState(initial.search ?? "")
   const [category, setCategory] = React.useState(initial.category ?? "")
   const [tag, setTag] = React.useState(initial.tag ?? "")
-  const [ordering, setOrdering] = React.useState<string>(initial.ordering ?? "-published_at")
+  const [ordering, setOrdering] = React.useState<string>(
+    initial.ordering ?? "-published_at"
+  )
   const [featured, setFeatured] = React.useState(initial.featured === true)
 
   React.useEffect(() => {
@@ -53,10 +144,22 @@ export function BlogFilters({
     setTag(initial.tag ?? "")
     setOrdering(initial.ordering ?? "-published_at")
     setFeatured(initial.featured === true)
-  }, [initial.search, initial.category, initial.tag, initial.ordering, initial.featured])
+  }, [
+    initial.search,
+    initial.category,
+    initial.tag,
+    initial.ordering,
+    initial.featured,
+  ])
 
   const apply = React.useCallback(
-    (next: { search: string; category: string; tag: string; ordering: string; featured: boolean }) => {
+    (next: {
+      search: string
+      category: string
+      tag: string
+      ordering: string
+      featured: boolean
+    }) => {
       const query = buildBlogSearchParams({
         search: next.search.trim() || undefined,
         category: next.category || undefined,
@@ -76,14 +179,20 @@ export function BlogFilters({
         // Analytics is best-effort; filtering must never fail on tracking.
       }
       startTransition(() => {
-        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+        router.replace(query ? `${pathname}?${query}` : pathname, {
+          scroll: false,
+        })
       })
     },
     [pathname, router]
   )
 
   const hasActive =
-    search.trim() !== "" || category !== "" || tag !== "" || featured || ordering !== "-published_at"
+    search.trim() !== "" ||
+    category !== "" ||
+    tag !== "" ||
+    featured ||
+    ordering !== "-published_at"
 
   return (
     <div className="relative rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs sm:p-2">
@@ -98,11 +207,11 @@ export function BlogFilters({
         }}
         className="flex flex-col gap-5 rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-6"
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="flex flex-1 flex-col gap-1.5">
             <label
               htmlFor="blog-filter-search"
-              className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+              className={filterLabelClassName}
             >
               Search posts
             </label>
@@ -118,71 +227,17 @@ export function BlogFilters({
                 const next = event.target.value
                 setSearch(next)
               }}
-              onBlur={() => apply({ search, category, tag, ordering, featured })}
+              onBlur={() =>
+                apply({ search, category, tag, ordering, featured })
+              }
               className={inputClassName}
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="blog-filter-category"
-              className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-            >
-              Category
-            </label>
-            <select
-              id="blog-filter-category"
-              name="category"
-              value={category}
-              disabled={isPending}
-              onChange={(event) => {
-                const next = event.target.value
-                setCategory(next)
-                apply({ search, category: next, tag, ordering, featured })
-              }}
-              className={selectClassName}
-            >
-              <option value="">All categories</option>
-              {categories.map((option) => (
-                <option key={option.slug} value={option.slug}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="blog-filter-tag"
-              className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-            >
-              Tag
-            </label>
-            <select
-              id="blog-filter-tag"
-              name="tag"
-              value={tag}
-              disabled={isPending}
-              onChange={(event) => {
-                const next = event.target.value
-                setTag(next)
-                apply({ search, category, tag: next, ordering, featured })
-              }}
-              className={selectClassName}
-            >
-              <option value="">All tags</option>
-              {tags.map((option) => (
-                <option key={option.slug} value={option.slug}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 sm:w-56">
             <label
               htmlFor="blog-filter-ordering"
-              className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+              className={filterLabelClassName}
             >
               Sort by
             </label>
@@ -205,6 +260,39 @@ export function BlogFilters({
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Category tabs and tag pills with sliding layoutId indicators. */}
+        <div className="flex flex-col gap-3 border-t border-border/50 pt-5">
+          <PillGroup
+            label="Category"
+            labelId="blog-filter-category-label"
+            name="category"
+            options={[{ slug: "", name: "All categories" }, ...categories]}
+            activeSlug={category}
+            layoutId="blog-category-pill"
+            hashPrefix={false}
+            disabled={isPending}
+            onSelect={(next) => {
+              setCategory(next)
+              apply({ search, category: next, tag, ordering, featured })
+            }}
+          />
+
+          <PillGroup
+            label="Tag"
+            labelId="blog-filter-tag-label"
+            name="tag"
+            options={[{ slug: "", name: "All tags" }, ...tags]}
+            activeSlug={tag}
+            layoutId="blog-tag-pill"
+            hashPrefix
+            disabled={isPending}
+            onSelect={(next) => {
+              setTag(next)
+              apply({ search, category, tag: next, ordering, featured })
+            }}
+          />
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -232,7 +320,11 @@ export function BlogFilters({
           </label>
 
           <div className="flex items-center gap-2">
-            <Button type="submit" disabled={isPending} className="h-10 font-semibold">
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="h-10 font-semibold"
+            >
               <span>{isPending ? "Updating…" : "Apply filters"}</span>
             </Button>
             {hasActive && (
@@ -257,7 +349,11 @@ export function BlogFilters({
             <span
               className={cn(
                 "size-1.5 rounded-full transition-colors",
-                isPending ? "animate-ping bg-amber-500" : hasActive ? "bg-primary" : "bg-muted-foreground/40"
+                isPending
+                  ? "animate-ping bg-amber-500"
+                  : hasActive
+                    ? "bg-primary"
+                    : "bg-muted-foreground/40"
               )}
             />
             {isPending

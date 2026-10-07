@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { usePathname } from "next/navigation"
+import { AnimatePresence, motion } from "motion/react"
 import { Drawer } from "@base-ui/react/drawer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -19,6 +20,8 @@ import {
   getSupportWhatsAppUrl,
   getEmailHref,
 } from "@/lib/content/company"
+import { MOTION_DURATIONS, MOTION_EASINGS } from "@/lib/motion/tokens"
+import { backdropFadeVariants, modalScaleVariants } from "@/lib/motion/variants"
 import { cn } from "@/lib/utils"
 
 const SHOW_PILL_MS = 3000
@@ -74,48 +77,83 @@ export function AssistedSupportWidget() {
       )}
     >
       {!isOpen && (
-        <button
+        <motion.button
+          layout
           type="button"
           onClick={() => setIsOpen(true)}
+          transition={{
+            duration: MOTION_DURATIONS.standard,
+            ease: MOTION_EASINGS.brand,
+          }}
           className={cn(
-            "group flex touch-manipulation items-center rounded-full border border-foreground/20 bg-background/90 text-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 ease-brand hover:border-foreground/35 hover:bg-background hover:shadow-[0_12px_36px_rgba(0,0,0,0.18)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]",
+            "group flex touch-manipulation items-center rounded-full border border-foreground/20 bg-background/90 text-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-colors duration-200 ease-brand hover:border-foreground/35 hover:bg-background hover:shadow-[0_12px_36px_rgba(0,0,0,0.18)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]",
             labelAllowed ? "py-1.5 pr-1.5 pl-4" : "p-1.5"
           )}
           aria-expanded={isOpen}
           aria-controls="travel-concierge"
           aria-label="Need help? Contact our travel team"
         >
-          <div
-            className={cn(
-              "flex overflow-hidden transition-all duration-500 ease-brand",
-              labelAllowed ? "max-w-[260px] opacity-100" : "max-w-0 opacity-0"
+          {/* Lifecycle pill: expands from a compact circle to the full
+              "Need Help?" pill 3s after mount, collapses back after 8s.
+              The width change rides Motion's layout transition; the label
+              itself only ever fades (transform/opacity rule). */}
+          <AnimatePresence initial={false}>
+            {labelAllowed && (
+              <motion.span
+                key="concierge-label"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: MOTION_DURATIONS.quick,
+                  ease: MOTION_EASINGS.easeOut,
+                }}
+                className="flex overflow-hidden"
+              >
+                <span className="flex shrink-0 items-center gap-1.5 pr-3 text-left whitespace-nowrap">
+                  <span className="text-xs font-semibold tracking-tight text-foreground">
+                    Need Help?
+                  </span>
+                  <span className="hidden text-[11px] font-medium text-muted-foreground sm:inline">
+                    Message, call, or email
+                  </span>
+                </span>
+              </motion.span>
             )}
-            aria-hidden={!labelAllowed}
-          >
-            <div className="flex shrink-0 items-center gap-1.5 pr-3 text-left whitespace-nowrap">
-              <span className="text-xs font-semibold tracking-tight text-foreground">
-                Need Help?
-              </span>
-              <span className="hidden text-[11px] font-medium text-muted-foreground sm:inline">
-                Message, call, or email
-              </span>
-            </div>
-          </div>
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform duration-200 group-hover:scale-110">
+          </AnimatePresence>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform duration-200 group-hover:scale-110">
             <HugeiconsIcon
               icon={CustomerService01Icon}
               size={17}
               aria-hidden="true"
             />
-          </div>
-        </button>
+          </span>
+        </motion.button>
       )}
 
       <Drawer.Root open={isOpen} onOpenChange={setIsOpen}>
         <Drawer.Portal>
-          <Drawer.Backdrop className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 sm:bg-black/10" />
+          <Drawer.Backdrop
+            render={
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={backdropFadeVariants}
+              />
+            }
+            className="fixed inset-0 z-50 bg-black/20 backdrop-blur-xs transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 sm:bg-black/10"
+          />
           <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-end p-4 sm:p-6">
             <Drawer.Popup
+              render={
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={modalScaleVariants}
+                />
+              }
               id="travel-concierge"
               className="w-[340px] max-w-[calc(100vw-2rem)] rounded-3xl border border-foreground/20 bg-background/95 p-2 text-foreground shadow-[0_24px_60px_-15px_rgba(0,0,0,0.25)] backdrop-blur-2xl transition-all sm:w-[380px]"
             >

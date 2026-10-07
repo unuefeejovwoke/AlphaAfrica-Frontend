@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { Accordion } from "@base-ui/react/accordion"
+import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowDown01Icon,
@@ -13,7 +14,14 @@ import {
 } from "@hugeicons/core-free-icons"
 import { getHomepageFaqs } from "@/lib/content/faqs"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
+import { MOTION_DURATIONS, MOTION_EASINGS } from "@/lib/motion/tokens"
 import { TrackLink } from "@/components/analytics/track-link"
+
+/** Disclosure-tier transition for the chevron rotation. */
+const FAQ_PANEL_TRANSITION = {
+  duration: MOTION_DURATIONS.standard,
+  ease: MOTION_EASINGS.brand,
+} as const
 
 function ConciergeCard() {
   return (
@@ -110,45 +118,55 @@ export function HomeFaq() {
             onValueChange={(val) => setOpenItem(val as string[])}
             className="flex flex-col gap-3.5 sm:gap-4"
           >
-            {items.map((item) => (
-              <Accordion.Item
-                key={item.id}
-                value={item.id}
-                className="group reveal relative flex flex-col rounded-3xl border border-border/80 bg-muted/40 p-1 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md data-[panel-open]:border-primary/40 data-[panel-open]:bg-primary/[0.03] data-[panel-open]:shadow-md sm:p-1.5"
-              >
-                <div className="flex flex-1 flex-col overflow-hidden rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]">
-                  <Accordion.Header className="m-0 p-0">
-                    <Accordion.Trigger className="flex w-full touch-manipulation items-center justify-between p-5 text-left transition-colors duration-150 hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:p-6">
-                      <div className="flex flex-col gap-2 pr-3 text-left sm:flex-row sm:items-center sm:gap-3">
-                        <span className="w-fit shrink-0 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                          {item.category}
-                        </span>
-                        <span className="text-sm leading-snug font-semibold tracking-tight text-foreground sm:text-base">
-                          {item.question}
-                        </span>
-                      </div>
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/80 text-muted-foreground transition-all duration-300 ease-brand group-data-[panel-open]:rotate-180 group-data-[panel-open]:border-primary/30 group-data-[panel-open]:bg-primary/10 group-data-[panel-open]:text-primary">
-                        <HugeiconsIcon
-                          icon={ArrowDown01Icon}
-                          size={15}
-                          aria-hidden="true"
-                        />
-                      </div>
-                    </Accordion.Trigger>
-                  </Accordion.Header>
+            {items.map((item) => {
+              const open = openItem.includes(item.id)
+              return (
+                <Accordion.Item
+                  key={item.id}
+                  value={item.id}
+                  className="group relative flex reveal flex-col rounded-3xl border border-border/80 bg-muted/40 p-1 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md data-[panel-open]:border-primary/40 data-[panel-open]:bg-primary/[0.03] data-[panel-open]:shadow-md sm:p-1.5"
+                >
+                  <div className="flex flex-1 flex-col overflow-hidden rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]">
+                    <Accordion.Header className="m-0 p-0">
+                      <Accordion.Trigger className="flex w-full touch-manipulation items-center justify-between p-5 text-left transition-colors duration-150 hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:p-6">
+                        <div className="flex flex-col gap-2 pr-3 text-left sm:flex-row sm:items-center sm:gap-3">
+                          <span className="w-fit shrink-0 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                            {item.category}
+                          </span>
+                          <span className="text-sm leading-snug font-semibold tracking-tight text-foreground sm:text-base">
+                            {item.question}
+                          </span>
+                        </div>
+                        <motion.span
+                          animate={{ rotate: open ? 180 : 0 }}
+                          transition={FAQ_PANEL_TRANSITION}
+                          className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/80 bg-background/80 text-muted-foreground data-[open]:border-primary/30 data-[open]:bg-primary/10 data-[open]:text-primary"
+                          data-open={open || undefined}
+                        >
+                          <HugeiconsIcon
+                            icon={ArrowDown01Icon}
+                            size={15}
+                            aria-hidden="true"
+                          />
+                        </motion.span>
+                      </Accordion.Trigger>
+                    </Accordion.Header>
 
-                  {/* Opacity-only reveal: animating height re-ran layout every
-                      frame; opacity composites on the GPU. */}
-                  <Accordion.Panel className="overflow-hidden transition-opacity duration-300 ease-brand data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
-                    <div className="px-5 pt-1 pb-5 sm:px-6 sm:pb-6">
-                      <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                        {item.answer}
-                      </p>
-                    </div>
-                  </Accordion.Panel>
-                </div>
-              </Accordion.Item>
-            ))}
+                    {/* Opacity-only reveal, same as the FAQ page accordion:
+                        animating height here re-ran layout every frame for the
+                        whole document below the panel, while opacity
+                        composites on the GPU. */}
+                    <Accordion.Panel className="overflow-hidden transition-opacity duration-300 ease-brand data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
+                      <div className="px-5 pt-1 pb-5 sm:px-6 sm:pb-6">
+                        <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                          {item.answer}
+                        </p>
+                      </div>
+                    </Accordion.Panel>
+                  </div>
+                </Accordion.Item>
+              )
+            })}
           </Accordion.Root>
 
           {/* Mobile only: rendered below the FAQ accordion */}

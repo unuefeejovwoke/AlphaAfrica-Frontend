@@ -15,6 +15,7 @@ import {
   hasBlogSearchParams,
   parseBlogOrdering,
   parseBlogSearchParams,
+  resolveActiveTocId,
   sanitizeBlogHtml,
 } from "../lib/blog.ts"
 
@@ -109,6 +110,29 @@ test("Blog dates format to en-GB long dates, invalid stays null", () => {
   assert.equal(formatBlogDate("2026-09-25T17:26:47.220196Z"), "25 September 2026")
   assert.equal(formatBlogDate(null), null)
   assert.equal(formatBlogDate("not-a-date"), null)
+})
+
+test("Blog active TOC anchor is the last heading above the reading line", () => {
+  const ids = ["one", "two", "three"]
+  // Reader is above every heading: nothing is being read yet.
+  assert.equal(resolveActiveTocId(ids, [400, 900, 1500], 128), null)
+  // First heading passed the line: it is current.
+  assert.equal(resolveActiveTocId(ids, [40, 900, 1500], 128), "one")
+  // Long prose section below the line — the highlight must stay put rather
+  // than snapping to a later heading the reader has not reached.
+  assert.equal(resolveActiveTocId(ids, [-200, 900, 1500], 128), "one")
+  // Scrolled into the second section.
+  assert.equal(resolveActiveTocId(ids, [-900, -40, 1500], 128), "two")
+  // Heading exactly on the line counts as reached, not as still-ahead.
+  assert.equal(resolveActiveTocId(ids, [-900, 128, 1500], 128), "two")
+  // Past the final heading it stays on the last one — never blanks.
+  assert.equal(resolveActiveTocId(ids, [-900, -1500, -1600], 128), "three")
+})
+
+test("Blog active TOC anchor ignores missing offsets and empty lists", () => {
+  assert.equal(resolveActiveTocId([], [], 128), null)
+  // A heading that has not been measured must not be treated as reached.
+  assert.equal(resolveActiveTocId(["a", "b"], [-500], 128), "a")
 })
 
 test("Blog list schema tolerates nullable featured_image and empty tags", () => {

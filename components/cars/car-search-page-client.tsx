@@ -147,8 +147,11 @@ export function CarSearchPageClient({
       if (pendingScrollRef.current) {
         pendingScrollRef.current = false
         requestAnimationFrame(() => {
+          const reduceMotion =
+            typeof window !== "undefined" &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches
           resultsHeadingRef.current?.scrollIntoView({
-            behavior: "smooth",
+            behavior: reduceMotion ? "auto" : "smooth",
             block: "start",
           })
           resultsHeadingRef.current?.focus({ preventScroll: true })

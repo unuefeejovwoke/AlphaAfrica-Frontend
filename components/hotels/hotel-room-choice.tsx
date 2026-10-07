@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Image from "next/image"
+import { motion } from "motion/react"
 import { Radio } from "@base-ui/react/radio"
 import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -17,6 +18,7 @@ import {
 } from "@/lib/api/hotels"
 import { parsePriceAmount, resolveListingImageUrl } from "@/lib/listings"
 import { formatNaira } from "@/lib/format"
+import { MOTION_SPRINGS } from "@/lib/motion/springs"
 import { cn } from "@/lib/utils"
 
 /** next/image cannot optimize `data:` URLs — render those with a plain img. */
@@ -101,8 +103,10 @@ export function HotelRoomChoice({
           )
 
           return (
-            <label
+            <motion.label
               key={room.id}
+              whileTap={{ scale: 0.99 }}
+              transition={MOTION_SPRINGS.tactile}
               className={cn(
                 "group flex cursor-pointer touch-manipulation items-center gap-3.5 rounded-2xl border-2 bg-card p-2.5 text-left transition-[border-color,background-color,box-shadow] duration-300 ease-brand focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:gap-4 sm:p-3",
                 selected
@@ -210,7 +214,7 @@ export function HotelRoomChoice({
               <span className="sr-only" role="status">
                 {selected ? `${room.name} selected` : ""}
               </span>
-            </label>
+            </motion.label>
           )
         })}
       </RadioGroupPrimitive>

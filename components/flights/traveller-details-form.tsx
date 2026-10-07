@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { motion } from "motion/react"
 import {
   Controller,
   useFieldArray,
@@ -38,6 +39,10 @@ import {
   type TravellerFormValues,
   type TravelerType,
 } from "@/lib/schemas/travel"
+import {
+  accordionPanelVariants,
+  staggerContainerVariants,
+} from "@/lib/motion/variants"
 
 export type TravellerSubmitIntent = "pay_now" | "reserve"
 
@@ -277,168 +282,193 @@ export function TravellerDetailsForm({
         </div>
       ) : null}
 
-      {fields.map((field, index) => {
-        const travellerType = field.traveler_type
-        return (
-          <fieldset
-            key={field.id}
-            className="flex flex-col gap-4 rounded-xl border border-border bg-muted/20 p-4"
-          >
-            <legend className="px-1 text-sm font-bold text-foreground">
-              Traveller {index + 1} · {TRAVELER_TYPE_LABELS[travellerType]}
-            </legend>
+      {/* Traveller cards arrive as a coordinated stagger — composited
+          opacity + y only, clipped per card so expansion reads fluid. */}
+      <motion.div
+        variants={staggerContainerVariants}
+        initial="hidden"
+        animate="visible"
+        className="flex flex-col gap-5"
+      >
+        {fields.map((field, index) => {
+          const travellerType = field.traveler_type
+          return (
+            <motion.fieldset
+              key={field.id}
+              variants={accordionPanelVariants}
+              className="flex flex-col gap-4 overflow-hidden rounded-xl border border-border bg-muted/20 p-4"
+            >
+              <legend className="px-1 text-sm font-bold text-foreground">
+                Traveller {index + 1} · {TRAVELER_TYPE_LABELS[travellerType]}
+              </legend>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                label="First name"
-                autoComplete="given-name"
-                placeholder="As on passport or ID"
-                startIcon={
-                  <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
-                }
-                error={getTravellerFieldError(errors, index, "first_name")}
-                {...form.register(`travellers.${index}.first_name`)}
-              />
-              <Input
-                label="Last name"
-                autoComplete="family-name"
-                placeholder="As on passport or ID"
-                startIcon={
-                  <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
-                }
-                error={getTravellerFieldError(errors, index, "last_name")}
-                {...form.register(`travellers.${index}.last_name`)}
-              />
-            </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Input
+                  label="First name"
+                  autoComplete="given-name"
+                  placeholder="As on passport or ID"
+                  startIcon={
+                    <HugeiconsIcon
+                      icon={UserIcon}
+                      size={15}
+                      aria-hidden="true"
+                    />
+                  }
+                  error={getTravellerFieldError(errors, index, "first_name")}
+                  {...form.register(`travellers.${index}.first_name`)}
+                />
+                <Input
+                  label="Last name"
+                  autoComplete="family-name"
+                  placeholder="As on passport or ID"
+                  startIcon={
+                    <HugeiconsIcon
+                      icon={UserIcon}
+                      size={15}
+                      aria-hidden="true"
+                    />
+                  }
+                  error={getTravellerFieldError(errors, index, "last_name")}
+                  {...form.register(`travellers.${index}.last_name`)}
+                />
+              </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Input
+                  label="Date of birth"
+                  type="date"
+                  max={today}
+                  error={getTravellerFieldError(errors, index, "date_of_birth")}
+                  {...form.register(`travellers.${index}.date_of_birth`)}
+                />
+                <Controller
+                  name={`travellers.${index}.gender`}
+                  control={form.control}
+                  render={({ field: genderField }) => (
+                    <Select
+                      label="Gender"
+                      options={GENDER_OPTIONS}
+                      value={genderField.value || ""}
+                      onValueChange={genderField.onChange}
+                      error={getTravellerFieldError(errors, index, "gender")}
+                      helperText="As on passport or ID."
+                    />
+                  )}
+                />
+              </div>
+
               <Input
-                label="Date of birth"
-                type="date"
-                max={today}
-                error={getTravellerFieldError(errors, index, "date_of_birth")}
-                {...form.register(`travellers.${index}.date_of_birth`)}
-              />
-              <Controller
-                name={`travellers.${index}.gender`}
-                control={form.control}
-                render={({ field: genderField }) => (
-                  <Select
-                    label="Gender"
-                    options={GENDER_OPTIONS}
-                    value={genderField.value || ""}
-                    onValueChange={genderField.onChange}
-                    error={getTravellerFieldError(errors, index, "gender")}
-                    helperText="As on passport or ID."
+                label="Email"
+                type="email"
+                autoComplete="email"
+                placeholder="traveller@example.com"
+                startIcon={
+                  <HugeiconsIcon
+                    icon={Mail01Icon}
+                    size={15}
+                    aria-hidden="true"
                   />
+                }
+                error={getTravellerFieldError(errors, index, "email")}
+                {...form.register(`travellers.${index}.email`)}
+              />
+
+              <Controller
+                name={`travellers.${index}.phone`}
+                control={form.control}
+                render={({ field: phoneField }) => (
+                  <>
+                    <input
+                      type="hidden"
+                      {...form.register(
+                        `travellers.${index}.phone_country_code`
+                      )}
+                    />
+                    <PhoneField
+                      label="Phone / WhatsApp"
+                      value={phoneField.value ?? ""}
+                      defaultCountry={
+                        getCountryByDial(
+                          form.watch(
+                            `travellers.${index}.phone_country_code`
+                          ) ?? "234"
+                        ).code
+                      }
+                      onChange={(e164) => {
+                        phoneField.onChange(e164)
+                        form.setValue(
+                          `travellers.${index}.phone_country_code`,
+                          splitPhoneValue(e164, "234").dial,
+                          { shouldValidate: true }
+                        )
+                      }}
+                      onBlur={phoneField.onBlur}
+                      placeholder="803 123 4567"
+                      error={getTravellerFieldError(errors, index, "phone")}
+                    />
+                  </>
                 )}
               />
-            </div>
 
-            <Input
-              label="Email"
-              type="email"
-              autoComplete="email"
-              placeholder="traveller@example.com"
-              startIcon={
-                <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
-              }
-              error={getTravellerFieldError(errors, index, "email")}
-              {...form.register(`travellers.${index}.email`)}
-            />
-
-            <Controller
-              name={`travellers.${index}.phone`}
-              control={form.control}
-              render={({ field: phoneField }) => (
-                <>
-                  <input
-                    type="hidden"
-                    {...form.register(`travellers.${index}.phone_country_code`)}
-                  />
-                  <PhoneField
-                    label="Phone / WhatsApp"
-                    value={phoneField.value ?? ""}
-                    defaultCountry={
-                      getCountryByDial(
-                        form.watch(`travellers.${index}.phone_country_code`) ??
-                          "234"
-                      ).code
-                    }
-                    onChange={(e164) => {
-                      phoneField.onChange(e164)
-                      form.setValue(
-                        `travellers.${index}.phone_country_code`,
-                        splitPhoneValue(e164, "234").dial,
-                        { shouldValidate: true }
-                      )
-                    }}
-                    onBlur={phoneField.onBlur}
-                    placeholder="803 123 4567"
-                    error={getTravellerFieldError(errors, index, "phone")}
-                  />
-                </>
-              )}
-            />
-
-            {isInternational ? (
-              <div className="flex flex-col gap-4 rounded-xl border border-dashed border-border p-3.5">
-                <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-foreground/80 uppercase">
-                  <HugeiconsIcon
-                    icon={PassportIcon}
-                    size={14}
-                    aria-hidden="true"
-                    className="text-muted-foreground"
-                  />
-                  <span>Passport — required for international travel</span>
-                </h3>
-                <Input
-                  label="Passport number"
-                  autoComplete="off"
-                  placeholder="A12345678"
-                  error={getTravellerFieldError(
-                    errors,
-                    index,
-                    "passport_number"
-                  )}
-                  {...form.register(`travellers.${index}.passport_number`)}
-                />
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {isInternational ? (
+                <div className="flex flex-col gap-4 rounded-xl border border-dashed border-border p-3.5">
+                  <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-foreground/80 uppercase">
+                    <HugeiconsIcon
+                      icon={PassportIcon}
+                      size={14}
+                      aria-hidden="true"
+                      className="text-muted-foreground"
+                    />
+                    <span>Passport — required for international travel</span>
+                  </h3>
                   <Input
-                    label="Passport expiry"
-                    type="date"
-                    min={today}
+                    label="Passport number"
+                    autoComplete="off"
+                    placeholder="A12345678"
                     error={getTravellerFieldError(
                       errors,
                       index,
-                      "passport_expiry"
+                      "passport_number"
                     )}
-                    {...form.register(`travellers.${index}.passport_expiry`)}
+                    {...form.register(`travellers.${index}.passport_number`)}
                   />
-                  <Controller
-                    name={`travellers.${index}.nationality`}
-                    control={form.control}
-                    render={({ field: nationalityField }) => (
-                      <CountrySelect
-                        label="Nationality"
-                        value={nationalityField.value ?? ""}
-                        onValueChange={nationalityField.onChange}
-                        placeholder="Select nationality…"
-                        helperText="Pick your passport country."
-                        error={getTravellerFieldError(
-                          errors,
-                          index,
-                          "nationality"
-                        )}
-                      />
-                    )}
-                  />
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Input
+                      label="Passport expiry"
+                      type="date"
+                      min={today}
+                      error={getTravellerFieldError(
+                        errors,
+                        index,
+                        "passport_expiry"
+                      )}
+                      {...form.register(`travellers.${index}.passport_expiry`)}
+                    />
+                    <Controller
+                      name={`travellers.${index}.nationality`}
+                      control={form.control}
+                      render={({ field: nationalityField }) => (
+                        <CountrySelect
+                          label="Nationality"
+                          value={nationalityField.value ?? ""}
+                          onValueChange={nationalityField.onChange}
+                          placeholder="Select nationality…"
+                          helperText="Pick your passport country."
+                          error={getTravellerFieldError(
+                            errors,
+                            index,
+                            "nationality"
+                          )}
+                        />
+                      )}
+                    />
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </fieldset>
-        )
-      })}
+              ) : null}
+            </motion.fieldset>
+          )
+        })}
+      </motion.div>
 
       <AgeBandWarnings control={form.control} />
 

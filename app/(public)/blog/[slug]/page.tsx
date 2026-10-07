@@ -9,6 +9,7 @@ import { BlogBody } from "@/components/blog/blog-body"
 import { BlogCard } from "@/components/blog/blog-card"
 import { BlogMeta } from "@/components/blog/blog-meta"
 import { BlogToc } from "@/components/blog/blog-toc"
+import { BlogReadingProgress } from "@/components/blog/blog-reading-progress"
 import { BlogShareButton } from "@/components/blog/blog-share-button"
 import { ViewTracker } from "@/components/analytics/view-tracker"
 import { TerminalCta } from "@/components/shared/terminal-cta"
@@ -89,8 +90,11 @@ export async function generateMetadata({
 
 /**
  * `/blog/[slug]` (RSC, ISR 3600): editorial detail with breadcrumb, hero
- * meta, featured image, sticky TOC + sanitized body, Related Posts, and a
- * human-help CTA. Viewing increments the backend view counter (no extra call).
+ * meta, featured image, reading-progress hairline, sticky TOC + sanitized
+ * body, Related Posts, and a human-help CTA. Viewing increments the backend
+ * view counter (no extra call). Motion is scoped to the two interactive
+ * leaves the page mounts (`BlogReadingProgress`, `BlogToc`) — the article
+ * body, hero, and related posts stay server-rendered.
  */
 export default async function BlogDetailPage({
   params,
@@ -132,6 +136,7 @@ export default async function BlogDetailPage({
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-10 px-4 py-8 pb-24 sm:gap-14 sm:px-6 sm:pb-32 md:py-12 lg:px-8">
+      <BlogReadingProgress />
       <ViewTracker
         event="blog_viewed"
         props={{ slug: post.slug, category: post.category.slug }}

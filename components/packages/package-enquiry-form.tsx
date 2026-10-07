@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { motion } from "motion/react"
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -28,6 +29,7 @@ import { notifyEnquirySent } from "@/lib/toast"
 import { track } from "@/lib/analytics"
 import { TrackLink } from "@/components/analytics/track-link"
 import { LegalNotice } from "@/components/legal/legal-notice"
+import { fadeInRiseVariants } from "@/lib/motion/variants"
 import { toast } from "sonner"
 
 const ENQUIRY_FIELD_NAMES = [
@@ -175,9 +177,12 @@ export function PackageEnquiryForm({
       (result.num_adults ?? 0) + (result.num_children ?? 0)
 
     return (
-      <div
+      <motion.div
         role="status"
         aria-live="polite"
+        initial="hidden"
+        animate="visible"
+        variants={fadeInRiseVariants}
         className="mx-auto w-full max-w-3xl overflow-hidden rounded-3xl border border-emerald-500/30 bg-card p-6 shadow-sm sm:p-10"
       >
         <div className="flex flex-col items-center gap-6 text-center">
@@ -260,7 +265,7 @@ export function PackageEnquiryForm({
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
     )
   }
 

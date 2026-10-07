@@ -74,6 +74,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn(
         "antialiased",
+        // Native anchor glide (blog Table of Contents, skip link, FAQ group
+        // links). globals.css forces `scroll-behavior: auto` under
+        // prefers-reduced-motion, so nothing needs a JS scroll handler.
+        "scroll-smooth",
         fontMono.variable,
         "font-sans",
         inter.variable

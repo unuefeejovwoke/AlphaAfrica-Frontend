@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { AnimatePresence, motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
@@ -32,6 +33,7 @@ import {
   type RoomType,
 } from "@/lib/api/hotels"
 import { formatNaira } from "@/lib/format"
+import { MOTION_DURATIONS, MOTION_EASINGS } from "@/lib/motion/tokens"
 
 export interface HotelBookingFlowHotel {
   id: number
@@ -386,26 +388,80 @@ export function HotelBookingFlow({
             <div className="flex flex-col gap-2 rounded-xl bg-muted/50 p-4">
               <div className="flex items-center justify-between gap-3 text-[13px]">
                 <span className="text-muted-foreground">Stay length</span>
-                <span className="font-semibold text-foreground tabular-nums">
-                  {nights !== null
-                    ? `${nights} ${nightWord} × ${roomsCount} ${roomWord}`
-                    : "Add your dates"}
-                </span>
+                {/* Numerical transition: opacity + y only, so date/party
+                    edits never shift layout while the figure swaps. */}
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={
+                      nights !== null
+                        ? `${nights}-${nightWord}-${roomsCount}-${roomWord}`
+                        : "empty"
+                    }
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{
+                      opacity: 0,
+                      y: -4,
+                      transition: {
+                        duration: MOTION_DURATIONS.instant,
+                        ease: MOTION_EASINGS.easeOut,
+                      },
+                    }}
+                    transition={{
+                      duration: MOTION_DURATIONS.quick,
+                      ease: MOTION_EASINGS.easeOut,
+                    }}
+                    className="font-semibold text-foreground tabular-nums"
+                  >
+                    {nights !== null
+                      ? `${nights} ${nightWord} × ${roomsCount} ${roomWord}`
+                      : "Add your dates"}
+                  </motion.span>
+                </AnimatePresence>
               </div>
               <div className="flex items-end justify-between gap-3 border-t border-border/70 pt-2.5">
                 <span className="text-sm font-semibold text-foreground">
                   Total
                 </span>
                 <span className="text-right">
-                  {preview !== null ? (
-                    <span className="block text-2xl font-extrabold tracking-tight text-foreground tabular-nums">
-                      {formatNaira(String(preview))}
-                    </span>
-                  ) : (
-                    <span className="block text-sm font-semibold text-muted-foreground">
-                      Pick a room
-                    </span>
-                  )}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {preview !== null ? (
+                      <motion.span
+                        key={String(preview)}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{
+                          opacity: 0,
+                          y: -4,
+                          transition: {
+                            duration: MOTION_DURATIONS.instant,
+                            ease: MOTION_EASINGS.easeOut,
+                          },
+                        }}
+                        transition={{
+                          duration: MOTION_DURATIONS.quick,
+                          ease: MOTION_EASINGS.easeOut,
+                        }}
+                        className="block text-2xl font-extrabold tracking-tight text-foreground tabular-nums"
+                      >
+                        {formatNaira(String(preview))}
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="empty"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{
+                          duration: MOTION_DURATIONS.quick,
+                          ease: MOTION_EASINGS.easeOut,
+                        }}
+                        className="block text-sm font-semibold text-muted-foreground"
+                      >
+                        Pick a room
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </span>
               </div>
               {/* The single, authoritative caveat. It used to appear three

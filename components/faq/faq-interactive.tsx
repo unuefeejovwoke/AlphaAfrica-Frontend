@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Accordion } from "@base-ui/react/accordion"
+import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
@@ -13,10 +14,18 @@ import {
 import type { FaqGroup } from "@/lib/content/faqs"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { TrackLink } from "@/components/analytics/track-link"
+import { MOTION_DURATIONS, MOTION_EASINGS } from "@/lib/motion/tokens"
+import { fadeInRiseVariants } from "@/lib/motion/variants"
 
 interface FaqInteractiveProps {
   groups: FaqGroup[]
 }
+
+/** Count swap timing shared by the live counter (transform/opacity only). */
+const COUNT_TRANSITION = {
+  duration: MOTION_DURATIONS.instant,
+  ease: MOTION_EASINGS.easeOut,
+} as const
 
 export function FaqInteractive({ groups }: FaqInteractiveProps) {
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -78,11 +87,29 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
 
         {/* Search feedback row */}
         {searchQuery.trim() && (
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div
+            aria-live="polite"
+            className="flex items-center justify-between text-xs text-muted-foreground"
+          >
             <span>
-              Showing {totalMatchingFaqs} question
-              {totalMatchingFaqs === 1 ? "" : "s"} matching &ldquo;{searchQuery}
-              &rdquo;
+              Showing{" "}
+              {/* Enter-only keyed swap on opacity + y (same numeric transition
+                  as the car-hire estimate): the old figure unmounts instantly
+                  so filtering never waits on an exit, and the sentence never
+                  reflows mid-keystroke. The wrapping row is the single live
+                  region, so assistive tech hears one value, not a chatter of
+                  entering/exiting nodes. */}
+              <motion.span
+                key={totalMatchingFaqs}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={COUNT_TRANSITION}
+                className="inline-block tabular-nums"
+              >
+                {totalMatchingFaqs}
+              </motion.span>{" "}
+              question{totalMatchingFaqs === 1 ? "" : "s"} matching &ldquo;
+              {searchQuery}&rdquo;
             </span>
             <button
               type="button"
@@ -97,7 +124,13 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
 
       {/* Accordion Groups or Empty State */}
       {filteredGroups.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border/80 bg-muted/20 px-6 py-16 text-center">
+        <motion.div
+          key="faq-empty"
+          variants={fadeInRiseVariants}
+          initial="hidden"
+          animate="visible"
+          className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border/80 bg-muted/20 px-6 py-16 text-center"
+        >
           <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
             <HugeiconsIcon icon={HelpCircleIcon} size={24} aria-hidden="true" />
           </div>
@@ -122,7 +155,7 @@ export function FaqInteractive({ groups }: FaqInteractiveProps) {
             <HugeiconsIcon icon={WhatsappIcon} size={15} aria-hidden="true" />
             <span>Ask a Specialist on WhatsApp</span>
           </TrackLink>
-        </div>
+        </motion.div>
       ) : (
         <div className="flex flex-col gap-10 sm:gap-12">
           {filteredGroups.map((group) => (

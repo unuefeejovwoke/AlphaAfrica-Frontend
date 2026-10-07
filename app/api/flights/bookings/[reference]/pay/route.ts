@@ -7,14 +7,13 @@ export const dynamic = "force-dynamic"
  * body and query and is forwarded untouched so the backend enforces its own
  * 403 on an invalid or expired link.
  */
-export function POST(
+export async function POST(
   request: Request,
   { params }: { params: Promise<{ reference: string }> }
 ): Promise<Response> {
-  return params.then(({ reference }) =>
-    proxyToBackend(
-      request,
-      `/api/flights/bookings/${encodeURIComponent(reference)}/pay/`
-    )
+  const { reference } = await params
+  return proxyToBackend(
+    request,
+    `/api/flights/bookings/${encodeURIComponent(reference)}/pay/`
   )
 }

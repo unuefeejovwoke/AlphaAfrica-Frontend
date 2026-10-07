@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
+import { AnimatePresence, motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon,
@@ -20,6 +21,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { TravellerStepper } from "@/components/ui/traveller-stepper"
+import { ActiveIndicator } from "@/components/motion/active-indicator"
+import { MOTION_DURATIONS, MOTION_EASINGS } from "@/lib/motion/tokens"
+import { MOTION_SPRINGS } from "@/lib/motion/springs"
 import { AirportAutocomplete } from "@/components/flights/airport-autocomplete"
 import {
   CABIN_OPTIONS,
@@ -93,6 +97,8 @@ export function HomeFlightSearch() {
   })
   const [submitAlert, setSubmitAlert] = React.useState<string | null>(null)
   const [swapAnnouncement, setSwapAnnouncement] = React.useState("")
+  /** Counts swaps so the trigger snaps a further 180° on every click. */
+  const [swapTurns, setSwapTurns] = React.useState(0)
 
   const today = React.useMemo(() => {
     const now = new Date()
@@ -269,6 +275,7 @@ export function HomeFlightSearch() {
     })
     form.clearErrors(["origin", "destination"])
     setSubmitAlert(null)
+    setSwapTurns((turns) => turns + 1)
     // Sync effects re-validate distinctness; announce the new route politely.
     const from =
       nextOriginAirport?.iata_code ?? nextOriginInput.trim().toUpperCase()
@@ -400,12 +407,18 @@ export function HomeFlightSearch() {
               <label
                 key={option.value}
                 className={cn(
-                  "inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap transition-all focus-within:ring-2 focus-within:ring-ring focus-within:outline-none sm:min-h-0 sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
+                  "relative inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:outline-none active:scale-[0.98] sm:min-h-0 sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                   checked
-                    ? "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border/80"
+                    ? "font-semibold text-foreground"
                     : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
                 )}
               >
+                {checked ? (
+                  <ActiveIndicator
+                    layoutId="home-trip-type-pill"
+                    transition={MOTION_SPRINGS.layout}
+                  />
+                ) : null}
                 <input
                   type="radio"
                   name="trip_type"
@@ -420,11 +433,11 @@ export function HomeFlightSearch() {
                   aria-hidden="true"
                   className={
                     checked
-                      ? "shrink-0 text-primary"
-                      : "shrink-0 text-muted-foreground"
+                      ? "relative z-10 shrink-0 text-primary"
+                      : "relative z-10 shrink-0 text-muted-foreground"
                   }
                 />
-                <span>{option.label}</span>
+                <span className="relative z-10">{option.label}</span>
               </label>
             )
           })}
@@ -432,7 +445,7 @@ export function HomeFlightSearch() {
         <Link
           href={MULTI_CITY_HREF}
           aria-label="Multi-city trips continue in the full flights editor"
-          className="inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap text-muted-foreground transition-all hover:bg-card/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:min-h-0 sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm"
+          className="inline-flex min-h-11 flex-1 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium whitespace-nowrap text-muted-foreground transition-all hover:bg-card/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.98] sm:min-h-0 sm:flex-none sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm"
         >
           <HugeiconsIcon
             icon={Airplane01Icon}
@@ -465,11 +478,13 @@ export function HomeFlightSearch() {
             />
           </div>
           <div className="flex shrink-0 justify-center sm:mt-[22px]">
-            <button
+            <motion.button
               type="button"
               onClick={handleSwap}
               disabled={!canSwap}
               aria-label="Swap origin and destination"
+              animate={{ rotate: swapTurns * 180 }}
+              transition={MOTION_SPRINGS.swap}
               className="flex size-11 touch-manipulation items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:size-10"
             >
               <HugeiconsIcon
@@ -478,7 +493,7 @@ export function HomeFlightSearch() {
                 aria-hidden="true"
                 className="rotate-90 sm:rotate-0"
               />
-            </button>
+            </motion.button>
           </div>
           <div
             className="w-full min-w-0 flex-1"
@@ -523,22 +538,38 @@ export function HomeFlightSearch() {
               }}
             />
           </div>
-          {tripType === "round_trip" ? (
-            <div className="w-full min-w-0 flex-1">
-              <Input
-                label="Return"
-                type="date"
-                min={departureDateValue || today}
-                error={returnError}
-                {...returnRegistration}
-                onChange={(e) => {
-                  returnRegistration.onChange(e)
-                  form.clearErrors("returnDate")
-                  setSubmitAlert(null)
+          {/* Return-date disclosure: genuine-reason height exception (spec §2).
+              Content-aware height lets siblings reflow without jumps.
+              Composited opacity rides alongside, the panel clips with
+              overflow-hidden, duration stays in the 200–280ms disclosure tier. */}
+          <AnimatePresence initial={false}>
+            {tripType === "round_trip" ? (
+              <motion.div
+                key="home-return-date"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{
+                  duration: MOTION_DURATIONS.quick,
+                  ease: MOTION_EASINGS.brand,
                 }}
-              />
-            </div>
-          ) : null}
+                className="w-full min-w-0 flex-1 overflow-hidden"
+              >
+                <Input
+                  label="Return"
+                  type="date"
+                  min={departureDateValue || today}
+                  error={returnError}
+                  {...returnRegistration}
+                  onChange={(e) => {
+                    returnRegistration.onChange(e)
+                    form.clearErrors("returnDate")
+                    setSubmitAlert(null)
+                  }}
+                />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
           <div
             className={cn(

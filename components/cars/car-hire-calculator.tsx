@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import { AnimatePresence, motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowRight01Icon, Message01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,8 @@ import { cn } from "@/lib/utils"
 import { TrackLink } from "@/components/analytics/track-link"
 import { track } from "@/lib/analytics"
 import { formatNaira } from "@/lib/format"
+import { MOTION_DURATIONS, MOTION_EASINGS } from "@/lib/motion/tokens"
+import { MOTION_SPRINGS } from "@/lib/motion/springs"
 import {
   MAX_HIRE_HOURS,
   MIN_HIRE_HOURS,
@@ -162,17 +165,25 @@ export function CarHireCalculator({ vehicle }: { vehicle: VehicleDetail }) {
         >
           {/* Stepper controls keep the 44px phone target the other steppers
               (TravellerStepper, HotelPartyStepper) already meet. */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setNumHours((h) => Math.max(MIN_HIRE_HOURS, h - 1))}
-            disabled={numHours <= MIN_HIRE_HOURS}
-            aria-label="Reduce hours by one"
-            className="size-11 shrink-0"
+          <motion.span
+            whileTap={{ scale: 0.95 }}
+            transition={MOTION_SPRINGS.tactile}
+            className="inline-flex shrink-0"
           >
-            <span aria-hidden="true">−</span>
-          </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setNumHours((h) => Math.max(MIN_HIRE_HOURS, h - 1))
+              }
+              disabled={numHours <= MIN_HIRE_HOURS}
+              aria-label="Reduce hours by one"
+              className="size-11 shrink-0"
+            >
+              <span aria-hidden="true">−</span>
+            </Button>
+          </motion.span>
           <input
             type="number"
             inputMode="numeric"
@@ -186,17 +197,25 @@ export function CarHireCalculator({ vehicle }: { vehicle: VehicleDetail }) {
             aria-label="Number of hours"
             className="h-11 w-full rounded-lg border border-border bg-background px-3 text-center text-sm font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setNumHours((h) => Math.min(MAX_HIRE_HOURS, h + 1))}
-            disabled={numHours >= MAX_HIRE_HOURS}
-            aria-label="Add one hour"
-            className="size-11 shrink-0"
+          <motion.span
+            whileTap={{ scale: 0.95 }}
+            transition={MOTION_SPRINGS.tactile}
+            className="inline-flex shrink-0"
           >
-            <span aria-hidden="true">+</span>
-          </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setNumHours((h) => Math.min(MAX_HIRE_HOURS, h + 1))
+              }
+              disabled={numHours >= MAX_HIRE_HOURS}
+              aria-label="Add one hour"
+              className="size-11 shrink-0"
+            >
+              <span aria-hidden="true">+</span>
+            </Button>
+          </motion.span>
         </div>
       </div>
 
@@ -205,16 +224,61 @@ export function CarHireCalculator({ vehicle }: { vehicle: VehicleDetail }) {
           {formatNaira(vehicle.hourly_rate)}/hr × {numHours}{" "}
           {numHours === 1 ? "hour" : "hours"} (estimate)
         </dt>
-        <dd className="text-base font-extrabold tracking-tight text-foreground tabular-nums">
-          {preview !== null ? formatNaira(String(preview)) : "—"}
+        <dd
+          aria-live="polite"
+          className="text-base font-extrabold tracking-tight text-foreground tabular-nums"
+        >
+          {/* Numerical transition: opacity + y only, so hour edits never
+              shift layout while the figure swaps (hotel stay panel pattern). */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={preview !== null ? String(preview) : "empty"}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{
+                opacity: 0,
+                y: -4,
+                transition: {
+                  duration: MOTION_DURATIONS.instant,
+                  ease: MOTION_EASINGS.easeOut,
+                },
+              }}
+              transition={{
+                duration: MOTION_DURATIONS.quick,
+                ease: MOTION_EASINGS.easeOut,
+              }}
+              className="block tabular-nums"
+            >
+              {preview !== null ? formatNaira(String(preview)) : "—"}
+            </motion.span>
+          </AnimatePresence>
         </dd>
       </dl>
 
-      {error ? (
-        <p role="alert" className="text-xs font-medium text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <AnimatePresence initial={false}>
+        {error ? (
+          <motion.p
+            key="hire-error"
+            role="alert"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{
+              opacity: 0,
+              transition: {
+                duration: MOTION_DURATIONS.instant,
+                ease: MOTION_EASINGS.easeOut,
+              },
+            }}
+            transition={{
+              duration: MOTION_DURATIONS.quick,
+              ease: MOTION_EASINGS.easeOut,
+            }}
+            className="text-xs font-medium text-destructive"
+          >
+            {error}
+          </motion.p>
+        ) : null}
+      </AnimatePresence>
 
       <Button
         type="button"

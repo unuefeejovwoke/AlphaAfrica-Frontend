@@ -88,6 +88,25 @@ export function GuestBookingForm(props: GuestBookingFormProps) {
     shouldFocusError: true,
   })
 
+  // Smooth focus shift to the first missing field on invalid submit.
+  // `shouldFocusError` (above) already focuses the field — this only swaps
+  // the instant jump for a glide by lending the document smooth scrolling
+  // for the duration of the focus scroll, then reverting. Reduced-motion
+  // visitors keep the instant jump via the document-wide backstop.
+  const handleInvalid = React.useCallback(() => {
+    if (
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      typeof document === "undefined"
+    )
+      return
+    const root = document.documentElement
+    const previous = root.style.scrollBehavior
+    root.style.scrollBehavior = "smooth"
+    window.setTimeout(() => {
+      root.style.scrollBehavior = previous
+    }, 600)
+  }, [])
+
   const handleSubmit = form.handleSubmit((values) => {
     if (creationRef.current) return
     setFailure(null)
@@ -168,7 +187,7 @@ export function GuestBookingForm(props: GuestBookingFormProps) {
         }
       }
     })()
-  })
+  }, handleInvalid)
 
   const busy = phase === "creating" || phase === "redirecting"
   const rootError =
@@ -208,6 +227,8 @@ export function GuestBookingForm(props: GuestBookingFormProps) {
       noValidate
       onSubmit={handleSubmit}
       aria-label={copy.ariaLabel}
+      // Buttons compress via `active:scale-[0.98]` in `ui/button`; invalid
+      // submits glide to the first missing field through `handleInvalid`.
       className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
     >
       <div className="flex flex-col gap-1">
@@ -285,7 +306,9 @@ export function GuestBookingForm(props: GuestBookingFormProps) {
         >
           <HugeiconsIcon icon={LockIcon} size={16} aria-hidden="true" />
           <span>
-            {phase === "creating" ? copy.submitPendingLabel : "Continue to payment"}
+            {phase === "creating"
+              ? copy.submitPendingLabel
+              : "Continue to payment"}
           </span>
         </Button>
         <ButtonLink
