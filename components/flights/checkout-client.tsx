@@ -287,6 +287,10 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
   const [clearedDraft, setClearedDraft] = React.useState(false)
   const [submittedValues, setSubmittedValues] =
     React.useState<TravellerFormValues | null>(null)
+  // Gating for the single summary CTA: live form validity + explicit
+  // terms consent. Both must hold before pay/reserve unlock.
+  const [formValid, setFormValid] = React.useState(false)
+  const [termsAccepted, setTermsAccepted] = React.useState(false)
   // A hold for a DIFFERENT offer than the one in checkout: shown as a banner,
   // never auto-restored, so a stale reservation can never block a new booking.
   const [otherReservation, setOtherReservation] = React.useState<string | null>(
@@ -692,14 +696,6 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           paying={payingReserved}
           payError={reservedPayError}
         />
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={handleDiscardReservation}
-          className="w-full justify-center"
-        >
-          <span>Discard this hold and book a different flight</span>
-        </Button>
       </div>
     )
   }
@@ -863,7 +859,17 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
   const showConsent = phase === "review" && priceReview !== null
 
   return (
-    <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_400px]">
+    <>
+      <div className="mb-8 flex flex-col gap-1.5">
+        <h1 className="text-2xl font-black tracking-tight text-foreground sm:text-3xl lg:text-4xl">
+          Your Booking
+        </h1>
+        <p className="text-xs text-muted-foreground sm:text-sm">
+          Secure Guest Booking Checkout — Complete your traveller details below.
+          Pay now, or reserve your seat on international flights and pay later.
+        </p>
+      </div>
+      <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_400px]">
       <div className="flex min-w-0 flex-col gap-8">
         {otherReservation ? (
           <div
@@ -984,18 +990,9 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
               isInternational={isInternational}
               initialValues={initialValues}
               onSubmit={handlePay}
-              isSubmitting={submitting}
-              isReserving={reserving}
-              submitLabel={`Proceed to Pay ${total}`}
-              submittingLabel={
-                phase === "redirecting"
-                  ? "Taking you to Paystack…"
-                  : "Creating your booking…"
-              }
-              allowReserve={isInternational}
-              reserveLabel={`Reserve — pay ${total} later`}
               formId="traveller-checkout-form"
               reserveTriggerRef={reserveTriggerRef}
+              onValidityChange={setFormValid}
             />
           </>
         )}
@@ -1011,9 +1008,13 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           isReserving={reserving}
           allowReserve={isInternational}
           onReserve={() => reserveTriggerRef.current?.()}
+          canSubmit={formValid}
+          termsAccepted={termsAccepted}
+          onTermsChange={setTermsAccepted}
         />
       </aside>
-    </div>
+      </div>
+    </>
   )
 }
 

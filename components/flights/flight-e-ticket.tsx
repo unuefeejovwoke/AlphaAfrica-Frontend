@@ -4,7 +4,6 @@ import * as React from "react"
 import Image from "next/image"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Airplane01Icon,
   Calendar01Icon,
   Clock01Icon,
   Tick01Icon,
@@ -539,21 +538,20 @@ export function FlightETicket({
             </div>
           </div>
 
-          {/* Center Flight Path */}
+          {/* Center Flight Path — duration above, stops below */}
           <div className="flex flex-col items-center justify-center px-1">
-            <span className="mb-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-extrabold tracking-wider whitespace-nowrap text-amber-700 uppercase sm:mb-2 sm:px-2.5 sm:py-1 sm:text-[10px] md:text-[11px]">
-              {data.duration} · {data.stopsLabel}
+            <span className="mb-1.5 text-[10px] font-extrabold whitespace-nowrap text-foreground tabular-nums sm:mb-2 sm:text-[11px] md:text-xs">
+              {data.duration}
             </span>
-            <div className="relative flex w-12 items-center justify-center sm:w-20 md:w-32">
+            <div
+              aria-hidden="true"
+              className="relative flex w-12 items-center justify-center sm:w-20 md:w-32"
+            >
               <div className="w-full border-t border-dashed border-border/80" />
-              <span className="absolute flex size-6 items-center justify-center rounded-full border border-border/80 bg-card shadow-xs sm:size-7">
-                <HugeiconsIcon
-                  icon={Airplane01Icon}
-                  size={13}
-                  className="rotate-90 text-primary sm:size-3.5"
-                />
-              </span>
             </div>
+            <span className="mt-1.5 text-[9px] font-bold tracking-wider whitespace-nowrap text-muted-foreground uppercase sm:mt-2 sm:text-[10px] md:text-[11px]">
+              {data.stopsLabel}
+            </span>
           </div>
 
           {/* Destination */}

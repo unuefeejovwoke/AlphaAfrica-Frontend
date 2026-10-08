@@ -4,7 +4,6 @@ import * as React from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Airplane01Icon,
   Luggage01Icon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -362,29 +361,18 @@ export function FlightOfferCard({
               ) : null}
             </div>
 
-            {/* Path Graphic & Duration */}
+            {/* Path Graphic: duration above the line, stops below */}
             <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-1 sm:px-2">
               <p className="max-w-full truncate text-[11px] font-bold text-foreground tabular-nums sm:text-xs">
                 {offer.duration}
               </p>
-              <div className="relative my-1.5 flex w-full max-w-[200px] items-center">
+              <div
+                aria-hidden="true"
+                className="my-1.5 flex w-full max-w-[200px] items-center"
+              >
                 <span className="size-2 rounded-full border-2 border-primary bg-background" />
                 <div className="h-0.5 flex-1 bg-border" />
-                {offer.stops > 0 ? (
-                  <span
-                    className="size-2.5 rounded-full bg-amber-500"
-                    title={layoverCode}
-                  />
-                ) : (
-                  <HugeiconsIcon
-                    icon={Airplane01Icon}
-                    size={14}
-                    className="text-primary"
-                    aria-hidden="true"
-                  />
-                )}
-                <div className="h-0.5 flex-1 bg-border" />
-                <span className="size-2 rounded-full border-2 border-primary bg-background" />
+                <span className="size-2 rounded-full bg-primary" />
               </div>
               <p className="max-w-full truncate text-center text-[10px] font-semibold text-muted-foreground sm:text-[11px]">
                 {layoverCode}
@@ -642,12 +630,11 @@ export function FlightOfferCard({
                                             ) : null}
                                           </div>
                                           <div className="flex flex-1 flex-col items-center px-1">
-                                            <HugeiconsIcon
-                                              icon={Airplane01Icon}
-                                              size={14}
-                                              className="text-primary"
-                                              aria-hidden="true"
-                                            />
+                                            {seg.duration ? (
+                                              <p className="text-[10px] font-bold text-foreground tabular-nums">
+                                                {seg.duration}
+                                              </p>
+                                            ) : null}
                                             <div
                                               aria-hidden="true"
                                               className="my-1 h-0.5 w-full max-w-[120px] bg-border"

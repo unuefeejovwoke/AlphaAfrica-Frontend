@@ -4,8 +4,7 @@ import * as React from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Airplane01Icon,
-  Cancel01Icon,
-  Clock01Icon,
+  Edit02Icon,
   InformationCircleIcon,
   Luggage01Icon,
   Shield01Icon,
@@ -53,8 +52,15 @@ function resolveCity(iata: string): string {
   return AIRPORT_CITIES[code] || code
 }
 
-function formatDateLabel(dateStr?: string | null): string {
-  if (!dateStr || dateStr === "—") return "Departure"
+/** ISO date (YYYY-MM-DD) from a segment timestamp, or null when absent. */
+function segmentDatePart(raw?: string | null): string | null {
+  if (!raw) return null
+  const match = raw.match(/(\d{4})-(\d{2})-(\d{2})/)
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : null
+}
+
+function formatDateLabel(dateStr?: string | null): string | null {
+  if (!dateStr || dateStr === "—") return null
   try {
     const [year, month, day] = dateStr.split("-").map(Number)
     if (year && month && day) {
@@ -67,10 +73,16 @@ function formatDateLabel(dateStr?: string | null): string {
         timeZone: "UTC",
       })
     }
-    return dateStr
+    return null
   } catch {
-    return dateStr
+    return null
   }
+}
+
+function legLabel(index: number, total: number): string {
+  if (total === 1) return "DEPART"
+  if (total === 2) return index === 0 ? "DEPART" : "RETURN"
+  return `LEG ${index + 1}`
 }
 
 export interface CheckoutBookingSummaryProps {
@@ -98,10 +110,7 @@ export function CheckoutBookingSummary({
       ]
 
   const total = formatNaira(display.price)
-  const isRefundable = display.fareRules?.refundable === true
-  const baggageText = display.baggage
-    ? display.baggage
-    : `${display.cabin || "Economy"} • 1 × 7kg cabin • 2 × 23kg checked`
+  const refundable = display.fareRules?.refundable ?? null
 
   return (
     <section aria-label="Step 1: Booking Summary" className="flex flex-col gap-4">
@@ -140,23 +149,42 @@ export function CheckoutBookingSummary({
             href="/flights"
             variant="ghost"
             size="sm"
-            className="size-8 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            className="size-8 p-0 text-muted-foreground hover:text-foreground"
             title="Change flight"
             aria-label="Change flight"
           >
-            <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+            <HugeiconsIcon icon={Edit02Icon} size={16} aria-hidden="true" />
           </ButtonLink>
         </div>
       </div>
 
       {/* Flight Detail Cards for each Journey */}
       {journeys.map((journey, jIdx) => {
-        const segment = journey.segments[0]
-        const flightNumber = segment?.flightNumber
-          ? `${segment.carrierCode || display.airlineCode || ""}${segment.flightNumber}`
-          : display.airlineCode || ""
-        const aircraft = segment?.aircraft || "Scheduled Flight"
-        const departDate = formatDateLabel(display.departureDate)
+        const segments = journey.segments ?? []
+        const firstSeg = segments[0]
+        const lastSeg = segments.length > 0 ? segments[segments.length - 1] : undefined
+
+        // Per-leg times from that leg's own segments — never the outbound
+        // times repeated onto the return leg.
+        const departTime =
+          firstSeg?.departureAt ?? (jIdx === 0 ? display.departureAt : "—")
+        const arriveTime =
+          lastSeg?.arrivalAt ?? (jIdx === 0 ? display.arrivalAt : "—")
+
+        const journeyDateRaw =
+          segmentDatePart(firstSeg?.departureAtRaw) ??
+          (jIdx === 0 ? (display.departureDate ?? null) : null)
+        const journeyDate = formatDateLabel(journeyDateRaw)
+
+        const flightNumbers = segments
+          .map((s) =>
+            s.flightNumber
+              ? `${s.carrierCode || display.airlineCode || ""}${s.flightNumber}`.trim()
+              : ""
+          )
+          .filter(Boolean)
+        const flightLine = flightNumbers.length > 0 ? flightNumbers.join(" · ") : null
+        const aircraft = firstSeg?.aircraft ?? null
 
         return (
           <div
@@ -167,11 +195,13 @@ export function CheckoutBookingSummary({
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-4">
               <div className="flex items-center gap-2.5">
                 <span className="rounded-md bg-muted px-2.5 py-1 text-[11px] font-bold tracking-wider text-foreground uppercase">
-                  {jIdx === 0 ? "DEPART" : "RETURN"}
+                  {legLabel(jIdx, journeys.length)}
                 </span>
-                <span className="text-xs font-semibold text-muted-foreground">
-                  {departDate}
-                </span>
+                {journeyDate ? (
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {journeyDate}
+                  </span>
+                ) : null}
               </div>
               <div className="flex items-center gap-2">
                 <AirlineLogo
@@ -183,10 +213,12 @@ export function CheckoutBookingSummary({
                 <span className="text-xs font-semibold text-foreground">
                   {display.airline}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {flightNumber ? `· ${flightNumber}` : ""}
-                  {aircraft ? ` · ${aircraft}` : ""}
-                </span>
+                {flightLine || aircraft ? (
+                  <span className="text-xs text-muted-foreground">
+                    {flightLine ? `· ${flightLine}` : ""}
+                    {aircraft ? ` · ${aircraft}` : ""}
+                  </span>
+                ) : null}
               </div>
             </div>
 
@@ -195,7 +227,7 @@ export function CheckoutBookingSummary({
               {/* Departure */}
               <div className="flex flex-col">
                 <span className="font-variant-numeric text-2xl font-black tracking-tight text-foreground tabular-nums sm:text-3xl">
-                  {display.departureAt}
+                  {departTime}
                 </span>
                 <span className="mt-0.5 text-xs font-bold text-foreground sm:text-sm">
                   {journey.origin || display.origin}
@@ -205,26 +237,18 @@ export function CheckoutBookingSummary({
                 </span>
               </div>
 
-              {/* Connecting path */}
+              {/* Connecting path — duration above, stops below, no icon */}
               <div className="flex flex-col items-center px-1 sm:px-4">
-                <span className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground tabular-nums">
-                  <HugeiconsIcon icon={Clock01Icon} size={12} aria-hidden="true" />
-                  <span>{journey.duration || display.duration}</span>
+                <span className="text-[11px] font-bold text-foreground tabular-nums sm:text-xs">
+                  {journey.duration || display.duration}
                 </span>
 
-                <div className="relative my-2 flex w-24 items-center sm:w-36 md:w-44">
+                <div
+                  aria-hidden="true"
+                  className="my-2 flex w-24 items-center sm:w-36 md:w-44"
+                >
                   <span className="size-2 rounded-full border-2 border-primary bg-background" />
-                  <div className="relative h-[2px] flex-1 bg-border">
-                    <div className="absolute inset-0 bg-primary/40" />
-                  </div>
-                  <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card p-1 text-primary shadow-xs">
-                    <HugeiconsIcon
-                      icon={Airplane01Icon}
-                      size={14}
-                      className="rotate-90"
-                      aria-hidden="true"
-                    />
-                  </div>
+                  <div className="h-[2px] flex-1 bg-border" />
                   <span className="size-2 rounded-full bg-primary" />
                 </div>
 
@@ -236,7 +260,7 @@ export function CheckoutBookingSummary({
               {/* Arrival */}
               <div className="flex flex-col items-end text-right">
                 <span className="font-variant-numeric text-2xl font-black tracking-tight text-foreground tabular-nums sm:text-3xl">
-                  {display.arrivalAt}
+                  {arriveTime}
                 </span>
                 <span className="mt-0.5 text-xs font-bold text-foreground sm:text-sm">
                   {journey.destination || display.destination}
@@ -247,22 +271,31 @@ export function CheckoutBookingSummary({
               </div>
             </div>
 
-            {/* Baggage & Cabin meta row */}
+            {/* Baggage & Cabin meta row — airline data only */}
             <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/30 px-3.5 py-2.5 text-xs font-medium text-muted-foreground">
               <span className="font-semibold text-foreground">
                 {display.cabin || "Economy"}
               </span>
-              <span>•</span>
-              <span className="flex items-center gap-1.5">
-                <HugeiconsIcon icon={Luggage01Icon} size={14} aria-hidden="true" />
-                <span>{baggageText}</span>
-              </span>
+              {display.baggage ? (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1.5">
+                    <HugeiconsIcon icon={Luggage01Icon} size={14} aria-hidden="true" />
+                    <span>{display.baggage}</span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>•</span>
+                  <span>Baggage allowance confirmed by the airline at booking</span>
+                </>
+              )}
             </div>
 
-            {/* Fare Rules Block */}
+            {/* Fare & travel notes — explicit states only */}
             <div className="border-t border-border pt-4">
               <h3 className="mb-3 text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                Fare Rules
+                Fare notes
               </h3>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-[180px_1fr]">
@@ -272,18 +305,22 @@ export function CheckoutBookingSummary({
                     <HugeiconsIcon icon={Shield01Icon} size={14} aria-hidden="true" />
                     <span>Cancellation policy</span>
                   </div>
-                  <span
-                    className={`mt-1 text-xs font-bold ${
-                      isRefundable
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-amber-700 dark:text-amber-400"
-                    }`}
-                  >
-                    {isRefundable ? "Refundable (fees apply)" : "Non-refundable"}
-                  </span>
+                  {refundable === true ? (
+                    <span className="mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      Refundable (fees may apply)
+                    </span>
+                  ) : refundable === false ? (
+                    <span className="mt-1 text-xs font-bold text-amber-700 dark:text-amber-400">
+                      Non-refundable
+                    </span>
+                  ) : (
+                    <span className="mt-1 text-xs font-bold text-muted-foreground">
+                      Check fare rules at ticketing
+                    </span>
+                  )}
                 </div>
 
-                {/* Important airline advisory */}
+                {/* General travel guidance — not presented as airline fare text */}
                 <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-muted/10 p-3 text-xs leading-relaxed text-muted-foreground">
                   <HugeiconsIcon
                     icon={InformationCircleIcon}
@@ -291,18 +328,17 @@ export function CheckoutBookingSummary({
                     className="mt-0.5 shrink-0 text-primary"
                     aria-hidden="true"
                   />
-                  <div className="flex max-h-24 flex-col gap-1 overflow-y-auto pr-1 text-[11px]">
+                  <div className="flex flex-col gap-1 text-[11px]">
                     <p>
-                      <strong>Travel Requirements:</strong> Ensure you have
-                      fulfilled your visa requirements and valid travel
-                      documents prior to departure. Passengers must hold a valid
-                      passport with a minimum of 6 months validity from the date of
-                      travel.
+                      General guidance — the airline&apos;s fare conditions
+                      apply at ticketing. Date changes may incur fare
+                      differences and reissue fees.
                     </p>
                     <p>
-                      Tickets are subject to the carrier&apos;s conditions of
-                      carriage and fare rules. Date changes may incur fare
-                      differences and airline reissue penalties.
+                      Check your visa and travel documents before departure.
+                      Passports are commonly required to be valid for 6+ months
+                      beyond travel — confirm against your destination&apos;s
+                      current entry rules.
                     </p>
                   </div>
                 </div>

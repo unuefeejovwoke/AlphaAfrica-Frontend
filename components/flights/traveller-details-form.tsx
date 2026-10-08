@@ -15,21 +15,16 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
   InformationCircleIcon,
-  LockIcon,
   Mail01Icon,
   PassportIcon,
-  SparklesIcon,
-  Tick01Icon,
-  Upload01Icon,
   UserIcon,
 } from "@hugeicons/core-free-icons"
-import { Button, ButtonLink } from "@/components/ui/button"
+import { ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { PhoneField } from "@/components/ui/phone-field"
 import { CountrySelect } from "@/components/ui/country-select"
-import { LegalNotice } from "@/components/legal/legal-notice"
 import { getCountryByDial } from "@/lib/data/countries"
 import { splitPhoneValue } from "@/lib/phone"
 import {
@@ -57,15 +52,11 @@ export interface TravellerDetailsFormProps {
     payload: BookingTravellersPayload,
     intent: TravellerSubmitIntent
   ) => void | Promise<void>
-  isSubmitting?: boolean
-  isReserving?: boolean
   initialValues?: TravellerFormValues | null
-  submitLabel?: string
-  submittingLabel?: string
-  allowReserve?: boolean
-  reserveLabel?: string
   formId?: string
   reserveTriggerRef?: React.MutableRefObject<(() => void) | null>
+  /** Reports live form validity so the summary CTA can stay gated. */
+  onValidityChange?: (valid: boolean) => void
 }
 
 const TITLE_OPTIONS = [
@@ -166,15 +157,10 @@ export function TravellerDetailsForm({
   party,
   isInternational,
   onSubmit,
-  isSubmitting,
-  isReserving,
   initialValues,
-  submitLabel = "Proceed to Pay",
-  submittingLabel = "Processing…",
-  allowReserve = false,
-  reserveLabel = "Reserve and pay later",
   formId = "traveller-checkout-form",
   reserveTriggerRef,
+  onValidityChange,
 }: TravellerDetailsFormProps) {
   const schema = React.useMemo(
     () => createTravellerFormSchema({ party, isInternational }),
@@ -210,10 +196,16 @@ export function TravellerDetailsForm({
   }, [])
 
   const contactIsFirstTraveller = form.watch("contactIsFirstTraveller") ?? true
-  const firstTraveller = form.watch("travellers.0")
   const errors = form.formState.errors
+  const isValid = form.formState.isValid
   const arrayError = getTravellersArrayError(errors)
   const customerErrors = errors.customer
+
+  // Push live validity to the parent so the single summary CTA can gate
+  // on a complete form instead of failing on submit.
+  React.useEffect(() => {
+    onValidityChange?.(isValid)
+  }, [isValid, onValidityChange])
 
   const submitAs =
     (intent: TravellerSubmitIntent) =>
@@ -234,106 +226,6 @@ export function TravellerDetailsForm({
       }
     }
   }, [reserveTriggerRef, handleReserve])
-
-  // Passport Auto-fill state
-  const [isScanning, setIsScanning] = React.useState(false)
-  const [scanSuccess, setScanSuccess] = React.useState(false)
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
-
-  const handleApplyPassportExtraction = React.useCallback(
-    (extracted: {
-      surname: string
-      firstName: string
-      middleName?: string
-      dob: string
-      gender: "MALE" | "FEMALE"
-      passportNumber: string
-      passportExpiry: string
-      nationality: string
-    }) => {
-      form.setValue("travellers.0.last_name", extracted.surname, {
-        shouldValidate: true,
-        shouldDirty: true,
-      })
-      form.setValue("travellers.0.first_name", extracted.firstName, {
-        shouldValidate: true,
-        shouldDirty: true,
-      })
-      if (extracted.middleName) {
-        form.setValue("travellers.0.middle_name", extracted.middleName, {
-          shouldValidate: true,
-          shouldDirty: true,
-        })
-      }
-      form.setValue("travellers.0.date_of_birth", extracted.dob, {
-        shouldValidate: true,
-        shouldDirty: true,
-      })
-      form.setValue("travellers.0.gender", extracted.gender, {
-        shouldValidate: true,
-        shouldDirty: true,
-      })
-      if (isInternational) {
-        form.setValue("travellers.0.passport_number", extracted.passportNumber, {
-          shouldValidate: true,
-          shouldDirty: true,
-        })
-        form.setValue("travellers.0.passport_expiry", extracted.passportExpiry, {
-          shouldValidate: true,
-          shouldDirty: true,
-        })
-        form.setValue("travellers.0.nationality", extracted.nationality, {
-          shouldValidate: true,
-          shouldDirty: true,
-        })
-      }
-      setScanSuccess(true)
-      setTimeout(() => setScanSuccess(false), 6000)
-    },
-    [form, isInternational]
-  )
-
-  const handlePassportUpload = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (!file) return
-
-      setIsScanning(true)
-      // Simulate intelligent optical recognition parse
-      setTimeout(() => {
-        setIsScanning(false)
-        handleApplyPassportExtraction({
-          surname: "ADEBAYO",
-          firstName: "BABATUNDE",
-          middleName: "OLUWOLE",
-          dob: "1992-06-18",
-          gender: "MALE",
-          passportNumber: "A18942065",
-          passportExpiry: "2031-10-15",
-          nationality: "NG",
-        })
-        if (fileInputRef.current) fileInputRef.current.value = ""
-      }, 1200)
-    },
-    [handleApplyPassportExtraction]
-  )
-
-  const handleDemoScan = React.useCallback(() => {
-    setIsScanning(true)
-    setTimeout(() => {
-      setIsScanning(false)
-      handleApplyPassportExtraction({
-        surname: "OKAFOR",
-        firstName: "CHIAMAKA",
-        middleName: "GRACE",
-        dob: "1995-04-12",
-        gender: "FEMALE",
-        passportNumber: "A24819730",
-        passportExpiry: "2032-05-22",
-        nationality: "NG",
-      })
-    }, 900)
-  }, [handleApplyPassportExtraction])
 
   return (
     <form
@@ -536,70 +428,6 @@ export function TravellerDetailsForm({
                   {TRAVELER_TYPE_LABELS[travellerType]}
                 </span>
               </div>
-
-              {/* Passport auto-fill card (Lead Traveller only) */}
-              {isLead ? (
-                <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-4 sm:p-5">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,application/pdf"
-                    className="hidden"
-                    onChange={handlePassportUpload}
-                  />
-
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        <HugeiconsIcon icon={PassportIcon} size={20} aria-hidden="true" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-foreground">
-                          Upload passport to auto-fill
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          AI will extract name, DOB, nationality & passport
-                          details for this traveller
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                      <Button
-                        type="button"
-                        size="sm"
-                        isLoading={isScanning}
-                        onClick={() => fileInputRef.current?.click()}
-                        className="gap-1.5 font-bold"
-                      >
-                        <HugeiconsIcon icon={Upload01Icon} size={15} aria-hidden="true" />
-                        <span>Upload</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleDemoScan}
-                        disabled={isScanning}
-                        className="text-xs"
-                      >
-                        <HugeiconsIcon icon={SparklesIcon} size={14} className="text-primary" aria-hidden="true" />
-                        <span>Try demo</span>
-                      </Button>
-                    </div>
-                  </div>
-
-                  {scanSuccess ? (
-                    <div
-                      role="status"
-                      className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
-                    >
-                      <HugeiconsIcon icon={Tick01Icon} size={15} aria-hidden="true" />
-                      <span>Passport details auto-filled successfully! Please review.</span>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
 
               {/* Title dropdown */}
               <div className="w-full sm:w-48">
@@ -832,43 +660,6 @@ export function TravellerDetailsForm({
         ) : null}
       </div>
 
-      {/* Bottom Sticky Mobile Action Bar */}
-      <div className="sticky bottom-0 z-20 -mx-4 -mb-4 border-t border-border bg-card/95 p-4 backdrop-blur-md sm:-mx-6 sm:-mb-6 sm:rounded-b-2xl sm:p-6 lg:hidden">
-        <div className="flex flex-col gap-2.5">
-          <Button
-            type="submit"
-            size="lg"
-            isLoading={!!isSubmitting}
-            disabled={!!isSubmitting || !!isReserving}
-            className="w-full justify-center text-sm font-bold shadow-sm"
-          >
-            <HugeiconsIcon icon={LockIcon} size={16} aria-hidden="true" />
-            <span>{isSubmitting ? submittingLabel : submitLabel}</span>
-          </Button>
-
-          {allowReserve ? (
-            <Button
-              type="button"
-              size="lg"
-              variant="outline"
-              isLoading={!!isReserving}
-              disabled={!!isSubmitting || !!isReserving}
-              onClick={handleReserve}
-              aria-label={`${reserveLabel} — hold your seat now, pay before the ticketing deadline`}
-              className="w-full justify-center text-xs font-bold"
-            >
-              <span>{isReserving ? "Reserving your seat…" : reserveLabel}</span>
-            </Button>
-          ) : null}
-        </div>
-
-        <LegalNotice className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground" />
-      </div>
-
-      {/* Desktop legal notice footer */}
-      <div className="hidden lg:block">
-        <LegalNotice className="text-center text-xs leading-relaxed text-muted-foreground" />
-      </div>
     </form>
   )
 }

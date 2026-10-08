@@ -1,17 +1,19 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Airplane01Icon,
-  Clock01Icon,
+  InformationCircleIcon,
   LockIcon,
-  Shield01Icon,
   Tick01Icon,
 } from "@hugeicons/core-free-icons"
+import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox"
 import { Button } from "@/components/ui/button"
 import { formatNaira } from "@/lib/format"
-import { readConfirmedOfferSavedAt, type FlightOfferDisplay } from "@/lib/api/flights"
+import { cn } from "@/lib/utils"
+import type { FlightOfferDisplay } from "@/lib/api/flights"
 import {
   pluralize,
   totalTravellers,
@@ -29,9 +31,11 @@ export interface CheckoutTripSummaryProps {
   isReserving?: boolean
   allowReserve?: boolean
   onReserve?: () => void
+  /** Live traveller-form validity — CTA stays disabled until true. */
+  canSubmit?: boolean
+  termsAccepted?: boolean
+  onTermsChange?: (accepted: boolean) => void
 }
-
-const HOLD_DURATION_SECONDS = 15 * 60 // 15-minute price hold guarantee
 
 export function CheckoutTripSummary({
   display,
@@ -42,68 +46,47 @@ export function CheckoutTripSummary({
   isReserving = false,
   allowReserve = false,
   onReserve,
+  canSubmit = false,
+  termsAccepted = false,
+  onTermsChange,
 }: CheckoutTripSummaryProps) {
+  const termsId = React.useId()
   const travellerCount = totalTravellers(party)
   const total = formatNaira(display.price)
   const hasTimes = display.departureAt !== "—" && display.arrivalAt !== "—"
 
-  // Live countdown timer for the price hold guarantee
-  const [secondsLeft, setSecondsLeft] = React.useState<number>(HOLD_DURATION_SECONDS)
+  const gated = !canSubmit || !termsAccepted
+  const busy = isSubmitting || isReserving
+  const payDisabled = busy || gated
+  const gateReason = !canSubmit
+    ? "Complete all required traveller fields to unlock payment."
+    : "Accept the Terms & Conditions to unlock payment."
 
-  React.useEffect(() => {
-    const savedAt = readConfirmedOfferSavedAt() || Date.now()
-    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - savedAt) / 1000))
-    const initialRemaining = Math.max(0, HOLD_DURATION_SECONDS - elapsedSeconds)
-    setSecondsLeft(initialRemaining)
-
-    const interval = setInterval(() => {
-      const nowElapsed = Math.max(0, Math.floor((Date.now() - savedAt) / 1000))
-      const remaining = Math.max(0, HOLD_DURATION_SECONDS - nowElapsed)
-      setSecondsLeft(remaining)
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  const minutes = Math.floor(secondsLeft / 60)
-  const seconds = secondsLeft % 60
-  const formattedTimer = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
-
-  // Price breakdown computation
-  const rawTotal = Number(display.price)
-  const isValidNumber = Number.isFinite(rawTotal) && rawTotal > 0
-  const baseFare = isValidNumber
-    ? Math.round(rawTotal * 0.72)
-    : null
-  const taxesAndFees = isValidNumber && baseFare !== null
-    ? rawTotal - baseFare
-    : null
+  // Only render what the airline actually sent — never invent a split.
+  const breakdown = display.priceBreakdown ?? null
+  const baseFare =
+    breakdown?.baseFare && breakdown.baseFare.trim() !== ""
+      ? formatNaira(breakdown.baseFare)
+      : null
+  const markup =
+    breakdown?.markup && breakdown.markup.trim() !== ""
+      ? formatNaira(breakdown.markup)
+      : null
+  const hasBreakdown = baseFare !== null || markup !== null
 
   return (
-    <div className="flex flex-col gap-4 lg:sticky lg:top-24">
-      {/* Price hold urgency banner */}
-      <div
-        role="timer"
-        aria-live="polite"
-        className="flex items-center gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-xs font-semibold text-amber-800 shadow-2xs dark:text-amber-300"
-      >
+    <div className="flex flex-col gap-4 lg:sticky lg:top-12">
+      {/* Live-fare notice — no hold is created until pay/reserve succeeds. */}
+      <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/40 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground shadow-2xs">
         <HugeiconsIcon
-          icon={Clock01Icon}
+          icon={InformationCircleIcon}
           size={16}
-          className="shrink-0 text-amber-600 dark:text-amber-400"
+          className="mt-0.5 shrink-0 text-primary"
           aria-hidden="true"
         />
         <span>
-          {secondsLeft > 0 ? (
-            <>
-              Price held for{" "}
-              <span className="font-extrabold tabular-nums tracking-wide">
-                {formattedTimer}
-              </span>
-            </>
-          ) : (
-            "Price guarantee expiring — finish booking to lock fare"
-          )}
+          Live airline fare — re-confirmed with the airline before payment.
+          Fares can change until your booking is created.
         </span>
       </div>
 
@@ -134,32 +117,40 @@ export function CheckoutTripSummary({
           </span>
         </div>
 
-        {/* Price Breakdown */}
+        {/* Price Breakdown — backend values only */}
         <dl className="flex flex-col gap-2.5 text-xs">
-          <div className="flex items-center justify-between gap-4 text-muted-foreground">
-            <dt>
-              Flights × {travellerCount} {pluralize(travellerCount, "traveller")}
-            </dt>
-            <dd className="font-variant-numeric font-medium text-foreground tabular-nums">
-              {baseFare !== null ? formatNaira(baseFare) : total}
-            </dd>
-          </div>
+          {hasBreakdown ? (
+            <>
+              {baseFare !== null ? (
+                <div className="flex items-center justify-between gap-4 text-muted-foreground">
+                  <dt>Base fare</dt>
+                  <dd className="font-variant-numeric font-medium text-foreground tabular-nums">
+                    {baseFare}
+                  </dd>
+                </div>
+              ) : null}
 
-          <div className="flex items-center justify-between gap-4 text-muted-foreground">
-            <dt>Taxes & fees</dt>
-            <dd className="font-variant-numeric font-medium text-foreground tabular-nums">
-              {taxesAndFees !== null ? formatNaira(taxesAndFees) : "Included"}
-            </dd>
-          </div>
+              {markup !== null ? (
+                <div className="flex items-center justify-between gap-4 text-muted-foreground">
+                  <dt>Taxes, fees &amp; charges</dt>
+                  <dd className="font-variant-numeric font-medium text-foreground tabular-nums">
+                    {markup}
+                  </dd>
+                </div>
+              ) : null}
 
-          <div className="flex items-center justify-between gap-4 text-muted-foreground">
-            <dt>Service Charge</dt>
-            <dd className="font-semibold text-emerald-600 dark:text-emerald-400">
-              FREE
-            </dd>
-          </div>
-
-          <div className="my-1 border-t border-border/80" />
+              <div className="my-1 border-t border-border/80" />
+            </>
+          ) : (
+            <div className="flex items-center justify-between gap-4 text-muted-foreground">
+              <dt>
+                Flights × {travellerCount} {pluralize(travellerCount, "traveller")}
+              </dt>
+              <dd className="font-variant-numeric font-medium text-foreground tabular-nums">
+                {total}
+              </dd>
+            </div>
+          )}
 
           {/* Subtotal */}
           <div className="flex items-center justify-between gap-4">
@@ -169,15 +160,16 @@ export function CheckoutTripSummary({
             </dd>
           </div>
 
-          {/* Transparency Guarantee */}
-          <div className="flex items-center gap-1.5 pt-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-            <HugeiconsIcon icon={Tick01Icon} size={14} aria-hidden="true" />
-            <span>No hidden fees — price includes all taxes</span>
-          </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Final amount charged in NGN via Paystack.
+            {hasBreakdown
+              ? " Breakdown as provided by the airline."
+              : " Itemised breakdown available from the airline at ticketing."}
+          </p>
         </dl>
 
-        {/* Primary CTA Block */}
-        <div className="border-t border-border pt-4">
+        {/* Primary CTA Block — the only Proceed / Reserve actions */}
+        <div id="checkout-payment" className="scroll-mt-24 border-t border-border pt-4">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase">
               Total Due
@@ -187,14 +179,66 @@ export function CheckoutTripSummary({
             </span>
           </div>
 
+          {/* Terms consent directly before the payment action */}
+          <div className="mb-3 rounded-xl border border-border/80 bg-muted/20 p-3">
+            <label
+              htmlFor={termsId}
+              className="flex cursor-pointer touch-manipulation items-start gap-2.5 rounded-lg px-1 py-1 focus-within:ring-2 focus-within:ring-ring/30"
+            >
+              <CheckboxPrimitive.Root
+                id={termsId}
+                checked={termsAccepted}
+                onCheckedChange={(next) => onTermsChange?.(next === true)}
+                className={cn(
+                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border border-input bg-card text-primary-foreground shadow-xs transition-colors",
+                  "data-checked:border-primary data-checked:bg-primary",
+                  "focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                )}
+              >
+                <CheckboxPrimitive.Indicator className="flex items-center justify-center data-unchecked:hidden">
+                  <HugeiconsIcon icon={Tick01Icon} size={14} aria-hidden="true" />
+                </CheckboxPrimitive.Indicator>
+              </CheckboxPrimitive.Root>
+              <span className="min-w-0 flex-1 text-[11px] leading-relaxed text-muted-foreground">
+                I agree to the{" "}
+                <Link
+                  href="/terms"
+                  className="font-medium text-foreground underline underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                >
+                  Terms &amp; Conditions
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/privacy"
+                  className="font-medium text-foreground underline underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                >
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+          </div>
+
+          {payDisabled && !busy ? (
+            <p
+              role="status"
+              aria-live="polite"
+              className="mb-2.5 text-center text-[11px] font-medium leading-relaxed text-muted-foreground"
+            >
+              {gateReason}
+            </p>
+          ) : null}
+
           <div className="flex flex-col gap-2.5">
             <Button
               form={formId}
               type="submit"
               size="lg"
               isLoading={isSubmitting}
-              disabled={isSubmitting || isReserving}
-              className="w-full justify-center text-sm font-bold shadow-sm sm:text-base"
+              disabled={payDisabled}
+              title={payDisabled && !busy ? gateReason : undefined}
+              aria-describedby={payDisabled && !busy ? `${termsId}-gate` : undefined}
+              className="min-h-11 w-full justify-center text-sm font-bold shadow-sm sm:text-base"
             >
               <HugeiconsIcon icon={LockIcon} size={16} aria-hidden="true" />
               <span>
@@ -208,25 +252,18 @@ export function CheckoutTripSummary({
                 variant="outline"
                 size="lg"
                 isLoading={isReserving}
-                disabled={isSubmitting || isReserving}
+                disabled={payDisabled}
                 onClick={onReserve}
-                className="w-full justify-center text-xs font-bold"
+                title={payDisabled && !busy ? gateReason : undefined}
+                aria-label={`Reserve — pay ${total} later. ${payDisabled && !busy ? gateReason : "Hold your seat now, pay before the ticketing deadline."}`}
+                className="min-h-11 w-full justify-center text-xs font-bold"
               >
                 <span>{isReserving ? "Reserving your seat…" : `Reserve — pay ${total} later`}</span>
               </Button>
             ) : null}
-          </div>
-        </div>
-
-        {/* Trust & Safety Badges */}
-        <div className="flex flex-col gap-2 rounded-xl bg-muted/20 p-3 text-[11px] text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <HugeiconsIcon icon={Shield01Icon} size={14} className="text-primary" aria-hidden="true" />
-            <span>100% Secure Payment via Paystack</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <HugeiconsIcon icon={Tick01Icon} size={14} className="text-emerald-600" aria-hidden="true" />
-            <span>Instant booking confirmation & e-ticket delivery</span>
+            <span id={`${termsId}-gate`} className="sr-only">
+              {gateReason}
+            </span>
           </div>
         </div>
       </div>

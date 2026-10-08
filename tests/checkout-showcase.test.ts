@@ -57,6 +57,9 @@ test("Retired payment route redirects to the one-page checkout", () => {
 })
 
 test("Checkout page presents a secure Guest Booking without marketing egress", () => {
+  // The heading lives in the checkout client (not the page shell) so the
+  // reserved / expired / missing states render their own titles instead of
+  // the traveller-details copy.
   const pagePath = path.resolve(
     process.cwd(),
     "app/(checkout)/checkout/page.tsx"
@@ -65,7 +68,15 @@ test("Checkout page presents a secure Guest Booking without marketing egress", (
     fs.existsSync(pagePath),
     "app/(checkout)/checkout/page.tsx must exist"
   )
-  const content = fs.readFileSync(pagePath, "utf-8")
+  const clientPath = path.resolve(
+    process.cwd(),
+    "components/flights/checkout-client.tsx"
+  )
+  assert.ok(
+    fs.existsSync(clientPath),
+    "components/flights/checkout-client.tsx must exist"
+  )
+  const content = fs.readFileSync(clientPath, "utf-8")
 
   assert.match(
     content,
