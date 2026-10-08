@@ -9,6 +9,7 @@ import {
   SparklesIcon,
 } from "@hugeicons/core-free-icons"
 import { StarGlyph } from "@/components/shared/listing-card"
+import { Reveal } from "@/components/motion/reveal"
 import { getTestimonials } from "@/lib/content/testimonials"
 import { stats } from "@/lib/content/stats"
 import { MOTION_SPRINGS } from "@/lib/motion/springs"
@@ -144,7 +145,7 @@ export function HomeTestimonials() {
       onTouchEndCapture={() => setIsPaused(false)}
     >
       {/* Header */}
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <Reveal className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="flex max-w-2xl flex-col items-start gap-3.5">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
             <HugeiconsIcon
@@ -198,7 +199,7 @@ export function HomeTestimonials() {
             </button>
           </div>
         </div>
-      </div>
+      </Reveal>
 
       {/* Slider viewport */}
       <div

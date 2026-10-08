@@ -23,6 +23,7 @@ import { FeaturedCars } from "@/components/home/featured-cars"
 import { HomeTestimonials } from "@/components/home/home-testimonials"
 import { HomeFaq } from "@/components/home/home-faq"
 import { TerminalCta } from "@/components/shared/terminal-cta"
+import { Reveal } from "@/components/motion/reveal"
 import { company, getSupportWhatsAppUrl } from "@/lib/content/company"
 import { stats } from "@/lib/content/stats"
 import { HOME_BENTO } from "@/lib/images"
@@ -173,7 +174,7 @@ export default async function HomePage() {
 
       {/* Why Choose Alphaa Africa Section */}
       <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-10 flex max-w-3xl flex-col items-start gap-4 sm:mb-12">
+        <Reveal className="mb-10 flex max-w-3xl flex-col items-start gap-4 sm:mb-12">
           <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
             Why Alphaa Africa
           </span>
@@ -184,7 +185,7 @@ export default async function HomePage() {
             Everything you need for seamless travel — transparent pricing, live
             airline inventory, and expert human support whenever you need it.
           </p>
-        </div>
+        </Reveal>
 
         {/* Asymmetrical Bento Grid */}
         <div className="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-12">
@@ -349,7 +350,7 @@ export default async function HomePage() {
         aria-labelledby="home-featured-packages"
         className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 sm:grid-cols-[1fr_auto] sm:items-end sm:px-6 lg:px-8"
       >
-        <div className="flex max-w-2xl flex-col items-start gap-4 sm:col-start-1 sm:row-start-1">
+        <Reveal className="flex max-w-2xl flex-col items-start gap-4 sm:col-start-1 sm:row-start-1">
           <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
             Holiday Packages
           </span>
@@ -363,7 +364,7 @@ export default async function HomePage() {
             Pick a package, send an enquiry, and we&apos;ll handle the rest.
             Nothing to pay until you&apos;ve seen the plan.
           </p>
-        </div>
+        </Reveal>
         <div className="sm:col-span-2 sm:row-start-2">
           <React.Suspense
             fallback={
@@ -388,7 +389,7 @@ export default async function HomePage() {
         aria-labelledby="home-featured-hotels"
         className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 border-t border-border/60 px-4 pt-12 sm:grid-cols-[1fr_auto] sm:items-end sm:px-6 md:pt-16 lg:px-8"
       >
-        <div className="flex max-w-2xl flex-col items-start gap-4 sm:col-start-1 sm:row-start-1">
+        <Reveal className="flex max-w-2xl flex-col items-start gap-4 sm:col-start-1 sm:row-start-1">
           <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
             Hotels & Stays
           </span>
@@ -402,7 +403,7 @@ export default async function HomePage() {
             Verified hotels with upfront per-night prices in NGN. Select your
             room and confirm your stay with zero surprise fees.
           </p>
-        </div>
+        </Reveal>
         <div className="sm:col-span-2 sm:row-start-2">
           <React.Suspense
             fallback={<FeaturedSkeletonGrid label="Loading featured hotels" />}
@@ -425,7 +426,7 @@ export default async function HomePage() {
         aria-labelledby="home-featured-cars"
         className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 border-t border-border/60 px-4 pt-12 sm:grid-cols-[1fr_auto] sm:items-end sm:px-6 md:pt-16 lg:px-8"
       >
-        <div className="flex max-w-2xl flex-col items-start gap-4 sm:col-start-1 sm:row-start-1">
+        <Reveal className="flex max-w-2xl flex-col items-start gap-4 sm:col-start-1 sm:row-start-1">
           <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
             Chauffeur & Car Hire
           </span>
@@ -439,7 +440,7 @@ export default async function HomePage() {
             Executive sedans, SUVs, and coasters with vetted drivers and
             transparent hourly rates across major Nigerian cities.
           </p>
-        </div>
+        </Reveal>
         <div className="sm:col-span-2 sm:row-start-2">
           <React.Suspense
             fallback={<FeaturedSkeletonGrid label="Loading featured cars" />}

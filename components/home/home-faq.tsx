@@ -15,6 +15,7 @@ import {
 import { getHomepageFaqs } from "@/lib/content/faqs"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { MOTION_DURATIONS, MOTION_EASINGS } from "@/lib/motion/tokens"
+import { Reveal } from "@/components/motion/reveal"
 import { TrackLink } from "@/components/analytics/track-link"
 
 /** Disclosure-tier transition for the chevron rotation. */
@@ -83,7 +84,7 @@ export function HomeFaq() {
       <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-12 lg:gap-12 xl:gap-16">
         {/* Left Column: Context, Heading & Desktop Concierge Support Card */}
         <div className="flex flex-col gap-6 lg:sticky lg:top-24 lg:col-span-5">
-          <div className="flex flex-col items-start gap-3.5">
+          <Reveal className="flex flex-col items-start gap-3.5">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
               <HugeiconsIcon
                 icon={SparklesIcon}
@@ -103,7 +104,7 @@ export function HomeFaq() {
               hotel reservations, Paystack payment methods, and travel
               guidelines with Alphaa Africa.
             </p>
-          </div>
+          </Reveal>
 
           {/* Desktop only: rendered in sticky left column below heading */}
           <div className="hidden lg:block">
