@@ -200,20 +200,96 @@ export function clearBookingSession(): void {
 export const RESERVATION_REFERENCE_SESSION_KEY =
   "alphaa:flight-reservation-reference:v1"
 
+/** What is persisted for a Reservation: the reference plus which offer made it. */
+export interface ReservationRecord {
+  reference: string
+  /** Digest of the reserving offer — lets checkout tell refresh from new search. */
+  offerKey: string | null
+}
+
+/**
+ * Offer-only identity for reservation scoping: a digest of the opaque offer
+ * blob, never the readable payload. Two checkouts for the same card hash
+ * identically; a new search hashes differently so it is never hijacked.
+ */
+export function hashOfferKey(offer: unknown): string {
+  return digestKey(stableStringify({ flight_offer: offer }))
+}
+
+function toReservationRecord(value: unknown): ReservationRecord | null {
+  if (typeof value === "string") {
+    const reference = value.trim()
+    return reference ? { reference, offerKey: null } : null
+  }
+  if (typeof value !== "object" || value === null) return null
+  const rec = value as Record<string, unknown>
+  const reference =
+    typeof rec.reference === "string" ? rec.reference.trim() : ""
+  if (!reference) return null
+  return {
+    reference,
+    offerKey: typeof rec.offerKey === "string" ? rec.offerKey : null,
+  }
+}
+
 /**
  * Persist the Reservation's Booking reference so refresh and Back navigation
  * return the Customer to their reservation rather than an empty form. The
- * reference is the ONLY thing stored — no passport, date of birth, contact
- * detail, or payment data may ever reach the device. Every load re-reads the
- * live Booking from the backend; nothing cached is trusted.
+ * reference plus an offer digest is the ONLY thing stored — no passport, date
+ * of birth, contact detail, or payment data may ever reach the device. Every
+ * load re-reads the live Booking from the backend; nothing cached is trusted.
+ *
+ * The offer digest is what stops a stale hold from hijacking a new search:
+ * checkout restores only when the current offer matches the reserving offer.
+ * Legacy plain-string values (pre-scoping) still read back.
  */
-export function saveReservationReference(reference: string): void {
-  saveStringKey(RESERVATION_REFERENCE_SESSION_KEY, reference)
+export function saveReservationReference(
+  reference: string,
+  options: { offer?: unknown } = {}
+): void {
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.setItem(
+      RESERVATION_REFERENCE_SESSION_KEY,
+      JSON.stringify({
+        reference,
+        offerKey:
+          options.offer !== undefined ? hashOfferKey(options.offer) : null,
+      })
+    )
+  } catch {
+    // sessionStorage may throw in private mode — the URL copy still works
+    saveStringKey(RESERVATION_REFERENCE_SESSION_KEY, reference)
+  }
+}
+
+/** Read back the persisted Reservation record, or null when absent/corrupt. */
+export function readReservationRecord(): ReservationRecord | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.sessionStorage.getItem(
+      RESERVATION_REFERENCE_SESSION_KEY
+    )
+    if (!raw) return null
+    try {
+      return toReservationRecord(JSON.parse(raw) as unknown)
+    } catch {
+      // Legacy plain-string value from before offer scoping.
+      return toReservationRecord(raw)
+    }
+  } catch {
+    return null
+  }
 }
 
 /** Read back the persisted Reservation reference, or null when absent. */
 export function readReservationReference(): string | null {
-  return readStringKey(RESERVATION_REFERENCE_SESSION_KEY)
+  return readReservationRecord()?.reference ?? null
+}
+
+/** Drop the stored Reservation so a new search starts fresh. */
+export function clearReservationReference(): void {
+  clearSessionKeys([RESERVATION_REFERENCE_SESSION_KEY])
 }
 
 /** Guarded sessionStorage string round-trip shared by the reference keys. */

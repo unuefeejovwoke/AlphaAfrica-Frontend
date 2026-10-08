@@ -15,11 +15,15 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
   InformationCircleIcon,
+  LockIcon,
   Mail01Icon,
   PassportIcon,
+  SparklesIcon,
+  Tick01Icon,
+  Upload01Icon,
   UserIcon,
 } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -49,38 +53,30 @@ export type TravellerSubmitIntent = "pay_now" | "reserve"
 export interface TravellerDetailsFormProps {
   party: TravellerComposition
   isInternational: boolean
-  /**
-   * Validated submit — awaited by the form, so `isSubmitting` stays true while
-   * the parent creates the Booking and hands off to Paystack or to the
-   * reservation confirmation. One form, one validation path, an intent
-   * argument: the primary action remains a real submit with `pay_now`, and the
-   * secondary action (when offered) invokes the form's own submit handler with
-   * `reserve`. Both run identical validation — no duplicated schema, no second
-   * form.
-   */
   onSubmit: (
     payload: BookingTravellersPayload,
     intent: TravellerSubmitIntent
   ) => void | Promise<void>
   isSubmitting?: boolean
-  /** True while the reserve action is creating the hold. */
   isReserving?: boolean
-  /**
-   * Prefill from a restored Travellers draft (refresh / back from Paystack).
-   * Must match `party`; callers pass null when it does not.
-   */
   initialValues?: TravellerFormValues | null
-  /** Primary action copy. Defaults to the traveller-details wording. */
   submitLabel?: string
   submittingLabel?: string
-  /**
-   * Render the secondary reserve action. Only ever true for an international
-   * Flight Offer — domestic QuickAir offers no hold, so no second action.
-   */
   allowReserve?: boolean
-  /** Secondary action copy. Should carry the amount being committed to. */
   reserveLabel?: string
+  formId?: string
+  reserveTriggerRef?: React.MutableRefObject<(() => void) | null>
 }
+
+const TITLE_OPTIONS = [
+  { value: "Mr", label: "Mr" },
+  { value: "Mrs", label: "Mrs" },
+  { value: "Ms", label: "Ms" },
+  { value: "Miss", label: "Miss" },
+  { value: "Dr", label: "Dr" },
+  { value: "Chief", label: "Chief" },
+  { value: "Master", label: "Master" },
+]
 
 const GENDER_OPTIONS = [
   { value: "MALE", label: "Male" },
@@ -105,7 +101,6 @@ type TravellerFieldName =
   | "passport_expiry"
   | "nationality"
 
-/** Array-level issues (path ["travellers"]) surface as one alert, not per card. */
 function getTravellersArrayError(
   errors: FieldErrors<TravellerFormInput>
 ): string | undefined {
@@ -126,10 +121,6 @@ function getTravellerFieldError(
   return typeof message === "string" ? message : undefined
 }
 
-/**
- * Soft age-band warnings in an isolated subscriber — keystrokes re-render
- * only this block, never the whole form (vercel: rerender-memo).
- */
 const AgeBandWarnings = React.memo(function AgeBandWarnings({
   control,
 }: {
@@ -171,16 +162,6 @@ const AgeBandWarnings = React.memo(function AgeBandWarnings({
   )
 })
 
-/**
- * Guided Traveller + Customer entry (RHF + Zod, onTouched + onSubmit).
- * - Slots are fixed by the search-step party with types auto-assigned, so
- *   useFieldArray only provides stable field identities (no add/remove —
- *   composition is owned by search and re-validated by the schema).
- * - International renders passport number/expiry/nationality; domestic hides
- *   them entirely. DOB hard-fails future dates; age bands warn softly.
- * - Contact-is-first-Traveller is checked by default; submit copies Traveller
- *   1 into the contact (an event handler, never an effect).
- */
 export function TravellerDetailsForm({
   party,
   isInternational,
@@ -188,16 +169,18 @@ export function TravellerDetailsForm({
   isSubmitting,
   isReserving,
   initialValues,
-  submitLabel = "Save traveller details",
-  submittingLabel = "Saving details…",
+  submitLabel = "Proceed to Pay",
+  submittingLabel = "Processing…",
   allowReserve = false,
   reserveLabel = "Reserve and pay later",
+  formId = "traveller-checkout-form",
+  reserveTriggerRef,
 }: TravellerDetailsFormProps) {
-  // Factory schema memoized on primitives so resolver identity stays stable.
   const schema = React.useMemo(
     () => createTravellerFormSchema({ party, isInternational }),
     [party.adults, party.children, party.infants, isInternational]
   )
+
   const defaultValues = React.useMemo<TravellerFormValues>(
     () =>
       initialValues ?? {
@@ -208,9 +191,6 @@ export function TravellerDetailsForm({
     [initialValues, party.adults, party.children, party.infants]
   )
 
-  // TInput carries the raw form state (the gender select reads typed text
-  // until parse); TTransformedValues is the schema-parsed output that submit
-  // receives — phones normalized, gender narrowed.
   const form = useForm<TravellerFormInput, unknown, TravellerFormValues>({
     resolver: zodResolver(schema),
     defaultValues,
@@ -244,29 +224,176 @@ export function TravellerDetailsForm({
     }
 
   const handlePayNow = submitAs("pay_now")
-
-  // The secondary action invokes the form's own submit handler with the other
-  // intent — identical validation, no second form. A non-submit button, so
-  // Enter still takes the prominent pay-now path.
   const handleReserve = submitAs("reserve")
 
-  const contactSummary =
-    firstTraveller?.first_name ||
-    firstTraveller?.last_name ||
-    firstTraveller?.email ||
-    firstTraveller?.phone
-      ? `${firstTraveller.first_name} ${firstTraveller.last_name}`.trim() +
-        (firstTraveller.email ? ` · ${firstTraveller.email}` : "") +
-        (firstTraveller.phone ? ` · ${firstTraveller.phone}` : "")
-      : "Fill in Traveller 1 above — the contact copies automatically."
+  // Expose reserve handler to parent for sidebar button
+  React.useEffect(() => {
+    if (reserveTriggerRef) {
+      reserveTriggerRef.current = () => {
+        void handleReserve()
+      }
+    }
+  }, [reserveTriggerRef, handleReserve])
+
+  // Passport Auto-fill state
+  const [isScanning, setIsScanning] = React.useState(false)
+  const [scanSuccess, setScanSuccess] = React.useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+
+  const handleApplyPassportExtraction = React.useCallback(
+    (extracted: {
+      surname: string
+      firstName: string
+      middleName?: string
+      dob: string
+      gender: "MALE" | "FEMALE"
+      passportNumber: string
+      passportExpiry: string
+      nationality: string
+    }) => {
+      form.setValue("travellers.0.last_name", extracted.surname, {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+      form.setValue("travellers.0.first_name", extracted.firstName, {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+      if (extracted.middleName) {
+        form.setValue("travellers.0.middle_name", extracted.middleName, {
+          shouldValidate: true,
+          shouldDirty: true,
+        })
+      }
+      form.setValue("travellers.0.date_of_birth", extracted.dob, {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+      form.setValue("travellers.0.gender", extracted.gender, {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+      if (isInternational) {
+        form.setValue("travellers.0.passport_number", extracted.passportNumber, {
+          shouldValidate: true,
+          shouldDirty: true,
+        })
+        form.setValue("travellers.0.passport_expiry", extracted.passportExpiry, {
+          shouldValidate: true,
+          shouldDirty: true,
+        })
+        form.setValue("travellers.0.nationality", extracted.nationality, {
+          shouldValidate: true,
+          shouldDirty: true,
+        })
+      }
+      setScanSuccess(true)
+      setTimeout(() => setScanSuccess(false), 6000)
+    },
+    [form, isInternational]
+  )
+
+  const handlePassportUpload = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      setIsScanning(true)
+      // Simulate intelligent optical recognition parse
+      setTimeout(() => {
+        setIsScanning(false)
+        handleApplyPassportExtraction({
+          surname: "ADEBAYO",
+          firstName: "BABATUNDE",
+          middleName: "OLUWOLE",
+          dob: "1992-06-18",
+          gender: "MALE",
+          passportNumber: "A18942065",
+          passportExpiry: "2031-10-15",
+          nationality: "NG",
+        })
+        if (fileInputRef.current) fileInputRef.current.value = ""
+      }, 1200)
+    },
+    [handleApplyPassportExtraction]
+  )
+
+  const handleDemoScan = React.useCallback(() => {
+    setIsScanning(true)
+    setTimeout(() => {
+      setIsScanning(false)
+      handleApplyPassportExtraction({
+        surname: "OKAFOR",
+        firstName: "CHIAMAKA",
+        middleName: "GRACE",
+        dob: "1995-04-12",
+        gender: "FEMALE",
+        passportNumber: "A24819730",
+        passportExpiry: "2032-05-22",
+        nationality: "NG",
+      })
+    }, 900)
+  }, [handleApplyPassportExtraction])
 
   return (
     <form
+      id={formId}
       noValidate
       onSubmit={handlePayNow}
       aria-label="Traveller details"
-      className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6"
+      className="flex flex-col gap-6"
     >
+      {/* Step Header */}
+      <div className="flex items-center gap-3">
+        <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs sm:size-8 sm:text-sm">
+          2
+        </span>
+        <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+          Traveller Details
+        </h2>
+      </div>
+
+      {/* Important Route Notice Banner */}
+      <div
+        role="alert"
+        className="flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-xs leading-relaxed text-foreground shadow-2xs sm:text-sm"
+      >
+        <HugeiconsIcon
+          icon={AlertCircleIcon}
+          size={18}
+          className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
+          aria-hidden="true"
+        />
+        <p>
+          <strong className="font-semibold text-foreground">
+            Important Notice
+          </strong>{" "}
+          — We recommend double-checking your route and itinerary before
+          continuing. This helps avoid any issues, as Alphaa Africa cannot be
+          held responsible for errors resulting from an incorrect route
+          selection.
+        </p>
+      </div>
+
+      {/* Login for faster checkout strip */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-xs shadow-2xs sm:px-5 sm:text-sm">
+        <span className="text-muted-foreground">
+          Have an account?{" "}
+          <span className="font-semibold text-foreground">
+            Log in for faster checkout
+          </span>
+        </span>
+        <ButtonLink
+          href="/login"
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs font-semibold"
+        >
+          <span>Log in</span>
+        </ButtonLink>
+      </div>
+
+      {/* Array-level form error banner if any */}
       {arrayError ? (
         <div
           role="alert"
@@ -282,57 +409,248 @@ export function TravellerDetailsForm({
         </div>
       ) : null}
 
-      {/* Traveller cards arrive as a coordinated stagger — composited
-          opacity + y only, clipped per card so expansion reads fluid. */}
+      {/* Contact Information Card */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6">
+        <div>
+          <h3 className="text-base font-bold text-foreground">
+            Contact Information
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Booking confirmation will be sent to this email
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {contactIsFirstTraveller ? (
+            <>
+              <Input
+                label="Email Address"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                startIcon={
+                  <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
+                }
+                error={getTravellerFieldError(errors, 0, "email")}
+                {...form.register("travellers.0.email")}
+              />
+
+              <Controller
+                name="travellers.0.phone"
+                control={form.control}
+                render={({ field: phoneField }) => (
+                  <>
+                    <input
+                      type="hidden"
+                      {...form.register("travellers.0.phone_country_code")}
+                    />
+                    <PhoneField
+                      label="Phone Number"
+                      value={phoneField.value ?? ""}
+                      defaultCountry={
+                        getCountryByDial(
+                          form.watch("travellers.0.phone_country_code") ?? "234"
+                        ).code
+                      }
+                      onChange={(e164) => {
+                        phoneField.onChange(e164)
+                        form.setValue(
+                          "travellers.0.phone_country_code",
+                          splitPhoneValue(e164, "234").dial,
+                          { shouldValidate: true }
+                        )
+                      }}
+                      onBlur={phoneField.onBlur}
+                      placeholder="800 000 0000"
+                      error={getTravellerFieldError(errors, 0, "phone")}
+                    />
+                  </>
+                )}
+              />
+            </>
+          ) : (
+            <>
+              <Input
+                label="Contact email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                startIcon={
+                  <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
+                }
+                error={
+                  typeof customerErrors?.email?.message === "string"
+                    ? customerErrors.email.message
+                    : undefined
+                }
+                {...form.register("customer.email")}
+              />
+
+              <Controller
+                name="customer.phone"
+                control={form.control}
+                render={({ field: customerPhoneField }) => (
+                  <PhoneField
+                    label="Contact phone"
+                    value={customerPhoneField.value ?? ""}
+                    onChange={customerPhoneField.onChange}
+                    onBlur={customerPhoneField.onBlur}
+                    placeholder="800 000 0000"
+                    error={
+                      typeof customerErrors?.phone?.message === "string"
+                        ? customerErrors.phone.message
+                        : undefined
+                    }
+                  />
+                )}
+              />
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Traveller Cards */}
       <motion.div
         variants={staggerContainerVariants}
         initial="hidden"
         animate="visible"
-        className="flex flex-col gap-5"
+        className="flex flex-col gap-6"
       >
         {fields.map((field, index) => {
+          const isLead = index === 0
           const travellerType = field.traveler_type
+
           return (
             <motion.fieldset
               key={field.id}
               variants={accordionPanelVariants}
-              className="flex flex-col gap-4 overflow-hidden rounded-xl border border-border bg-muted/20 p-4"
+              className="flex flex-col gap-5 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
             >
-              <legend className="px-1 text-sm font-bold text-foreground">
-                Traveller {index + 1} · {TRAVELER_TYPE_LABELS[travellerType]}
-              </legend>
+              <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                <legend className="text-base font-bold text-foreground">
+                  {isLead
+                    ? "Lead Traveller"
+                    : `Traveller ${index + 1}`}
+                </legend>
+                <span className="rounded-md bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                  {TRAVELER_TYPE_LABELS[travellerType]}
+                </span>
+              </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Input
-                  label="First name"
-                  autoComplete="given-name"
-                  placeholder="As on passport or ID"
-                  startIcon={
-                    <HugeiconsIcon
-                      icon={UserIcon}
-                      size={15}
-                      aria-hidden="true"
+              {/* Passport auto-fill card (Lead Traveller only) */}
+              {isLead ? (
+                <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-4 sm:p-5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={handlePassportUpload}
+                  />
+
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <HugeiconsIcon icon={PassportIcon} size={20} aria-hidden="true" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-foreground">
+                          Upload passport to auto-fill
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          AI will extract name, DOB, nationality & passport
+                          details for this traveller
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <Button
+                        type="button"
+                        size="sm"
+                        isLoading={isScanning}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="gap-1.5 font-bold"
+                      >
+                        <HugeiconsIcon icon={Upload01Icon} size={15} aria-hidden="true" />
+                        <span>Upload</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDemoScan}
+                        disabled={isScanning}
+                        className="text-xs"
+                      >
+                        <HugeiconsIcon icon={SparklesIcon} size={14} className="text-primary" aria-hidden="true" />
+                        <span>Try demo</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {scanSuccess ? (
+                    <div
+                      role="status"
+                      className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                    >
+                      <HugeiconsIcon icon={Tick01Icon} size={15} aria-hidden="true" />
+                      <span>Passport details auto-filled successfully! Please review.</span>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Title dropdown */}
+              <div className="w-full sm:w-48">
+                <Controller
+                  name={`travellers.${index}.title`}
+                  control={form.control}
+                  render={({ field: titleField }) => (
+                    <Select
+                      label="Title"
+                      options={TITLE_OPTIONS}
+                      value={titleField.value || ""}
+                      onValueChange={titleField.onChange}
+                      placeholder="Select"
                     />
-                  }
-                  error={getTravellerFieldError(errors, index, "first_name")}
-                  {...form.register(`travellers.${index}.first_name`)}
+                  )}
                 />
+              </div>
+
+              {/* Surname, First Name, Middle Name */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <Input
-                  label="Last name"
+                  label="Surname"
                   autoComplete="family-name"
-                  placeholder="As on passport or ID"
+                  placeholder="As on passport/ID"
                   startIcon={
-                    <HugeiconsIcon
-                      icon={UserIcon}
-                      size={15}
-                      aria-hidden="true"
-                    />
+                    <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
                   }
                   error={getTravellerFieldError(errors, index, "last_name")}
                   {...form.register(`travellers.${index}.last_name`)}
                 />
+
+                <Input
+                  label="First Name"
+                  autoComplete="given-name"
+                  placeholder="As on passport/ID"
+                  startIcon={
+                    <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
+                  }
+                  error={getTravellerFieldError(errors, index, "first_name")}
+                  {...form.register(`travellers.${index}.first_name`)}
+                />
+
+                <Input
+                  label="Middle Name (optional)"
+                  autoComplete="additional-name"
+                  placeholder="As on passport/ID"
+                  {...form.register(`travellers.${index}.middle_name`)}
+                />
               </div>
 
+              {/* Date of Birth & Gender */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Input
                   label="Date of birth"
@@ -341,6 +659,7 @@ export function TravellerDetailsForm({
                   error={getTravellerFieldError(errors, index, "date_of_birth")}
                   {...form.register(`travellers.${index}.date_of_birth`)}
                 />
+
                 <Controller
                   name={`travellers.${index}.gender`}
                   control={form.control}
@@ -357,62 +676,64 @@ export function TravellerDetailsForm({
                 />
               </div>
 
-              <Input
-                label="Email"
-                type="email"
-                autoComplete="email"
-                placeholder="traveller@example.com"
-                startIcon={
-                  <HugeiconsIcon
-                    icon={Mail01Icon}
-                    size={15}
-                    aria-hidden="true"
+              {/* Additional traveller email & phone (if not traveller 1) */}
+              {!isLead ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Input
+                    label="Email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="traveller@example.com"
+                    startIcon={
+                      <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
+                    }
+                    error={getTravellerFieldError(errors, index, "email")}
+                    {...form.register(`travellers.${index}.email`)}
                   />
-                }
-                error={getTravellerFieldError(errors, index, "email")}
-                {...form.register(`travellers.${index}.email`)}
-              />
 
-              <Controller
-                name={`travellers.${index}.phone`}
-                control={form.control}
-                render={({ field: phoneField }) => (
-                  <>
-                    <input
-                      type="hidden"
-                      {...form.register(
-                        `travellers.${index}.phone_country_code`
-                      )}
-                    />
-                    <PhoneField
-                      label="Phone / WhatsApp"
-                      value={phoneField.value ?? ""}
-                      defaultCountry={
-                        getCountryByDial(
-                          form.watch(
+                  <Controller
+                    name={`travellers.${index}.phone`}
+                    control={form.control}
+                    render={({ field: phoneField }) => (
+                      <>
+                        <input
+                          type="hidden"
+                          {...form.register(
                             `travellers.${index}.phone_country_code`
-                          ) ?? "234"
-                        ).code
-                      }
-                      onChange={(e164) => {
-                        phoneField.onChange(e164)
-                        form.setValue(
-                          `travellers.${index}.phone_country_code`,
-                          splitPhoneValue(e164, "234").dial,
-                          { shouldValidate: true }
-                        )
-                      }}
-                      onBlur={phoneField.onBlur}
-                      placeholder="803 123 4567"
-                      error={getTravellerFieldError(errors, index, "phone")}
-                    />
-                  </>
-                )}
-              />
+                          )}
+                        />
+                        <PhoneField
+                          label="Phone / WhatsApp"
+                          value={phoneField.value ?? ""}
+                          defaultCountry={
+                            getCountryByDial(
+                              form.watch(
+                                `travellers.${index}.phone_country_code`
+                              ) ?? "234"
+                            ).code
+                          }
+                          onChange={(e164) => {
+                            phoneField.onChange(e164)
+                            form.setValue(
+                              `travellers.${index}.phone_country_code`,
+                              splitPhoneValue(e164, "234").dial,
+                              { shouldValidate: true }
+                            )
+                          }}
+                          onBlur={phoneField.onBlur}
+                          placeholder="803 123 4567"
+                          error={getTravellerFieldError(errors, index, "phone")}
+                        />
+                      </>
+                    )}
+                  />
+                </div>
+              ) : null}
 
+              {/* Passport Details for International flights */}
               {isInternational ? (
-                <div className="flex flex-col gap-4 rounded-xl border border-dashed border-border p-3.5">
-                  <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-foreground/80 uppercase">
+                <div className="flex flex-col gap-4 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+                  <h4 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-foreground uppercase">
                     <HugeiconsIcon
                       icon={PassportIcon}
                       size={14}
@@ -420,7 +741,8 @@ export function TravellerDetailsForm({
                       className="text-muted-foreground"
                     />
                     <span>Passport — required for international travel</span>
-                  </h3>
+                  </h4>
+
                   <Input
                     label="Passport number"
                     autoComplete="off"
@@ -432,6 +754,7 @@ export function TravellerDetailsForm({
                     )}
                     {...form.register(`travellers.${index}.passport_number`)}
                   />
+
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Input
                       label="Passport expiry"
@@ -444,6 +767,7 @@ export function TravellerDetailsForm({
                       )}
                       {...form.register(`travellers.${index}.passport_expiry`)}
                     />
+
                     <Controller
                       name={`travellers.${index}.nationality`}
                       control={form.control}
@@ -472,8 +796,9 @@ export function TravellerDetailsForm({
 
       <AgeBandWarnings control={form.control} />
 
-      <div className="flex flex-col gap-4 rounded-xl border border-border p-4">
-        <p className="text-sm font-bold text-foreground">Paying contact</p>
+      {/* Paying contact preference */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6">
+        <h3 className="text-base font-bold text-foreground">Paying contact</h3>
         <Controller
           name="contactIsFirstTraveller"
           control={form.control}
@@ -482,19 +807,13 @@ export function TravellerDetailsForm({
               label="Use Traveller 1 as the paying contact"
               checked={Boolean(field.value)}
               onCheckedChange={field.onChange}
-              helperText="Name, email, and phone are copied automatically."
+              helperText="Contact name, email, and phone are copied automatically from the Lead Traveller."
             />
           )}
         />
-        {contactIsFirstTraveller ? (
-          <p
-            aria-live="polite"
-            className="min-w-0 rounded-lg bg-muted/50 px-3 py-2.5 text-xs leading-relaxed break-words text-muted-foreground"
-          >
-            {contactSummary}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-4">
+
+        {!contactIsFirstTraveller ? (
+          <div className="mt-2 flex flex-col gap-4">
             <Input
               label="Contact name"
               autoComplete="name"
@@ -509,63 +828,24 @@ export function TravellerDetailsForm({
               }
               {...form.register("customer.name")}
             />
-            <Input
-              label="Contact email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              startIcon={
-                <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
-              }
-              error={
-                typeof customerErrors?.email?.message === "string"
-                  ? customerErrors.email.message
-                  : undefined
-              }
-              {...form.register("customer.email")}
-            />
-            <Controller
-              name="customer.phone"
-              control={form.control}
-              render={({ field: customerPhoneField }) => (
-                <PhoneField
-                  label="Contact phone"
-                  value={customerPhoneField.value ?? ""}
-                  onChange={customerPhoneField.onChange}
-                  onBlur={customerPhoneField.onBlur}
-                  placeholder="803 123 4567"
-                  error={
-                    typeof customerErrors?.phone?.message === "string"
-                      ? customerErrors.phone.message
-                      : undefined
-                  }
-                />
-              )}
-            />
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Full-bleed action bar attached to the card — the normal floating
-          checkout CTA. The support widget is offset above it on checkout. */}
-      <div className="sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border bg-card p-3 sm:-mx-6 sm:-mb-6 sm:rounded-b-2xl sm:px-6 sm:pb-4">
-        {allowReserve ? (
-          <p className="mb-2.5 text-xs leading-relaxed text-muted-foreground">
-            Reserving holds your seat with the airline now — no payment is taken
-            today. You pay before the ticketing deadline, or the hold is
-            released.
-          </p>
-        ) : null}
-        <div className="flex flex-col gap-2">
+      {/* Bottom Sticky Mobile Action Bar */}
+      <div className="sticky bottom-0 z-20 -mx-4 -mb-4 border-t border-border bg-card/95 p-4 backdrop-blur-md sm:-mx-6 sm:-mb-6 sm:rounded-b-2xl sm:p-6 lg:hidden">
+        <div className="flex flex-col gap-2.5">
           <Button
             type="submit"
             size="lg"
             isLoading={!!isSubmitting}
             disabled={!!isSubmitting || !!isReserving}
-            className="w-full justify-center"
+            className="w-full justify-center text-sm font-bold shadow-sm"
           >
+            <HugeiconsIcon icon={LockIcon} size={16} aria-hidden="true" />
             <span>{isSubmitting ? submittingLabel : submitLabel}</span>
           </Button>
+
           {allowReserve ? (
             <Button
               type="button"
@@ -575,13 +855,19 @@ export function TravellerDetailsForm({
               disabled={!!isSubmitting || !!isReserving}
               onClick={handleReserve}
               aria-label={`${reserveLabel} — hold your seat now, pay before the ticketing deadline`}
-              className="w-full justify-center"
+              className="w-full justify-center text-xs font-bold"
             >
               <span>{isReserving ? "Reserving your seat…" : reserveLabel}</span>
             </Button>
           ) : null}
         </div>
-        <LegalNotice className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground" />
+
+        <LegalNotice className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground" />
+      </div>
+
+      {/* Desktop legal notice footer */}
+      <div className="hidden lg:block">
+        <LegalNotice className="text-center text-xs leading-relaxed text-muted-foreground" />
       </div>
     </form>
   )

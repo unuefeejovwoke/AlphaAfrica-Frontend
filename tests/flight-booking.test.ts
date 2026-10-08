@@ -4,14 +4,17 @@ import {
   buildFlightPayUrl,
   buildFlightVerifyUrl,
   clearBookingSession,
+  clearReservationReference,
   describeTicketingUrgency,
   findReusableBooking,
   formatTicketingDeadline,
   hashBookingKey,
+  hashOfferKey,
   isReservationReleased,
   normalizeFlightBookingCreateResult,
   readPaymentReference,
   readPendingBooking,
+  readReservationRecord,
   readReservationReference,
   RESERVATION_REFERENCE_SESSION_KEY,
   resolveCreatePriceReview,
@@ -331,7 +334,7 @@ test("Reservation: only the reference reaches session storage", () => {
   try {
     assert.equal(readReservationReference(), null)
 
-    saveReservationReference("FLT-REF-001")
+    saveReservationReference("FLT-REF-001", { offer: OFFER_A })
     assert.equal(readReservationReference(), "FLT-REF-001")
 
     const raw = readRawSession(RESERVATION_REFERENCE_SESSION_KEY)
@@ -352,6 +355,68 @@ test("Reservation: only the reference reaches session storage", () => {
   } finally {
     uninstallWindowStub()
   }
+})
+
+test("Reservation scoping: same offer restores, a new search does not hijack", () => {
+  installMemorySessionStorage()
+  try {
+    saveReservationReference("FLT-REF-001", { offer: OFFER_A })
+    const record = readReservationRecord()
+    assert.ok(record, "The reservation record must persist")
+    assert.equal(record.reference, "FLT-REF-001")
+    assert.equal(
+      record.offerKey,
+      hashOfferKey(OFFER_A),
+      "The reserving offer digest must round-trip"
+    )
+    assert.equal(
+      record.offerKey === hashOfferKey(OFFER_A),
+      true,
+      "Refresh with the same offer restores the hold"
+    )
+    assert.equal(
+      record.offerKey === hashOfferKey(OFFER_B),
+      false,
+      "A new search must never auto-restore the old hold"
+    )
+
+    // Discarding unblocks the next booking in the same session.
+    clearReservationReference()
+    assert.equal(readReservationRecord(), null)
+    assert.equal(readReservationReference(), null)
+  } finally {
+    uninstallWindowStub()
+  }
+})
+
+test("Reservation scoping: legacy plain-string holds still read back", () => {
+  installMemorySessionStorage()
+  try {
+    writeRawSession(RESERVATION_REFERENCE_SESSION_KEY, "FLT-LEGACY-001")
+    const record = readReservationRecord()
+    assert.ok(record, "Legacy holds must survive the scoping upgrade")
+    assert.equal(record.reference, "FLT-LEGACY-001")
+    assert.equal(
+      record.offerKey,
+      null,
+      "Legacy holds carry no offer digest, so checkout banners instead of hijacking"
+    )
+    assert.equal(readReservationReference(), "FLT-LEGACY-001")
+  } finally {
+    uninstallWindowStub()
+  }
+})
+
+test("Offer digest: stable for identical offers, blind to key order, never readable", () => {
+  const key = hashOfferKey(OFFER_A)
+  assert.match(key, /^[0-9a-f]{16}$/)
+  assert.equal(hashOfferKey({ ...OFFER_A }), key)
+  assert.equal(
+    hashOfferKey({ origin: "LOS", total_amount: "250000.00", id: "offer-a" }),
+    key,
+    "Key order must not change the digest"
+  )
+  assert.notEqual(hashOfferKey(OFFER_B), key)
 })
 
 test("Reservation: pay-by date formats exactly, urgency reads in plain language", () => {

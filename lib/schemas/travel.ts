@@ -109,11 +109,13 @@ function genderField(label: string) {
 }
 
 const travellerBaseFields = {
+  title: z.string().optional(),
   first_name: z
     .string()
     .trim()
     .min(1, "Enter the traveller's first name")
     .max(100, "First name must be 100 characters or fewer"),
+  middle_name: z.string().optional(),
   last_name: z
     .string()
     .trim()
@@ -175,7 +177,9 @@ export type BookingCustomer = z.infer<typeof bookingCustomerSchema>
 
 /** Single form shape for both paths — passport keys stay optional in the type. */
 export interface TravellerFormTraveller {
+  title?: string | undefined
   first_name: string
+  middle_name?: string | undefined
   last_name: string
   date_of_birth: string
   gender: Gender
@@ -419,8 +423,11 @@ export function buildBookingTravellersPayload(
       const passport_number = emptyToUndefined(traveller.passport_number)
       const passport_expiry = emptyToUndefined(traveller.passport_expiry)
       const nationality = emptyToUndefined(traveller.nationality)
+      const firstName = traveller.middle_name?.trim()
+        ? `${traveller.first_name.trim()} ${traveller.middle_name.trim()}`
+        : traveller.first_name.trim()
       return {
-        first_name: traveller.first_name.trim(),
+        first_name: firstName,
         last_name: traveller.last_name.trim(),
         date_of_birth: traveller.date_of_birth.trim(),
         gender: traveller.gender,
@@ -457,7 +464,9 @@ export function createTravellerSlots(
   const slots: TravellerFormTraveller[] = []
   const push = (traveler_type: TravelerType) => {
     slots.push({
+      title: "",
       first_name: "",
+      middle_name: "",
       last_name: "",
       date_of_birth: "",
       gender: "" as Gender,
@@ -559,7 +568,9 @@ export function draftToTravellerFormValues(
 
   return {
     travellers: travellers.map((traveller) => ({
+      title: "",
       first_name: traveller.first_name,
+      middle_name: "",
       last_name: traveller.last_name,
       date_of_birth: "",
       gender: traveller.gender,

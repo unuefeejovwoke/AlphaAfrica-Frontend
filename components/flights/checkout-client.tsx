@@ -12,15 +12,19 @@ import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { CheckoutTripSummary } from "@/components/flights/checkout-trip-summary"
+import { CheckoutBookingSummary } from "@/components/flights/checkout-booking-summary"
 import { TravellerDetailsForm } from "@/components/flights/traveller-details-form"
 import { TrackLink } from "@/components/analytics/track-link"
 import { getHumanErrorMessage, getPaymentSafetyCopy } from "@/lib/api/client"
 import {
   createFlightBooking,
+  clearReservationReference,
   findReusableBooking,
   hashBookingKey,
+  hashOfferKey,
   payFlightBooking,
   readPendingBooking,
+  readReservationRecord,
   readReservationReference,
   resolveCreatePriceReview,
   resolveRestoredBooking,
@@ -208,13 +212,27 @@ export function CheckoutSkeleton() {
       role="status"
       aria-live="polite"
       aria-label="Loading checkout"
-      className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]"
+      className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_400px]"
     >
-      <div className="flex min-w-0 flex-col gap-4">
-        <Skeleton className="h-72 w-full rounded-2xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
+      <div className="flex min-w-0 flex-col gap-8">
+        {/* Step 1 Skeleton */}
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-8 w-56 rounded-lg" />
+          <Skeleton className="h-14 w-full rounded-2xl" />
+          <Skeleton className="h-72 w-full rounded-2xl" />
+        </div>
+        {/* Step 2 Skeleton */}
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-8 w-56 rounded-lg" />
+          <Skeleton className="h-16 w-full rounded-2xl" />
+          <Skeleton className="h-44 w-full rounded-2xl" />
+          <Skeleton className="h-80 w-full rounded-2xl" />
+        </div>
       </div>
-      <Skeleton className="h-72 w-full rounded-2xl" />
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-96 w-full rounded-2xl" />
+      </div>
     </div>
   )
 }
@@ -269,11 +287,17 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
   const [clearedDraft, setClearedDraft] = React.useState(false)
   const [submittedValues, setSubmittedValues] =
     React.useState<TravellerFormValues | null>(null)
+  // A hold for a DIFFERENT offer than the one in checkout: shown as a banner,
+  // never auto-restored, so a stale reservation can never block a new booking.
+  const [otherReservation, setOtherReservation] = React.useState<string | null>(
+    null
+  )
   // Transient in-flight marker: refs avoid a rerender per tap while the
   // disabled button covers the visual state (vercel: rerender-use-ref-transient-values).
   const inFlightRef = React.useRef(false)
   const checkoutStartedRef = React.useRef(false)
   const restoredRef = React.useRef(false)
+  const reserveTriggerRef = React.useRef<(() => void) | null>(null)
 
   const isReady = session?.kind === "ready"
   const data = isReady ? session.data : null
@@ -404,7 +428,7 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           })
           return
         }
-        saveReservationReference(resumable.reference)
+        saveReservationReference(resumable.reference, { offer: data.offer })
         setPhase("restoring")
         await settleReservation(resumable.reference, {
           travellers: payload.travellers.length,
@@ -463,7 +487,7 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           authorization_url: result.authorization_url,
         })
         savePaymentReference(result.reference)
-        saveReservationReference(result.reference)
+        saveReservationReference(result.reference, { offer: data.offer })
         setPhase("restoring")
         await settleReservation(
           result.reference,
@@ -516,7 +540,7 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
       authorization_url: priceReview.authorization_url,
     })
     savePaymentReference(priceReview.reference)
-    saveReservationReference(priceReview.reference)
+    saveReservationReference(priceReview.reference, { offer: data.offer })
     const reference = priceReview.reference
     const travellers = priceReview.travellers
     const isInternational = data.isInternational
@@ -542,18 +566,39 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
   // live Booking rather than trusting anything cached. Still held → the
   // confirmation; already paid → the confirmation page; released → the honest
   // reason with a route back to search, never a doomed payment.
+  //
+  // Scoped restore: a stored hold resumes ONLY when there is no fresh checkout
+  // session, or when the current offer is the one that made the hold. A new
+  // search with a different offer stays on the new checkout with a banner —
+  // the old hold must never hijack a new booking.
   React.useEffect(() => {
     if (!hydrated || restoredRef.current) return
     restoredRef.current = true
-    const reference = readReservationReference()
-    if (!reference) return
+    const record = readReservationRecord()
+    if (!record) return
+    const fresh = loadCheckoutSession(urlParty)
+    if (fresh.kind !== "ready") {
+      setPhase("restoring")
+      let cancelled = false
+      void settleReservation(record.reference, undefined, undefined, () => cancelled)
+      return () => {
+        cancelled = true
+      }
+    }
+    // Legacy holds (no offerKey) predate scoping: with a fresh session present
+    // they are treated as a different booking — banner, never hijack — which
+    // also unblocks customers stuck by the old unconditional restore.
+    if (!record.offerKey || record.offerKey !== hashOfferKey(fresh.data.offer)) {
+      setOtherReservation(record.reference)
+      return
+    }
     setPhase("restoring")
     let cancelled = false
-    void settleReservation(reference, undefined, undefined, () => cancelled)
+    void settleReservation(record.reference, undefined, undefined, () => cancelled)
     return () => {
       cancelled = true
     }
-  }, [hydrated, settleReservation])
+  }, [hydrated, settleReservation, urlParty])
 
   // Pay immediately anyway from the reservation confirmation. Completing ends
   // on the same confirmation a direct payment produces (`/order`), because the
@@ -596,6 +641,27 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
     void settleReservation(reference)
   }, [settleReservation])
 
+  // Drop a stale hold and stay on the fresh checkout so a new booking can
+  // proceed. Local-only: the seat stays held until its pay-by date (no
+  // backend cancel endpoint exists), but it no longer blocks this device.
+  const handleDiscardReservation = React.useCallback(() => {
+    clearReservationReference()
+    setOtherReservation(null)
+    setReservation(null)
+    setReleasedMessage(null)
+    setFailure(null)
+    setPhase("idle")
+  }, [])
+
+  const handleViewOtherReservation = React.useCallback(() => {
+    const reference = otherReservation ?? readReservationReference()
+    if (!reference) return
+    setOtherReservation(null)
+    setPhase("restoring")
+    setFailure(null)
+    void settleReservation(reference)
+  }, [otherReservation, settleReservation])
+
   if (!hydrated || !session) return <CheckoutSkeleton />
 
   // The Reservation confirmation is a phase of this page, not a route: the
@@ -619,13 +685,21 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
 
   if (phase === "reserved" && reservation) {
     return (
-      <div className="mx-auto w-full max-w-2xl">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
         <ReservationConfirmation
           booking={reservation}
           onPayNow={handlePayReserved}
           paying={payingReserved}
           payError={reservedPayError}
         />
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={handleDiscardReservation}
+          className="w-full justify-center"
+        >
+          <span>Discard this hold and book a different flight</span>
+        </Button>
       </div>
     )
   }
@@ -644,7 +718,7 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
             "The airline released your seat, so it can no longer be paid for. No payment was taken."}
         </p>
         <div className="flex flex-col items-center gap-2 pt-1 sm:flex-row">
-          <ButtonLink href="/flights">
+          <ButtonLink href="/flights" onClick={handleDiscardReservation}>
             <span>Search flights again</span>
           </ButtonLink>
           <TrackLink
@@ -681,7 +755,11 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           <Button type="button" onClick={handleRetryRestore}>
             <span>Try again</span>
           </Button>
-          <ButtonLink href="/flights" variant="outline">
+          <ButtonLink
+            href="/flights"
+            variant="outline"
+            onClick={handleDiscardReservation}
+          >
             <span>Search flights again</span>
           </ButtonLink>
         </div>
@@ -785,8 +863,53 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
   const showConsent = phase === "review" && priceReview !== null
 
   return (
-    <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
-      <div className="flex min-w-0 flex-col gap-5">
+    <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_400px]">
+      <div className="flex min-w-0 flex-col gap-8">
+        {otherReservation ? (
+          <div
+            role="status"
+            className="flex items-start justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm leading-relaxed text-foreground"
+          >
+            <span className="flex min-w-0 items-start gap-2.5">
+              <HugeiconsIcon
+                icon={InformationCircleIcon}
+                size={18}
+                className="mt-0.5 shrink-0 text-amber-700"
+                aria-hidden="true"
+              />
+              <span>
+                You still hold reservation{" "}
+                <span className="font-mono font-bold break-all select-all">
+                  {otherReservation}
+                </span>{" "}
+                from an earlier search. This checkout is for your new flight —
+                nothing here touches that hold.
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleViewOtherReservation}
+              >
+                <span>View hold</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleDiscardReservation}
+              >
+                <span>Discard</span>
+              </Button>
+            </span>
+          </div>
+        ) : null}
+
+        {/* Step 1: Booking Summary */}
+        <CheckoutBookingSummary display={display} />
+
         {restoredNotice ? (
           <div
             role="status"
@@ -863,7 +986,7 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
               onSubmit={handlePay}
               isSubmitting={submitting}
               isReserving={reserving}
-              submitLabel={`Pay ${total}`}
+              submitLabel={`Proceed to Pay ${total}`}
               submittingLabel={
                 phase === "redirecting"
                   ? "Taking you to Paystack…"
@@ -871,6 +994,8 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
               }
               allowReserve={isInternational}
               reserveLabel={`Reserve — pay ${total} later`}
+              formId="traveller-checkout-form"
+              reserveTriggerRef={reserveTriggerRef}
             />
           </>
         )}
@@ -881,6 +1006,11 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           display={display}
           party={party}
           contactName={initialValues?.customer.name ?? null}
+          formId="traveller-checkout-form"
+          isSubmitting={submitting}
+          isReserving={reserving}
+          allowReserve={isInternational}
+          onReserve={() => reserveTriggerRef.current?.()}
         />
       </aside>
     </div>
