@@ -1,5 +1,7 @@
 import test from "node:test"
 import assert from "node:assert/strict"
+import fs from "node:fs"
+import path from "node:path"
 import {
   AUTH_ATTENTION_COPY,
   buildAuthHeaders,
@@ -17,6 +19,7 @@ import {
   needsEmailVerification,
   normalizeAuthUser,
   normalizeLoginResponse,
+  normalizeOtpInput,
   normalizeRefreshResponse,
   normalizeRegisterResponse,
   normalizeTokenPair,
@@ -178,7 +181,12 @@ test("Session: failed refresh resolves to signed-out with a login target", () =>
   // the return target preserved.
   assert.deepEqual(
     resolveAuthSession(
-      { access: "stale", refresh: "dead", accessInvalid: true, refreshInvalid: true },
+      {
+        access: "stale",
+        refresh: "dead",
+        accessInvalid: true,
+        refreshInvalid: true,
+      },
       "/orders"
     ),
     { status: "signed-out", loginTarget: "/login?next=%2Forders" }
@@ -260,7 +268,10 @@ test("Request shaping: emails trim, passwords pass through untouched", () => {
     "new-secret-1"
   )
   assert.deepEqual(
-    buildChangePasswordRequest({ old_password: "o", new_password: "n3w-secret" }),
+    buildChangePasswordRequest({
+      old_password: "o",
+      new_password: "n3w-secret",
+    }),
     { old_password: "o", new_password: "n3w-secret" }
   )
 })
@@ -287,7 +298,9 @@ test("Login schema: happy path accepts, blanks reject with rendered copy", () =>
   )
   // Existing weak passwords must still sign in — strength rules apply to
   // chosen passwords only, so login requires presence, not length.
-  assert.ok(loginSchema.safeParse({ email: "ada@example.com", password: "x" }).success)
+  assert.ok(
+    loginSchema.safeParse({ email: "ada@example.com", password: "x" }).success
+  )
   const empty = loginSchema.safeParse({ email: "", password: "" })
   assert.equal(empty.success, false)
   if (!empty.success) {
@@ -302,10 +315,16 @@ test("Login schema: happy path accepts, blanks reject with rendered copy", () =>
       ]
     )
   }
-  const badEmail = loginSchema.safeParse({ email: "not-an-email", password: "x" })
+  const badEmail = loginSchema.safeParse({
+    email: "not-an-email",
+    password: "x",
+  })
   assert.equal(badEmail.success, false)
   if (!badEmail.success) {
-    assert.equal(badEmail.error.issues[0]?.message, "Enter a valid email address")
+    assert.equal(
+      badEmail.error.issues[0]?.message,
+      "Enter a valid email address"
+    )
   }
 })
 
@@ -353,11 +372,59 @@ test("Register schema: short password and mismatch reject on the rendered fields
   })
   assert.equal(mismatch.success, false)
   if (!mismatch.success) {
-    assert.deepEqual(mismatch.error.issues.map((issue) => issue.path.join(".")), [
-      "password2",
-    ])
+    assert.deepEqual(
+      mismatch.error.issues.map((issue) => issue.path.join(".")),
+      ["password2"]
+    )
     assert.equal(mismatch.error.issues[0]?.message, "Passwords do not match")
   }
+})
+
+test("Auth heading order: the profile page owns the only h1 on a signed-in page", () => {
+  // `/profile` stacks two cards under its own "Your account" heading, so both
+  // must demote to h2 — two h1s is a real document-outline defect, and the
+  // other auth pages each own exactly one. Source-scoped because the
+  // alternative is rendering the whole app router in a unit test.
+  const read = (p: string) =>
+    fs.readFileSync(path.resolve(process.cwd(), p), "utf8")
+
+  assert.equal(
+    (read("app/(public)/profile/page.tsx").match(/<h1/g) ?? []).length,
+    1,
+    "profile page must render exactly one h1"
+  )
+
+  for (const card of [
+    "components/auth/profile-form.tsx",
+    "components/auth/change-password-form.tsx",
+  ]) {
+    assert.ok(
+      read(card).includes('headingAs="h2"'),
+      `${card} must demote its card heading to h2`
+    )
+  }
+})
+
+test("OTP normalizer: digits survive the formats a real paste arrives in", () => {
+  // Every one of these lands on "123456" and clears the schema. Before the
+  // normalizer, "123 456" and an SMS captured whole both failed on
+  // formatting the user never controlled.
+  for (const raw of [
+    "123456",
+    " 123456 ",
+    "123 456",
+    "123-456",
+    "Your code is 123456.",
+    "(123) 456",
+  ]) {
+    assert.equal(normalizeOtpInput(raw), "123456", raw)
+    assert.ok(otpCodeSchema.safeParse(normalizeOtpInput(raw)).success, raw)
+  }
+  // Capped at six so a 7+ digit paste cannot overflow the six boxes.
+  assert.equal(normalizeOtpInput("1234567890"), "123456")
+  // Letters alone leave nothing — no crash, just an empty code to keep typing.
+  assert.equal(normalizeOtpInput("abcdef"), "")
+  assert.equal(normalizeOtpInput(""), "")
 })
 
 test("OTP schema: six digits accept, everything else rejects with one message", () => {
@@ -402,7 +469,10 @@ test("Password reset confirm: code plus matching new password accepts", () => {
   assert.ok(
     passwordResetRequestSchema.safeParse({ email: "ada@example.com" }).success
   )
-  assert.equal(passwordResetRequestSchema.safeParse({ email: "" }).success, false)
+  assert.equal(
+    passwordResetRequestSchema.safeParse({ email: "" }).success,
+    false
+  )
 })
 
 test("Change password: old plus matching new accepts, mismatch rejects", () => {
@@ -420,10 +490,35 @@ test("Change password: old plus matching new accepts, mismatch rejects", () => {
   })
   assert.equal(mismatch.success, false)
   if (!mismatch.success) {
-    assert.deepEqual(mismatch.error.issues.map((issue) => issue.path.join(".")), [
-      "confirm_password",
-    ])
+    assert.deepEqual(
+      mismatch.error.issues.map((issue) => issue.path.join(".")),
+      ["confirm_password"]
+    )
   }
+})
+
+test("Change password route: request body reaches the backend shaped", () => {
+  // Regression: the route once called `sessionProxiedRequest` without
+  // `init.body`, so the helper forwarded an empty body and the backend
+  // answered 400 with both fields "required" despite a filled form.
+  // Source-scoped like the heading-order test above — spinning up the
+  // session cookies in a unit test is not a correct seam.
+  const read = (p: string) =>
+    fs.readFileSync(path.resolve(process.cwd(), p), "utf8")
+  const source = read("app/api/auth/change-password/route.ts")
+  assert.ok(
+    source.includes("buildChangePasswordRequest"),
+    "route must shape the body through the auth builder"
+  )
+  assert.ok(
+    /sessionProxiedRequest\s*\(\s*request[\s\S]*body/.test(source),
+    "route must pass the body to sessionProxiedRequest"
+  )
+  assert.ok(
+    !source.includes("confirm_password:") &&
+      !source.includes("record.confirm_password"),
+    "form-only confirm_password must never travel upstream"
+  )
 })
 
 test("Profile schema: name and phone share booking-contact strictness", () => {

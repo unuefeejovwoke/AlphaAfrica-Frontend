@@ -30,9 +30,21 @@ export default async function ProfilePage() {
     redirect("/login?next=%2Fprofile")
   }
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-10 sm:px-6 sm:py-14">
-      <ProfileForm user={user} />
-      <ChangePasswordForm />
+    <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <div className="flex flex-col gap-4">
+        <header className="flex flex-col gap-1">
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+            Your account
+          </h1>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {user.email}
+          </p>
+        </header>
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <ProfileForm user={user} />
+          <ChangePasswordForm />
+        </div>
+      </div>
     </div>
   )
 }
