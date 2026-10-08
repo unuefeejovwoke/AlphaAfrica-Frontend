@@ -122,6 +122,63 @@ export function FlightVerifyClient() {
     null
   )
 
+  const resolvedBooking = state.kind === "resolved" ? state.booking : null
+  const resolvedOrder: PaymentOrder | null =
+    state.kind === "resolved" ? state.order : null
+  const paid =
+    resolvedBooking !== null &&
+    (resolveFlightVerificationState(resolvedBooking) === "paid" ||
+      isPaidOrder(resolvedOrder))
+
+  // Ticket numbers resolve once a paid Booking exists — one read, on demand.
+  React.useEffect(() => {
+    if (
+      state.kind !== "resolved" ||
+      !paid ||
+      tickets !== null ||
+      ticketsFailed
+    )
+      return
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetchFlightTickets({
+          reference: state.booking.reference,
+          ...(guestToken ? { token: guestToken } : {}),
+        })
+        if (!cancelled)
+          setTickets({ ticketed: res.ticketed, numbers: res.ticket_numbers })
+      } catch {
+        if (!cancelled) setTicketsFailed(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [state, paid, tickets, ticketsFailed, ticketsAttempt, guestToken])
+
+  const handlePayReserved = React.useCallback(async () => {
+    if (state.kind !== "resolved" || payingReserved) return
+    setPayingReserved(true)
+    setReservedPayError(null)
+    try {
+      const result = await payFlightBooking({
+        reference: state.booking.reference,
+        ...(guestToken ? { token: guestToken } : {}),
+      })
+      if (result.kind === "checkout") {
+        window.location.replace(result.authorization_url)
+        return
+      }
+      window.location.reload()
+    } catch (error) {
+      // 403 is an invalid/expired link, never a missing session — the shared
+      // "please log in" mapper must not speak here (ADR-0007).
+      setReservedPayError(getReservedPayErrorMessage(error))
+      setPayingReserved(false)
+    }
+  }, [state, payingReserved, guestToken])
+
   React.useEffect(() => {
     if (!reference) return
     let cancelled = false
@@ -372,53 +429,6 @@ export function FlightVerifyClient() {
   }
 
   const { booking, order } = state
-  const bookingStatus = booking.status.trim().toLowerCase()
-  const paid =
-    resolveFlightVerificationState(booking) === "paid" || isPaidOrder(order)
-
-  // Ticket numbers resolve once a paid Booking exists — one read, on demand.
-  React.useEffect(() => {
-    if (state.kind !== "resolved" || !paid || tickets !== null || ticketsFailed)
-      return
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await fetchFlightTickets({
-          reference: state.booking.reference,
-          ...(guestToken ? { token: guestToken } : {}),
-        })
-        if (!cancelled)
-          setTickets({ ticketed: res.ticketed, numbers: res.ticket_numbers })
-      } catch {
-        if (!cancelled) setTicketsFailed(true)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [state, paid, tickets, ticketsFailed, ticketsAttempt, guestToken])
-
-  const handlePayReserved = React.useCallback(async () => {
-    if (state.kind !== "resolved" || payingReserved) return
-    setPayingReserved(true)
-    setReservedPayError(null)
-    try {
-      const result = await payFlightBooking({
-        reference: state.booking.reference,
-        ...(guestToken ? { token: guestToken } : {}),
-      })
-      if (result.kind === "checkout") {
-        window.location.replace(result.authorization_url)
-        return
-      }
-      window.location.reload()
-    } catch (error) {
-      // 403 is an invalid/expired link, never a missing session — the shared
-      // "please log in" mapper must not speak here (ADR-0007).
-      setReservedPayError(getReservedPayErrorMessage(error))
-      setPayingReserved(false)
-    }
-  }, [state, payingReserved, guestToken])
 
   // A Reservation reads as reserved — seat held, pay-by date, payment action —
   // never as a payment still settling. The shared ReservationConfirmation keeps
