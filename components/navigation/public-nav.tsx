@@ -16,6 +16,7 @@ import {
   Book02Icon,
 } from "@hugeicons/core-free-icons"
 import { ButtonLink } from "@/components/ui/button"
+import { AccountMenu } from "@/components/navigation/account-menu"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { UnderConstructionBadge } from "@/components/shared/under-construction-badge"
 import { company } from "@/lib/content/company"
@@ -155,7 +156,7 @@ const megaMenuCardVariants: Variants = {
   },
 }
 
-export function PublicNav() {
+export function PublicNav({ signedIn = false }: { signedIn?: boolean }) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const [megaMenuOpen, setMegaMenuOpen] = React.useState(false)
   const [mobileServicesOpen, setMobileServicesOpen] = React.useState(true)
@@ -296,6 +297,16 @@ export function PublicNav() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <ThemeToggle />
+          {signedIn ? (
+            <AccountMenu />
+          ) : (
+            <Link
+              href="/login"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <span>Sign in</span>
+            </Link>
+          )}
           <ButtonLink href="/flights" size="default">
             Book a Trip
           </ButtonLink>
@@ -616,6 +627,22 @@ export function PublicNav() {
                 </Link>
 
                 <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
+                  {signedIn ? (
+                    <AccountMenu
+                      mobile
+                      onNavigate={() => setMobileMenuOpen(false)}
+                    />
+                  ) : (
+                    <ButtonLink
+                      href="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      variant="outline"
+                      size="lg"
+                      className="w-full justify-center"
+                    >
+                      Sign in
+                    </ButtonLink>
+                  )}
                   <ButtonLink
                     href="/flights"
                     onClick={() => setMobileMenuOpen(false)}

@@ -9,13 +9,15 @@ import {
   Clock01Icon,
   Message01Icon,
 } from "@hugeicons/core-free-icons"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FlightVerifyClient } from "@/components/flights/flight-verify-client"
 import {
   getPaymentOrder,
+  getSessionPaymentOrder,
   isOrderPaid,
   isOrderPending,
+  ORDER_ACCESS_FORBIDDEN_COPY,
   resolveOrderPaymentStatus,
   type PaymentOrder,
 } from "@/lib/api/payments"
@@ -28,6 +30,7 @@ import { cn } from "@/lib/utils"
 type OrderState =
   | { kind: "loading" }
   | { kind: "ready"; order: PaymentOrder }
+  | { kind: "needs-signin" }
   | { kind: "failed"; message: string; forbidden: boolean }
 
 function bookingTypeLabel(bookingType: string): string {
@@ -61,21 +64,27 @@ function OrderFallback() {
  * routes flight orders to the flight confirmation flow, and renders every
  * other booking type as a truthful generic receipt. Never assumes success
  * from the redirect alone.
+ *
+ * Guests verify with the email token exactly as today; signed-in Customers
+ * opening a bare `?reference=` verify through the session Bearer (spec
+ * story 42). Cross-account references answer plain forbidden (story 44).
  */
 export function OrderClient() {
   const searchParams = useSearchParams()
   const reference = searchParams.get("reference")?.trim() || null
   const token = searchParams.get("token")?.trim() || null
   const email = searchParams.get("email")?.trim() || null
+  const guestToken = Boolean(token)
   const [state, setState] = React.useState<OrderState>({ kind: "loading" })
   const [attempt, setAttempt] = React.useState(0)
   const ordersHref = React.useMemo(() => {
+    if (!guestToken) return "/orders"
     const params = new URLSearchParams()
     if (email) params.set("email", email)
     if (token) params.set("token", token)
     const query = params.toString()
     return query ? `/orders?${query}` : "/orders"
-  }, [email, token])
+  }, [guestToken, email, token])
 
   React.useEffect(() => {
     if (!reference) return
@@ -83,19 +92,24 @@ export function OrderClient() {
     ;(async () => {
       setState({ kind: "loading" })
       try {
-        const order = await getPaymentOrder(
-          reference,
-          token ? { token } : undefined
-        )
+        const order = guestToken
+          ? await getPaymentOrder(reference, token ? { token } : undefined)
+          : await getSessionPaymentOrder(reference)
         if (!cancelled) setState({ kind: "ready", order })
       } catch (error) {
         if (cancelled) return
-        const forbidden =
-          error instanceof ApiError && error.code === "forbidden"
+        const code = error instanceof ApiError ? error.code : null
+        if (!guestToken && code === "unauthorized") {
+          setState({ kind: "needs-signin" })
+          return
+        }
+        const forbidden = code === "forbidden"
         setState({
           kind: "failed",
           message: forbidden
-            ? "This confirmation link is invalid or has expired. Ask Alphaa to resend your receipt link."
+            ? guestToken
+              ? "This confirmation link is invalid or has expired. Ask Alphaa to resend your receipt link."
+              : ORDER_ACCESS_FORBIDDEN_COPY
             : error instanceof ApiError &&
                 (error.code === "not-found" || error.code === "validation")
               ? "We could not find this order. Check the link in your confirmation email."
@@ -107,7 +121,7 @@ export function OrderClient() {
     return () => {
       cancelled = true
     }
-  }, [reference, token, attempt])
+  }, [guestToken, reference, token, attempt])
 
   if (!reference) {
     return (
@@ -133,6 +147,33 @@ export function OrderClient() {
   }
 
   if (state.kind === "loading") return <OrderFallback />
+
+  if (state.kind === "needs-signin") {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6">
+        <div
+          role="alert"
+          className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 sm:p-8"
+        >
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+            Sign in to see this order.
+          </h1>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            This order belongs to an account — sign in to open it without
+            pasting tokens. Arriving from a confirmation email? Open the
+            &quot;View This Order&quot; button there instead.
+          </p>
+          <ButtonLink
+            href={`/login?next=${encodeURIComponent(`/order?reference=${encodeURIComponent(reference ?? "")}`)}`}
+            size="lg"
+            className="w-full justify-center"
+          >
+            <span>Sign in</span>
+          </ButtonLink>
+        </div>
+      </div>
+    )
+  }
 
   if (state.kind === "failed") {
     return (
@@ -204,8 +245,10 @@ export function OrderClient() {
   const bookingType = (order.booking_type ?? "").trim().toLowerCase()
 
   // Flight orders (and unflagged legacy orders) use the flight confirmation
-  // flow, which reads the same reference + token from this URL.
-  if (!bookingType || bookingType === "flight") {
+  // flow, which reads the same reference + token from this URL. Session
+  // openings have no guest token for that flow, so they render the truthful
+  // generic receipt from the session-verified order instead.
+  if ((!bookingType || bookingType === "flight") && guestToken) {
     return <FlightVerifyClient />
   }
 

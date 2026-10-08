@@ -153,25 +153,59 @@ export async function getOrderHistory(
     },
     ...(options.authToken ? { authToken: options.authToken } : {}),
   })
-  if (Array.isArray(raw)) {
-    return raw.flatMap((item) => {
+  return parseHistoryList(raw)
+}
+
+/** History payloads arrive bare or nested — both shapes yield the same list. */
+function parseHistoryList(raw: unknown): OrderHistoryItem[] {
+  const parseAll = (items: unknown[]): OrderHistoryItem[] =>
+    items.flatMap((item) => {
       const parsed = orderHistoryItemSchema.safeParse(item)
       return parsed.success ? [parsed.data] : []
     })
-  }
+  if (Array.isArray(raw)) return parseAll(raw)
   if (typeof raw === "object" && raw !== null) {
     const rec = raw as Record<string, unknown>
     for (const key of ["orders", "results", "data", "items"]) {
-      if (Array.isArray(rec[key])) {
-        return (rec[key] as unknown[]).flatMap((item) => {
-          const parsed = orderHistoryItemSchema.safeParse(item)
-          return parsed.success ? [parsed.data] : []
-        })
-      }
+      if (Array.isArray(rec[key])) return parseAll(rec[key] as unknown[])
     }
   }
   return []
 }
+
+/**
+ * Session-backed order history (spec stories 42–43). Cookies travel
+ * same-origin to `/api/auth/orders/history`, which attaches the Bearer
+ * server-side — the browser never sees a token. Throws `ApiError` with
+ * `unauthorized` when signed out, `forbidden` for cross-account reads.
+ */
+export async function getSessionOrderHistory(): Promise<OrderHistoryItem[]> {
+  const raw = await apiGet<unknown>("/api/auth/orders/history", {
+    ...VERIFICATION_REQUEST,
+  })
+  return parseHistoryList(raw)
+}
+
+/**
+ * Session-backed single order (spec story 42). Same Bearer-from-cookies
+ * contract; guests keep using {@link getPaymentOrder} with email tokens.
+ */
+export async function getSessionPaymentOrder(
+  reference: string
+): Promise<PaymentOrder> {
+  const raw = await apiGet<unknown>(
+    `/api/auth/orders/${encodeURIComponent(reference)}`,
+    { ...VERIFICATION_REQUEST }
+  )
+  return paymentOrderSchema.parse(raw)
+}
+
+/**
+ * Plain cross-account denial (spec story 44): no reference, no email, no
+ * token — one sentence shared by the history and single-order views.
+ */
+export const ORDER_ACCESS_FORBIDDEN_COPY =
+  "You do not have access to this. Sign in with the account that made the booking, or open the link from your confirmation email."
 
 /**
  * A Visa Consultation counts as complete for post-payment states. Unlike

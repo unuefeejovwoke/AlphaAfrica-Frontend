@@ -21,6 +21,11 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/api/",
           "/profile",
+          "/login",
+          "/register",
+          "/verify",
+          "/forgot",
+          "/reset",
           "/flights/confirm",
           "/flights/verify",
           "/flights/pay",

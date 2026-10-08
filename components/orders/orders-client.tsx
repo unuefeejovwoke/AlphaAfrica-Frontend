@@ -15,11 +15,13 @@ import {
 } from "@/lib/api/flight-bookings"
 import {
   getOrderHistory,
+  getSessionOrderHistory,
   isOrderPaid,
+  ORDER_ACCESS_FORBIDDEN_COPY,
   resolveOrderPaymentStatus,
   type OrderHistoryItem,
 } from "@/lib/api/payments"
-import { ApiError, getPaymentSafetyCopy } from "@/lib/api/client"
+import { ApiError } from "@/lib/api/client"
 import { formatNaira } from "@/lib/format"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { TrackLink } from "@/components/analytics/track-link"
@@ -29,6 +31,7 @@ import { cn } from "@/lib/utils"
 type OrdersState =
   | { kind: "loading" }
   | { kind: "ready"; orders: OrderHistoryItem[] }
+  | { kind: "needs-signin" }
   | { kind: "failed"; message: string; forbidden: boolean }
 
 function orderTitle(item: OrderHistoryItem): string {
@@ -84,7 +87,8 @@ function OrdersFallback() {
 /**
  * "View All My Orders" (guide §12 email links: `/orders?email=&token=`).
  * Guests authenticate with the email + secure token from their confirmation
- * email; logged-in users will use their session once accounts ship.
+ * email; signed-in Customers read the same list through the session Bearer
+ * with no tokens at all (spec stories 42–45). The guest path is untouched.
  *
  * The token skeletons, the retrieved summary, and the failure notice
  * cross-dissolve in place (opacity only, `backdropFadeVariants`) so a Booking
@@ -95,25 +99,34 @@ export function OrdersClient() {
   const searchParams = useSearchParams()
   const email = searchParams.get("email")?.trim() || null
   const token = searchParams.get("token")?.trim() || null
+  const guest = Boolean(email && token)
   const [state, setState] = React.useState<OrdersState>({ kind: "loading" })
   const [attempt, setAttempt] = React.useState(0)
 
   React.useEffect(() => {
-    if (!email || !token) return
     let cancelled = false
     ;(async () => {
       setState({ kind: "loading" })
       try {
-        const orders = await getOrderHistory({ email, token })
+        const orders =
+          guest && email && token
+            ? await getOrderHistory({ email, token })
+            : await getSessionOrderHistory()
         if (!cancelled) setState({ kind: "ready", orders })
       } catch (error) {
         if (cancelled) return
-        const forbidden =
-          error instanceof ApiError && error.code === "forbidden"
+        const code = error instanceof ApiError ? error.code : null
+        if (!guest && code === "unauthorized") {
+          setState({ kind: "needs-signin" })
+          return
+        }
+        const forbidden = code === "forbidden"
         setState({
           kind: "failed",
           message: forbidden
-            ? "This orders link is invalid or has expired. Open the “View All My Orders” button in your latest confirmation email."
+            ? guest
+              ? "This orders link is invalid or has expired. Open the “View All My Orders” button in your latest confirmation email."
+              : ORDER_ACCESS_FORBIDDEN_COPY
             : "We could not load your orders yet. Nothing was changed — try again in a moment.",
           forbidden,
         })
@@ -122,9 +135,9 @@ export function OrdersClient() {
     return () => {
       cancelled = true
     }
-  }, [email, token, attempt])
+  }, [guest, email, token, attempt])
 
-  if (!email || !token) {
+  if (state.kind === "needs-signin") {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6">
         <div
@@ -132,17 +145,16 @@ export function OrdersClient() {
           className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 sm:p-8"
         >
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-            Open this page from your confirmation email.
+            Sign in to see your orders.
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Your orders page needs the secure link from your booking
-            confirmation email — it proves these orders are yours without an
-            account. Open the &quot;View All My Orders&quot; button in any
-            Alphaa receipt email.
+            Your bookings belong to your account — sign in to open them
+            without pasting tokens. Arriving from a confirmation email?
+            Open the &quot;View All My Orders&quot; button there instead.
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            {getPaymentSafetyCopy()}
-          </p>
+          <ButtonLink href="/login?next=%2Forders" size="lg" className="w-full justify-center">
+            <span>Sign in</span>
+          </ButtonLink>
         </div>
       </div>
     )
@@ -240,8 +252,12 @@ export function OrdersClient() {
             </h1>
             <p className="max-w-sm px-2 text-xs leading-normal font-normal text-muted-foreground sm:max-w-md sm:text-sm">
               {orders.length === 0
-                ? "No orders found for this email yet."
-                : `${orders.length} ${orders.length === 1 ? "order" : "orders"} for ${email}.`}
+                ? guest
+                  ? "No orders found for this email yet."
+                  : "No orders on your account yet. Bookings you complete while signed in appear here."
+                : guest && email
+                  ? `${orders.length} ${orders.length === 1 ? "order" : "orders"} for ${email}.`
+                  : `${orders.length} ${orders.length === 1 ? "order" : "orders"} on your account.`}
             </p>
           </div>
 
@@ -264,7 +280,12 @@ export function OrdersClient() {
               {orders.map((item) => {
                 const status = resolveOrderPaymentStatus(item)
                 const paid = isOrderPaid(status)
-                const href = `/order?reference=${encodeURIComponent(item.reference)}&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ""}`
+                // Session links carry no credentials — the Bearer travels in
+                // cookies; guest links keep the email token exactly as today.
+                const href =
+                  guest && email
+                    ? `/order?reference=${encodeURIComponent(item.reference)}&email=${encodeURIComponent(email)}${token ? `&token=${encodeURIComponent(token)}` : ""}`
+                    : `/order?reference=${encodeURIComponent(item.reference)}`
                 const marker = reservationMarker(item)
                 // A Reservation is shown with its pay-by date and a payment action
                 // so it can be completed without hunting for the email — and never

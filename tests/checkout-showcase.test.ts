@@ -28,7 +28,25 @@ test("Checkout shares the public shell so the interface never switches mid-booki
     "components/navigation/site-shell.tsx must exist"
   )
   const shell = fs.readFileSync(shellPath, "utf-8")
-  assert.match(shell, /PublicNav/, "Shell must render the public navigation")
+  assert.match(
+    shell,
+    /NavSession/,
+    "Shell must render the session-aware navigation slot"
+  );
+  const slotPath = path.resolve(
+    process.cwd(),
+    "components/navigation/nav-session.tsx"
+  );
+  assert.ok(
+    fs.existsSync(slotPath),
+    "components/navigation/nav-session.tsx must exist"
+  );
+  const slot = fs.readFileSync(slotPath, "utf-8")
+  assert.match(
+    slot,
+    /PublicNav/,
+    "The nav slot must render the public navigation"
+  );
   assert.match(shell, /PublicFooter/, "Shell must render the public footer")
   assert.match(
     shell,

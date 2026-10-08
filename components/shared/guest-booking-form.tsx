@@ -41,6 +41,7 @@ import {
   guestContactSchema,
   type GuestContactInput,
 } from "@/lib/api/validation"
+import { useProfileContact } from "@/lib/api/session-client"
 
 type Phase = "idle" | "creating" | "redirecting" | "failed"
 
@@ -87,6 +88,27 @@ export function GuestBookingForm(props: GuestBookingFormProps) {
     mode: "onTouched",
     shouldFocusError: true,
   })
+
+  // Signed-in pre-fill (spec story 39): profile contact lands in untouched
+  // fields exactly once. Guests resolve to null and see zero change — no
+  // prompts, no gates, the same three inputs as today.
+  const { contact } = useProfileContact()
+  const prefilledRef = React.useRef(false)
+  React.useEffect(() => {
+    if (!contact || prefilledRef.current) return
+    prefilledRef.current = true
+    const current = form.getValues()
+    const name =
+      `${contact.firstName} ${contact.lastName}`.trim().replace(/\s+/g, " ")
+    form.reset(
+      {
+        guest_name: current.guest_name || name,
+        guest_email: current.guest_email || contact.email,
+        guest_phone: current.guest_phone || contact.phone,
+      },
+      { keepDirty: false }
+    )
+  }, [contact, form])
 
   // Smooth focus shift to the first missing field on invalid submit.
   // `shouldFocusError` (above) already focuses the field — this only swaps

@@ -42,6 +42,7 @@ import {
   accordionPanelVariants,
   staggerContainerVariants,
 } from "@/lib/motion/variants"
+import { useProfileContact } from "@/lib/api/session-client"
 
 export type TravellerSubmitIntent = "pay_now" | "reserve"
 
@@ -201,6 +202,46 @@ export function TravellerDetailsForm({
   const arrayError = getTravellersArrayError(errors)
   const customerErrors = errors.customer
 
+  // Signed-in pre-fill (spec story 39): profile contact lands in untouched
+  // lead-traveller and contact fields exactly once; guests see zero change.
+  // The login strip below hides for the same reason — a signed-in Customer
+  // needs no invitation to sign in.
+  const { signedIn, contact } = useProfileContact()
+  const prefilledRef = React.useRef(false)
+  React.useEffect(() => {
+    if (!contact || prefilledRef.current) return
+    prefilledRef.current = true
+    const current = form.getValues()
+    if (!current.travellers?.[0]) return
+    const lead = current.travellers[0]
+    if (!lead.first_name && contact.firstName) {
+      form.setValue("travellers.0.first_name", contact.firstName, {
+        shouldValidate: false,
+      })
+    }
+    if (!lead.last_name && contact.lastName) {
+      form.setValue("travellers.0.last_name", contact.lastName, {
+        shouldValidate: false,
+      })
+    }
+    if (!lead.email && contact.email) {
+      form.setValue("travellers.0.email", contact.email, {
+        shouldValidate: false,
+      })
+    }
+    if (!lead.phone && contact.phone) {
+      form.setValue("travellers.0.phone", contact.phone, {
+        shouldValidate: false,
+      })
+    }
+    if (!current.customer?.email && contact.email) {
+      form.setValue("customer.email", contact.email, { shouldValidate: false })
+    }
+    if (!current.customer?.phone && contact.phone) {
+      form.setValue("customer.phone", contact.phone, { shouldValidate: false })
+    }
+  }, [contact, form])
+
   // Push live validity to the parent so the single summary CTA can gate
   // on a complete form instead of failing on submit.
   React.useEffect(() => {
@@ -267,7 +308,9 @@ export function TravellerDetailsForm({
         </p>
       </div>
 
-      {/* Login for faster checkout strip */}
+      {/* Login for faster checkout strip — guests only; a signed-in
+          Customer is already past this invitation. */}
+      {signedIn ? null : (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-xs shadow-2xs sm:px-5 sm:text-sm">
         <span className="text-muted-foreground">
           Have an account?{" "}
@@ -284,6 +327,7 @@ export function TravellerDetailsForm({
           <span>Log in</span>
         </ButtonLink>
       </div>
+      )}
 
       {/* Array-level form error banner if any */}
       {arrayError ? (
