@@ -37,11 +37,26 @@ function readRecord(raw: unknown): Record<string, unknown> | null {
 const authUserSchema = z.object({
   id: z.number(),
   email: z.string(),
-  first_name: z.string().nullish().transform((value) => value ?? ""),
-  last_name: z.string().nullish().transform((value) => value ?? ""),
-  phone_number: z.string().nullish().transform((value) => value ?? ""),
-  is_verified: z.boolean().nullish().transform((value) => value ?? false),
-  date_joined: z.string().nullish().transform((value) => value ?? ""),
+  first_name: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? ""),
+  last_name: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? ""),
+  phone_number: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? ""),
+  is_verified: z
+    .boolean()
+    .nullish()
+    .transform((value) => value ?? false),
+  date_joined: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? ""),
 })
 
 export type AuthUser = z.infer<typeof authUserSchema>
@@ -83,7 +98,12 @@ export function normalizeTokenPair(raw: unknown): AuthTokenPair | null {
 }
 
 export type AuthLoginResult =
-  | { status: "authenticated"; access: string; refresh: string | null; user: AuthUser | null }
+  | {
+      status: "authenticated"
+      access: string
+      refresh: string | null
+      user: AuthUser | null
+    }
   | { status: "unauthenticated" }
 
 /**
@@ -195,10 +215,10 @@ export function buildAuthHeaders(token: unknown): Record<string, string> {
 // passwords and codes pass through untouched (write-only, never logged).
 // ---------------------------------------------------------------------------
 
-export function buildLoginRequest(input: {
+export function buildLoginRequest(input: { email: string; password: string }): {
   email: string
   password: string
-}): { email: string; password: string } {
+} {
   return { email: input.email.trim(), password: input.password }
 }
 
@@ -276,7 +296,11 @@ export function buildProfileUpdateRequest(input: {
   last_name?: string
   phone_number?: string
 }): { first_name?: string; last_name?: string; phone_number?: string } {
-  const body: { first_name?: string; last_name?: string; phone_number?: string } = {}
+  const body: {
+    first_name?: string
+    last_name?: string
+    phone_number?: string
+  } = {}
   const firstName = input.first_name?.trim()
   const lastName = input.last_name?.trim()
   const phone = input.phone_number?.trim()
@@ -293,10 +317,25 @@ export function buildProfileUpdateRequest(input: {
 // sign in; only chosen passwords (register, reset, change) require length.
 // ---------------------------------------------------------------------------
 
+/** Digits in an emailed verification code. Drives the box count and the cap. */
+export const OTP_LENGTH = 6
+
+// A literal, not `new RegExp` off OTP_LENGTH: the message beside it also says
+// "6-digit", so templating the pattern buys a drift trap and nothing else.
 export const otpCodeSchema = z
   .string()
   .trim()
   .regex(/^\d{6}$/, "Enter the 6-digit code from your email")
+
+/**
+ * Codes get pasted as "123456", "123 456", "123-456", or picked up whole from
+ * an SMS that reads "Your code is 123456." Strip everything that is not a
+ * digit and cap at six, so a paste never fails `/^\d{6}$/` on formatting the
+ * user never controlled.
+ */
+export function normalizeOtpInput(raw: string): string {
+  return raw.replace(/\D/g, "").slice(0, OTP_LENGTH)
+}
 
 /** Existing credentials are accepted as-is — strength rules apply to new ones only. */
 const currentPasswordSchema = z.string().min(1, "Enter your password")
@@ -358,7 +397,9 @@ export const passwordResetRequestSchema = z.object({
   email: emailSchema,
 })
 
-export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>
+export type PasswordResetRequestInput = z.infer<
+  typeof passwordResetRequestSchema
+>
 
 export const passwordResetConfirmSchema = z
   .object({
@@ -372,7 +413,9 @@ export const passwordResetConfirmSchema = z
     path: ["confirm_password"],
   })
 
-export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>
+export type PasswordResetConfirmInput = z.infer<
+  typeof passwordResetConfirmSchema
+>
 
 export const changePasswordSchema = z
   .object({

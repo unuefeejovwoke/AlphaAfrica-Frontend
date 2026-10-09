@@ -8,6 +8,8 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Mail01Icon, LockIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { OtpInput } from "@/components/ui/otp-input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { ApiError, apiPost, getHumanErrorMessage } from "@/lib/api/client"
 import {
   AUTH_ATTENTION_COPY,
@@ -16,6 +18,7 @@ import {
   passwordResetConfirmSchema,
 } from "@/lib/api/auth"
 import { AuthAlert, AuthSuccess } from "./auth-form-ui"
+import { AuthCard, AuthStepper } from "./auth-shell"
 
 type ResetFormValues = z.input<typeof passwordResetConfirmSchema>
 
@@ -78,7 +81,9 @@ export function ResetForm({ initialEmail = "" }: { initialEmail?: string }) {
           }
           setFailure(
             mapped.formAlert[0] ??
-              (mapped.fields.length > 0 ? STALE_CODE_COPY : getHumanErrorMessage(error))
+              (mapped.fields.length > 0
+                ? STALE_CODE_COPY
+                : getHumanErrorMessage(error))
           )
         } else {
           setFailure(getHumanErrorMessage(error))
@@ -101,80 +106,87 @@ export function ResetForm({ initialEmail = "" }: { initialEmail?: string }) {
   const busy = phase === "submitting"
 
   return (
-    <form
-      noValidate
-      onSubmit={handleSubmit}
-      aria-label="Set a new password"
-      className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
-    >
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base font-bold text-foreground">Set a new password</h2>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Enter the reset code from your email, then choose a new password.
-        </p>
-      </div>
-
-      <Input
-        label="Email address"
-        placeholder="you@example.com"
-        type="email"
-        autoComplete="email"
-        spellCheck={false}
-        startIcon={<HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />}
-        error={form.formState.errors.email?.message}
-        {...form.register("email")}
-      />
-      <Input
-        label="6-digit code"
-        placeholder="123456"
-        type="text"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        spellCheck={false}
-        startIcon={<HugeiconsIcon icon={LockIcon} size={15} aria-hidden="true" />}
-        error={form.formState.errors.code?.message}
-        {...form.register("code")}
-      />
-      <Input
-        label="New password"
-        placeholder="At least 8 characters"
-        type="password"
-        autoComplete="new-password"
-        startIcon={<HugeiconsIcon icon={LockIcon} size={15} aria-hidden="true" />}
-        helperText="At least 8 characters."
-        error={form.formState.errors.new_password?.message}
-        {...form.register("new_password")}
-      />
-      <Input
-        label="Confirm new password"
-        placeholder="Repeat your new password"
-        type="password"
-        autoComplete="new-password"
-        startIcon={<HugeiconsIcon icon={LockIcon} size={15} aria-hidden="true" />}
-        error={form.formState.errors.confirm_password?.message}
-        {...form.register("confirm_password")}
-      />
-
-      {failure ? (
-        <AuthAlert
-          message={failure === AUTH_ATTENTION_COPY ? STALE_CODE_COPY : failure}
-          action={
-            failure === STALE_CODE_COPY || failure === AUTH_ATTENTION_COPY
-              ? { href: "/forgot", label: "Request a fresh code" }
-              : undefined
-          }
+    <form noValidate onSubmit={handleSubmit} aria-label="Set a new password">
+      <div className="flex flex-col gap-4">
+        <AuthStepper
+          current={2}
+          steps={["Request code", "Set new password", "Sign in"]}
         />
-      ) : null}
+        <AuthCard
+          title="Set a new password"
+          description="Enter the reset code from your email, then choose a new password."
+        >
+          <div className="flex flex-col gap-5">
+            <Input
+              labelSize="md"
+              label="Email address"
+              placeholder="you@example.com"
+              type="email"
+              autoComplete="email"
+              spellCheck={false}
+              startIcon={
+                <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
+              }
+              error={form.formState.errors.email?.message}
+              {...form.register("email")}
+            />
+            <OtpInput
+              label="Reset code"
+              autoFocus
+              value={form.watch("code")}
+              onValueChange={(value) => form.setValue("code", value)}
+              helperText="The 6-digit code from your reset email."
+              error={form.formState.errors.code?.message}
+            />
+            <PasswordInput
+              labelSize="md"
+              label="New password"
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              startIcon={
+                <HugeiconsIcon icon={LockIcon} size={15} aria-hidden="true" />
+              }
+              helperText="At least 8 characters."
+              error={form.formState.errors.new_password?.message}
+              {...form.register("new_password")}
+            />
+            <PasswordInput
+              labelSize="md"
+              label="Confirm new password"
+              placeholder="Repeat your new password"
+              autoComplete="new-password"
+              startIcon={
+                <HugeiconsIcon icon={LockIcon} size={15} aria-hidden="true" />
+              }
+              error={form.formState.errors.confirm_password?.message}
+              {...form.register("confirm_password")}
+            />
 
-      <Button
-        type="submit"
-        size="lg"
-        isLoading={busy}
-        disabled={busy}
-        className="w-full justify-center"
-      >
-        <span>{busy ? "Updating…" : "Set new password"}</span>
-      </Button>
+            {failure ? (
+              <AuthAlert
+                message={
+                  failure === AUTH_ATTENTION_COPY ? STALE_CODE_COPY : failure
+                }
+                action={
+                  failure === STALE_CODE_COPY || failure === AUTH_ATTENTION_COPY
+                    ? { href: "/forgot", label: "Request a fresh code" }
+                    : undefined
+                }
+              />
+            ) : null}
+
+            <Button
+              type="submit"
+              size="lg"
+              isLoading={busy}
+              disabled={busy}
+              className="w-full justify-center"
+            >
+              <span>{busy ? "Updating…" : "Set new password"}</span>
+            </Button>
+          </div>
+        </AuthCard>
+      </div>
     </form>
   )
 }

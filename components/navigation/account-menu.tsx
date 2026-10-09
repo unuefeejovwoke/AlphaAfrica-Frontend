@@ -10,7 +10,7 @@ import {
   PackageIcon,
   Logout01Icon,
 } from "@hugeicons/core-free-icons"
-import { requestSignOut } from "@/lib/api/session-client"
+import { requestSignOut, notifySessionChanged } from "@/lib/api/session-client"
 import { cn } from "@/lib/utils"
 
 /**
@@ -73,9 +73,12 @@ export function AccountMenu({
       await requestSignOut()
       setOpen(false)
       onNavigate?.()
-      // Server owns the session — refresh nav reads before leaving.
-      router.refresh()
+      // Cookies are cleared — wake the mounted nav instantly, then leave
+      // and refresh the destination RSC (push-then-refresh: the reverse
+      // order lets the push supersede the refresh with stale cache).
+      notifySessionChanged(false)
       router.push("/")
+      router.refresh()
     })()
   }
 

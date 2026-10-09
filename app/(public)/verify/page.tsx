@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { VerifyForm } from "@/components/auth/verify-form"
+import { AuthShell } from "@/components/auth/auth-shell"
 import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 
 export const metadata: Metadata = {
@@ -23,8 +24,8 @@ export default async function VerifyPage({
 }) {
   const { email } = await searchParams
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-10 sm:px-6 sm:py-14">
+    <AuthShell>
       <VerifyForm initialEmail={typeof email === "string" ? email : ""} />
-    </div>
+    </AuthShell>
   )
 }

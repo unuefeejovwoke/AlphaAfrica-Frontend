@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { ResetForm } from "@/components/auth/reset-form"
+import { AuthShell } from "@/components/auth/auth-shell"
 import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 
 export const metadata: Metadata = {
@@ -19,8 +20,8 @@ export default async function ResetPage({
 }) {
   const { email } = await searchParams
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-10 sm:px-6 sm:py-14">
+    <AuthShell>
       <ResetForm initialEmail={typeof email === "string" ? email : ""} />
-    </div>
+    </AuthShell>
   )
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { LoginForm } from "@/components/auth/login-form"
+import { AuthShell } from "@/components/auth/auth-shell"
 import { readSessionUser } from "@/lib/api/session"
 import { canonicalUrl, getSiteUrl } from "@/lib/seo"
 
@@ -32,17 +33,20 @@ export default async function LoginPage({
     redirect(safeNext || "/")
   }
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-10 sm:px-6 sm:py-14">
+    <AuthShell
+      footer={
+        <p className="text-center text-[13px] leading-relaxed text-muted-foreground">
+          New here?{" "}
+          <Link
+            href="/register"
+            className="font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            Create an account
+          </Link>
+        </p>
+      }
+    >
       <LoginForm next={safeNext} />
-      <p className="text-center text-xs leading-relaxed text-muted-foreground">
-        New here?{" "}
-        <Link
-          href="/register"
-          className="font-semibold text-primary underline-offset-4 hover:underline"
-        >
-          Create an account
-        </Link>
-      </p>
-    </div>
+    </AuthShell>
   )
 }

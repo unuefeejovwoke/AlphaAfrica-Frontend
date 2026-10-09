@@ -651,3 +651,43 @@ test("Tokens never enter query construction: the login target carries only next"
     Authorization: "Bearer abc123",
   })
 })
+
+test("Nav session: login/logout wake the mounted nav and refresh the destination", () => {
+  // Regression: the navbar kept the signed-out (or signed-in) state until a
+  // manual F5. Login refreshed the /login RSC before pushing, and logout
+  // refreshed before pushing, so the destination served stale router cache;
+  // the nav itself subscribed to nothing. Source-scoped — mounting the nav
+  // with cookies in a unit test is not a correct seam.
+  const read = (p: string) =>
+    fs.readFileSync(path.resolve(process.cwd(), p), "utf8")
+  const client = read("lib/api/session-client.ts")
+  assert.ok(
+    client.includes("SESSION_CHANGED_EVENT") &&
+      client.includes("notifySessionChanged") &&
+      client.includes("useSignedIn"),
+    "session-client must broadcast auth changes with a nav hook"
+  )
+  const nav = read("components/navigation/public-nav.tsx")
+  assert.ok(
+    nav.includes("useSignedIn"),
+    "nav must render a client-live session, not the server prop only"
+  )
+  for (const [file, verb] of [
+    ["components/auth/login-form.tsx", "login"],
+    ["components/navigation/account-menu.tsx", "logout"],
+  ] as const) {
+    const source = read(file)
+    assert.ok(
+      source.includes("notifySessionChanged"),
+      `${verb} must notify the mounted nav`
+    )
+    assert.ok(
+      /router\.push\([\s\S]{0,300}router\.refresh\(\)/.test(source),
+      `${verb} must push-then-refresh so the destination RSC revalidates`
+    )
+    assert.ok(
+      !/router\.refresh\(\)[\s\S]{0,200}router\.push\(/.test(source),
+      `${verb} must not refresh-before-push (stale-route refresh)`
+    )
+  }
+})

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -9,6 +10,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Mail01Icon, LockIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { ApiError, apiPost, getHumanErrorMessage } from "@/lib/api/client"
 import {
   buildLoginRequest,
@@ -17,7 +19,9 @@ import {
   needsEmailVerification,
   normalizeAuthUser,
 } from "@/lib/api/auth"
+import { notifySessionChanged } from "@/lib/api/session-client"
 import { AuthAlert } from "./auth-form-ui"
+import { AuthCard } from "./auth-shell"
 
 type LoginFormValues = z.input<typeof loginSchema>
 
@@ -61,8 +65,11 @@ export function LoginForm({ next = "" }: { next?: string }) {
           { email: string; password: string }
         >("/api/auth/login", buildLoginRequest(parsed), { sameOrigin: true })
         const user = normalizeAuthUser(result.user)
-        // Cookie session is set — refresh server reads (nav) before routing.
-        router.refresh()
+        // Cookies are committed — wake the mounted nav instantly, then
+        // navigate and refresh the destination RSC (push-then-refresh:
+        // refresh-before-push re-fetches the /login RSC and the push
+        // serves the destination from stale router cache).
+        notifySessionChanged(true)
         if (needsEmailVerification(user)) {
           router.push(`/verify?email=${encodeURIComponent(parsed.email)}`)
         } else if (next) {
@@ -70,6 +77,7 @@ export function LoginForm({ next = "" }: { next?: string }) {
         } else {
           router.push("/")
         }
+        router.refresh()
       } catch (error) {
         inFlightRef.current = false
         setPhase("idle")
@@ -105,55 +113,80 @@ export function LoginForm({ next = "" }: { next?: string }) {
       noValidate
       onSubmit={handleSubmit}
       aria-label="Sign in to your account"
-      className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
     >
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base font-bold text-foreground">Welcome back</h2>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Sign in to reach your bookings and profile.
-        </p>
-      </div>
-
-      <Input
-        label="Email address"
-        placeholder="you@example.com"
-        type="email"
-        autoComplete="email"
-        spellCheck={false}
-        startIcon={<HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />}
-        error={form.formState.errors.email?.message}
-        {...form.register("email")}
-      />
-      <Input
-        label="Password"
-        placeholder="Your password"
-        type="password"
-        autoComplete="current-password"
-        startIcon={<HugeiconsIcon icon={LockIcon} size={15} aria-hidden="true" />}
-        error={form.formState.errors.password?.message}
-        {...form.register("password")}
-      />
-
-      {failure ? (
-        <AuthAlert
-          message={failure}
-          action={
-            failure === NON_REVEALING_COPY
-              ? { href: "/forgot", label: "Forgot your password?" }
-              : undefined
-          }
-        />
-      ) : null}
-
-      <Button
-        type="submit"
-        size="lg"
-        isLoading={busy}
-        disabled={busy}
-        className="w-full justify-center"
+      <AuthCard
+        title="Welcome back"
+        description="Sign in to reach your bookings and profile."
       >
-        <span>{busy ? "Signing in…" : "Sign in"}</span>
-      </Button>
+        <div className="flex flex-col gap-5">
+          <Input
+            labelSize="md"
+            label="Email address"
+            placeholder="you@example.com"
+            type="email"
+            autoComplete="email"
+            autoFocus
+            spellCheck={false}
+            startIcon={
+              <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
+            }
+            error={form.formState.errors.email?.message}
+            {...form.register("email")}
+          />
+          <PasswordInput
+            labelSize="md"
+            label="Password"
+            placeholder="Your password"
+            autoComplete="current-password"
+            startIcon={
+              <HugeiconsIcon icon={LockIcon} size={15} aria-hidden="true" />
+            }
+            error={form.formState.errors.password?.message}
+            {...form.register("password")}
+          />
+
+          {failure ? (
+            <AuthAlert
+              message={failure}
+              action={
+                failure === NON_REVEALING_COPY
+                  ? { href: "/forgot", label: "Forgot your password?" }
+                  : undefined
+              }
+            />
+          ) : (
+            <div className="flex justify-end">
+              <Link
+                href="/forgot"
+                className="text-sm font-medium underline-offset-4 hover:underline"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            size="lg"
+            isLoading={busy}
+            disabled={busy}
+            className="w-full justify-center"
+          >
+            <span>{busy ? "Signing in…" : "Sign in"}</span>
+          </Button>
+          <p className="px-2 text-center text-[13px] leading-relaxed text-muted-foreground">
+            By signing in, you agree to our{" "}
+            <Link href="/terms" className="underline underline-offset-4">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="underline underline-offset-4">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </div>
+      </AuthCard>
     </form>
   )
 }

@@ -14,6 +14,7 @@ import {
   passwordResetRequestSchema,
 } from "@/lib/api/auth"
 import { AuthAlert, AuthSuccess } from "./auth-form-ui"
+import { AuthCard } from "./auth-shell"
 
 type ForgotFormValues = z.input<typeof passwordResetRequestSchema>
 
@@ -25,7 +26,7 @@ type ForgotFormValues = z.input<typeof passwordResetRequestSchema>
 export function ForgotForm() {
   const [phase, setPhase] = React.useState<"idle" | "submitting">("idle")
   const [failure, setFailure] = React.useState<string | null>(null)
-  const [sent, setSent] = React.useState(false)
+  const [sentTo, setSentTo] = React.useState<string | null>(null)
   const inFlightRef = React.useRef(false)
 
   const form = useForm<ForgotFormValues>({
@@ -40,7 +41,6 @@ export function ForgotForm() {
     inFlightRef.current = true
     setPhase("submitting")
     setFailure(null)
-    form.clearErrors("root")
 
     void (async () => {
       try {
@@ -50,21 +50,24 @@ export function ForgotForm() {
           buildPasswordResetRequestRequest(parsed.email),
           { sameOrigin: true }
         )
-        setSent(true)
+        // Carry the address forward: `/reset` prefills from the query, so
+        // nobody retypes the email they submitted seconds ago.
+        setSentTo(parsed.email)
       } catch (error) {
         inFlightRef.current = false
         setPhase("idle")
+        form.clearErrors("root")
         setFailure(getHumanErrorMessage(error))
       }
     })()
   })
 
-  if (sent) {
+  if (sentTo) {
     return (
       <AuthSuccess
         heading="Check your inbox"
-        body="If an account exists for that email, a reset code is on its way. Enter it on the next screen to set a new password."
-        linkHref="/reset"
+        body={`If an account exists for ${sentTo}, a reset code is on its way. Enter it on the next screen to set a new password.`}
+        linkHref={`/reset?email=${encodeURIComponent(sentTo)}`}
         linkLabel="Enter your reset code"
       />
     )
@@ -77,37 +80,40 @@ export function ForgotForm() {
       noValidate
       onSubmit={handleSubmit}
       aria-label="Request a password reset"
-      className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
     >
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base font-bold text-foreground">Forgot your password?</h2>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Enter your account email and we will send a reset code.
-        </p>
-      </div>
-
-      <Input
-        label="Email address"
-        placeholder="you@example.com"
-        type="email"
-        autoComplete="email"
-        spellCheck={false}
-        startIcon={<HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />}
-        error={form.formState.errors.email?.message}
-        {...form.register("email")}
-      />
-
-      {failure ? <AuthAlert message={failure} /> : null}
-
-      <Button
-        type="submit"
-        size="lg"
-        isLoading={busy}
-        disabled={busy}
-        className="w-full justify-center"
+      <AuthCard
+        title="Forgot your password?"
+        description="Enter your account email and we will send a reset code."
       >
-        <span>{busy ? "Sending…" : "Send reset code"}</span>
-      </Button>
+        <div className="flex flex-col gap-5">
+          <Input
+            labelSize="md"
+            label="Email address"
+            placeholder="you@example.com"
+            type="email"
+            autoComplete="email"
+            autoFocus
+            spellCheck={false}
+            startIcon={
+              <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
+            }
+            error={form.formState.errors.email?.message}
+            {...form.register("email")}
+          />
+
+          {failure ? <AuthAlert message={failure} /> : null}
+
+          <Button
+            type="submit"
+            size="lg"
+            isLoading={busy}
+            disabled={busy}
+            className="w-full justify-center"
+          >
+            <span>{busy ? "Sending…" : "Send reset code"}</span>
+          </Button>
+        </div>
+      </AuthCard>
     </form>
   )
 }

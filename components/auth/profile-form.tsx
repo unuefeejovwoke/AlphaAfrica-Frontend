@@ -6,49 +6,96 @@ import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { z } from "zod"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { UserIcon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import {
+  AlertCircleIcon,
+  PackageIcon,
+  Tick01Icon,
+  UserIcon,
+} from "@hugeicons/core-free-icons"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PhoneField } from "@/components/ui/phone-field"
-import {
-  ApiError,
-  apiPatch,
-  getHumanErrorMessage,
-} from "@/lib/api/client"
+import { ApiError, apiPatch, getHumanErrorMessage } from "@/lib/api/client"
 import {
   buildProfileUpdateRequest,
   mapAuthFieldErrors,
   profileUpdateSchema,
   type AuthUser,
 } from "@/lib/api/auth"
-import { AuthAlert } from "./auth-form-ui"
+import { AuthAlert, SavedNotice } from "./auth-form-ui"
+import { AuthCard } from "./auth-shell"
 
 type ProfileFormValues = z.input<typeof profileUpdateSchema>
 
-/** Read-only account facts — email and verification never edit (spec story 29). */
+/**
+ * Read-only account facts — email and verification never edit (spec story 29).
+ * An unverified account used to read "Not verified" in a `<dl>` and stop there,
+ * which is a dead end: the fix is one link away, so the link sits right here.
+ */
 function AccountFacts({ user }: { user: AuthUser }) {
   const joined = user.date_joined ? user.date_joined.slice(0, 10) : ""
   return (
-    <dl className="flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/40 p-4 text-xs">
-      <div className="flex items-center justify-between gap-3">
-        <dt className="font-semibold text-muted-foreground">Email</dt>
-        <dd className="font-semibold break-all text-foreground">{user.email}</dd>
-      </div>
-      <div className="flex items-center justify-between gap-3">
-        <dt className="font-semibold text-muted-foreground">Verification</dt>
-        <dd className="font-semibold text-foreground">
-          {user.is_verified ? "Verified" : "Not verified"}
-        </dd>
-      </div>
-      {joined ? (
+    <div className="flex flex-col gap-4">
+      <dl className="flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/40 p-4 text-[13px]">
         <div className="flex items-center justify-between gap-3">
-          <dt className="font-semibold text-muted-foreground">Member since</dt>
-          <dd className="font-variant-numeric font-semibold text-foreground tabular-nums">
-            {joined}
+          <dt className="font-semibold text-muted-foreground">Email</dt>
+          <dd className="font-semibold break-all text-foreground">
+            {user.email}
           </dd>
         </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt className="font-semibold text-muted-foreground">Verification</dt>
+          <dd className="font-semibold text-foreground">
+            {user.is_verified ? "Verified" : "Not verified"}
+          </dd>
+        </div>
+        {joined ? (
+          <div className="flex items-center justify-between gap-3">
+            <dt className="font-semibold text-muted-foreground">
+              Member since
+            </dt>
+            <dd className="font-variant-numeric font-semibold text-foreground tabular-nums">
+              {joined}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+
+      {!user.is_verified ? (
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <span className="flex items-start gap-2.5 text-sm leading-relaxed text-foreground">
+            <HugeiconsIcon
+              icon={AlertCircleIcon}
+              size={16}
+              className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
+              aria-hidden="true"
+            />
+            <span>
+              Verify your email to secure your account and receive booking
+              updates.
+            </span>
+          </span>
+          {/* Carries the email: `/verify` prefills from the query, so this must not
+              send the user back to typing the address we already hold. */}
+          <ButtonLink
+            href={`/verify?email=${encodeURIComponent(user.email)}`}
+            size="sm"
+          >
+            <span>Verify email</span>
+          </ButtonLink>
+        </div>
       ) : null}
-    </dl>
+
+      <ButtonLink
+        href="/orders"
+        variant="outline"
+        size="lg"
+        className="w-full justify-center"
+      >
+        <HugeiconsIcon icon={PackageIcon} size={17} aria-hidden="true" />
+        <span>View your bookings and orders</span>
+      </ButtonLink>
+    </div>
   )
 }
 
@@ -135,86 +182,88 @@ export function ProfileForm({ user }: { user: AuthUser }) {
   const busy = phase === "submitting"
 
   return (
-    <form
-      noValidate
-      onSubmit={handleSubmit}
-      aria-label="Your profile"
-      className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
-    >
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base font-bold text-foreground">Your profile</h2>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Name and phone pre-fill checkout. Email stays as registered.
-        </p>
-      </div>
+    <form noValidate onSubmit={handleSubmit} aria-label="Your profile">
+      <AuthCard
+        headingAs="h2"
+        title="Your profile"
+        description="Name and phone pre-fill checkout. Email stays as registered."
+      >
+        <div className="flex flex-col gap-5">
+          <AccountFacts user={user} />
 
-      <AccountFacts user={user} />
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <Input
-          label="First name"
-          placeholder="Adaeze"
-          autoComplete="given-name"
-          startIcon={<HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />}
-          error={form.formState.errors.first_name?.message}
-          {...form.register("first_name")}
-        />
-        <Input
-          label="Last name"
-          placeholder="Okonkwo"
-          autoComplete="family-name"
-          startIcon={<HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />}
-          error={form.formState.errors.last_name?.message}
-          {...form.register("last_name")}
-        />
-      </div>
-      <Controller
-        name="phone_number"
-        control={form.control}
-        render={({ field }) => (
-          <PhoneField
-            label="Phone number"
-            value={field.value ?? ""}
-            onChange={field.onChange}
-            onBlur={field.onBlur}
-            placeholder="803 123 4567"
-            error={form.formState.errors.phone_number?.message}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <Input
+              labelSize="md"
+              label="First name"
+              placeholder="Adaeze"
+              autoComplete="given-name"
+              startIcon={
+                <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
+              }
+              error={form.formState.errors.first_name?.message}
+              {...form.register("first_name")}
+            />
+            <Input
+              labelSize="md"
+              label="Last name"
+              placeholder="Okonkwo"
+              autoComplete="family-name"
+              startIcon={
+                <HugeiconsIcon icon={UserIcon} size={15} aria-hidden="true" />
+              }
+              error={form.formState.errors.last_name?.message}
+              {...form.register("last_name")}
+            />
+          </div>
+          <Controller
+            name="phone_number"
+            control={form.control}
+            render={({ field }) => (
+              <PhoneField
+                label="Phone number"
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                placeholder="803 123 4567"
+                error={form.formState.errors.phone_number?.message}
+              />
+            )}
           />
-        )}
-      />
-      {failure ? <AuthAlert message={failure} /> : null}
-      {saved && !dirty ? (
-        <p role="status" aria-live="polite" className="text-xs font-semibold text-emerald-600">
-          Profile updated. Checkout will pre-fill the new details.
-        </p>
-      ) : null}
+          {failure ? <AuthAlert message={failure} /> : null}
+          {saved && !dirty ? (
+            <SavedNotice>
+              Profile updated. Checkout will pre-fill the new details.
+            </SavedNotice>
+          ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button
-          type="submit"
-          size="lg"
-          isLoading={busy}
-          disabled={busy}
-          className="flex-1 justify-center"
-        >
-          <span>{busy ? "Saving…" : "Save changes"}</span>
-        </Button>
-        {dirty && !busy ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            onClick={() => {
-              form.reset()
-              setFailure(null)
-              setSaved(false)
-            }}
-            className="justify-center"
-          >
-            <span>Discard</span>
-          </Button>
-        ) : null}
-      </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              type="submit"
+              size="lg"
+              isLoading={busy}
+              disabled={busy}
+              className="flex-1 justify-center"
+            >
+              <span>{busy ? "Saving…" : "Save changes"}</span>
+            </Button>
+            {dirty && !busy ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => {
+                  form.reset()
+                  setFailure(null)
+                  setSaved(false)
+                }}
+                className="justify-center"
+              >
+                <span>Discard</span>
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </AuthCard>
     </form>
   )
 }

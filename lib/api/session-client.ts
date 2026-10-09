@@ -66,6 +66,52 @@ export async function requestSignOut(): Promise<void> {
   }
 }
 
+/**
+ * Broadcast channel between auth mutations and the already-mounted nav.
+ * The session lives in HttpOnly cookies, so a client `fetch` login/logout
+ * never re-renders the server `NavSession` on its own — the mutating
+ * component notifies, `useSignedIn` applies it instantly, and a
+ * `router.refresh()` afterwards converges the server RSC.
+ */
+export const SESSION_CHANGED_EVENT = "aa:session-changed"
+
+export function notifySessionChanged(signedIn: boolean): void {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(
+    new CustomEvent(SESSION_CHANGED_EVENT, { detail: { signedIn } })
+  )
+}
+
+/**
+ * Client-live nav session. `initial` is the server truth from `NavSession`
+ * (fresh on full load); the event applies login/logout instantly without
+ * waiting for the RSC round-trip, and a fresh server prop re-syncs on the
+ * next navigation. No extra `/api/auth/me` fetch — the mutating call
+ * already knows the outcome, so the event carries it.
+ */
+export function useSignedIn(initial: boolean): boolean {
+  const [signedIn, setSignedIn] = React.useState(initial)
+
+  React.useEffect(() => {
+    setSignedIn(initial)
+  }, [initial])
+
+  React.useEffect(() => {
+    const onChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ signedIn?: unknown }>).detail
+      if (typeof detail?.signedIn === "boolean") {
+        setSignedIn(detail.signedIn)
+      }
+    }
+    window.addEventListener(SESSION_CHANGED_EVENT, onChange)
+    return () => {
+      window.removeEventListener(SESSION_CHANGED_EVENT, onChange)
+    }
+  }, [])
+
+  return signedIn
+}
+
 /** Checkout-grade contact: split names plus email plus phone, or nothing. */
 export interface ProfileContact {
   firstName: string

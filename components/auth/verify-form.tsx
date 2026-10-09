@@ -5,9 +5,10 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { z } from "zod"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Mail01Icon, LockIcon } from "@hugeicons/core-free-icons"
-import { Button } from "@/components/ui/button"
+import { Mail01Icon } from "@hugeicons/core-free-icons"
+import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { OtpInput } from "@/components/ui/otp-input"
 import { ApiError, apiPost, getHumanErrorMessage } from "@/lib/api/client"
 import {
   AUTH_ATTENTION_COPY,
@@ -17,6 +18,7 @@ import {
   verifyConfirmSchema,
 } from "@/lib/api/auth"
 import { AuthAlert, AuthSuccess } from "./auth-form-ui"
+import { AuthCard, AuthStepper } from "./auth-shell"
 
 type VerifyFormValues = z.input<typeof verifyConfirmSchema>
 
@@ -35,8 +37,13 @@ export function VerifyForm({ initialEmail = "" }: { initialEmail?: string }) {
   const [phase, setPhase] = React.useState<"idle" | "submitting">("idle")
   const [failure, setFailure] = React.useState<string | null>(null)
   const [verified, setVerified] = React.useState(false)
-  const [resend, setResend] = React.useState<"idle" | "sending" | "cooling">("idle")
+  const [resend, setResend] = React.useState<"idle" | "sending" | "cooling">(
+    "idle"
+  )
   const [resendMessage, setResendMessage] = React.useState<string | null>(null)
+  // Seconds left on the resend window. A bare "wait" with no number tells
+  // the user nothing about when they are allowed to act again.
+  const [cooldown, setCooldown] = React.useState(0)
   const inFlightRef = React.useRef(false)
 
   const form = useForm<VerifyFormValues>({
@@ -46,7 +53,10 @@ export function VerifyForm({ initialEmail = "" }: { initialEmail?: string }) {
     shouldFocusError: true,
   })
 
-  const handleSubmit = form.handleSubmit((values) => {
+  // Named so the OTP box's auto-submit at six digits can reuse it — an
+  // inline `handleSubmit(() => undefined)` would validate and then submit
+  // nothing at all.
+  const submitCode = (values: VerifyFormValues) => {
     if (inFlightRef.current) return
     inFlightRef.current = true
     setPhase("submitting")
@@ -66,7 +76,10 @@ export function VerifyForm({ initialEmail = "" }: { initialEmail?: string }) {
         inFlightRef.current = false
         setPhase("idle")
         if (error instanceof ApiError) {
-          const mapped = mapAuthFieldErrors(error.fieldErrors, ["email", "code"])
+          const mapped = mapAuthFieldErrors(error.fieldErrors, [
+            "email",
+            "code",
+          ])
           const serverCopy = [
             error.message,
             ...mapped.formAlert,
@@ -87,14 +100,36 @@ export function VerifyForm({ initialEmail = "" }: { initialEmail?: string }) {
           }
           setFailure(
             mapped.formAlert[0] ??
-              (mapped.fields.length > 0 ? WRONG_CODE_COPY : getHumanErrorMessage(error))
+              (mapped.fields.length > 0
+                ? WRONG_CODE_COPY
+                : getHumanErrorMessage(error))
           )
         } else {
           setFailure(getHumanErrorMessage(error))
         }
       }
     })()
-  })
+  }
+
+  const handleSubmit = form.handleSubmit(submitCode)
+
+  // Countdown decrements in the interval callback, never inside a
+  // `setCooldown` updater — updaters must stay pure, and StrictMode
+  // double-invokes them.
+  React.useEffect(() => {
+    if (resend !== "cooling") return
+    const tick = window.setInterval(() => {
+      setCooldown((seconds) => {
+        const next = Math.max(0, seconds - 1)
+        if (next === 0) {
+          window.clearInterval(tick)
+          setResend("idle")
+        }
+        return next
+      })
+    }, 1000)
+    return () => window.clearInterval(tick)
+  }, [resend])
 
   const handleResend = async () => {
     const email = form.getValues("email")
@@ -102,14 +137,18 @@ export function VerifyForm({ initialEmail = "" }: { initialEmail?: string }) {
     setResend("sending")
     setResendMessage(null)
     try {
-      await apiPost("/api/auth/verify/request", buildVerifyRequestRequest(email), {
-        sameOrigin: true,
-      })
+      await apiPost(
+        "/api/auth/verify/request",
+        buildVerifyRequestRequest(email),
+        {
+          sameOrigin: true,
+        }
+      )
       // Rate-aware resend (spec story 10): one fresh code per 30s window —
       // rapid taps cool down instead of tripping backend abuse limits.
+      setCooldown(RESEND_COOLDOWN_MS / 1000)
       setResend("cooling")
       setResendMessage("A fresh code is on its way. Check your inbox.")
-      window.setTimeout(() => setResend("idle"), RESEND_COOLDOWN_MS)
     } catch (error) {
       setResend("idle")
       setResendMessage(getHumanErrorMessage(error))
@@ -130,85 +169,106 @@ export function VerifyForm({ initialEmail = "" }: { initialEmail?: string }) {
   const busy = phase === "submitting"
 
   return (
-    <form
-      noValidate
-      onSubmit={handleSubmit}
-      aria-label="Verify your email"
-      className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6"
-    >
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base font-bold text-foreground">Check your inbox</h2>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Enter the 6-digit code from your verification email. Clicked the
-          button in the email instead? You are verified — sign in.
-        </p>
-      </div>
-
-      <Input
-        label="Email address"
-        placeholder="you@example.com"
-        type="email"
-        autoComplete="email"
-        spellCheck={false}
-        startIcon={<HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />}
-        error={form.formState.errors.email?.message}
-        {...form.register("email")}
-      />
-      <Input
-        label="6-digit code"
-        placeholder="123456"
-        type="text"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        spellCheck={false}
-        startIcon={<HugeiconsIcon icon={LockIcon} size={15} aria-hidden="true" />}
-        helperText="Paste from your email or type the digits."
-        error={form.formState.errors.code?.message}
-        {...form.register("code")}
-      />
-
-      {failure ? (
-        <AuthAlert
-          message={failure === AUTH_ATTENTION_COPY ? WRONG_CODE_COPY : failure}
-        />
-      ) : null}
-
-      <Button
-        type="submit"
-        size="lg"
-        isLoading={busy}
-        disabled={busy}
-        className="w-full justify-center"
-      >
-        <span>{busy ? "Verifying…" : "Verify email"}</span>
-      </Button>
-
-      <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          No code yet, or it expired? Request a fresh one.
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          onClick={() => void handleResend()}
-          disabled={resend !== "idle"}
-          isLoading={resend === "sending"}
-          className="w-full justify-center"
+    <form noValidate onSubmit={handleSubmit} aria-label="Verify your email">
+      <div className="flex flex-col gap-4">
+        <AuthStepper current={2} />
+        <AuthCard
+          title="Check your inbox"
+          description="Enter the 6-digit code from your verification email."
         >
-          <span>
-            {resend === "sending"
-              ? "Sending…"
-              : resend === "cooling"
-                ? "Fresh code sent — wait before resending"
-                : "Resend code"}
-          </span>
-        </Button>
-        {resendMessage ? (
-          <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
-            {resendMessage}
+          <div className="flex flex-col gap-5">
+            <Input
+              labelSize="md"
+              label="Email address"
+              placeholder="you@example.com"
+              type="email"
+              autoComplete="email"
+              spellCheck={false}
+              startIcon={
+                <HugeiconsIcon icon={Mail01Icon} size={15} aria-hidden="true" />
+              }
+              error={form.formState.errors.email?.message}
+              {...form.register("email")}
+            />
+            <OtpInput
+              label="Verification code"
+              autoFocus
+              value={form.watch("code")}
+              onValueChange={(value) => form.setValue("code", value)}
+              onComplete={() => form.handleSubmit(submitCode)}
+              helperText="Paste from your email or type the digits."
+              error={form.formState.errors.code?.message}
+            />
+
+            {failure ? (
+              <AuthAlert
+                message={
+                  failure === AUTH_ATTENTION_COPY ? WRONG_CODE_COPY : failure
+                }
+              />
+            ) : null}
+
+            <Button
+              type="submit"
+              size="lg"
+              isLoading={busy}
+              disabled={busy}
+              className="w-full justify-center"
+            >
+              <span>{busy ? "Verifying…" : "Verify email"}</span>
+            </Button>
+
+            <div className="flex flex-col gap-3 border-t border-border/60 pt-4">
+              <p className="text-[13px] leading-relaxed text-muted-foreground">
+                No code yet, or it expired? Request a fresh one.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => void handleResend()}
+                disabled={resend !== "idle"}
+                isLoading={resend === "sending"}
+                className="w-full justify-center"
+              >
+                {/*
+                  The countdown lives OUTSIDE the button: a disabled button is
+                  not reliably announced, so a screen-reader user would hear
+                  "Resend code" forever with no sign the wait is progressing.
+                */}
+                <span aria-live="polite" aria-atomic="true">
+                  {resend === "sending"
+                    ? "Sending…"
+                    : resend === "cooling"
+                      ? `Resend available in ${cooldown}s`
+                      : "Resend code"}
+                </span>
+              </Button>
+              {resendMessage ? (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="text-[13px] text-muted-foreground"
+                >
+                  {resendMessage}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </AuthCard>
+
+        {/* The backend also sends a magic link, so a user who clicked it is
+            already verified. That used to be a sentence in the description
+            telling them to sign in, with the sign-in link nowhere near it. */}
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-border/80 bg-muted/40 p-4 text-center">
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            Clicked the button in the email instead? That verifies your account
+            on its own.
           </p>
-        ) : null}
+          <ButtonLink href="/login" variant="link" size="sm">
+            <span>Sign in instead</span>
+          </ButtonLink>
+        </div>
       </div>
     </form>
   )

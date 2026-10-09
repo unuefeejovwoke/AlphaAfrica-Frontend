@@ -2,28 +2,43 @@ import * as React from "react"
 import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AlertCircleIcon, Tick01Icon } from "@hugeicons/core-free-icons"
+import { cn } from "@/lib/utils"
 
 /**
- * Shared auth form visuals (tickets 02 + 05): one form-level alert voice and
- * one terminal-success panel, so register, verify, forgot, and reset read
- * as one flow. Field errors render inline beside inputs via `Input`/`error`.
+ * The one status box every auth form uses for an outcome. `tone` picks the
+ * accent; the box, the icon slot, and the recovery link are identical either
+ * way, so success and failure are the same component rather than twins.
  */
-export function AuthAlert({
+function StatusBox({
+  tone,
+  role,
   message,
   action,
 }: {
-  message: string
+  tone: "error" | "success"
+  role: "alert" | "status"
+  message: React.ReactNode
   action?: { href: string; label: string }
 }) {
+  const error = tone === "error"
   return (
     <div
-      role="alert"
-      className="flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 p-3.5 text-xs leading-relaxed text-foreground"
+      role={role}
+      {...(role === "status" ? { "aria-live": "polite" as const } : {})}
+      className={cn(
+        "flex items-start gap-2.5 rounded-xl border p-3.5 text-sm leading-relaxed text-foreground",
+        error
+          ? "border-destructive/25 bg-destructive/5"
+          : "border-emerald-600/25 bg-emerald-600/5"
+      )}
     >
       <HugeiconsIcon
-        icon={AlertCircleIcon}
+        icon={error ? AlertCircleIcon : Tick01Icon}
         size={16}
-        className="mt-0.5 shrink-0 text-destructive"
+        className={cn(
+          "mt-0.5 shrink-0",
+          error ? "text-destructive" : "text-emerald-600"
+        )}
         aria-hidden="true"
       />
       <div className="flex min-w-0 flex-col gap-1">
@@ -39,6 +54,19 @@ export function AuthAlert({
       </div>
     </div>
   )
+}
+
+/**
+ * A failure. Assertive (`role="alert"`) — the user must hear it immediately.
+ */
+export function AuthAlert({
+  message,
+  action,
+}: {
+  message: string
+  action?: { href: string; label: string }
+}) {
+  return <StatusBox tone="error" role="alert" message={message} action={action} />
 }
 
 export function AuthSuccess({
@@ -61,7 +89,9 @@ export function AuthSuccess({
       <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
         <HugeiconsIcon icon={Tick01Icon} size={24} aria-hidden="true" />
       </span>
-      <h2 className="text-xl font-extrabold text-foreground">{heading}</h2>
+      {/* `h1`: this terminal state REPLACES the form card, and on /forgot,
+          /reset and /verify it is the document's only heading. */}
+      <h1 className="text-xl font-extrabold text-foreground">{heading}</h1>
       <p className="mx-auto max-w-md text-sm leading-relaxed text-muted-foreground">
         {body}
       </p>
@@ -73,4 +103,13 @@ export function AuthSuccess({
       </Link>
     </div>
   )
+}
+
+/**
+ * In-place confirmation for a save that leaves the form standing — profile
+ * edits and password rotation. Polite, against `AuthAlert`'s assertive: a save
+ * that succeeded should not interrupt.
+ */
+export function SavedNotice({ children }: { children: React.ReactNode }) {
+  return <StatusBox tone="success" role="status" message={children} />
 }

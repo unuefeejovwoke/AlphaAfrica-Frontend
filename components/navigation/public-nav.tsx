@@ -19,6 +19,7 @@ import { ButtonLink } from "@/components/ui/button"
 import { AccountMenu } from "@/components/navigation/account-menu"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { UnderConstructionBadge } from "@/components/shared/under-construction-badge"
+import { useSignedIn } from "@/lib/api/session-client"
 import { company } from "@/lib/content/company"
 import { SERVICE_IMAGES } from "@/lib/images"
 import {
@@ -157,6 +158,7 @@ const megaMenuCardVariants: Variants = {
 }
 
 export function PublicNav({ signedIn = false }: { signedIn?: boolean }) {
+  const signedInLive = useSignedIn(signedIn)
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const [megaMenuOpen, setMegaMenuOpen] = React.useState(false)
   const [mobileServicesOpen, setMobileServicesOpen] = React.useState(true)
@@ -297,7 +299,7 @@ export function PublicNav({ signedIn = false }: { signedIn?: boolean }) {
 
         <div className="hidden items-center gap-2 lg:flex">
           <ThemeToggle />
-          {signedIn ? (
+          {signedInLive ? (
             <AccountMenu />
           ) : (
             <Link
@@ -627,7 +629,7 @@ export function PublicNav({ signedIn = false }: { signedIn?: boolean }) {
                 </Link>
 
                 <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
-                  {signedIn ? (
+                  {signedInLive ? (
                     <AccountMenu
                       mobile
                       onNavigate={() => setMobileMenuOpen(false)}
