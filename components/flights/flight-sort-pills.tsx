@@ -1,8 +1,11 @@
 "use client"
 
+import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick01Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+import { MOTION_SPRINGS } from "@/lib/motion/springs"
+import { ActiveIndicator } from "@/components/motion/active-indicator"
 import {
   describeSortSelection,
   isSortPressed,
@@ -50,31 +53,41 @@ export function FlightSortPills({
         const pressed = isSortPressed(sort, pill.key)
         const metric = metrics[pill.metric]
         return (
-          <button
+          <motion.button
             key={pill.key}
             type="button"
             onClick={() => onChange(pill.key)}
             aria-pressed={pressed}
+            whileTap={{ scale: 0.97 }}
+            transition={MOTION_SPRINGS.tactile}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+              "relative flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
               pressed
-                ? "bg-secondary text-secondary-foreground shadow-xs"
+                ? "text-secondary-foreground"
                 : "border border-border bg-card text-foreground hover:bg-muted/60"
             )}
           >
             {pressed ? (
-              <HugeiconsIcon
-                icon={Tick01Icon}
-                size={13}
-                aria-hidden="true"
-                className="shrink-0"
+              <ActiveIndicator
+                layoutId="flight-sort-pill"
+                className="bg-secondary"
               />
             ) : null}
-            <span>{SORT_LABELS[pill.key]}</span>
-            {metric ? (
-              <span className="tabular-nums opacity-90">{metric}</span>
-            ) : null}
-          </button>
+            <span className="relative z-10 flex shrink-0 items-center gap-1.5">
+              {pressed ? (
+                <HugeiconsIcon
+                  icon={Tick01Icon}
+                  size={13}
+                  aria-hidden="true"
+                  className="shrink-0"
+                />
+              ) : null}
+              <span>{SORT_LABELS[pill.key]}</span>
+              {metric ? (
+                <span className="tabular-nums opacity-90">{metric}</span>
+              ) : null}
+            </span>
+          </motion.button>
         )
       })}
       <p aria-live="polite" className="sr-only">

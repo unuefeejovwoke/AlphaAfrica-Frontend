@@ -5,18 +5,22 @@ import { useSearchParams } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Message01Icon,
-  Tick01Icon,
   AlertCircleIcon,
   Clock01Icon,
-  PrinterIcon,
 } from "@hugeicons/core-free-icons"
 import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { CardSkeleton } from "@/components/ui/skeleton"
-import { FlightETicket } from "@/components/flights/flight-e-ticket"
+import { FlightReceiptView } from "@/components/flights/flight-receipt-view"
+import {
+  ReservationConfirmation,
+  getReservedPayErrorMessage,
+} from "@/components/flights/reservation-confirmation"
 import {
   buildFlightVerifyUrl,
   clearBookingSession,
+  fetchFlightTickets,
   flightBookingSchema,
+  payFlightBooking,
   readPaymentReference,
   resolveFlightVerificationState,
   verifyFlightBooking,
@@ -24,10 +28,7 @@ import {
 } from "@/lib/api/flight-bookings"
 import { clearFlightCheckoutSession } from "@/lib/api/flights"
 import { clearSelectedDomesticCard } from "@/lib/api/domestic"
-import {
-  extractOrderDetails,
-  type PaymentOrder,
-} from "@/lib/api/payments"
+import { extractOrderDetails, type PaymentOrder } from "@/lib/api/payments"
 import {
   emitVerificationEventOnce,
   fetchOrderWithSettleRetry,
@@ -88,9 +89,12 @@ function bookingFromOrder(
  * Paystack return handler for flight Bookings. A return from payment proves
  * nothing by itself: this client reads the Payment Reference from the return
  * URL, fetches the universal order FIRST (guide §12 — it verifies money
- * movement and creates the PNR on the spot), then the flight verify call
- * for the full Booking shape. Guests are welcome — verification needs only
- * the reference, plus the email `token` when present.
+ * movement and returns the Booking for any booking type), then the flight
+ * verify call for the full Booking shape. Guests are welcome — verification
+ * needs only the reference, plus the email `token` when present.
+ *
+ * For an international Flight Offer the PNR already existed before payment
+ * (ADR-0007), so a PNR here proves the seat was held, never that money moved.
  */
 export function FlightVerifyClient() {
   const searchParams = useSearchParams()
@@ -99,6 +103,77 @@ export function FlightVerifyClient() {
   const [savedReference] = React.useState<string | null>(readPaymentReference)
   const [state, setState] = React.useState<VerifyState>({ kind: "verifying" })
   const [attempt, setAttempt] = React.useState(0)
+  // E-ticket numbers: fetched ONCE when a Booking is confirmed, never polled.
+  // The backend emails the Customer the moment numbers appear, so a poll would
+  // burn requests to learn nothing. A failed fetch is a note, not an error —
+  // a merely-not-yet-issued ticket must never read as a failure.
+  const [tickets, setTickets] = React.useState<{
+    ticketed: boolean
+    numbers: string[]
+  } | null>(null)
+  const [ticketsFailed, setTicketsFailed] = React.useState(false)
+  const [ticketsAttempt, setTicketsAttempt] = React.useState(0)
+  const [payingReserved, setPayingReserved] = React.useState(false)
+  const [reservedPayError, setReservedPayError] = React.useState<string | null>(
+    null
+  )
+
+  const resolvedBooking = state.kind === "resolved" ? state.booking : null
+  const resolvedOrder: PaymentOrder | null =
+    state.kind === "resolved" ? state.order : null
+  const paid =
+    resolvedBooking !== null &&
+    (resolveFlightVerificationState(resolvedBooking) === "paid" ||
+      isPaidOrder(resolvedOrder))
+
+  // Ticket numbers resolve once a paid Booking exists — one read, on demand.
+  React.useEffect(() => {
+    if (
+      state.kind !== "resolved" ||
+      !paid ||
+      tickets !== null ||
+      ticketsFailed
+    )
+      return
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetchFlightTickets({
+          reference: state.booking.reference,
+          ...(guestToken ? { token: guestToken } : {}),
+        })
+        if (!cancelled)
+          setTickets({ ticketed: res.ticketed, numbers: res.ticket_numbers })
+      } catch {
+        if (!cancelled) setTicketsFailed(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [state, paid, tickets, ticketsFailed, ticketsAttempt, guestToken])
+
+  const handlePayReserved = React.useCallback(async () => {
+    if (state.kind !== "resolved" || payingReserved) return
+    setPayingReserved(true)
+    setReservedPayError(null)
+    try {
+      const result = await payFlightBooking({
+        reference: state.booking.reference,
+        ...(guestToken ? { token: guestToken } : {}),
+      })
+      if (result.kind === "checkout") {
+        window.location.replace(result.authorization_url)
+        return
+      }
+      window.location.reload()
+    } catch (error) {
+      // 403 is an invalid/expired link, never a missing session — the shared
+      // "please log in" mapper must not speak here (ADR-0007).
+      setReservedPayError(getReservedPayErrorMessage(error))
+      setPayingReserved(false)
+    }
+  }, [state, payingReserved, guestToken])
 
   React.useEffect(() => {
     if (!reference) return
@@ -350,116 +425,36 @@ export function FlightVerifyClient() {
   }
 
   const { booking, order } = state
-  const bookingStatus = booking.status.trim().toLowerCase()
-  const paid =
-    resolveFlightVerificationState(booking) === "paid" ||
-    isPaidOrder(order)
+
+  // A Reservation reads as reserved — seat held, pay-by date, payment action —
+  // never as a payment still settling. The shared ReservationConfirmation keeps
+  // this identical to the checkout confirmation.
+  if (!paid && resolveFlightVerificationState(booking) === "reserved") {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5 py-4 sm:gap-6 sm:py-8">
+        <ReservationConfirmation
+          booking={booking}
+          onPayNow={handlePayReserved}
+          paying={payingReserved}
+          payError={reservedPayError}
+        />
+      </div>
+    )
+  }
 
   if (paid) {
     return (
-      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5 py-4 sm:gap-6 sm:py-8 print:max-w-2xl print:px-0 print:py-6">
-        {/* Verification Status Header (matches official e-ticket layout) */}
-        <div className="flex flex-col items-center gap-1.5 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-0.5 text-[10px] font-black tracking-wider text-emerald-600 uppercase sm:text-[11px]">
-            <span className="size-1.5 animate-pulse rounded-full bg-emerald-500 motion-reduce:animate-none" />
-            PAYMENT VERIFIED
-          </span>
-
-          <h1 className="text-lg font-black tracking-tight text-secondary uppercase sm:text-2xl">
-            BOOKING CONFIRMED!
-          </h1>
-
-          <p className="max-w-sm px-2 text-xs leading-normal font-normal text-muted-foreground sm:max-w-md sm:text-sm">
-            Your transaction has been processed and your official travel
-            document issued below.
-          </p>
-        </div>
-
-        {/* The Official E-Ticket Card */}
-        <FlightETicket booking={booking} order={order} />
-
-        {/* Payment & Receipt Summary Strip */}
-        <div className="flex w-full flex-col gap-2 rounded-xl border border-border/80 bg-card p-3 text-xs text-muted-foreground shadow-xs sm:flex-row sm:items-center sm:justify-between sm:rounded-2xl sm:p-4 print:hidden">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-foreground">Total Paid:</span>
-            <span className="font-variant-numeric text-sm font-extrabold text-foreground tabular-nums">
-              {formatNaira(String(booking.total_amount))}{" "}
-              {booking.currency || "NGN"}
-            </span>
-            <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-              Verified
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span>Reference:</span>
-            <span className="font-mono font-bold break-all text-foreground select-all">
-              {booking.reference}
-            </span>
-          </div>
-        </div>
-
-        {/* Action Controls (Print, Book Another) */}
-        <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-center print:hidden">
-          <Button
-            type="button"
-            size="lg"
-            onClick={() => window.print()}
-            className="w-full justify-center gap-2 font-bold shadow-sm transition-all hover:shadow-md sm:flex-1"
-          >
-            <HugeiconsIcon icon={PrinterIcon} size={18} aria-hidden="true" />
-            <span>Print / Save E-Ticket (PDF)</span>
-          </Button>
-
-          <ButtonLink
-            href="/flights"
-            variant="outline"
-            size="lg"
-            className="w-full justify-center px-6 font-semibold sm:w-auto"
-          >
-            <span>Book another flight</span>
-          </ButtonLink>
-        </div>
-
-        {/* Travel Advisory & Next Steps */}
-        <div className="w-full rounded-xl border border-border/80 bg-muted/20 p-4 text-left text-xs sm:rounded-2xl sm:p-5 sm:text-sm print:hidden">
-          <p className="mb-2 text-[10px] font-black tracking-wider text-muted-foreground uppercase">
-            WHAT HAPPENS NEXT
-          </p>
-          <ol className="flex list-decimal flex-col gap-1.5 pl-4 text-xs leading-relaxed text-muted-foreground sm:pl-5">
-            <li>
-              Save or print this electronic ticket document. Keep your Booking
-              Reference{" "}
-              <span className="font-mono font-bold text-foreground">
-                {booking.reference}
-              </span>
-              {booking.pnr ? (
-                <>
-                  {" "}
-                  and PNR{" "}
-                  <span className="font-mono font-bold text-foreground">
-                    {booking.pnr}
-                  </span>
-                </>
-              ) : (
-                ""
-              )}{" "}
-              safe for airport check-in.
-            </li>
-            <li>
-              Arrive at the airport terminal at least 2 to 3 hours prior to
-              departure for international routes (1 hour for domestic flights).
-            </li>
-            <li>
-              Present your original valid passport / national ID at the airline
-              desk to collect your physical boarding passes and baggage tags.
-            </li>
-            <li>
-              If you require flight changes, additional baggage, or special
-              assistance, message our 24/7 concierge desk on WhatsApp anytime.
-            </li>
-          </ol>
-        </div>
-      </div>
+      <FlightReceiptView
+        booking={booking}
+        order={order}
+        tickets={tickets}
+        ticketsFailed={ticketsFailed}
+        onCheckTickets={() => {
+          setTickets(null)
+          setTicketsFailed(false)
+          setTicketsAttempt((n) => n + 1)
+        }}
+      />
     )
   }
 

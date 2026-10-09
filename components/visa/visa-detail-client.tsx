@@ -80,7 +80,10 @@ export function VisaMobileBar({
       document.getElementById("book-now") ||
       document.getElementById("consultation")
     if (element) {
-      element.scrollIntoView({ behavior: "smooth" })
+      const reduceMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      element.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" })
     }
   }
 
@@ -133,7 +136,10 @@ export function StartConsultationButton({
       document.getElementById(targetId) ||
       document.getElementById("consultation")
     if (element) {
-      element.scrollIntoView({ behavior: "smooth" })
+      const reduceMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      element.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" })
     }
   }
 

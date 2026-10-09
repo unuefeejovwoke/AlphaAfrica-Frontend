@@ -1,5 +1,6 @@
 "use client"
 
+import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Airplane01Icon,
@@ -9,6 +10,7 @@ import {
   Wallet01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+import { backdropFadeVariants } from "@/lib/motion/variants"
 
 export const FLIGHT_JOURNEY_STEPS = [
   { key: "search", label: "Search", icon: Search01Icon },
@@ -54,6 +56,11 @@ export function FlightJourneyHeader({
               className="flex min-w-0 flex-1 basis-0 items-start"
             >
               <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center">
+                {/* Badge state glides via CSS transition-colors; the icon
+                    cross-fades with a remount fade-in (no exit gap, so the
+                    badge never blinks empty). `current` is static per route,
+                    so a shared layoutId pill would be speculative machinery
+                    for a transition that never runs in-page. */}
                 <span
                   aria-hidden="true"
                   className={cn(
@@ -65,11 +72,19 @@ export function FlightJourneyHeader({
                         : "border-border bg-card text-muted-foreground"
                   )}
                 >
-                  {isDone ? (
-                    <HugeiconsIcon icon={Tick01Icon} size={14} />
-                  ) : (
-                    <HugeiconsIcon icon={step.icon} size={14} />
-                  )}
+                  <motion.span
+                    key={isDone ? "done" : step.key}
+                    initial="hidden"
+                    animate="visible"
+                    variants={backdropFadeVariants}
+                    className="inline-flex"
+                  >
+                    {isDone ? (
+                      <HugeiconsIcon icon={Tick01Icon} size={14} />
+                    ) : (
+                      <HugeiconsIcon icon={step.icon} size={14} />
+                    )}
+                  </motion.span>
                 </span>
                 <span
                   className={cn(

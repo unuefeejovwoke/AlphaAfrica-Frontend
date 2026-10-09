@@ -77,7 +77,7 @@ export const faqs: FaqContent = {
         draft(
           "flights-pnr",
           "When do I get my ticket or PNR?",
-          "Your airline booking reference (PNR) is created only after payment succeeds. It appears on your confirmation screen and receipt — keep it for check-in."
+          "For international flights your airline booking reference (PNR) is issued when you book, before you pay — we hold your seat with the airline. Your e-ticket is issued once payment clears. Both the PNR and your booking reference appear on your confirmation screen and receipt; keep them for check-in."
         ),
         // The ten questions below are published verbatim on alphaaafrica.com.
         verified(

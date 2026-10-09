@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { AnimatePresence, motion } from "motion/react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -29,6 +30,7 @@ import { formatNaira } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { track } from "@/lib/analytics"
 import { TrackLink } from "@/components/analytics/track-link"
+import { backdropFadeVariants, modalScaleVariants } from "@/lib/motion/variants"
 
 type ConfirmPhase = "confirming" | "changed" | "expired" | "error" | "domestic"
 
@@ -422,57 +424,96 @@ export function FareConfirmDialog({
         if (!next) onOpenChange(false)
       }}
     >
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-foreground/50 backdrop-blur-xs" />
-        <DialogPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto p-3 sm:items-center sm:p-4">
-          <DialogPrimitive.Popup
-            aria-busy={phase === "confirming"}
-            className="w-full max-w-lg overscroll-contain rounded-3xl border border-border bg-card p-5 text-foreground shadow-2xl sm:p-6"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <DialogPrimitive.Title
-                  ref={titleRef}
-                  tabIndex={-1}
-                  className="flex items-center gap-2 text-lg font-bold text-balance text-foreground focus:outline-none"
-                >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+      {/* Conditional Portal inside AnimatePresence: Base UI drops the dialog
+          the moment `open` flips, which would cut the Motion exit short —
+          holding the Portal for one exit pass lets the backdrop fade and
+          popup scale-out actually play on close. */}
+      <AnimatePresence>
+        {open && (
+          <DialogPrimitive.Portal key="fare-confirm-portal">
+            <DialogPrimitive.Backdrop
+              render={
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={backdropFadeVariants}
+                />
+              }
+              className="fixed inset-0 z-50 bg-foreground/50 backdrop-blur-xs"
+            />
+            <DialogPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto p-3 sm:items-center sm:p-4">
+              <DialogPrimitive.Popup
+                render={
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    variants={modalScaleVariants}
+                  />
+                }
+                aria-busy={phase === "confirming"}
+                className="w-full max-w-lg overscroll-contain rounded-3xl border border-border bg-card p-5 text-foreground shadow-2xl sm:p-6"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <DialogPrimitive.Title
+                      ref={titleRef}
+                      tabIndex={-1}
+                      className="flex items-center gap-2 text-lg font-bold text-balance text-foreground focus:outline-none"
+                    >
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <HugeiconsIcon
+                          icon={Airplane01Icon}
+                          size={18}
+                          aria-hidden="true"
+                        />
+                      </span>
+                      {copy.title}
+                    </DialogPrimitive.Title>
+                    {copy.description ? (
+                      <DialogPrimitive.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        {copy.description}
+                      </DialogPrimitive.Description>
+                    ) : null}
+                  </div>
+                  <DialogPrimitive.Close
+                    aria-label="Close fare confirmation"
+                    className="flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  >
                     <HugeiconsIcon
-                      icon={Airplane01Icon}
+                      icon={Cancel01Icon}
                       size={18}
                       aria-hidden="true"
                     />
-                  </span>
-                  {copy.title}
-                </DialogPrimitive.Title>
-                {copy.description ? (
-                  <DialogPrimitive.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {copy.description}
-                  </DialogPrimitive.Description>
-                ) : null}
-              </div>
-              <DialogPrimitive.Close
-                aria-label="Close fare confirmation"
-                className="flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
-                <HugeiconsIcon
-                  icon={Cancel01Icon}
-                  size={18}
-                  aria-hidden="true"
-                />
-              </DialogPrimitive.Close>
-            </div>
-            <div className="mt-4 min-w-0">
-              {fareAnnouncement ? (
-                <p role="alert" className="sr-only">
-                  {fareAnnouncement}
-                </p>
-              ) : null}
-              {body}
-            </div>
-          </DialogPrimitive.Popup>
-        </DialogPrimitive.Viewport>
-      </DialogPrimitive.Portal>
+                  </DialogPrimitive.Close>
+                </div>
+                <div className="mt-4 min-w-0">
+                  {fareAnnouncement ? (
+                    <p role="alert" className="sr-only">
+                      {fareAnnouncement}
+                    </p>
+                  ) : null}
+                  {/* Phase cross-dissolve: exit-before-enter, opacity only, so the
+                  dialog container never collapses or twitches between
+                  verifying / changed / expired / confirmed states. */}
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={phase}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      variants={backdropFadeVariants}
+                    >
+                      {body}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </DialogPrimitive.Popup>
+            </DialogPrimitive.Viewport>
+          </DialogPrimitive.Portal>
+        )}
+      </AnimatePresence>
     </DialogPrimitive.Root>
   )
 }

@@ -218,6 +218,31 @@ export function resolveBlogToc(post: BlogPostDetail): BlogTocItem[] {
   return deriveTocFromBody(post.body)
 }
 
+/**
+ * Which Table of Contents entry a reader is currently in, given each heading's
+ * offset from the top of the viewport.
+ *
+ * The active entry is the LAST heading at or above the reading line, so the
+ * highlight lags the heading by a screen of prose — which is what "you are
+ * reading this section" means. Returns null only when there is nothing to
+ * highlight (no headings, or the reader is above the first one).
+ *
+ * Offsets must be in document order and ascending. Kept here, away from the
+ * DOM, so the rule is testable without a browser.
+ */
+export function resolveActiveTocId(
+  ids: readonly string[],
+  headingTops: readonly number[],
+  readingLine: number
+): string | null {
+  let active: string | null = null
+  for (let i = 0; i < ids.length; i += 1) {
+    if (headingTops[i] === undefined || headingTops[i] > readingLine) break
+    active = ids[i]
+  }
+  return active
+}
+
 // ---------------------------------------------------------------------------
 // Display + SEO
 // ---------------------------------------------------------------------------

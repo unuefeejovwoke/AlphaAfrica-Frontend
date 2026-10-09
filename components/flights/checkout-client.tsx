@@ -12,18 +12,28 @@ import { Button, ButtonLink, buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { CheckoutTripSummary } from "@/components/flights/checkout-trip-summary"
+import { CheckoutBookingSummary } from "@/components/flights/checkout-booking-summary"
 import { TravellerDetailsForm } from "@/components/flights/traveller-details-form"
 import { TrackLink } from "@/components/analytics/track-link"
 import { getHumanErrorMessage, getPaymentSafetyCopy } from "@/lib/api/client"
 import {
   createFlightBooking,
+  clearReservationReference,
   findReusableBooking,
   hashBookingKey,
+  hashOfferKey,
+  payFlightBooking,
   readPendingBooking,
+  readReservationRecord,
+  readReservationReference,
   resolveCreatePriceReview,
+  resolveRestoredBooking,
   savePaymentReference,
   savePendingBooking,
+  saveReservationReference,
+  verifyFlightBooking,
   type CreatePriceReview,
+  type FlightBooking,
 } from "@/lib/api/flight-bookings"
 import { isDomesticSearch } from "@/lib/api/domestic"
 import {
@@ -45,6 +55,7 @@ import {
 } from "@/lib/api/flights"
 import { getSupportWhatsAppUrl } from "@/lib/content/company"
 import { track } from "@/lib/analytics"
+import { emitVerificationEventOnce } from "@/lib/api/verification"
 import { formatNaira } from "@/lib/format"
 import { notifyPaymentFailed } from "@/lib/toast"
 import {
@@ -55,14 +66,25 @@ import {
   type TravellerComposition,
   type TravellerFormValues,
 } from "@/lib/schemas/travel"
+import type { TravellerSubmitIntent } from "@/components/flights/traveller-details-form"
+
+import {
+  ReservationConfirmation,
+  getReservedPayErrorMessage,
+} from "@/components/flights/reservation-confirmation"
 
 type CheckoutPhase =
   | "idle"
   | "creating"
+  | "reserving"
   | "redirecting"
   | "review"
   | "failed"
   | "expired"
+  | "restoring"
+  | "reserved"
+  | "released"
+  | "restore_failed"
 
 interface LoadedCheckout {
   offer: FlightOffer
@@ -78,9 +100,10 @@ type CheckoutSession =
   | { kind: "expired" }
   | { kind: "ready"; data: LoadedCheckout }
 
-/** Changed fare discovered at Pending Booking creation — never redirected silently. */
+/** Changed fare discovered at Booking creation — never redirected silently. */
 interface PriceReviewState {
   review: Extract<CreatePriceReview, { status: "changed" }>
+  intent: TravellerSubmitIntent
   reference: string
   authorization_url: string
   bookingKey: string
@@ -134,13 +157,46 @@ function loadCheckoutSession(
   }
 }
 
-const emptySubscribe = () => () => {}
+/**
+ * One allowlisted analytics event per reservation — coarse counts only, never
+ * a reference, PNR, amount, or email. Keyed by reference so a refresh or a
+ * retry never double-fires. Payment initiation and completion reuse the
+ * existing flight events.
+ */
+function emitReservationEvent(
+  reference: string,
+  travellers: number,
+  isInternational: boolean
+): void {
+  emitVerificationEventOnce(
+    `${reference}::flight_reservation_created`,
+    "flight_reservation_created",
+    {
+      travellers: String(travellers),
+      is_international: isInternational ? "true" : "false",
+    }
+  )
+}
+
+/** Specific, honest copy for a hold that is gone — never a generic error. */
+function releasedCopy(booking: FlightBooking): string {
+  const status = (booking.status ?? "").trim().toLowerCase()
+  const head =
+    status === "cancelled"
+      ? "This reservation was cancelled, so the seat is no longer held."
+      : status === "failed" || status === "expired"
+        ? "This reservation could not be held, so the seat is no longer available."
+        : "Your hold has passed its pay-by date and the airline released your seat."
+  return `${head} No payment was taken. Search again for a fresh fare.`
+}
 
 /**
  * False during SSR and the first hydration render, true afterwards. Session
  * storage is client-only, so rendering it before hydration would produce a
  * server/client mismatch (vercel: rendering-hydration-no-flicker).
  */
+const emptySubscribe = () => () => {}
+
 function useHydrated(): boolean {
   return React.useSyncExternalStore(
     emptySubscribe,
@@ -156,13 +212,27 @@ export function CheckoutSkeleton() {
       role="status"
       aria-live="polite"
       aria-label="Loading checkout"
-      className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]"
+      className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_400px]"
     >
-      <div className="flex min-w-0 flex-col gap-4">
-        <Skeleton className="h-72 w-full rounded-2xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
+      <div className="flex min-w-0 flex-col gap-8">
+        {/* Step 1 Skeleton */}
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-8 w-56 rounded-lg" />
+          <Skeleton className="h-14 w-full rounded-2xl" />
+          <Skeleton className="h-72 w-full rounded-2xl" />
+        </div>
+        {/* Step 2 Skeleton */}
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-8 w-56 rounded-lg" />
+          <Skeleton className="h-16 w-full rounded-2xl" />
+          <Skeleton className="h-44 w-full rounded-2xl" />
+          <Skeleton className="h-80 w-full rounded-2xl" />
+        </div>
       </div>
-      <Skeleton className="h-72 w-full rounded-2xl" />
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-96 w-full rounded-2xl" />
+      </div>
     </div>
   )
 }
@@ -175,16 +245,23 @@ export interface CheckoutClientProps {
 /**
  * Checkout — Traveller details, Trip and price summary, and payment in one
  * step (PRD §8.3, revised flow). Fare confirmation already happened on the
- * results page, so Pay validates the form, reuses or creates the Pending
- * Booking, and hands off to Paystack without another screen.
+ * results page, so either action validates the form, reuses or creates the
+ * Booking with one identical create call, and then differs only in what
+ * happens next: pay now hands off to Paystack without another screen, while
+ * reserve keeps the Customer here on a terminal in-place confirmation of what
+ * they hold (ADR-0007).
  *
  * Money-path guarantees:
  * - The duplicate-prevention key covers the offer, travellers, and contact,
- *   so edited details never reuse a Pending Booking created for other people.
+ *   so edited details never reuse a Booking created for other people — and an
+ *   identical retry reuses one Booking rather than holding a second seat.
  * - A fare that changes during creation opens a consent panel instead of a
- *   silent Paystack redirect (when the backend returns the final amount).
+ *   silent redirect or a silent hold (when the backend returns the final
+ *   amount). Declining stores nothing, so the declined fare is never resumed.
  * - The success redirect uses `location.replace`, so Back cannot return to a
  *   checkout that has already handed off.
+ * - Session storage holds the reservation reference ONLY. Every load re-reads
+ *   the live Booking; nothing cached is trusted.
  */
 export function CheckoutClient({ urlParty }: CheckoutClientProps) {
   const hydrated = useHydrated()
@@ -197,13 +274,34 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
   const [priceReview, setPriceReview] = React.useState<PriceReviewState | null>(
     null
   )
+  const [reservation, setReservation] = React.useState<FlightBooking | null>(
+    null
+  )
+  const [releasedMessage, setReleasedMessage] = React.useState<string | null>(
+    null
+  )
+  const [payingReserved, setPayingReserved] = React.useState(false)
+  const [reservedPayError, setReservedPayError] = React.useState<string | null>(
+    null
+  )
   const [clearedDraft, setClearedDraft] = React.useState(false)
   const [submittedValues, setSubmittedValues] =
     React.useState<TravellerFormValues | null>(null)
+  // Gating for the single summary CTA: live form validity + explicit
+  // terms consent. Both must hold before pay/reserve unlock.
+  const [formValid, setFormValid] = React.useState(false)
+  const [termsAccepted, setTermsAccepted] = React.useState(false)
+  // A hold for a DIFFERENT offer than the one in checkout: shown as a banner,
+  // never auto-restored, so a stale reservation can never block a new booking.
+  const [otherReservation, setOtherReservation] = React.useState<string | null>(
+    null
+  )
   // Transient in-flight marker: refs avoid a rerender per tap while the
   // disabled button covers the visual state (vercel: rerender-use-ref-transient-values).
   const inFlightRef = React.useRef(false)
   const checkoutStartedRef = React.useRef(false)
+  const restoredRef = React.useRef(false)
+  const reserveTriggerRef = React.useRef<(() => void) | null>(null)
 
   const isReady = session?.kind === "ready"
   const data = isReady ? session.data : null
@@ -243,11 +341,72 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
     [data]
   )
 
+  /**
+   * Settle a stored reservation reference into a terminal page state: paid
+   * routes to the confirmation, released reports the honest reason, reserved
+   * renders the hold — and anything else (e.g. a still-settling `pending`) is
+   * unsettled, which retries rather than offering a payment that cannot
+   * succeed or claiming a release that never happened.
+   */
+  const settleReservation = React.useCallback(
+    async (
+      reference: string,
+      analytics?: { travellers: number; isInternational: boolean },
+      loadFailure?: string,
+      isCancelled?: () => boolean
+    ): Promise<void> => {
+      const cancelled = () => isCancelled?.() ?? false
+      let booking: FlightBooking
+      try {
+        booking = await verifyFlightBooking(reference)
+      } catch {
+        if (cancelled()) return
+        setFailure(
+          loadFailure ??
+            "We could not load your reservation just now. No payment was taken — check again in a moment."
+        )
+        setPhase("restore_failed")
+        return
+      }
+      if (cancelled()) return
+      switch (resolveRestoredBooking(booking)) {
+        case "paid":
+          window.location.replace(
+            `/order?reference=${encodeURIComponent(reference)}`
+          )
+          return
+        case "released":
+          setReleasedMessage(releasedCopy(booking))
+          setPhase("released")
+          return
+        case "reserved":
+          setReservation(booking)
+          setPhase("reserved")
+          if (analytics) {
+            emitReservationEvent(
+              reference,
+              analytics.travellers,
+              analytics.isInternational
+            )
+          }
+          return
+        case "unsettled":
+          setFailure(
+            "We checked with the airline and your hold is not confirmed yet. No payment was taken — check again in a moment rather than paying twice."
+          )
+          setPhase("restore_failed")
+          return
+      }
+    },
+    []
+  )
+
   const handlePay = React.useCallback(
-    async (payload: BookingTravellersPayload) => {
+    async (payload: BookingTravellersPayload, intent: TravellerSubmitIntent) => {
       if (!data || inFlightRef.current) return
       inFlightRef.current = true
       setFailure(null)
+      setReservedPayError(null)
       // Persist first: a failed creation plus a refresh must never lose what
       // the guest typed (the draft also prefills the form on remount).
       saveTravellersDraft(payload)
@@ -262,16 +421,28 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
       )
       const resumable = findReusableBooking(readPendingBooking(), bookingKey)
       if (resumable) {
-        handOffToPaystack({
-          reference: resumable.reference,
-          authorization_url: resumable.authorization_url,
-          bookingKey,
+        // An identical retry reuses the one Booking — never a second seat —
+        // whichever action the Customer chose this time.
+        if (intent === "pay_now") {
+          handOffToPaystack({
+            reference: resumable.reference,
+            authorization_url: resumable.authorization_url,
+            bookingKey,
+            travellers: payload.travellers.length,
+          })
+          return
+        }
+        saveReservationReference(resumable.reference, { offer: data.offer })
+        setPhase("restoring")
+        await settleReservation(resumable.reference, {
           travellers: payload.travellers.length,
+          isInternational: data.isInternational,
         })
+        inFlightRef.current = false
         return
       }
 
-      setPhase("creating")
+      setPhase(intent === "reserve" ? "reserving" : "creating")
       try {
         const result = await createFlightBooking({
           // The backend re-prices the Amadeus offer on create; send the opaque
@@ -287,11 +458,12 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           result,
         })
         if (review.status === "changed") {
-          // Nothing was charged: hold the redirect and ask for consent. The
-          // Pending Booking is stored only on acceptance, so a declined price
-          // can never be silently resumed later.
+          // Nothing was charged: hold the outcome and ask for consent. The
+          // Booking is stored only on acceptance, so a declined fare can never
+          // be silently resumed later — on either action.
           setPriceReview({
             review,
+            intent,
             reference: result.reference,
             authorization_url: result.authorization_url,
             bookingKey,
@@ -301,12 +473,35 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           inFlightRef.current = false
           return
         }
-        handOffToPaystack({
+        if (intent === "pay_now") {
+          handOffToPaystack({
+            reference: result.reference,
+            authorization_url: result.authorization_url,
+            bookingKey,
+            travellers: payload.travellers.length,
+          })
+          return
+        }
+        // Reserve: the seat is already held by the create call. Persist the
+        // attempt for duplicate prevention AND the reservation reference for
+        // refresh/Back — then read back the live Booking and stay in place.
+        savePendingBooking({
+          key: bookingKey,
           reference: result.reference,
           authorization_url: result.authorization_url,
-          bookingKey,
-          travellers: payload.travellers.length,
         })
+        savePaymentReference(result.reference)
+        saveReservationReference(result.reference, { offer: data.offer })
+        setPhase("restoring")
+        await settleReservation(
+          result.reference,
+          {
+            travellers: payload.travellers.length,
+            isInternational: data.isInternational,
+          },
+          `Your seat was reserved under reference ${result.reference}, but we could not load its details just now. No payment was taken — refresh to see your reservation.`
+        )
+        inFlightRef.current = false
       } catch (error) {
         // The airline withdrew the fare (or the QuickAir search window
         // lapsed): the dead card is dropped so it can never be resubmitted —
@@ -330,28 +525,243 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
   )
 
   const handleAcceptChangedPrice = React.useCallback(() => {
-    if (!priceReview) return
-    handOffToPaystack({
+    if (!priceReview || !data || inFlightRef.current) return
+    if (priceReview.intent === "pay_now") {
+      handOffToPaystack({
+        reference: priceReview.reference,
+        authorization_url: priceReview.authorization_url,
+        bookingKey: priceReview.bookingKey,
+        travellers: priceReview.travellers,
+      })
+      return
+    }
+    // Reserve with the new fare: same post-creation behaviour as the
+    // unchanged-fare path — persist, re-read the live Booking, stay in place.
+    inFlightRef.current = true
+    savePendingBooking({
+      key: priceReview.bookingKey,
       reference: priceReview.reference,
       authorization_url: priceReview.authorization_url,
-      bookingKey: priceReview.bookingKey,
-      travellers: priceReview.travellers,
     })
-  }, [priceReview, handOffToPaystack])
+    savePaymentReference(priceReview.reference)
+    saveReservationReference(priceReview.reference, { offer: data.offer })
+    const reference = priceReview.reference
+    const travellers = priceReview.travellers
+    const isInternational = data.isInternational
+    setPriceReview(null)
+    setPhase("restoring")
+    void settleReservation(
+      reference,
+      { travellers, isInternational },
+      `Your seat was reserved under reference ${reference}, but we could not load its details just now. No payment was taken — refresh to see your reservation.`
+    ).finally(() => {
+      inFlightRef.current = false
+    })
+  }, [priceReview, data, handOffToPaystack, settleReservation])
 
   const handleDeclineChangedPrice = React.useCallback(() => {
-    // The Pending Booking stays unstored and uncharged; a later Pay creates a
+    // The Booking stays unstored and uncharged; a later action creates a
     // fresh one, so the declined fare is never resumed silently.
     setPriceReview(null)
     setPhase("idle")
   }, [])
+
+  // Coming back to a Reservation (refresh, Back, same device): re-read the
+  // live Booking rather than trusting anything cached. Still held → the
+  // confirmation; already paid → the confirmation page; released → the honest
+  // reason with a route back to search, never a doomed payment.
+  //
+  // Scoped restore: a stored hold resumes ONLY when there is no fresh checkout
+  // session, or when the current offer is the one that made the hold. A new
+  // search with a different offer stays on the new checkout with a banner —
+  // the old hold must never hijack a new booking.
+  React.useEffect(() => {
+    if (!hydrated || restoredRef.current) return
+    restoredRef.current = true
+    const record = readReservationRecord()
+    if (!record) return
+    const fresh = loadCheckoutSession(urlParty)
+    if (fresh.kind !== "ready") {
+      setPhase("restoring")
+      let cancelled = false
+      void settleReservation(record.reference, undefined, undefined, () => cancelled)
+      return () => {
+        cancelled = true
+      }
+    }
+    // Legacy holds (no offerKey) predate scoping: with a fresh session present
+    // they are treated as a different booking — banner, never hijack — which
+    // also unblocks customers stuck by the old unconditional restore.
+    if (!record.offerKey || record.offerKey !== hashOfferKey(fresh.data.offer)) {
+      setOtherReservation(record.reference)
+      return
+    }
+    setPhase("restoring")
+    let cancelled = false
+    void settleReservation(record.reference, undefined, undefined, () => cancelled)
+    return () => {
+      cancelled = true
+    }
+  }, [hydrated, settleReservation, urlParty])
+
+  // Pay immediately anyway from the reservation confirmation. Completing ends
+  // on the same confirmation a direct payment produces (`/order`), because the
+  // Paystack return target is the order page for both routes.
+  const handlePayReserved = React.useCallback(async () => {
+    if (!reservation || payingReserved) return
+    setPayingReserved(true)
+    setReservedPayError(null)
+    try {
+      const result = await payFlightBooking({
+        reference: reservation.reference,
+      })
+      if (result.kind === "checkout") {
+        savePaymentReference(reservation.reference)
+        window.location.replace(result.authorization_url)
+        return
+      }
+      window.location.replace(
+        `/order?reference=${encodeURIComponent(reservation.reference)}`
+      )
+    } catch (error) {
+      setReservedPayError(getReservedPayErrorMessage(error))
+      setPayingReserved(false)
+    }
+  }, [reservation, payingReserved])
 
   const handleClearDraft = React.useCallback(() => {
     clearTravellersDraft()
     setClearedDraft(true)
   }, [])
 
+  const handleRetryRestore = React.useCallback(() => {
+    const reference = readReservationReference()
+    if (!reference) {
+      setPhase("idle")
+      return
+    }
+    setPhase("restoring")
+    setFailure(null)
+    void settleReservation(reference)
+  }, [settleReservation])
+
+  // Drop a stale hold and stay on the fresh checkout so a new booking can
+  // proceed. Local-only: the seat stays held until its pay-by date (no
+  // backend cancel endpoint exists), but it no longer blocks this device.
+  const handleDiscardReservation = React.useCallback(() => {
+    clearReservationReference()
+    setOtherReservation(null)
+    setReservation(null)
+    setReleasedMessage(null)
+    setFailure(null)
+    setPhase("idle")
+  }, [])
+
+  const handleViewOtherReservation = React.useCallback(() => {
+    const reference = otherReservation ?? readReservationReference()
+    if (!reference) return
+    setOtherReservation(null)
+    setPhase("restoring")
+    setFailure(null)
+    void settleReservation(reference)
+  }, [otherReservation, settleReservation])
+
   if (!hydrated || !session) return <CheckoutSkeleton />
+
+  // The Reservation confirmation is a phase of this page, not a route: the
+  // Customer stays on the checkout URL and the progress header keeps showing
+  // Checkout as the current step. It renders from the Booking and survives
+  // refresh and Back via the stored reference alone.
+  if (phase === "restoring") {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 py-8 text-center">
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-sm font-semibold text-primary"
+        >
+          Loading your reservation…
+        </p>
+        <CheckoutSkeleton />
+      </div>
+    )
+  }
+
+  if (phase === "reserved" && reservation) {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+        <ReservationConfirmation
+          booking={reservation}
+          onPayNow={handlePayReserved}
+          paying={payingReserved}
+          payError={reservedPayError}
+        />
+      </div>
+    )
+  }
+
+  if (phase === "released") {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-700">
+          <HugeiconsIcon icon={AlertCircleIcon} size={24} aria-hidden="true" />
+        </div>
+        <h2 className="text-xl font-extrabold text-foreground">
+          This seat is no longer held
+        </h2>
+        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+          {releasedMessage ??
+            "The airline released your seat, so it can no longer be paid for. No payment was taken."}
+        </p>
+        <div className="flex flex-col items-center gap-2 pt-1 sm:flex-row">
+          <ButtonLink href="/flights" onClick={handleDiscardReservation}>
+            <span>Search flights again</span>
+          </ButtonLink>
+          <TrackLink
+            event="support_click"
+            eventProps={{
+              context: "a flight reservation that expired",
+              channel: "whatsapp",
+            }}
+            href={getSupportWhatsAppUrl("a flight reservation that expired")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            <span>Talk to Alphaa</span>
+          </TrackLink>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === "restore_failed") {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 text-center shadow-xs">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+          <HugeiconsIcon icon={AlertCircleIcon} size={24} aria-hidden="true" />
+        </div>
+        <h2 className="text-xl font-extrabold text-foreground">
+          We couldn&apos;t load your reservation
+        </h2>
+        <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+          {failure ?? "No payment was taken."} {getPaymentSafetyCopy()}
+        </p>
+        <div className="flex flex-col items-center gap-2 pt-1 sm:flex-row">
+          <Button type="button" onClick={handleRetryRestore}>
+            <span>Try again</span>
+          </Button>
+          <ButtonLink
+            href="/flights"
+            variant="outline"
+            onClick={handleDiscardReservation}
+          >
+            <span>Search flights again</span>
+          </ButtonLink>
+        </div>
+      </div>
+    )
+  }
 
   if (session.kind === "expired" || phase === "expired") {
     return (
@@ -445,11 +855,67 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
     ? null
     : (submittedValues ?? session.data.initialValues)
   const submitting = phase === "creating" || phase === "redirecting"
+  const reserving = phase === "reserving"
   const showConsent = phase === "review" && priceReview !== null
 
   return (
-    <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
-      <div className="flex min-w-0 flex-col gap-5">
+    <>
+      <div className="mb-8 flex flex-col gap-1.5">
+        <h1 className="text-2xl font-black tracking-tight text-foreground sm:text-3xl lg:text-4xl">
+          Your Booking
+        </h1>
+        <p className="text-xs text-muted-foreground sm:text-sm">
+          Secure Guest Booking Checkout — Complete your traveller details below.
+          Pay now, or reserve your seat on international flights and pay later.
+        </p>
+      </div>
+      <div className="grid w-full grid-cols-1 gap-8 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_400px]">
+      <div className="flex min-w-0 flex-col gap-8">
+        {otherReservation ? (
+          <div
+            role="status"
+            className="flex items-start justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm leading-relaxed text-foreground"
+          >
+            <span className="flex min-w-0 items-start gap-2.5">
+              <HugeiconsIcon
+                icon={InformationCircleIcon}
+                size={18}
+                className="mt-0.5 shrink-0 text-amber-700"
+                aria-hidden="true"
+              />
+              <span>
+                You still hold reservation{" "}
+                <span className="font-mono font-bold break-all select-all">
+                  {otherReservation}
+                </span>{" "}
+                from an earlier search. This checkout is for your new flight —
+                nothing here touches that hold.
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleViewOtherReservation}
+              >
+                <span>View hold</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleDiscardReservation}
+              >
+                <span>Discard</span>
+              </Button>
+            </span>
+          </div>
+        ) : null}
+
+        {/* Step 1: Booking Summary */}
+        <CheckoutBookingSummary display={display} />
+
         {restoredNotice ? (
           <div
             role="status"
@@ -500,6 +966,7 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
         {showConsent && priceReview ? (
           <ChangedFarePanel
             review={priceReview.review}
+            intent={priceReview.intent}
             display={display}
             total={total}
             trip={tripContext}
@@ -523,13 +990,9 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
               isInternational={isInternational}
               initialValues={initialValues}
               onSubmit={handlePay}
-              isSubmitting={submitting}
-              submitLabel={`Pay ${total}`}
-              submittingLabel={
-                phase === "redirecting"
-                  ? "Taking you to Paystack…"
-                  : "Creating your booking…"
-              }
+              formId="traveller-checkout-form"
+              reserveTriggerRef={reserveTriggerRef}
+              onValidityChange={setFormValid}
             />
           </>
         )}
@@ -540,9 +1003,18 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
           display={display}
           party={party}
           contactName={initialValues?.customer.name ?? null}
+          formId="traveller-checkout-form"
+          isSubmitting={submitting}
+          isReserving={reserving}
+          allowReserve={isInternational}
+          onReserve={() => reserveTriggerRef.current?.()}
+          canSubmit={formValid}
+          termsAccepted={termsAccepted}
+          onTermsChange={setTermsAccepted}
         />
       </aside>
-    </div>
+      </div>
+    </>
   )
 }
 
@@ -553,6 +1025,7 @@ export function CheckoutClient({ urlParty }: CheckoutClientProps) {
  */
 function ChangedFarePanel({
   review,
+  intent,
   display,
   total,
   trip,
@@ -560,6 +1033,7 @@ function ChangedFarePanel({
   onDecline,
 }: {
   review: Extract<CreatePriceReview, { status: "changed" }>
+  intent: TravellerSubmitIntent
   display: FlightOfferDisplay
   total: string
   trip: FlightTripContext
@@ -623,7 +1097,11 @@ function ChangedFarePanel({
           className="flex-1 justify-center"
         >
           <HugeiconsIcon icon={LockIcon} size={16} aria-hidden="true" />
-          <span>Continue with {formatNaira(review.newTotal)}</span>
+          <span>
+            {intent === "reserve"
+              ? `Reserve with ${formatNaira(review.newTotal)}`
+              : `Continue with ${formatNaira(review.newTotal)}`}
+          </span>
         </Button>
         <Button
           type="button"

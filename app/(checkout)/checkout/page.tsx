@@ -52,20 +52,12 @@ export default async function CheckoutPage({
   const urlParty = parseUrlParty(params)
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <div className="mx-auto max-w-2xl">
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-2xl pb-6">
         <FlightJourneyHeader current={3} />
       </div>
-      <div className="mx-auto mt-6 flex max-w-2xl flex-col gap-4 text-center">
-        <h1 className="text-3xl font-extrabold tracking-tight text-balance text-foreground sm:text-4xl">
-          Secure Guest Booking Checkout
-        </h1>
-        <p className="text-xs text-muted-foreground">
-          Complete your booking details below — your reference is issued once
-          payment is confirmed.
-        </p>
-      </div>
-      <div className="mt-8">
+
+      <div>
         <React.Suspense fallback={<CheckoutSkeleton />}>
           <CheckoutClient urlParty={urlParty} />
         </React.Suspense>

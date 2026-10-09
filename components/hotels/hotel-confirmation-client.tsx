@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useSearchParams } from "next/navigation"
+import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
@@ -29,16 +30,14 @@ import {
   getHumanErrorMessage,
   getPaymentSafetyCopy,
 } from "@/lib/api/client"
-import {
-  extractOrderDetails,
-  type PaymentOrder,
-} from "@/lib/api/payments"
+import { extractOrderDetails, type PaymentOrder } from "@/lib/api/payments"
 import {
   emitVerificationEventOnce,
   fetchOrderWithSettleRetry,
   isPaidOrder,
 } from "@/lib/api/verification"
 import { formatNaira } from "@/lib/format"
+import { fadeInRiseVariants } from "@/lib/motion/variants"
 import { getSupportWhatsAppUrl, getWhatsAppUrl } from "@/lib/content/company"
 
 type ConfirmationState =
@@ -293,9 +292,7 @@ export function HotelConfirmationClient() {
                 context: "unresolved hotel payment",
                 channel: "whatsapp",
               }}
-              href={getSupportWhatsAppUrl(
-                `hotel stay booking ${reference}`
-              )}
+              href={getSupportWhatsAppUrl(`hotel stay booking ${reference}`)}
               target="_blank"
               rel="noopener noreferrer"
               className={cn(
@@ -326,9 +323,14 @@ export function HotelConfirmationClient() {
     const guestWord = booking.num_guests === 1 ? "guest" : "guests"
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-16 sm:px-6">
-        <div
+        {/* Clean voucher arrival: rise + settle on shared tokens, same as
+            the flight verification card. Transform + opacity only. */}
+        <motion.div
           role="status"
           aria-live="polite"
+          initial="hidden"
+          animate="visible"
+          variants={fadeInRiseVariants}
           className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 sm:p-8 dark:border-emerald-900/60 dark:bg-emerald-950/40"
         >
           <span className="flex size-11 items-center justify-center rounded-xl bg-emerald-600 text-white">
@@ -491,7 +493,7 @@ export function HotelConfirmationClient() {
             Booked as a Guest Booking — no account needed. Stay often? Talk to
             Alphaa about keeping your details on file for faster checkout.
           </p>
-        </div>
+        </motion.div>
       </div>
     )
   }

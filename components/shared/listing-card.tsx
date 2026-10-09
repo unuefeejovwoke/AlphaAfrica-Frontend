@@ -51,7 +51,7 @@ export function CardCta({ label }: { label: string }) {
 }
 
 const cardLinkClassName =
-  "group reveal relative flex flex-col rounded-3xl p-1.5 sm:p-2 bg-muted/40 border border-border/80 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+  "group reveal relative flex flex-col rounded-3xl p-1.5 sm:p-2 bg-muted/40 border border-border/80 shadow-xs transition-[transform,box-shadow,border-color] duration-300 ease-brand hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 
 /**
  * Shared crawlable card shell: image with alt + body. Keeps destination
@@ -83,7 +83,7 @@ export function ListingCardShell({
             alt={imageAlt}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-300 ease-brand group-hover:scale-[1.04]"
           />
           {badge}
           {isFeatured === true && <FeaturedBadge />}

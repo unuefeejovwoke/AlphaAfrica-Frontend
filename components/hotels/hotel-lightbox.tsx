@@ -1,13 +1,14 @@
 "use client"
 
+import * as React from "react"
 import Image from "next/image"
+import { AnimatePresence, motion } from "motion/react"
 import { Dialog } from "@base-ui/react/dialog"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
-} from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import type { HotelGalleryImage } from "@/lib/api/hotels"
+import { MOTION_DURATIONS, MOTION_EASINGS } from "@/lib/motion/tokens"
+import { modalScaleVariants } from "@/lib/motion/variants"
 
 /**
  * Full-screen photo viewer for the Hotel gallery (ticket 22).
@@ -38,10 +39,42 @@ export function HotelLightbox({
 }) {
   const count = images.length
   const active = images[index]
-  if (!active) return null
+  const showPrevious = React.useCallback(
+    () => onIndexChange((index - 1 + count) % count),
+    [count, index, onIndexChange]
+  )
+  const showNext = React.useCallback(
+    () => onIndexChange((index + 1) % count),
+    [count, index, onIndexChange]
+  )
 
-  const showPrevious = () => onIndexChange((index - 1 + count) % count)
-  const showNext = () => onIndexChange((index + 1) % count)
+  // Swipe direction for the slide transition: +1 forward, -1 back, 0 for
+  // thumbnail jumps (pure fade/scale). Wrap-aware so last ↔ first still
+  // slides the short way instead of flying across the whole strip.
+  const prevIndexRef = React.useRef(index)
+  let direction = 0
+  if (count > 1) {
+    if (index === (prevIndexRef.current + 1) % count) direction = 1
+    else if (index === (prevIndexRef.current - 1 + count) % count)
+      direction = -1
+  }
+  React.useEffect(() => {
+    prevIndexRef.current = index
+  }, [index])
+
+  // Arrow-key navigation mirrors the on-screen controls. Base UI Dialog
+  // already owns Escape and focus trapping; arrows never conflict with it.
+  React.useEffect(() => {
+    if (count < 2) return
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft") showPrevious()
+      else if (event.key === "ArrowRight") showNext()
+    }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [count, showNext, showPrevious])
+
+  if (!active) return null
 
   return (
     <Dialog.Root
@@ -51,8 +84,29 @@ export function HotelLightbox({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm" />
+        <Dialog.Backdrop
+          render={
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{
+                duration: MOTION_DURATIONS.quick,
+                ease: MOTION_EASINGS.easeOut,
+              }}
+            />
+          }
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm"
+        />
         <Dialog.Popup
+          render={
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              variants={modalScaleVariants}
+            />
+          }
           className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 p-4 focus:outline-none sm:p-8"
           aria-label={`${hotelName} photo viewer`}
         >
@@ -88,15 +142,39 @@ export function HotelLightbox({
               </button>
             ) : null}
 
-            <div className="relative aspect-[3/2] w-full overflow-hidden rounded-xl">
-              <Image
-                key={active.src}
-                src={active.src}
-                alt={active.alt}
-                fill
-                sizes="100vw"
-                className="object-contain"
-              />
+            <div className="relative aspect-[3/2] w-full touch-pan-y overflow-hidden rounded-xl">
+              {/* Centered image arrival (scale 0.97 → 1.0) plus swipeable
+                  transitions: drag handles touch, arrows/buttons handle the
+                  rest. Transform + opacity only — no layout per frame. */}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.97, x: 32 * direction }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.97, x: -32 * direction }}
+                  transition={{
+                    duration: MOTION_DURATIONS.quick,
+                    ease: MOTION_EASINGS.easeOut,
+                  }}
+                  drag={count > 1 ? "x" : false}
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.5}
+                  onDragEnd={(_event, info) => {
+                    if (info.offset.x < -80) showNext()
+                    else if (info.offset.x > 80) showPrevious()
+                  }}
+                  className="absolute inset-0 cursor-grab active:cursor-grabbing"
+                >
+                  <Image
+                    src={active.src}
+                    alt={active.alt}
+                    fill
+                    sizes="100vw"
+                    className="object-contain"
+                    draggable={false}
+                  />
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             {count > 1 ? (

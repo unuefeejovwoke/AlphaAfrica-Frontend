@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { motion } from "motion/react"
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -33,6 +34,7 @@ import { TrackLink } from "@/components/analytics/track-link"
 import { useFilteredOffers } from "@/components/flights/use-filtered-offers"
 import { FlightSidebarFilters } from "@/components/flights/flight-sidebar-filters"
 import { FlightSortPills } from "@/components/flights/flight-sort-pills"
+import { MOTION_DURATIONS } from "@/lib/motion/tokens"
 import { BestDealsAirline } from "@/components/flights/best-deals-airline"
 import { formatNaira } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -393,15 +395,18 @@ export function DomesticStreamResults({
           )}
 
           {isStreaming ? (
-            <div
+            <motion.div
               role="status"
               aria-live="polite"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: MOTION_DURATIONS.quick }}
               className="flex flex-col gap-4"
             >
               {Array.from({ length: 2 }).map((_, i) => (
                 <FlightOfferSkeleton key={`streaming-${i}`} />
               ))}
-            </div>
+            </motion.div>
           ) : null}
 
           {/* Help footer */}

@@ -136,32 +136,48 @@ export const PAYMENT_REFERENCE_SESSION_KEY =
   "alphaa:flight-payment-reference:v1"
 
 /**
- * Verify-route URL carrying the Payment Reference as a query param
- * (ticket-08 contract). Only the reference travels in the URL — never
- * tokens, passports, payment data, or passwords.
+ * Verify-route URL carrying the Payment Reference as a query param.
+ * Targets the order route — the live Paystack return target and the real
+ * confirmation surface — so a refresh of a saved reference lands on the
+ * confirmation rather than the retired flight verify route (ADR-0007).
+ * Only the reference travels in the URL — never tokens, passports, payment
+ * data, or passwords.
  */
 export function buildFlightVerifyUrl(reference: string): string {
-  return `/flights/verify?reference=${encodeURIComponent(reference)}`
+  const params = new URLSearchParams({ reference })
+  return `/order?${params.toString()}`
+}
+
+/**
+ * Pay-later URL — the shape the backend's reservation email links to
+ * (guide §9): `/flights/pay?reference=…&email=…&token=…`.
+ *
+ * Exactly three values travel: the Booking reference, the Customer's email,
+ * and the guest secure token that authorises `/pay/`. Nothing else is ever
+ * appended — no passport, date of birth, contact detail, or payment data can
+ * reach a URL, because this builder accepts nothing that could carry them.
+ */
+export function buildFlightPayUrl(input: {
+  reference: string
+  email: string
+  token: string
+}): string {
+  const params = new URLSearchParams({
+    reference: input.reference,
+    email: input.email,
+    token: input.token,
+  })
+  return `/flights/pay?${params.toString()}`
 }
 
 /** Persist the Payment Reference so refresh, back, and new tabs survive. */
 export function savePaymentReference(reference: string): void {
-  if (typeof window === "undefined") return
-  try {
-    window.sessionStorage.setItem(PAYMENT_REFERENCE_SESSION_KEY, reference)
-  } catch {
-    // sessionStorage may throw in private mode — the URL copy still works
-  }
+  saveStringKey(PAYMENT_REFERENCE_SESSION_KEY, reference)
 }
 
 /** Read back the persisted Payment Reference, or null when absent. */
 export function readPaymentReference(): string | null {
-  if (typeof window === "undefined") return null
-  try {
-    return window.sessionStorage.getItem(PAYMENT_REFERENCE_SESSION_KEY)
-  } catch {
-    return null
-  }
+  return readStringKey(PAYMENT_REFERENCE_SESSION_KEY)
 }
 
 /**
@@ -170,7 +186,245 @@ export function readPaymentReference(): string | null {
  * completed trip; the verify page keeps rendering from its fetched booking.
  */
 export function clearBookingSession(): void {
-  clearSessionKeys([PENDING_BOOKING_SESSION_KEY, PAYMENT_REFERENCE_SESSION_KEY])
+  clearSessionKeys([
+    PENDING_BOOKING_SESSION_KEY,
+    PAYMENT_REFERENCE_SESSION_KEY,
+    RESERVATION_REFERENCE_SESSION_KEY,
+  ])
+}
+
+// ---------------------------------------------------------------------------
+// Reservation persistence + deadline seams (pure — tested)
+// ---------------------------------------------------------------------------
+
+export const RESERVATION_REFERENCE_SESSION_KEY =
+  "alphaa:flight-reservation-reference:v1"
+
+/** What is persisted for a Reservation: the reference plus which offer made it. */
+export interface ReservationRecord {
+  reference: string
+  /** Digest of the reserving offer — lets checkout tell refresh from new search. */
+  offerKey: string | null
+}
+
+/**
+ * Offer-only identity for reservation scoping: a digest of the opaque offer
+ * blob, never the readable payload. Two checkouts for the same card hash
+ * identically; a new search hashes differently so it is never hijacked.
+ */
+export function hashOfferKey(offer: unknown): string {
+  return digestKey(stableStringify({ flight_offer: offer }))
+}
+
+function toReservationRecord(value: unknown): ReservationRecord | null {
+  if (typeof value === "string") {
+    const reference = value.trim()
+    return reference ? { reference, offerKey: null } : null
+  }
+  if (typeof value !== "object" || value === null) return null
+  const rec = value as Record<string, unknown>
+  const reference =
+    typeof rec.reference === "string" ? rec.reference.trim() : ""
+  if (!reference) return null
+  return {
+    reference,
+    offerKey: typeof rec.offerKey === "string" ? rec.offerKey : null,
+  }
+}
+
+/**
+ * Persist the Reservation's Booking reference so refresh and Back navigation
+ * return the Customer to their reservation rather than an empty form. The
+ * reference plus an offer digest is the ONLY thing stored — no passport, date
+ * of birth, contact detail, or payment data may ever reach the device. Every
+ * load re-reads the live Booking from the backend; nothing cached is trusted.
+ *
+ * The offer digest is what stops a stale hold from hijacking a new search:
+ * checkout restores only when the current offer matches the reserving offer.
+ * Legacy plain-string values (pre-scoping) still read back.
+ */
+export function saveReservationReference(
+  reference: string,
+  options: { offer?: unknown } = {}
+): void {
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.setItem(
+      RESERVATION_REFERENCE_SESSION_KEY,
+      JSON.stringify({
+        reference,
+        offerKey:
+          options.offer !== undefined ? hashOfferKey(options.offer) : null,
+      })
+    )
+  } catch {
+    // sessionStorage may throw in private mode — the URL copy still works
+    saveStringKey(RESERVATION_REFERENCE_SESSION_KEY, reference)
+  }
+}
+
+/** Read back the persisted Reservation record, or null when absent/corrupt. */
+export function readReservationRecord(): ReservationRecord | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.sessionStorage.getItem(
+      RESERVATION_REFERENCE_SESSION_KEY
+    )
+    if (!raw) return null
+    try {
+      return toReservationRecord(JSON.parse(raw) as unknown)
+    } catch {
+      // Legacy plain-string value from before offer scoping.
+      return toReservationRecord(raw)
+    }
+  } catch {
+    return null
+  }
+}
+
+/** Read back the persisted Reservation reference, or null when absent. */
+export function readReservationReference(): string | null {
+  return readReservationRecord()?.reference ?? null
+}
+
+/** Drop the stored Reservation so a new search starts fresh. */
+export function clearReservationReference(): void {
+  clearSessionKeys([RESERVATION_REFERENCE_SESSION_KEY])
+}
+
+/** Guarded sessionStorage string round-trip shared by the reference keys. */
+function saveStringKey(key: string, value: string): void {
+  if (typeof window === "undefined") return
+  try {
+    window.sessionStorage.setItem(key, value)
+  } catch {
+    // sessionStorage may throw in private mode — the URL copy still works
+  }
+}
+
+/** Guarded sessionStorage string read shared by the reference keys. */
+function readStringKey(key: string): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    return window.sessionStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+]
+
+/** `2026-09-05…` → `[2026, 9, 5]`. Null when absent or not a date prefix. */
+function parseDatePrefix(
+  value: string | null | undefined
+): [number, number, number] | null {
+  if (!value) return null
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!match) return null
+  return [Number(match[1]), Number(match[2]), Number(match[3])]
+}
+
+/**
+ * `2026-09-05` → `5 September 2026`. Returns the input untouched when it is
+ * not a date, null when there is nothing to render — never invented.
+ */
+export function formatTicketingDeadline(
+  value: string | null | undefined
+): string | null {
+  if (!value) return null
+  const parts = parseDatePrefix(value)
+  if (!parts) return value
+  const label = MONTH_NAMES[parts[1] - 1]
+  return label ? `${parts[2]} ${label} ${parts[0]}` : value
+}
+
+/**
+ * Plain-language urgency for a ticketing deadline — "today", "tomorrow",
+ * "in 3 days" — alongside the exact date, never as a countdown timer. A timer
+ * that runs out on a page left open overnight becomes a false urgency
+ * (ADR-0007). Null when the deadline is absent or unparseable.
+ */
+export function describeTicketingUrgency(
+  value: string | null | undefined,
+  today: Date = new Date()
+): string | null {
+  if (!value) return null
+  const parts = parseDatePrefix(value)
+  if (!parts) return null
+  const deadline = new Date(parts[0], parts[1] - 1, parts[2])
+  if (Number.isNaN(deadline.getTime())) return null
+  const startOfToday = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  )
+  const diffDays = Math.round(
+    (deadline.getTime() - startOfToday.getTime()) / 86_400_000
+  )
+  if (diffDays < 0) return "this hold has expired"
+  if (diffDays === 0) return "today"
+  if (diffDays === 1) return "tomorrow"
+  return `in ${diffDays} days`
+}
+
+/**
+ * True when a Reservation can no longer be paid: the backend reports a
+ * terminal state, or the pay-by date has passed. A released hold is never
+ * presented as payable and no payment is attempted against it.
+ *
+ * Deliberate ceiling, not an oversight (ADR-0007):
+ * # ponytail: no client-side hold release — no cancel/release endpoint exists,
+ * upgrade path is a backend DELETE/POST cancel endpoint, at which point this
+ * becomes a real release call instead of a read-only report.
+ */
+export function isReservationReleased(booking: {
+  status?: string | null
+  ticketing_deadline?: string | null
+}): boolean {
+  const status = (booking.status ?? "").trim().toLowerCase()
+  if (["cancelled", "failed", "expired"].includes(status)) return true
+  if (status !== "reserved") return false
+  const deadline = booking.ticketing_deadline
+  if (!deadline) return false
+  const parts = parseDatePrefix(deadline)
+  if (!parts) return false
+  const day = new Date(parts[0], parts[1] - 1, parts[2])
+  if (Number.isNaN(day.getTime())) return false
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return day.getTime() < startOfToday.getTime()
+}
+
+/**
+ * Classify a re-read Reservation for every surface that resumes one
+ * (checkout restore, pay-now-anyway, order history): paid routes to the
+ * confirmation, released reports the honest reason, reserved renders the
+ * hold — and anything else (e.g. a still-settling `pending`) is `unsettled`,
+ * never mistaken for a released hold or a payable one.
+ */
+export type RestoredReservation = "paid" | "reserved" | "released" | "unsettled"
+
+export function resolveRestoredBooking(booking: {
+  status?: string | null
+  ticketing_deadline?: string | null
+}): RestoredReservation {
+  if (resolveFlightVerificationState(booking) === "paid") return "paid"
+  if (isReservationReleased(booking)) return "released"
+  if (resolveFlightVerificationState(booking) === "reserved") return "reserved"
+  return "unsettled"
 }
 
 // ---------------------------------------------------------------------------
@@ -220,6 +474,17 @@ export const flightBookingCreateResultSchema = z.object({
   total_amount: z.union([z.string(), z.number()]).optional(),
   amount: z.union([z.string(), z.number()]).optional(),
   currency: z.string().optional(),
+  /**
+   * International Flight Offers are held with the airline at creation time:
+   * the seat sits with the airline and the PNR already exists before any
+   * money moves (ADR-0007). Domestic QuickAir offers are unchanged — no hold,
+   * `false`, no PNR, no deadline.
+   */
+  reserved: z.boolean(),
+  /** Airline record locator; empty string when the offer was not held. */
+  pnr: z.string(),
+  /** Last date the held seat can still be paid and ticketed; null when not held. */
+  ticketing_deadline: z.string().nullable(),
 })
 
 export type FlightBookingCreateResult = z.infer<
@@ -227,6 +492,13 @@ export type FlightBookingCreateResult = z.infer<
 >
 
 /** Either live shape: flat (apidoc) or the `{ booking, payment }` envelope. */
+/** Reservation fields the live create response carries, at either nesting level. */
+const reservationFieldsShape = {
+  reserved: z.boolean().optional(),
+  pnr: z.string().optional(),
+  ticketing_deadline: z.string().nullable().optional(),
+}
+
 const flightBookingCreateEnvelopeSchema = z
   .object({
     reference: z.string().optional(),
@@ -234,11 +506,13 @@ const flightBookingCreateEnvelopeSchema = z
     total_amount: z.union([z.string(), z.number()]).optional(),
     amount: z.union([z.string(), z.number()]).optional(),
     currency: z.string().optional(),
+    ...reservationFieldsShape,
     booking: z
       .object({
         reference: z.string().optional(),
         total_amount: z.union([z.string(), z.number()]).optional(),
         currency: z.string().optional(),
+        ...reservationFieldsShape,
       })
       .passthrough()
       .optional(),
@@ -277,11 +551,21 @@ export function normalizeFlightBookingCreateResult(
     parsed.data.total_amount ??
     parsed.data.amount
   const currency = booking?.currency ?? parsed.data.currency
+  // The reservation fields are echoed at both levels; the booking block is the
+  // one the Booking itself carries, so it wins. Anything the backend omits is
+  // reported as "not held" rather than invented (ADR-0007).
+  const reserved = booking?.reserved ?? parsed.data.reserved ?? false
+  const pnr = booking?.pnr ?? parsed.data.pnr ?? ""
+  const ticketing_deadline =
+    booking?.ticketing_deadline ?? parsed.data.ticketing_deadline ?? null
   return {
     reference,
     authorization_url,
     ...(total_amount !== undefined ? { total_amount } : null),
     ...(currency !== undefined ? { currency } : null),
+    reserved,
+    pnr,
+    ticketing_deadline,
   }
 }
 
@@ -364,18 +648,26 @@ export async function createFlightBooking(
 
 /**
  * Terminal verification outcome derived from a FlightBooking status
- * (apidoc FlightBookingStatusEnum: pending, paid, confirmed, cancelled,
- * failed). Delegates to the shared verification seam: `confirmed` means the
- * airline order exists, so it counts as paid; anything unrecognized stays
- * pending so the customer keeps checking instead of assuming failure — a
+ * (apidoc FlightBookingStatusEnum: pending, reserved, paid, confirmed,
+ * cancelled, failed). Delegates to the shared verification seam: `confirmed`
+ * means the airline order exists, so it counts as paid; anything unrecognized
+ * stays pending so the customer keeps checking instead of assuming failure — a
  * return from Paystack proves nothing by itself.
+ *
+ * `reserved` is its own outcome, never collapsed into `pending`: a
+ * Reservation is a deliberate hold the Customer chose, while `pending` is the
+ * warning copy for a payment that may not have completed. They mean opposite
+ * things and must never render the same way (ADR-0007).
  */
 export type FlightVerificationOutcome =
-  "paid" | "pending" | "failed" | "cancelled"
+  "paid" | "reserved" | "pending" | "failed" | "cancelled"
 
 export function resolveFlightVerificationState(booking: {
   status?: string | null
 }): FlightVerificationOutcome {
+  if ((booking.status ?? "").trim().toLowerCase() === "reserved") {
+    return "reserved"
+  }
   const outcome = resolveBookingOutcome("flight", booking.status)
   return outcome === "confirmed" ? "paid" : outcome
 }
@@ -386,13 +678,18 @@ export function resolveFlightVerificationState(booking: {
  * defensively. `travelers` and `flight_details` arrive as structured JSON —
  * the live API returns arrays/objects even though the apidoc types them as
  * strings — and are never rendered raw (the summary uses party counts only).
- * The PNR is present only after successful payment verification creates the
- * airline order, so renderers must show it only when non-empty.
+ * For an international Flight Offer the PNR exists from creation, before
+ * payment (ADR-0007), so PNR presence never implies payment; renderers must
+ * branch on `status`. An empty-string PNR is a real value, not a missing one.
  */
 export const flightBookingSchema = z.object({
   reference: z.string(),
   pnr: z.string().nullable().optional(),
   amadeus_order_id: z.string().optional(),
+  /** Last date a held seat can still be paid and ticketed; null when not held. */
+  ticketing_deadline: z.string().nullable().optional().default(null),
+  /** Issued e-ticket numbers; null or empty while the agency is still ticketing. */
+  ticket_numbers: z.array(z.string()).nullable().optional().default(null),
   contact_name: z.string().optional().default(""),
   origin: z.string().optional().default(""),
   destination: z.string().optional().default(""),
@@ -423,4 +720,191 @@ export async function verifyFlightBooking(
     { ...VERIFICATION_REQUEST }
   )
   return flightBookingSchema.parse(raw)
+}
+
+// ---------------------------------------------------------------------------
+// Pay-later seam — `POST /api/flights/bookings/{reference}/pay/`
+//
+// THE CRASH-PREVENTION BOUNDARY OF THE FEATURE. Verified against the live API:
+// an already-paid Booking answers HTTP **200** with a human-readable `detail`
+// and the full Booking, and NO `authorization_url` — not the 409 the
+// integration guide documents. Because the status is 200 the request succeeds
+// and `response.ok` is true, so a client reading `authorization_url`
+// unconditionally gets `undefined` and redirects to it. A Customer reaches
+// that path simply by opening an old payment link twice.
+//
+// So the result is a discriminated union with three outcomes, not a bare URL:
+//   - `checkout`    — there is a Paystack checkout to redirect to
+//   - `already_paid`— terminal; carries the Booking to render, never to charge
+//   - `null`        — neither; explicitly NOT a redirect target
+//
+// The branches are unambiguous by construction: a checkout response always
+// carries a link, an already-paid response never does. A backend change that
+// returns 409 for already-paid would remove the terminal branch; until then it
+// stays and stays tested. See ADR-0007.
+// ---------------------------------------------------------------------------
+
+/** Either shape `pay/` answers with: flat, or the `{ booking, payment }` envelope. */
+const flightPayEnvelopeSchema = z
+  .object({
+    detail: z.string().optional(),
+    reference: z.string().optional(),
+    authorization_url: z.string().optional(),
+    ticketing_deadline: z.string().nullable().optional(),
+    booking: z.unknown().optional(),
+    payment: z
+      .object({ authorization_url: z.string().optional() })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough()
+
+export type FlightPayResult =
+  | {
+      kind: "checkout"
+      authorization_url: string
+      reference: string
+      ticketing_deadline: string | null
+      /** The Reservation being paid for, when the response carries it. */
+      booking: FlightBooking | null
+    }
+  | {
+      /** Terminal: the Booking is paid. Render it; never charge it again. */
+      kind: "already_paid"
+      /** The backend's own words — the honest source of the customer's copy. */
+      message: string
+      booking: FlightBooking
+    }
+
+/**
+ * Classify a `/pay/` response into a checkout to redirect to, a terminal
+ * already-paid Booking, or neither. Returns null rather than a partial result
+ * so a caller can never read a missing `authorization_url` and redirect to it.
+ */
+export function normalizeFlightPayResult(
+  raw: unknown
+): FlightPayResult | null {
+  const parsed = flightPayEnvelopeSchema.safeParse(raw)
+  if (!parsed.success) return null
+  const { detail, reference, ticketing_deadline, booking } = parsed.data
+
+  // Branch 1 — a checkout link is present, at either nesting level. Repeated
+  // calls return the SAME link by design (one checkout is re-served, not
+  // re-minted), so this is safe to redirect to any number of times.
+  const authorization_url =
+    parsed.data.authorization_url ?? parsed.data.payment?.authorization_url
+  if (authorization_url) {
+    const checkoutBooking =
+      typeof booking === "object" && booking !== null
+        ? flightBookingSchema.safeParse({
+            ...booking,
+            reference:
+              (booking as Record<string, unknown>).reference ?? reference ?? "",
+          })
+        : null
+    return {
+      kind: "checkout",
+      authorization_url,
+      reference: reference ?? "",
+      ticketing_deadline: ticketing_deadline ?? null,
+      booking:
+        checkoutBooking && checkoutBooking.success
+          ? checkoutBooking.data
+          : null,
+    }
+  }
+
+  // Branch 2 — no link, so this is not payable. Only report the terminal
+  // already-paid state when a message names it AND we know which Booking.
+  const bookingReference =
+    reference ??
+    (typeof booking === "object" && booking !== null
+      ? ((booking as Record<string, unknown>).reference as
+          | string
+          | undefined)
+      : undefined)
+  if (!detail || !bookingReference) return null
+  const safeBooking = flightBookingSchema.safeParse({
+    ...(typeof booking === "object" && booking !== null ? booking : {}),
+    reference: bookingReference,
+  })
+  if (!safeBooking.success) return null
+  return {
+    kind: "already_paid",
+    message: detail,
+    booking: safeBooking.data,
+  }
+}
+
+export interface PayFlightBookingInput {
+  reference: string
+  /** Guest secure token from the reservation email; omitted when signed in. */
+  token?: string
+}
+
+/**
+ * Open payment for a Reservation (guide §9). The guest token travels in the
+ * request body AND as a query parameter — the API documents both and accepts
+ * either. Never cached: this decides whether money can move right now.
+ *
+ * Throws `ApiError` on a non-OK status (a 403 means an invalid or expired
+ * secure link — callers give that its own copy rather than the shared
+ * "please log in" message, which is wrong for a Guest holding a valid
+ * Booking).
+ */
+export async function payFlightBooking(
+  input: PayFlightBookingInput
+): Promise<FlightPayResult> {
+  const raw = await apiPost<unknown, Record<string, unknown>>(
+    `/api/flights/bookings/${encodeURIComponent(input.reference)}/pay/`,
+    input.token ? { token: input.token } : {},
+    { sameOrigin: true, ...(input.token ? { query: { token: input.token } } : {}) }
+  )
+  const result = normalizeFlightPayResult(raw)
+  if (!result) {
+    // Neither branch: the reservation is not payable and the backend said
+    // nothing actionable. Never redirect on this.
+    throw new ApiError(
+      "We could not open payment for this reservation. No payment was taken — open your reservation link again, or contact Alphaa.",
+      { status: 200, code: "server" }
+    )
+  }
+  return result
+}
+
+/**
+ * E-ticket numbers for a Booking (guide §9). A confirmed Booking whose
+ * ticket the agency has not yet issued answers `{ticketed: false,
+ * ticket_numbers: []}` — that is "still being processed", NOT a failure, and
+ * must never be rendered as an error.
+ */
+export const flightTicketResponseSchema = z.object({
+  reference: z.string().optional(),
+  pnr: z.string().nullable().optional(),
+  ticketed: z.boolean(),
+  ticket_numbers: z.array(z.string()),
+  booking: flightBookingSchema.optional(),
+})
+
+export type FlightTicketResponse = z.infer<typeof flightTicketResponseSchema>
+
+/**
+ * Fetch e-ticket numbers once, on demand — never polled. The backend emails
+ * the Customer the moment numbers first appear, so a continuous poll would
+ * burn requests to learn nothing. A malformed response throws rather than
+ * reporting "not yet issued", so a genuine failure is never confused with a
+ * ticket that is merely still being processed.
+ */
+export async function fetchFlightTickets(input: {
+  reference: string
+  token?: string
+}): Promise<FlightTicketResponse> {
+  const raw = await apiGet<unknown>(
+    `/api/flights/bookings/${encodeURIComponent(input.reference)}/tickets/`,
+    {
+      ...VERIFICATION_REQUEST,
+      ...(input.token ? { query: { token: input.token } } : {}),
+    }
+  )
+  return flightTicketResponseSchema.parse(raw)
 }

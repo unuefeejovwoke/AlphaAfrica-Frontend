@@ -28,7 +28,25 @@ test("Checkout shares the public shell so the interface never switches mid-booki
     "components/navigation/site-shell.tsx must exist"
   )
   const shell = fs.readFileSync(shellPath, "utf-8")
-  assert.match(shell, /PublicNav/, "Shell must render the public navigation")
+  assert.match(
+    shell,
+    /NavSession/,
+    "Shell must render the session-aware navigation slot"
+  );
+  const slotPath = path.resolve(
+    process.cwd(),
+    "components/navigation/nav-session.tsx"
+  );
+  assert.ok(
+    fs.existsSync(slotPath),
+    "components/navigation/nav-session.tsx must exist"
+  );
+  const slot = fs.readFileSync(slotPath, "utf-8")
+  assert.match(
+    slot,
+    /PublicNav/,
+    "The nav slot must render the public navigation"
+  );
   assert.match(shell, /PublicFooter/, "Shell must render the public footer")
   assert.match(
     shell,
@@ -57,6 +75,9 @@ test("Retired payment route redirects to the one-page checkout", () => {
 })
 
 test("Checkout page presents a secure Guest Booking without marketing egress", () => {
+  // The heading lives in the checkout client (not the page shell) so the
+  // reserved / expired / missing states render their own titles instead of
+  // the traveller-details copy.
   const pagePath = path.resolve(
     process.cwd(),
     "app/(checkout)/checkout/page.tsx"
@@ -65,7 +86,15 @@ test("Checkout page presents a secure Guest Booking without marketing egress", (
     fs.existsSync(pagePath),
     "app/(checkout)/checkout/page.tsx must exist"
   )
-  const content = fs.readFileSync(pagePath, "utf-8")
+  const clientPath = path.resolve(
+    process.cwd(),
+    "components/flights/checkout-client.tsx"
+  )
+  assert.ok(
+    fs.existsSync(clientPath),
+    "components/flights/checkout-client.tsx must exist"
+  )
+  const content = fs.readFileSync(clientPath, "utf-8")
 
   assert.match(
     content,
@@ -79,13 +108,13 @@ test("Checkout page presents a secure Guest Booking without marketing egress", (
   )
   assert.match(
     content,
-    /reference is issued/i,
-    "Must explain when the booking reference is issued"
+    /pay now/i,
+    "Must present immediate payment as the default action"
   )
   assert.match(
     content,
-    /payment is confirmed/i,
-    "Must tie the reference to confirmed payment"
+    /reserve/i,
+    "Must present the reserve-and-pay-later choice for international flights"
   )
 })
 

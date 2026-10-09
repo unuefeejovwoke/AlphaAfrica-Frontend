@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { AnimatePresence, motion } from "motion/react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -17,6 +18,8 @@ import {
   type GalleryPhoto,
 } from "@/lib/listings"
 import { cn } from "@/lib/utils"
+import { MOTION_DURATIONS, MOTION_EASINGS } from "@/lib/motion/tokens"
+import { backdropFadeVariants, modalScaleVariants } from "@/lib/motion/variants"
 
 export interface PackageLightboxProps {
   title: string
@@ -73,109 +76,162 @@ export function PackageLightbox({
         if (!nextOpen) onOpenChange(false)
       }}
     >
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/80" />
-        <DialogPrimitive.Popup
-          finalFocus={returnRef}
-          aria-label={`${title} image gallery`}
-          className="fixed inset-0 z-50 flex flex-col justify-between bg-black/95 text-white focus:outline-none"
-        >
-          {/* Top Bar */}
-          <div className="z-20 flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-8">
-            <div
-              className="flex min-w-0 items-center gap-3"
-              aria-live="polite"
+      {/* Conditional Portal inside AnimatePresence: Base UI drops the dialog
+          the moment `open` flips, which would cut the Motion exit short —
+          holding the Portal for one exit pass lets the backdrop fade and
+          popup scale-out actually play on close (same pattern as the fare
+          confirm dialog). */}
+      <AnimatePresence>
+        {open && (
+          <DialogPrimitive.Portal key="package-lightbox-portal">
+            <DialogPrimitive.Backdrop
+              render={
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={backdropFadeVariants}
+                />
+              }
+              className="fixed inset-0 z-50 bg-black/80"
+            />
+            <DialogPrimitive.Popup
+              render={
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={modalScaleVariants}
+                />
+              }
+              finalFocus={returnRef}
+              aria-label={`${title} image gallery`}
+              className="fixed inset-0 z-50 flex flex-col justify-between bg-black/95 text-white focus:outline-none"
             >
-              <span className="shrink-0 text-xs font-medium text-white/70">
-                {index + 1} of {count}
-              </span>
-              <span aria-hidden="true" className="text-white/30">
-                ·
-              </span>
-              <DialogPrimitive.Title className="max-w-[200px] truncate text-xs font-medium text-white sm:max-w-md">
-                {active
-                  ? describeGalleryPhoto(title, active.caption, index, count)
-                  : title}
-              </DialogPrimitive.Title>
-            </div>
-            <DialogPrimitive.Close
-              aria-label="Close photo gallery"
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} size={18} aria-hidden="true" />
-            </DialogPrimitive.Close>
-          </div>
-
-          {/* Main Photo Area */}
-          {active ? (
-            <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 sm:p-8">
-              <img
-                key={active.image}
-                src={resolveListingImageUrl(active.image)}
-                alt={describeGalleryPhoto(title, active.caption, index, count)}
-                className="max-h-[70vh] w-auto max-w-full rounded-xl object-contain shadow-2xl sm:max-h-[78vh]"
-              />
-
-              {count > 1 ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={prev}
-                    aria-label="Previous photo"
-                    className="absolute top-1/2 left-4 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-xl backdrop-blur-md transition-all hover:bg-white hover:text-black focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
-                  >
-                    <HugeiconsIcon
-                      icon={ArrowLeft01Icon}
-                      size={20}
-                      aria-hidden="true"
-                    />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={next}
-                    aria-label="Next photo"
-                    className="absolute top-1/2 right-4 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-xl backdrop-blur-md transition-all hover:bg-white hover:text-black focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
-                  >
-                    <HugeiconsIcon
-                      icon={ArrowRight01Icon}
-                      size={20}
-                      aria-hidden="true"
-                    />
-                  </button>
-                </>
-              ) : null}
-            </div>
-          ) : null}
-
-          {/* Thumbnail Strip */}
-          {count > 1 ? (
-            <div className="z-20 flex items-center justify-center gap-2 overflow-x-auto border-t border-white/10 px-4 py-4">
-              {photos.map((photo, i) => (
-                <button
-                  key={photo.id}
-                  type="button"
-                  onClick={() => onIndexChange(i)}
-                  aria-label={`Go to photo ${i + 1}`}
-                  aria-current={i === index ? true : undefined}
-                  className={cn(
-                    "relative size-14 shrink-0 overflow-hidden rounded-lg border-2 opacity-60 transition-all hover:opacity-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none",
-                    i === index
-                      ? "scale-105 border-white opacity-100"
-                      : "border-transparent"
-                  )}
+              {/* Top Bar */}
+              <div className="z-20 flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-8">
+                <div
+                  className="flex min-w-0 items-center gap-3"
+                  aria-live="polite"
                 >
-                  <img
-                    src={resolveListingImageUrl(photo.image)}
-                    alt=""
-                    loading="lazy"
-                    className="h-full w-full object-cover"
+                  <span className="shrink-0 text-xs font-medium text-white/70">
+                    {index + 1} of {count}
+                  </span>
+                  <span aria-hidden="true" className="text-white/30">
+                    ·
+                  </span>
+                  <DialogPrimitive.Title className="max-w-[200px] truncate text-xs font-medium text-white sm:max-w-md">
+                    {active
+                      ? describeGalleryPhoto(
+                          title,
+                          active.caption,
+                          index,
+                          count
+                        )
+                      : title}
+                  </DialogPrimitive.Title>
+                </div>
+                <DialogPrimitive.Close
+                  aria-label="Close photo gallery"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                >
+                  <HugeiconsIcon
+                    icon={Cancel01Icon}
+                    size={18}
+                    aria-hidden="true"
                   />
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </DialogPrimitive.Popup>
-      </DialogPrimitive.Portal>
+                </DialogPrimitive.Close>
+              </div>
+
+              {/* Main Photo Area */}
+              {active ? (
+                <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 sm:p-8">
+                  {/* Centered photo arrival (fade + scale 0.97 → 1.0) with a
+                  sequential fade between photos. Transform + opacity
+                  only — no layout per frame. */}
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.img
+                      key={active.image}
+                      src={resolveListingImageUrl(active.image)}
+                      alt={describeGalleryPhoto(
+                        title,
+                        active.caption,
+                        index,
+                        count
+                      )}
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.97 }}
+                      transition={{
+                        duration: MOTION_DURATIONS.quick,
+                        ease: MOTION_EASINGS.easeOut,
+                      }}
+                      className="max-h-[70vh] w-auto max-w-full rounded-xl object-contain shadow-2xl sm:max-h-[78vh]"
+                    />
+                  </AnimatePresence>
+
+                  {count > 1 ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={prev}
+                        aria-label="Previous photo"
+                        className="absolute top-1/2 left-4 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-xl backdrop-blur-md transition-all hover:bg-white hover:text-black focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                      >
+                        <HugeiconsIcon
+                          icon={ArrowLeft01Icon}
+                          size={20}
+                          aria-hidden="true"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={next}
+                        aria-label="Next photo"
+                        className="absolute top-1/2 right-4 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-xl backdrop-blur-md transition-all hover:bg-white hover:text-black focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                      >
+                        <HugeiconsIcon
+                          icon={ArrowRight01Icon}
+                          size={20}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Thumbnail Strip */}
+              {count > 1 ? (
+                <div className="z-20 flex items-center justify-center gap-2 overflow-x-auto border-t border-white/10 px-4 py-4">
+                  {photos.map((photo, i) => (
+                    <button
+                      key={photo.id}
+                      type="button"
+                      onClick={() => onIndexChange(i)}
+                      aria-label={`Go to photo ${i + 1}`}
+                      aria-current={i === index ? true : undefined}
+                      className={cn(
+                        "relative size-14 shrink-0 overflow-hidden rounded-lg border-2 opacity-60 transition-all hover:opacity-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none",
+                        i === index
+                          ? "scale-105 border-white opacity-100"
+                          : "border-transparent"
+                      )}
+                    >
+                      <img
+                        src={resolveListingImageUrl(photo.image)}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </DialogPrimitive.Popup>
+          </DialogPrimitive.Portal>
+        )}
+      </AnimatePresence>
     </DialogPrimitive.Root>
   )
 }

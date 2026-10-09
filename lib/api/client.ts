@@ -382,6 +382,31 @@ export async function apiPost<
   TResponse,
   TBody extends Record<string, unknown> | unknown,
 >(path: string, body: TBody, options: ApiPostOptions = {}): Promise<TResponse> {
+  return mutateWithMethod<TResponse, TBody>("POST", path, body, options)
+}
+
+/**
+ * Client-side PATCH for partial updates (profile). Never cached:
+ * always `cache: "no-store"`. Same deadline, error, and empty-body
+ * contract as {@link apiPost} — one method string differs.
+ */
+export async function apiPatch<
+  TResponse,
+  TBody extends Record<string, unknown> | unknown,
+>(path: string, body: TBody, options: ApiPostOptions = {}): Promise<TResponse> {
+  return mutateWithMethod<TResponse, TBody>("PATCH", path, body, options)
+}
+
+/** One JSON-mutation core behind POST and PATCH — same deadlines, errors. */
+async function mutateWithMethod<
+  TResponse,
+  TBody extends Record<string, unknown> | unknown,
+>(
+  method: "POST" | "PATCH",
+  path: string,
+  body: TBody,
+  options: ApiPostOptions = {}
+): Promise<TResponse> {
   const url = buildRequestUrl(path, options.query, options.sameOrigin)
   const deadline = createDeadline(
     options.signal,
@@ -390,7 +415,7 @@ export async function apiPost<
   let response: Response
   try {
     response = await fetch(url, {
-      method: "POST",
+      method,
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",

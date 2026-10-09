@@ -1,7 +1,8 @@
 import * as React from "react"
-import { PublicNav } from "@/components/navigation/public-nav"
+import { NavSession } from "@/components/navigation/nav-session"
 import { PublicFooter } from "@/components/navigation/public-footer"
 import { AssistedSupportWidget } from "@/components/support/assisted-support-widget"
+import { PageTransition } from "@/components/motion/page-transition"
 
 /**
  * Shared public shell: full navigation, floating support entry, and marketing
@@ -21,10 +22,10 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         Skip to main content
       </a>
       <div className="print:hidden">
-        <PublicNav />
+        <NavSession />
       </div>
       <main id="main-content" className="flex-1 print:m-0 print:p-0">
-        {children}
+        <PageTransition>{children}</PageTransition>
       </main>
       <div className="print:hidden">
         <AssistedSupportWidget />

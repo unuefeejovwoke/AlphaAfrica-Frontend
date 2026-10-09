@@ -33,7 +33,7 @@ export function TerminalCta({
     <section
       aria-labelledby="terminal-cta-heading"
       className={cn(
-        "group reveal relative w-full overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.25)]",
+        "group relative w-full reveal overflow-hidden rounded-[2rem] border border-white/10 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.25)]",
         className
       )}
     >
@@ -45,7 +45,7 @@ export function TerminalCta({
             alt=""
             fill
             sizes="(max-width: 768px) 100vw, 1280px"
-            className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+            className="object-cover object-center transition-transform duration-[600ms] ease-brand group-hover:scale-[1.02]"
             priority={false}
           />
           {/* Brand Plum Scrim: --color-brand-plum (#571563) to deep black */}

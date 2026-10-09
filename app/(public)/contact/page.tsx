@@ -90,7 +90,7 @@ export default function ContactPage() {
                   href={channel.href}
                   target={isWhatsApp ? "_blank" : undefined}
                   rel={isWhatsApp ? "noopener noreferrer" : undefined}
-                  className="group relative rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:border-foreground/20 hover:shadow-md sm:p-2"
+                  className="group relative rounded-3xl border border-border/80 bg-muted/40 p-1.5 shadow-xs transition-all duration-300 ease-brand hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md sm:p-2"
                 >
                   <div className="flex h-full flex-col justify-between rounded-[calc(1.5rem-2px)] border border-black/[0.04] bg-card p-6 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-7">
                     <div className="flex flex-col gap-5">

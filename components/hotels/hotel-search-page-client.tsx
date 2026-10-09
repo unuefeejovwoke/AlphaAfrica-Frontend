@@ -180,8 +180,11 @@ export function HotelSearchPageClient({
       if (pendingScrollRef.current) {
         pendingScrollRef.current = false
         requestAnimationFrame(() => {
+          const reduceMotion =
+            typeof window !== "undefined" &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches
           resultsHeadingRef.current?.scrollIntoView({
-            behavior: "smooth",
+            behavior: reduceMotion ? "auto" : "smooth",
             block: "start",
           })
           resultsHeadingRef.current?.focus({ preventScroll: true })
@@ -344,7 +347,10 @@ export function HotelSearchPageClient({
 
   const handleReviewSearch = React.useCallback(() => {
     const form = document.getElementById("hotel-search-form")
-    form?.scrollIntoView({ behavior: "smooth", block: "start" })
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    form?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" })
     form?.querySelector<HTMLInputElement>("input")?.focus()
   }, [])
 

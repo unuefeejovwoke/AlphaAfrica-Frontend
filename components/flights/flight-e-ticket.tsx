@@ -4,7 +4,6 @@ import * as React from "react"
 import Image from "next/image"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Airplane01Icon,
   Calendar01Icon,
   Clock01Icon,
   Tick01Icon,
@@ -307,6 +306,8 @@ export function parseBookingForETicket(booking: FlightBooking) {
     return null
   })()
   const ticketDeadline =
+    (typeof booking.ticketing_deadline === "string" &&
+      booking.ticketing_deadline.trim()) ||
     (typeof rawDetails.last_ticketing_date === "string" &&
       rawDetails.last_ticketing_date.trim()) ||
     (typeof rawDetails.lastTicketingDate === "string" &&
@@ -348,6 +349,14 @@ export function parseBookingForETicket(booking: FlightBooking) {
   const reference = booking.reference.trim()
   const securityReference =
     reference.replace(/^[A-Z]+-?/, "").slice(0, 10) || reference.slice(-8)
+  // Issued e-ticket numbers ride on the Booking itself (and on the tickets
+  // endpoint). Null or empty means the agency is still ticketing — a state,
+  // never a failure.
+  const ticketNumbers = Array.isArray(booking.ticket_numbers)
+    ? booking.ticket_numbers.filter(
+        (n): n is string => typeof n === "string" && n.trim().length > 0
+      )
+    : null
 
   return {
     primaryPassenger,
@@ -372,6 +381,7 @@ export function parseBookingForETicket(booking: FlightBooking) {
     amadeusOrderId,
     seatsAvailable,
     ticketDeadline,
+    ticketNumbers,
     reference,
     securityReference,
     amountFormatted: formatNaira(String(booking.total_amount)),
@@ -393,6 +403,14 @@ export function FlightETicket({
   className,
 }: FlightETicketProps) {
   const data = React.useMemo(() => parseBookingForETicket(booking), [booking])
+  // The status footer and badge branch on Booking status, NEVER on PNR
+  // presence. A PNR exists from creation on international offers (ADR-0007),
+  // so PNR presence no longer implies payment — branching on it would print
+  // "CONFIRMED & ISSUED" on a Booking nobody has paid for.
+  const status = (booking.status ?? "").trim().toLowerCase()
+  const isReserved = status === "reserved"
+  const isPaid = ["paid", "confirmed"].includes(status)
+  const isTicketed = isPaid && (data.ticketNumbers?.length ?? 0) > 0
 
   return (
     <div
@@ -406,7 +424,7 @@ export function FlightETicket({
       <div className="flex items-start justify-between gap-2.5 sm:gap-4">
         {/* Left: Brand Monogram + Tagline */}
         <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/30 p-1 sm:size-10">
+          <div className="flex size-9 shrink-0 items-center justify-center sm:size-10">
             <Image
               src="/android-chrome-192x192.png"
               alt="Alphaa Africa"
@@ -442,7 +460,7 @@ export function FlightETicket({
         {/* Left Cutout Notch (bites into the card from the page background) */}
         <div
           aria-hidden="true"
-          className="-ml-3 size-6 rounded-full border-y border-r border-border/80 bg-[#FAF9F7] shadow-[inset_-2px_0_3px_rgba(0,0,0,0.04)] sm:-ml-3.5 sm:size-7 md:-ml-4 md:size-8"
+          className="-ml-3 size-6 rounded-full border-y border-r border-border/80 bg-background shadow-[inset_-2px_0_3px_rgba(0,0,0,0.04)] sm:-ml-3.5 sm:size-7 md:-ml-4 md:size-8"
         />
 
         {/* Dashed Line */}
@@ -451,35 +469,42 @@ export function FlightETicket({
         {/* Right Cutout Notch */}
         <div
           aria-hidden="true"
-          className="-mr-3 size-6 rounded-full border-y border-l border-border/80 bg-[#FAF9F7] shadow-[inset_2px_0_3px_rgba(0,0,0,0.04)] sm:-mr-3.5 sm:size-7 md:-mr-4 md:size-8"
+          className="-mr-3 size-6 rounded-full border-y border-l border-border/80 bg-background shadow-[inset_2px_0_3px_rgba(0,0,0,0.04)] sm:-mr-3.5 sm:size-7 md:-mr-4 md:size-8"
         />
       </div>
 
       {/* Carrier & Flight Header Row */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col">
           <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase sm:text-[10px]">
             CARRIER &amp; FLIGHT
           </span>
-          <div className="mt-0.5 flex items-center gap-1.5 sm:gap-2">
+          <div className="mt-1 flex items-center gap-2">
             <AirlineLogo
               airline={data.airlineName}
               carrierCode={data.carrierCode || undefined}
               size="sm"
             />
-            <span className="text-base font-black tracking-tight text-primary sm:text-lg md:text-xl">
-              {data.carrierCode && data.flightNumber
-                ? `${data.carrierCode} · ${data.flightNumber}`
-                : data.airlineName}
-            </span>
+            <div className="flex min-w-0 flex-col">
+              {/* The flight number already carries its carrier code — showing
+                  "EK · EK783" printed the code twice. */}
+              <span className="truncate text-base font-black tracking-tight text-foreground sm:text-lg md:text-xl">
+                {data.flightNumber || data.airlineName}
+              </span>
+              {data.flightNumber ? (
+                <span className="truncate text-[10px] font-bold tracking-wide text-muted-foreground uppercase sm:text-[11px]">
+                  {data.airlineName}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col items-end text-right">
+        <div className="flex shrink-0 flex-col items-end text-right">
           <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase sm:text-[10px]">
             CABIN / CLASS
           </span>
-          <span className="mt-0.5 text-xs font-extrabold tracking-wide text-foreground uppercase sm:text-sm md:text-base">
+          <span className="mt-1 text-xs font-extrabold tracking-wide text-foreground uppercase sm:text-sm md:text-base">
             {data.cabin}
           </span>
         </div>
@@ -520,21 +545,22 @@ export function FlightETicket({
             </div>
           </div>
 
-          {/* Center Flight Path */}
+          {/* Center Flight Path — duration above, stops below */}
           <div className="flex flex-col items-center justify-center px-1">
-            <span className="mb-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-extrabold tracking-wider whitespace-nowrap text-amber-700 uppercase sm:mb-2 sm:px-2.5 sm:py-1 sm:text-[10px] md:text-[11px]">
-              {data.duration} · {data.stopsLabel}
+            <span className="mb-1.5 text-[11px] font-extrabold whitespace-nowrap text-foreground tabular-nums sm:mb-2 sm:text-xs md:text-sm">
+              {data.duration}
             </span>
-            <div className="relative flex w-12 items-center justify-center sm:w-20 md:w-32">
-              <div className="w-full border-t border-dashed border-border/80" />
-              <span className="absolute flex size-6 items-center justify-center rounded-full border border-border/80 bg-card shadow-xs sm:size-7">
-                <HugeiconsIcon
-                  icon={Airplane01Icon}
-                  size={13}
-                  className="rotate-90 text-primary sm:size-3.5"
-                />
-              </span>
+            <div
+              aria-hidden="true"
+              className="flex w-12 items-center gap-1 sm:w-20 md:w-32"
+            >
+              <span className="size-1.5 shrink-0 rounded-full bg-primary" />
+              <span className="flex-1 border-t border-dashed border-border" />
+              <span className="size-1.5 shrink-0 rounded-full bg-primary" />
             </div>
+            <span className="mt-1.5 text-[9px] font-bold tracking-wider whitespace-nowrap text-muted-foreground uppercase sm:mt-2 sm:text-[10px] md:text-[11px]">
+              {data.stopsLabel}
+            </span>
           </div>
 
           {/* Destination */}
@@ -607,23 +633,15 @@ export function FlightETicket({
         </div>
       ) : null}
 
-      {/* Passenger & Ticket Metadata (4-column grid) */}
-      <div className="my-3 grid grid-cols-2 gap-3 border-t border-b border-border/70 py-3.5 text-left sm:my-4 sm:grid-cols-4 sm:gap-4 sm:py-5">
+      {/* Passenger & Ticket Metadata — cabin already sits in the carrier row
+          above, so it is never printed twice. */}
+      <div className="my-3 grid grid-cols-2 gap-3 border-t border-b border-border/70 py-3.5 text-left sm:my-4 sm:grid-cols-3 sm:gap-4 sm:py-5">
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase sm:text-[10px]">
             PRIMARY PASSENGER
           </span>
           <span className="truncate text-xs font-black text-foreground uppercase sm:text-sm">
             {data.primaryPassenger}
-          </span>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase sm:text-[10px]">
-            TRAVEL CLASS
-          </span>
-          <span className="text-xs font-extrabold text-foreground uppercase sm:text-sm">
-            {data.cabin}
           </span>
         </div>
 
@@ -671,63 +689,42 @@ export function FlightETicket({
         </div>
       ) : null}
 
-      {/* Itinerary Assignment Details Callout Box */}
-      <div className="my-4 rounded-xl border border-secondary/20 bg-secondary/5 p-3.5 text-left sm:my-5 sm:rounded-2xl sm:p-5">
-        <span className="mb-1 block text-[9px] font-black tracking-[0.18em] text-secondary uppercase sm:text-[10px]">
-          ITINERARY ASSIGNMENT DETAILS
-        </span>
-        <p className="mb-1 text-xs font-black text-foreground sm:text-sm">
-          {data.carrierCode} · {data.airlineName}
-        </p>
-        <p className="text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
-          {data.flightNumber || data.origin || data.destination ? (
-            <>
-              Standard scheduled flight service
-              {data.flightNumber ? ` reference ${data.flightNumber}` : ""}
-              {data.origin || data.destination
-                ? ` from ${data.origin || "—"} to ${data.destination || "—"}`
-                : ""}
-              .{" "}
-            </>
-          ) : null}
-          Please complete airline airport check-in at least 45 minutes prior
-          to departure (2 to 3 hours recommended for international routes).
-          Valid passport, entry visas, and boarding pass are required at
-          security and gate clearance.
-        </p>
-      </div>
-
-      {/* Card Status Footer */}
-      <div className="mt-4 flex flex-col items-start justify-between gap-2.5 border-t border-border/80 pt-4 text-xs font-bold sm:mt-5 sm:flex-row sm:items-center sm:pt-5">
+      {/* Card Status Footer — one status line. The right-hand half used to
+          restate the same state in different words. */}
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/80 pt-4 text-xs font-bold sm:mt-5 sm:pt-5">
         <div className="flex items-center gap-1.5 text-[10px] tracking-wide sm:gap-2 sm:text-[11px]">
           <span className="text-muted-foreground uppercase">STATUS:</span>
-          {data.pnr ? (
-            <span className="font-black text-emerald-600 uppercase">
+          {isTicketed ? (
+            <span className="inline-flex items-center gap-1 font-black text-emerald-600 uppercase">
+              <HugeiconsIcon icon={Tick01Icon} size={14} aria-hidden="true" />
               CONFIRMED &amp; ISSUED
+            </span>
+          ) : isReserved ? (
+            <span className="font-black text-amber-600 uppercase">
+              RESERVED — PAYMENT DUE
             </span>
           ) : (
             <span className="font-black text-amber-600 uppercase">
-              PAYMENT RECEIVED — ISSUING TICKET
+              PAYMENT RECEIVED — TICKET PENDING
             </span>
           )}
         </div>
-
-        {data.pnr ? (
-          <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase sm:text-[11px]">
-            <HugeiconsIcon icon={Tick01Icon} size={15} />
-            <span>VERIFIED TICKET &amp; PNR ISSUED</span>
-          </div>
-        ) : (
-          <div className="text-[10px] font-bold text-muted-foreground uppercase sm:text-[11px]">
-            <span>PNR PENDING — CHECK BACK SHORTLY</span>
-          </div>
-        )}
       </div>
+      {isTicketed && data.ticketNumbers ? (
+        <p className="mt-3 text-center text-xs font-bold break-all text-foreground">
+          E-ticket {data.ticketNumbers.length === 1 ? "number" : "numbers"}:{" "}
+          <span className="font-mono select-all">
+            {data.ticketNumbers.join(" · ")}
+          </span>
+        </p>
+      ) : null}
       {data.amadeusOrderId || data.ticketDeadline ? (
         <p className="mt-3 text-center font-mono text-[10px] break-all text-muted-foreground">
           {data.amadeusOrderId ? `Order ${data.amadeusOrderId}` : ""}
           {data.amadeusOrderId && data.ticketDeadline ? " · " : ""}
-          {data.ticketDeadline ? `Ticket by ${data.ticketDeadline}` : ""}
+          {data.ticketDeadline
+            ? `Ticket by ${formatETicketDateTime(data.ticketDeadline).date}`
+            : ""}
         </p>
       ) : null}
     </div>

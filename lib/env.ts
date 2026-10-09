@@ -186,6 +186,15 @@ export function errorReporterId(): string {
   return (process.env.NEXT_PUBLIC_ERROR_REPORTER_ID ?? "").trim()
 }
 
+/**
+ * True in production builds and production runtime. The only sanctioned
+ * `NODE_ENV` read outside the URL guardrails above, so feature code never
+ * touches `process.env` directly.
+ */
+export function isProduction(): boolean {
+  return process.env.NODE_ENV === "production"
+}
+
 export type EnvConfigState = "configured" | "misconfigured"
 
 export interface EnvConfigStatus {

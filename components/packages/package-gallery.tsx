@@ -42,12 +42,16 @@ export function PackageGallery({
 
   const [lightboxOpen, setLightboxOpen] = React.useState(false)
   const [activeIndex, setActiveIndex] = React.useState(0)
+  // Stays mounted after first open so the lightbox close exit can play;
+  // the chunk still loads lazily on first open (ticket 19).
+  const [lightboxMounted, setLightboxMounted] = React.useState(false)
   // The opener that launched the dialog — focus returns here on close.
   const openerRef = React.useRef<HTMLButtonElement | null>(null)
 
   const openLightbox = (index: number, opener: HTMLButtonElement | null) => {
     openerRef.current = opener
     setActiveIndex(index)
+    setLightboxMounted(true)
     setLightboxOpen(true)
   }
 
@@ -68,7 +72,12 @@ export function PackageGallery({
       >
         <img
           src={resolveListingImageUrl(photo.image)}
-          alt={describeGalleryPhoto(title, photo.caption, index, allPhotos.length)}
+          alt={describeGalleryPhoto(
+            title,
+            photo.caption,
+            index,
+            allPhotos.length
+          )}
           loading={eager ? "eager" : "lazy"}
           {...(eager ? { fetchPriority: "high" as const } : {})}
           decoding="async"
@@ -196,7 +205,7 @@ export function PackageGallery({
         )}
       </section>
 
-      {lightboxOpen ? (
+      {lightboxMounted ? (
         <PackageLightbox
           title={title}
           photos={allPhotos}

@@ -1,16 +1,40 @@
 "use client"
 
 import * as React from "react"
+import { motion, type Variants } from "motion/react"
 import type { FlightOfferDisplay } from "@/lib/api/flights"
-import {
-  groupOffersByAirline,
-} from "@/lib/api/flight-groups"
+import { groupOffersByAirline } from "@/lib/api/flight-groups"
 import { FlightOfferCard } from "@/components/flights/flight-offer-card"
+import { MOTION_STAGGERS } from "@/lib/motion/tokens"
+import { fadeInRiseVariants } from "@/lib/motion/variants"
 
-export interface GroupedFlightOffersProps {
-  visible: FlightOfferDisplay[]
-  badgeIds: { cheapest: Set<string>; fastest: Set<string> }
-  onSelect: (offer: FlightOfferDisplay) => void
+/**
+ * Skeleton-to-cards arrival: a 40ms stagger between siblings so inventory
+ * lands in an orderly sequence. Children inherit the visible state, so
+ * late-streaming domestic cards drop in individually on mount.
+ */
+const resultsListVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: MOTION_STAGGERS.tight,
+      delayChildren: MOTION_STAGGERS.leadIn,
+    },
+  },
+}
+
+function ResultsList({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={resultsListVariants}
+      className="flex flex-col gap-4"
+    >
+      {children}
+    </motion.div>
+  )
 }
 
 /**
@@ -22,6 +46,12 @@ export interface GroupedFlightOffersProps {
 const CARD_SKIP =
   "[content-visibility:auto] [contain-intrinsic-size:auto_320px]"
 
+export interface GroupedFlightOffersProps {
+  visible: FlightOfferDisplay[]
+  badgeIds: { cheapest: Set<string>; fastest: Set<string> }
+  onSelect: (offer: FlightOfferDisplay) => void
+}
+
 /**
  * One representative card per airline with an inline expand for the rest.
  * Each airline expands independently; other airlines stay at one card.
@@ -32,10 +62,7 @@ export function GroupedFlightOffers({
   badgeIds,
   onSelect,
 }: GroupedFlightOffersProps) {
-  const groups = React.useMemo(
-    () => groupOffersByAirline(visible),
-    [visible]
-  )
+  const groups = React.useMemo(() => groupOffersByAirline(visible), [visible])
   const [expanded, setExpanded] = React.useState<ReadonlySet<string>>(
     () => new Set()
   )
@@ -55,30 +82,32 @@ export function GroupedFlightOffers({
   // Flat list when grouping adds nothing (single airline).
   if (groups.length <= 1) {
     return (
-      <>
+      <ResultsList>
         {visible.map((display) => (
-          <FlightOfferCard
-            key={display.id}
-            offer={display}
-            onSelect={onSelect}
-            isCheapest={badgeIds.cheapest.has(display.id)}
-            isFastest={badgeIds.fastest.has(display.id)}
-            className={CARD_SKIP}
-          />
+          <motion.div key={display.id} variants={fadeInRiseVariants}>
+            <FlightOfferCard
+              offer={display}
+              onSelect={onSelect}
+              isCheapest={badgeIds.cheapest.has(display.id)}
+              isFastest={badgeIds.fastest.has(display.id)}
+              className={CARD_SKIP}
+            />
+          </motion.div>
         ))}
-      </>
+      </ResultsList>
     )
   }
 
   return (
-    <>
+    <ResultsList>
       {groups.map((group) => {
         const [representative, ...rest] = group.offers
         if (!representative) return null
         const isExpanded = expanded.has(group.key)
         return (
-          <div
+          <motion.div
             key={group.key}
+            variants={fadeInRiseVariants}
             role="group"
             aria-label={`${group.airline} flights`}
             className="flex flex-col gap-4"
@@ -107,9 +136,9 @@ export function GroupedFlightOffers({
                 ))}
               </div>
             ) : null}
-          </div>
+          </motion.div>
         )
       })}
-    </>
+    </ResultsList>
   )
 }

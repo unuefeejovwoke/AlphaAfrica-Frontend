@@ -25,14 +25,20 @@ function read(relative: string): string {
 const NOTICE_PATH = "components/legal/legal-notice.tsx"
 
 /** Forms that collect personal data and/or take money. */
-const TRANSACTIONAL_FORMS: { file: string; what: string }[] = [
+const TRANSACTIONAL_FORMS: {
+  file: string
+  what: string
+  /** Explicit consent checkbox with direct doc links instead of the shared notice. */
+  consentLinks?: boolean
+}[] = [
   {
     file: "components/shared/guest-booking-form.tsx",
     what: "Hotel and Car guest booking",
   },
   {
-    file: "components/flights/traveller-details-form.tsx",
+    file: "components/flights/checkout-trip-summary.tsx",
     what: "Flight checkout pay bar",
+    consentLinks: true,
   },
   {
     file: "components/visa/visa-consultation-form.tsx",
@@ -83,18 +89,33 @@ test("Legal notice is keyboard-visible, not colour-only", () => {
 })
 
 test("Every transactional form carries the legal notice at its submit action", () => {
-  for (const { file, what } of TRANSACTIONAL_FORMS) {
+  for (const { file, what, consentLinks } of TRANSACTIONAL_FORMS) {
     const content = read(file)
-    assert.match(
-      content,
-      /LegalNotice/,
-      `${what} (${file}) must render the legal notice beside its CTA`
-    )
-    assert.match(
-      content,
-      /from "@\/components\/legal\/legal-notice"/,
-      `${what} (${file}) must import the shared notice, not restate the copy`
-    )
+    if (consentLinks) {
+      // Explicit consent checkbox: the agreement text lives beside the
+      // checkbox with direct links to both documents.
+      assert.match(
+        content,
+        /href="\/terms"/,
+        `${what} (${file}) must link /terms beside its CTA`
+      )
+      assert.match(
+        content,
+        /href="\/privacy"/,
+        `${what} (${file}) must link /privacy beside its CTA`
+      )
+    } else {
+      assert.match(
+        content,
+        /LegalNotice/,
+        `${what} (${file}) must render the legal notice beside its CTA`
+      )
+      assert.match(
+        content,
+        /from "@\/components\/legal\/legal-notice"/,
+        `${what} (${file}) must import the shared notice, not restate the copy`
+      )
+    }
   }
 })
 

@@ -83,7 +83,10 @@ export function PackageMobileBar({
     const element =
       document.getElementById("book-now") || document.getElementById("enquiry")
     if (element) {
-      element.scrollIntoView({ behavior: "smooth" })
+      const reduceMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      element.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" })
     }
   }
 
@@ -133,7 +136,10 @@ export function BookNowButton({
     const element =
       document.getElementById(targetId) || document.getElementById("enquiry")
     if (element) {
-      element.scrollIntoView({ behavior: "smooth" })
+      const reduceMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      element.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" })
     }
   }
 

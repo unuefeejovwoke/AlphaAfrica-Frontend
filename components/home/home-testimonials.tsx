@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -8,9 +9,10 @@ import {
   SparklesIcon,
 } from "@hugeicons/core-free-icons"
 import { StarGlyph } from "@/components/shared/listing-card"
+import { Reveal } from "@/components/motion/reveal"
 import { getTestimonials } from "@/lib/content/testimonials"
 import { stats } from "@/lib/content/stats"
-import { cn } from "@/lib/utils"
+import { MOTION_SPRINGS } from "@/lib/motion/springs"
 
 function getInitials(name: string): string {
   const clean = name.replace(/^Dr\.\s+/i, "")
@@ -77,13 +79,24 @@ export function HomeTestimonials() {
       if (targetChild) {
         el.scrollTo({
           left: targetChild.offsetLeft - el.offsetLeft,
-          behavior: "smooth",
+          behavior:
+            typeof window !== "undefined" &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches
+              ? "auto"
+              : "smooth",
         })
       }
     }, 5000)
 
     return () => clearInterval(interval)
   }, [isPaused, testimonials.length, activeIndex])
+
+  const prefersReducedMotion = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+  const scrollBehavior = () =>
+    prefersReducedMotion() ? ("auto" as const) : ("smooth" as const)
 
   const scroll = (direction: "prev" | "next") => {
     const el = scrollRef.current
@@ -100,7 +113,7 @@ export function HomeTestimonials() {
     if (targetChild) {
       el.scrollTo({
         left: targetChild.offsetLeft - el.offsetLeft,
-        behavior: "smooth",
+        behavior: scrollBehavior(),
       })
     }
   }
@@ -113,7 +126,7 @@ export function HomeTestimonials() {
     if (targetChild) {
       el.scrollTo({
         left: targetChild.offsetLeft - el.offsetLeft,
-        behavior: "smooth",
+        behavior: scrollBehavior(),
       })
     }
   }
@@ -132,7 +145,7 @@ export function HomeTestimonials() {
       onTouchEndCapture={() => setIsPaused(false)}
     >
       {/* Header */}
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <Reveal className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="flex max-w-2xl flex-col items-start gap-3.5">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-primary uppercase">
             <HugeiconsIcon
@@ -186,7 +199,7 @@ export function HomeTestimonials() {
             </button>
           </div>
         </div>
-      </div>
+      </Reveal>
 
       {/* Slider viewport */}
       <div
@@ -264,22 +277,30 @@ export function HomeTestimonials() {
           role="tablist"
           aria-label="Slides"
         >
-          {testimonials.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              role="tab"
-              aria-selected={activeIndex === i}
-              aria-label={`Go to testimonial ${i + 1}`}
-              onClick={() => scrollToIndex(i)}
-              className={cn(
-                "h-2 rounded-full transition-all duration-300 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                activeIndex === i
-                  ? "w-6 bg-primary"
-                  : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
-              )}
-            />
-          ))}
+          {testimonials.map((_, i) => {
+            const active = activeIndex === i
+            return (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-label={`Go to testimonial ${i + 1}`}
+                onClick={() => scrollToIndex(i)}
+                className="flex h-6 touch-manipulation items-center justify-center px-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                {active ? (
+                  <motion.span
+                    layoutId="active-testimonial-dot"
+                    transition={MOTION_SPRINGS.layout}
+                    className="h-1.5 w-[18px] rounded-full bg-primary"
+                  />
+                ) : (
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30 transition-colors duration-200 hover:bg-muted-foreground/50" />
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {/* Mobile-only prev/next buttons */}

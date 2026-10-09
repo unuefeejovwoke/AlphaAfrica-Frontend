@@ -601,6 +601,51 @@ paths:
                 items:
                   $ref: '#/components/schemas/Airport'
           description: ''
+  /api/flights/bookings/{reference}/pay/:
+    post:
+      operationId: flights_bookings_pay_create
+      description: Initialises payment for a reserved international booking (its PNR
+        is already held). Works for logged-in users and guests (identified by the
+        booking reference). Returns the Paystack authorization_url to redirect to.
+        Rejected if the reservation has already been paid, cancelled, or passed its
+        ticketing deadline.
+      summary: Pay for a reserved flight (pay now or pay later)
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+        required: true
+      tags:
+      - Flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: authorization_url to complete payment.
+  /api/flights/bookings/{reference}/tickets/:
+    get:
+      operationId: flights_bookings_tickets_retrieve
+      description: Retrieves the Amadeus order and returns the e-ticket number(s)
+        once the ticket has been issued (issuance itself is done by the agency, not
+        this endpoint). Safe to poll — it only reads the order. When ticket numbers
+        first appear, the customer is emailed their e-ticket.
+      summary: Fetch e-ticket numbers for a booking
+      parameters:
+      - in: path
+        name: reference
+        schema:
+          type: string
+        required: true
+      tags:
+      - Flights
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: Ticket numbers + booking, or ticketed:false if not yet issued.
   /api/flights/bookings/create/:
     post:
       operationId: flights_bookings_create_create
@@ -1577,6 +1622,16 @@ components:
         amadeus_order_id:
           type: string
           maxLength: 100
+        ticketing_deadline:
+          type: string
+          format: date
+          nullable: true
+          description: Last date to pay/ticket a reserved international booking (Amadeus
+            lastTicketingDate).
+        ticket_numbers:
+          nullable: true
+          description: Issued e-ticket numbers, pulled from Amadeus after the ticket
+            is issued.
         created_at:
           type: string
           format: date-time
@@ -1627,6 +1682,7 @@ components:
     FlightBookingStatusEnum:
       enum:
       - pending
+      - reserved
       - paid
       - confirmed
       - cancelled
@@ -1634,6 +1690,7 @@ components:
       type: string
       description: |-
         * `pending` - Pending Payment
+        * `reserved` - Reserved — Awaiting Payment
         * `paid` - Paid — Booking
         * `confirmed` - Confirmed (Order Created)
         * `cancelled` - Cancelled

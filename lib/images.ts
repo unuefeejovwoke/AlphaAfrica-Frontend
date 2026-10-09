@@ -13,6 +13,31 @@
 /** Home hero — full-bleed, dark left third reserved for the headline. */
 export const HERO = "/images/hero.webp"
 
+/**
+ * Home hero slideshow frames (`public/images/hero/`), in display order.
+ * Rendered as a decorative background layer — the headline carries the
+ * meaning, so the component marks them `aria-hidden` with empty `alt`.
+ * `alt` is kept here as source documentation for each frame.
+ */
+export const HERO_SLIDES = [
+  {
+    src: "/images/hero/abudhabiairport.webp",
+    alt: "Abu Dhabi airport terminal at dusk",
+  },
+  {
+    src: "/images/hero/downloaddubia.webp",
+    alt: "Dubai skyline rising above the marina",
+  },
+  {
+    src: "/images/hero/transcorp.webp",
+    alt: "Transcorp hotel exterior in the city",
+  },
+  {
+    src: "/images/hero/zanziba.webp",
+    alt: "White-sand beach in Zanzibar with turquoise water",
+  },
+] as const
+
 /** Home "Don't want to plan it all yourself?" editorial card. */
 export const HOME_BENTO = "/images/homepage-bento.webp"
 

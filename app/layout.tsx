@@ -5,6 +5,7 @@ import "./globals.css"
 import { Toaster } from "@/components/ui/sonner"
 import { AnalyticsLoader } from "@/components/analytics/analytics-loader"
 import { ThemeProvider } from "@/components/shared/theme-provider"
+import { MotionProvider } from "@/components/shared/motion-provider"
 import { company } from "@/lib/content/company"
 import { getSeoConfig, getSiteUrl } from "@/lib/seo"
 import { cn } from "@/lib/utils"
@@ -73,6 +74,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn(
         "antialiased",
+        // Native anchor glide (blog Table of Contents, skip link, FAQ group
+        // links). globals.css forces `scroll-behavior: auto` under
+        // prefers-reduced-motion, so nothing needs a JS scroll handler.
+        "scroll-smooth",
         fontMono.variable,
         "font-sans",
         inter.variable
@@ -81,8 +86,10 @@ export default function RootLayout({
       <body>
         <link rel="preconnect" href="https://wa.me" />
         <ThemeProvider>
-          {children}
-          <Toaster position="top-right" />
+          <MotionProvider>
+            {children}
+            <Toaster position="top-right" />
+          </MotionProvider>
         </ThemeProvider>
         <AnalyticsLoader />
       </body>

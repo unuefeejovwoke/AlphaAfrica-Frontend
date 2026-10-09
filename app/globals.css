@@ -73,7 +73,7 @@
      so a separate delay utility would silently do nothing. Set the offset
      per element with `[--rise-delay:120ms]`; the `0ms` default covers the
      unstaggered case. */
-  --animate-rise: brand-rise 520ms var(--ease-brand) var(--rise-delay, 0ms) both;
+  --animate-rise: brand-rise 700ms var(--ease-brand) var(--rise-delay, 0ms) both;
 }
 
 /* Declared outside @theme so Tailwind always emits them: `brand-reveal` is
@@ -81,14 +81,14 @@
 @keyframes brand-rise {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(24px);
   }
 }
 
 @keyframes brand-reveal {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(28px);
   }
 }
 
@@ -106,7 +106,7 @@
   @supports (animation-timeline: view()) {
     animation: brand-reveal linear both;
     animation-timeline: view();
-    animation-range: entry 0% entry 45%;
+    animation-range: entry 0% cover 30%;
   }
 }
 
