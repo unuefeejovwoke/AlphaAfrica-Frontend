@@ -282,10 +282,10 @@ export function FlightSearchForm({
   const destinationValue = form.watch("destination") ?? ""
 
   // Both-Nigerian one-way/round-trip routes stream via QuickAir, which is
-  // Economy-only in v1: cabin and stop controls disable with explanation and
-  // the backend never receives fare classes it ignores (the domestic search
-  // params carry no cabin/non-stop/max-stops). Multi-city always uses the
-  // international path, so its controls stay enabled.
+  // Economy-only in v1: cabin and stop controls disable (with inline helper
+  // text) and the backend never receives fare classes it ignores (the
+  // domestic search params carry no cabin/non-stop/max-stops). Multi-city
+  // always uses the international path, so its controls stay enabled.
   const isDomesticRoute =
     tripType !== "multi_city" &&
     originValue.trim().length === 3 &&
@@ -662,17 +662,6 @@ export function FlightSearchForm({
           </div>
         )}
 
-        {isDomesticRoute ? (
-          <p
-            role="note"
-            aria-live="polite"
-            className="rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-xs leading-relaxed text-foreground"
-          >
-            Domestic flights are Economy-only in v1 — cabin and stop controls
-            are disabled because the live domestic search ignores fare classes
-            it does not support.
-          </p>
-        ) : null}
         {/* Advanced fare controls behind a disclosure — basic route, dates,
             party, and the search action stay visible. Trip-type, leg editor,
             and inline validation keep working inside. */}
